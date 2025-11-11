@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL for sample data and results storage
   postgres:
@@ -27,18 +25,15 @@ services:
       dockerfile: docker/Dockerfile
     container_name: profilemesh_dagster_daemon
     environment:
-      - DAGSTER_POSTGRES_USER=profilemesh
-      - DAGSTER_POSTGRES_PASSWORD=profilemesh
-      - DAGSTER_POSTGRES_DB=dagster
-      - DAGSTER_POSTGRES_HOST=postgres
-      - DAGSTER_POSTGRES_PORT=5432
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
     volumes:
       - ../:/app
       - dagster_home:/opt/dagster/dagster_home
     depends_on:
       postgres:
         condition: service_healthy
-    command: dagster-daemon run
+    command: dagster-daemon run -w /opt/dagster/dagster_home/workspace.yaml
 
   # Dagster web UI
   dagster_webserver:
@@ -47,11 +42,8 @@ services:
       dockerfile: docker/Dockerfile
     container_name: profilemesh_dagster_webserver
     environment:
-      - DAGSTER_POSTGRES_USER=profilemesh
-      - DAGSTER_POSTGRES_PASSWORD=profilemesh
-      - DAGSTER_POSTGRES_DB=dagster
-      - DAGSTER_POSTGRES_HOST=postgres
-      - DAGSTER_POSTGRES_PORT=5432
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
     ports:
       - "3000:3000"
     volumes:
@@ -60,7 +52,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: dagster-webserver -h 0.0.0.0 -p 3000
+    command: dagster-webserver -h 0.0.0.0 -p 3000 -w /opt/dagster/dagster_home/workspace.yaml
 
 volumes:
   postgres_data:
