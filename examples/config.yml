@@ -68,3 +68,25 @@ profiling:
     - stddev
     - histogram
 
+# Drift detection configuration
+drift_detection:
+  # Strategy to use: "absolute_threshold", "standard_deviation", "ml_based"
+  strategy: absolute_threshold
+  
+  # Parameters for absolute_threshold strategy
+  absolute_threshold:
+    low_threshold: 5.0      # 5% change triggers low severity
+    medium_threshold: 15.0   # 15% change triggers medium severity
+    high_threshold: 30.0     # 30% change triggers high severity
+  
+  # Parameters for standard_deviation strategy (alternative)
+  # standard_deviation:
+  #   low_threshold: 1.0     # 1 std dev triggers low severity
+  #   medium_threshold: 2.0  # 2 std devs trigger medium severity
+  #   high_threshold: 3.0    # 3 std devs trigger high severity
+  
+  # Parameters for ML-based strategy (placeholder for future)
+  # ml_based:
+  #   model_type: isolation_forest
+  #   sensitivity: 0.8
+

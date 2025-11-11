@@ -63,7 +63,7 @@ def main():
     # 4. Try drift detection (if we have previous runs)
     print("\n[4/4] Checking for drift...")
     try:
-        detector = DriftDetector(config.storage)
+        detector = DriftDetector(config.storage, config.drift_detection)
         
         # Try to detect drift for the first table
         first_table = results[0].dataset_name

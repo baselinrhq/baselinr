@@ -91,6 +91,33 @@ class StorageConfig(BaseModel):
     create_tables: bool = Field(True)
 
 
+class DriftDetectionConfig(BaseModel):
+    """Drift detection configuration."""
+    
+    strategy: str = Field("absolute_threshold")
+    
+    # Absolute threshold strategy parameters
+    absolute_threshold: Dict[str, float] = Field(
+        default_factory=lambda: {
+            "low_threshold": 5.0,
+            "medium_threshold": 15.0,
+            "high_threshold": 30.0
+        }
+    )
+    
+    # Standard deviation strategy parameters
+    standard_deviation: Dict[str, float] = Field(
+        default_factory=lambda: {
+            "low_threshold": 1.0,
+            "medium_threshold": 2.0,
+            "high_threshold": 3.0
+        }
+    )
+    
+    # ML-based strategy parameters (placeholder)
+    ml_based: Dict[str, Any] = Field(default_factory=dict)
+
+
 class ProfileMeshConfig(BaseModel):
     """Main ProfileMesh configuration."""
     
@@ -98,6 +125,7 @@ class ProfileMeshConfig(BaseModel):
     source: ConnectionConfig
     storage: StorageConfig
     profiling: ProfilingConfig = Field(default_factory=ProfilingConfig)
+    drift_detection: DriftDetectionConfig = Field(default_factory=DriftDetectionConfig)
     
     @field_validator("environment")
     @classmethod

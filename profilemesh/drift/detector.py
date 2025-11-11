@@ -11,7 +11,8 @@ from datetime import datetime
 import logging
 from sqlalchemy import text
 
-from ..config.schema import StorageConfig
+from ..config.schema import StorageConfig, DriftDetectionConfig
+from .strategies import create_drift_strategy, DriftDetectionStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -77,22 +78,43 @@ class DriftDetector:
     # Metrics that should be compared for drift
     NUMERIC_DRIFT_METRICS = ['count', 'null_percent', 'distinct_percent', 'mean', 'stddev', 'min', 'max']
     
-    # Thresholds for drift detection (percent change)
-    THRESHOLDS = {
-        'low': 5.0,      # 5% change
-        'medium': 15.0,   # 15% change
-        'high': 30.0      # 30% change
-    }
-    
-    def __init__(self, storage_config: StorageConfig):
+    def __init__(
+        self,
+        storage_config: StorageConfig,
+        drift_config: Optional[DriftDetectionConfig] = None
+    ):
         """
         Initialize drift detector.
         
         Args:
             storage_config: Storage configuration
+            drift_config: Drift detection configuration (uses defaults if not provided)
         """
         self.storage_config = storage_config
+        self.drift_config = drift_config or DriftDetectionConfig()
         self.engine = self._setup_connection()
+        
+        # Create drift detection strategy based on config
+        self.strategy = self._create_strategy()
+    
+    def _create_strategy(self) -> DriftDetectionStrategy:
+        """Create drift detection strategy from configuration."""
+        strategy_name = self.drift_config.strategy
+        
+        # Get parameters for the selected strategy
+        if strategy_name == "absolute_threshold":
+            params = self.drift_config.absolute_threshold
+        elif strategy_name == "standard_deviation":
+            params = self.drift_config.standard_deviation
+        elif strategy_name == "ml_based":
+            params = self.drift_config.ml_based
+        else:
+            logger.warning(f"Unknown strategy '{strategy_name}', using absolute_threshold")
+            strategy_name = "absolute_threshold"
+            params = self.drift_config.absolute_threshold
+        
+        logger.info(f"Using drift detection strategy: {strategy_name} with params: {params}")
+        return create_drift_strategy(strategy_name, **params)
     
     def _setup_connection(self):
         """Setup database connection."""
@@ -293,49 +315,29 @@ class DriftDetector:
         baseline_value: Any,
         current_value: Any
     ) -> Optional[ColumnDrift]:
-        """Calculate drift for a metric."""
-        # Skip if either value is None
-        if baseline_value is None or current_value is None:
+        """Calculate drift for a metric using the configured strategy."""
+        # Use the configured strategy to calculate drift
+        result = self.strategy.calculate_drift(
+            baseline_value=baseline_value,
+            current_value=current_value,
+            metric_name=metric_name,
+            column_name=column_name
+        )
+        
+        # If strategy couldn't calculate drift, return None
+        if result is None:
             return None
         
-        # Skip if not numeric
-        if not isinstance(baseline_value, (int, float)) or not isinstance(current_value, (int, float)):
-            return None
-        
-        # Calculate changes
-        change_absolute = current_value - baseline_value
-        
-        if baseline_value != 0:
-            change_percent = (change_absolute / abs(baseline_value)) * 100
-        else:
-            change_percent = None
-        
-        # Determine drift severity
-        drift_detected = False
-        drift_severity = "none"
-        
-        if change_percent is not None:
-            abs_change_percent = abs(change_percent)
-            
-            if abs_change_percent >= self.THRESHOLDS['high']:
-                drift_detected = True
-                drift_severity = "high"
-            elif abs_change_percent >= self.THRESHOLDS['medium']:
-                drift_detected = True
-                drift_severity = "medium"
-            elif abs_change_percent >= self.THRESHOLDS['low']:
-                drift_detected = True
-                drift_severity = "low"
-        
+        # Convert DriftResult to ColumnDrift
         return ColumnDrift(
             column_name=column_name,
             metric_name=metric_name,
             baseline_value=baseline_value,
             current_value=current_value,
-            change_percent=change_percent,
-            change_absolute=change_absolute,
-            drift_detected=drift_detected,
-            drift_severity=drift_severity
+            change_percent=result.change_percent,
+            change_absolute=result.change_absolute,
+            drift_detected=result.drift_detected,
+            drift_severity=result.drift_severity
         )
     
     def _generate_summary(self, report: DriftReport) -> Dict[str, Any]:

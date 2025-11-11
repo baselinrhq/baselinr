@@ -88,8 +88,8 @@ def drift_command(args):
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
         
-        # Create drift detector
-        detector = DriftDetector(config.storage)
+        # Create drift detector with drift detection config
+        detector = DriftDetector(config.storage, config.drift_detection)
         
         # Detect drift
         logger.info(f"Detecting drift for dataset: {args.dataset}")
