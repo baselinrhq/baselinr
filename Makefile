@@ -103,17 +103,17 @@ clean:
 	rm -rf htmlcov/
 
 docker-up:
-	cd docker && docker-compose up -d
+	cd docker && docker compose up -d
 	@echo ""
 	@echo "Docker environment started!"
 	@echo "Dagster UI: http://localhost:3000"
 	@echo "PostgreSQL: localhost:5432 (user: profilemesh, password: profilemesh)"
 
 docker-down:
-	cd docker && docker-compose down
+	cd docker && docker compose down
 
 docker-logs:
-	cd docker && docker-compose logs -f
+	cd docker && docker compose logs -f
 
 quickstart:
 	python examples/quickstart.py
@@ -127,8 +127,8 @@ profile:
 drift:
 	profilemesh drift --config examples/config.yml --dataset customers
 
-# Development workflow
-dev-setup: install-dev docker-up
+# Full development environment (install + docker)
+dev-env: install-dev docker-up
 	@echo ""
 	@echo "Development environment ready!"
 	@echo "Run 'make quickstart' to test ProfileMesh"
