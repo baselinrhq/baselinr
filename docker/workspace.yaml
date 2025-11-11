@@ -1,0 +1,7 @@
+# Dagster workspace configuration for ProfileMesh
+
+load_from:
+  - python_file:
+      relative_path: ../examples/dagster_repository.py
+      working_directory: /app
+

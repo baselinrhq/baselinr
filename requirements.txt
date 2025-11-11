@@ -1,0 +1,26 @@
+# ProfileMesh Core Dependencies
+
+# Configuration and validation
+pydantic>=2.0.0
+pyyaml>=6.0.0
+
+# Database connectivity
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+
+# Optional: Snowflake support
+# snowflake-sqlalchemy>=1.5.0
+# snowflake-connector-python>=3.0.0
+
+# Optional: Dagster orchestration
+dagster>=1.5.0
+dagster-webserver>=1.5.0
+dagster-postgres>=0.21.0
+
+# Development tools (optional)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.0.0
+

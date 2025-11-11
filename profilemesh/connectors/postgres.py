@@ -1,0 +1,43 @@
+"""PostgreSQL connector implementation."""
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+import logging
+
+from .base import BaseConnector
+from ..config.schema import ConnectionConfig
+
+logger = logging.getLogger(__name__)
+
+
+class PostgresConnector(BaseConnector):
+    """PostgreSQL database connector."""
+    
+    def _create_engine(self) -> Engine:
+        """Create PostgreSQL engine."""
+        connection_string = self.get_connection_string()
+        logger.info(f"Connecting to PostgreSQL: {self.config.database}")
+        
+        return create_engine(
+            connection_string,
+            **self.config.extra_params
+        )
+    
+    def get_connection_string(self) -> str:
+        """
+        Build PostgreSQL connection string.
+        
+        Returns:
+            PostgreSQL connection string
+        """
+        host = self.config.host or "localhost"
+        port = self.config.port or 5432
+        username = self.config.username or "postgres"
+        password = self.config.password or ""
+        database = self.config.database
+        
+        if password:
+            return f"postgresql://{username}:{password}@{host}:{port}/{database}"
+        else:
+            return f"postgresql://{username}@{host}:{port}/{database}"
+

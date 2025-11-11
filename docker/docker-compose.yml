@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for sample data and results storage
+  postgres:
+    image: postgres:15
+    container_name: profilemesh_postgres
+    environment:
+      POSTGRES_USER: profilemesh
+      POSTGRES_PASSWORD: profilemesh
+      POSTGRES_DB: profilemesh
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U profilemesh"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Dagster daemon for scheduling
+  dagster_daemon:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: profilemesh_dagster_daemon
+    environment:
+      - DAGSTER_POSTGRES_USER=profilemesh
+      - DAGSTER_POSTGRES_PASSWORD=profilemesh
+      - DAGSTER_POSTGRES_DB=dagster
+      - DAGSTER_POSTGRES_HOST=postgres
+      - DAGSTER_POSTGRES_PORT=5432
+    volumes:
+      - ../:/app
+      - dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: dagster-daemon run
+
+  # Dagster web UI
+  dagster_webserver:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: profilemesh_dagster_webserver
+    environment:
+      - DAGSTER_POSTGRES_USER=profilemesh
+      - DAGSTER_POSTGRES_PASSWORD=profilemesh
+      - DAGSTER_POSTGRES_DB=dagster
+      - DAGSTER_POSTGRES_HOST=postgres
+      - DAGSTER_POSTGRES_PORT=5432
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../:/app
+      - dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: dagster-webserver -h 0.0.0.0 -p 3000
+
+volumes:
+  postgres_data:
+  dagster_home:
+

@@ -1,0 +1,98 @@
+-- Initialize PostgreSQL for ProfileMesh development
+
+-- Create dagster database for Dagster storage
+CREATE DATABASE dagster;
+
+-- Switch to profilemesh database (created by POSTGRES_DB env var)
+\c profilemesh;
+
+-- Create sample schema and tables for profiling
+
+-- Customers table
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    email VARCHAR(255) UNIQUE,
+    age INTEGER,
+    registration_date DATE,
+    is_active BOOLEAN DEFAULT TRUE,
+    total_purchases DECIMAL(10, 2) DEFAULT 0.00,
+    customer_segment VARCHAR(50)
+);
+
+-- Products table
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(255) NOT NULL,
+    category VARCHAR(100),
+    price DECIMAL(10, 2),
+    stock_quantity INTEGER,
+    manufacturer VARCHAR(100),
+    release_date DATE,
+    rating DECIMAL(3, 2)
+);
+
+-- Orders table
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(customer_id),
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total_amount DECIMAL(10, 2),
+    status VARCHAR(50),
+    shipping_address TEXT,
+    delivery_date DATE
+);
+
+-- Insert sample data into customers
+INSERT INTO customers (first_name, last_name, email, age, registration_date, is_active, total_purchases, customer_segment)
+VALUES
+    ('John', 'Doe', 'john.doe@example.com', 35, '2023-01-15', TRUE, 1250.50, 'Premium'),
+    ('Jane', 'Smith', 'jane.smith@example.com', 28, '2023-02-20', TRUE, 850.75, 'Standard'),
+    ('Bob', 'Johnson', 'bob.johnson@example.com', 42, '2023-01-10', TRUE, 2300.00, 'Premium'),
+    ('Alice', 'Williams', 'alice.williams@example.com', 31, '2023-03-05', FALSE, 450.25, 'Standard'),
+    ('Charlie', 'Brown', 'charlie.brown@example.com', 55, '2023-01-25', TRUE, 3200.00, 'VIP'),
+    ('Diana', 'Martinez', 'diana.martinez@example.com', 29, '2023-04-12', TRUE, 680.50, 'Standard'),
+    ('Eve', 'Davis', 'eve.davis@example.com', 38, '2023-02-08', TRUE, 1450.00, 'Premium'),
+    ('Frank', 'Garcia', 'frank.garcia@example.com', 45, '2023-01-30', FALSE, 120.00, 'Basic'),
+    ('Grace', 'Lopez', 'grace.lopez@example.com', 33, '2023-03-15', TRUE, 890.25, 'Standard'),
+    ('Henry', 'Wilson', 'henry.wilson@example.com', 50, '2023-02-01', TRUE, 2100.00, 'Premium');
+
+-- Insert sample data into products
+INSERT INTO products (product_name, category, price, stock_quantity, manufacturer, release_date, rating)
+VALUES
+    ('Laptop Pro', 'Electronics', 1299.99, 50, 'TechCorp', '2023-01-01', 4.5),
+    ('Wireless Mouse', 'Electronics', 29.99, 200, 'TechCorp', '2023-02-15', 4.2),
+    ('Office Chair', 'Furniture', 249.99, 75, 'ComfortCo', '2023-01-20', 4.7),
+    ('Desk Lamp', 'Furniture', 45.99, 150, 'LightWorks', '2023-03-01', 4.0),
+    ('Notebook Set', 'Stationery', 12.99, 500, 'PaperPlus', '2023-01-10', 4.3),
+    ('USB-C Cable', 'Electronics', 15.99, 300, 'TechCorp', '2023-02-20', 4.1),
+    ('Standing Desk', 'Furniture', 599.99, 30, 'ComfortCo', '2023-01-15', 4.8),
+    ('Webcam HD', 'Electronics', 89.99, 100, 'TechCorp', '2023-03-10', 4.4),
+    ('Ergonomic Keyboard', 'Electronics', 79.99, 120, 'TechCorp', '2023-02-05', 4.6),
+    ('Monitor 27"', 'Electronics', 399.99, 60, 'DisplayTech', '2023-01-25', 4.7);
+
+-- Insert sample data into orders
+INSERT INTO orders (customer_id, order_date, total_amount, status, shipping_address, delivery_date)
+VALUES
+    (1, '2023-05-01 10:30:00', 1329.98, 'Delivered', '123 Main St, City, State 12345', '2023-05-05'),
+    (2, '2023-05-02 14:15:00', 75.98, 'Delivered', '456 Oak Ave, Town, State 67890', '2023-05-06'),
+    (3, '2023-05-03 09:45:00', 849.98, 'In Transit', '789 Pine Rd, Village, State 13579', '2023-05-08'),
+    (1, '2023-05-04 16:20:00', 45.99, 'Delivered', '123 Main St, City, State 12345', '2023-05-07'),
+    (5, '2023-05-05 11:00:00', 1899.97, 'Processing', '321 Elm St, Suburb, State 24680', '2023-05-10'),
+    (7, '2023-05-06 13:30:00', 649.98, 'Delivered', '654 Maple Dr, County, State 11223', '2023-05-09'),
+    (9, '2023-05-07 10:15:00', 399.99, 'In Transit', '987 Birch Ln, Metro, State 33445', '2023-05-11'),
+    (2, '2023-05-08 15:45:00', 92.97, 'Delivered', '456 Oak Ave, Town, State 67890', '2023-05-10'),
+    (6, '2023-05-09 12:00:00', 279.98, 'Processing', '147 Cedar Way, District, State 55667', '2023-05-13'),
+    (10, '2023-05-10 09:30:00', 1299.99, 'Processing', '258 Spruce Ct, Region, State 77889', '2023-05-14');
+
+-- Create indexes for better performance
+CREATE INDEX idx_customers_email ON customers(email);
+CREATE INDEX idx_orders_customer_id ON orders(customer_id);
+CREATE INDEX idx_orders_date ON orders(order_date);
+CREATE INDEX idx_products_category ON products(category);
+
+-- Grant permissions
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO profilemesh;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO profilemesh;
+
