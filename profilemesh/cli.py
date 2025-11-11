@@ -16,6 +16,7 @@ from .config.schema import ProfileMeshConfig
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
 from .drift.detector import DriftDetector
+from .planner import PlanBuilder, print_plan
 
 # Setup logging
 logging.basicConfig(
@@ -148,6 +149,56 @@ def drift_command(args):
         return 1
 
 
+def plan_command(args):
+    """Execute plan command."""
+    logger.info(f"Loading configuration from: {args.config}")
+    
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+        logger.info(f"Configuration loaded for environment: {config.environment}")
+        
+        # Build plan
+        logger.info("Building profiling execution plan...")
+        builder = PlanBuilder(config)
+        plan = builder.build_plan()
+        
+        # Validate plan
+        warnings = builder.validate_plan(plan)
+        if warnings:
+            logger.warning("Plan validation warnings:")
+            for warning in warnings:
+                logger.warning(f"  - {warning}")
+        
+        # Print plan
+        output_format = args.output if hasattr(args, 'output') else 'text'
+        verbose = args.verbose if hasattr(args, 'verbose') else False
+        
+        print_plan(plan, format=output_format, verbose=verbose)
+        
+        return 0
+    
+    except FileNotFoundError as e:
+        logger.error(f"Configuration file not found: {args.config}")
+        print(f"\nError: Configuration file not found: {args.config}")
+        print("Please specify a valid configuration file with --config")
+        return 1
+    
+    except ValueError as e:
+        logger.error(f"Invalid configuration: {e}")
+        print(f"\nError: {e}")
+        print("\nPlease check your configuration file and ensure:")
+        print("  - The 'profiling.tables' section is not empty")
+        print("  - All required fields are present")
+        print("  - Table names are valid")
+        return 1
+    
+    except Exception as e:
+        logger.error(f"Plan generation failed: {e}", exc_info=True)
+        print(f"\nError: Plan generation failed: {e}")
+        return 1
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -155,6 +206,25 @@ def main():
     )
     
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
+    
+    # Plan command
+    plan_parser = subparsers.add_parser('plan', help='Build and display profiling execution plan')
+    plan_parser.add_argument(
+        '--config', '-c',
+        required=True,
+        help='Path to configuration file (YAML or JSON)'
+    )
+    plan_parser.add_argument(
+        '--output', '-o',
+        choices=['text', 'json'],
+        default='text',
+        help='Output format (default: text)'
+    )
+    plan_parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Show verbose details including metrics and configuration'
+    )
     
     # Profile command
     profile_parser = subparsers.add_parser('profile', help='Profile datasets')
@@ -215,7 +285,9 @@ def main():
         return 1
     
     # Execute command
-    if args.command == 'profile':
+    if args.command == 'plan':
+        return plan_command(args)
+    elif args.command == 'profile':
         return profile_command(args)
     elif args.command == 'drift':
         return drift_command(args)

@@ -85,13 +85,21 @@ profiling:
   histogram_bins: 10
 ```
 
-### 2. Run Profiling
+### 2. Preview What Will Be Profiled
+
+```bash
+profilemesh plan --config config.yml
+```
+
+This shows you what tables will be profiled without actually running the profiler.
+
+### 3. Run Profiling
 
 ```bash
 profilemesh profile --config config.yml
 ```
 
-### 3. Detect Drift
+### 4. Detect Drift
 
 After running profiling multiple times:
 
@@ -217,6 +225,15 @@ python examples/quickstart.py
 ### CLI Examples
 
 ```bash
+# View profiling plan (dry-run)
+profilemesh plan --config examples/config.yml
+
+# View plan in JSON format
+profilemesh plan --config examples/config.yml --output json
+
+# View plan with verbose details
+profilemesh plan --config examples/config.yml --verbose
+
 # Profile all tables in config
 profilemesh profile --config examples/config.yml
 

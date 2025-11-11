@@ -75,6 +75,9 @@ docker-logs:
 quickstart:
 	python examples/quickstart.py
 
+plan:
+	profilemesh plan --config examples/config.yml
+
 profile:
 	profilemesh profile --config examples/config.yml
 
