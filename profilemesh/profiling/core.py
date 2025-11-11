@@ -123,7 +123,8 @@ class ProfileEngine:
             engine=self.connector.engine,
             max_distinct_values=self.config.profiling.max_distinct_values,
             compute_histograms=self.config.profiling.compute_histograms,
-            histogram_bins=self.config.profiling.histogram_bins
+            histogram_bins=self.config.profiling.histogram_bins,
+            enabled_metrics=self.config.profiling.metrics
         )
         
         # Profile each table pattern

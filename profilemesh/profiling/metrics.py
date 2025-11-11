@@ -23,7 +23,8 @@ class MetricCalculator:
         engine: Engine,
         max_distinct_values: int = 1000,
         compute_histograms: bool = True,
-        histogram_bins: int = 10
+        histogram_bins: int = 10,
+        enabled_metrics: Optional[List[str]] = None
     ):
         """
         Initialize metric calculator.
@@ -33,11 +34,13 @@ class MetricCalculator:
             max_distinct_values: Maximum distinct values to compute
             compute_histograms: Whether to compute histograms
             histogram_bins: Number of histogram bins
+            enabled_metrics: List of metrics to compute (None = all metrics)
         """
         self.engine = engine
         self.max_distinct_values = max_distinct_values
         self.compute_histograms = compute_histograms
         self.histogram_bins = histogram_bins
+        self.enabled_metrics = enabled_metrics
     
     def calculate_all_metrics(
         self,
@@ -59,21 +62,53 @@ class MetricCalculator:
         col = table.c[column_name]
         metrics = {}
         
-        # Basic counts
-        metrics.update(self._calculate_counts(table, col, sample_ratio))
+        # Determine which metrics to compute
+        compute_counts = self._should_compute_metric_group(['count', 'null_count', 'null_percent', 'distinct_count', 'distinct_percent'])
+        compute_numeric = self._should_compute_metric_group(['min', 'max', 'mean', 'stddev'])
+        compute_histogram = self._should_compute_metric('histogram') and self.compute_histograms
+        compute_string = self._should_compute_metric_group(['min_length', 'max_length', 'avg_length'])
+        
+        # Basic counts (if any count metric is requested)
+        if compute_counts:
+            all_counts = self._calculate_counts(table, col, sample_ratio)
+            # Filter to only requested metrics
+            if self.enabled_metrics:
+                all_counts = {k: v for k, v in all_counts.items() if k in self.enabled_metrics}
+            metrics.update(all_counts)
         
         # Type-specific metrics
         col_type = str(col.type)
         
-        if self._is_numeric_type(col_type):
-            metrics.update(self._calculate_numeric_metrics(table, col, sample_ratio))
-            if self.compute_histograms:
+        if self._is_numeric_type(col_type) and compute_numeric:
+            all_numeric = self._calculate_numeric_metrics(table, col, sample_ratio)
+            # Filter to only requested metrics
+            if self.enabled_metrics:
+                all_numeric = {k: v for k, v in all_numeric.items() if k in self.enabled_metrics}
+            metrics.update(all_numeric)
+            
+            if compute_histogram:
                 metrics.update(self._calculate_histogram(table, col, sample_ratio))
         
-        if self._is_string_type(col_type):
-            metrics.update(self._calculate_string_metrics(table, col, sample_ratio))
+        if self._is_string_type(col_type) and compute_string:
+            all_string = self._calculate_string_metrics(table, col, sample_ratio)
+            # Filter to only requested metrics
+            if self.enabled_metrics:
+                all_string = {k: v for k, v in all_string.items() if k in self.enabled_metrics}
+            metrics.update(all_string)
         
         return metrics
+    
+    def _should_compute_metric(self, metric_name: str) -> bool:
+        """Check if a specific metric should be computed."""
+        if self.enabled_metrics is None:
+            return True  # Compute all if not specified
+        return metric_name in self.enabled_metrics
+    
+    def _should_compute_metric_group(self, metric_names: List[str]) -> bool:
+        """Check if any metric in a group should be computed."""
+        if self.enabled_metrics is None:
+            return True  # Compute all if not specified
+        return any(m in self.enabled_metrics for m in metric_names)
     
     def _calculate_counts(
         self,
