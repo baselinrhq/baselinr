@@ -1,13 +1,18 @@
 # ProfileMesh Makefile
 # Common development and deployment commands
 
-.PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs
+.PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs venv activate
 
 help:
 	@echo "ProfileMesh - Available Commands"
 	@echo "================================="
 	@echo ""
-	@echo "Installation:"
+	@echo "Setup:"
+	@echo "  make venv           Create Python 3.14 virtual environment"
+	@echo "  make dev-setup      Create venv and install dev dependencies"
+	@echo "  make activate       Show how to activate the virtual environment"
+	@echo ""
+	@echo "Installation (run after activating venv):"
 	@echo "  make install        Install ProfileMesh"
 	@echo "  make install-dev    Install with development dependencies"
 	@echo "  make install-all    Install with all optional dependencies"
@@ -26,6 +31,44 @@ help:
 	@echo "Usage:"
 	@echo "  make quickstart     Run the quickstart example"
 	@echo "  make profile        Profile tables (requires config)"
+	@echo ""
+
+venv:
+	@echo "Creating Python 3.14 virtual environment..."
+	py -3.14 -m venv .venv
+	@echo ""
+	@echo "Virtual environment created!"
+	@echo "To activate: .\activate.ps1  (or .\.venv\Scripts\Activate.ps1)"
+	@echo ""
+
+dev-setup: venv
+	@echo ""
+	@echo "Installing development dependencies..."
+	.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
+	.venv\Scripts\python.exe -m pip install -e ".[dev]"
+	@echo ""
+	@echo "========================================="
+	@echo "Setup complete!"
+	@echo "========================================="
+	@echo ""
+	@echo "To activate the virtual environment:"
+	@echo "  .\activate.ps1"
+	@echo ""
+	@echo "Or manually:"
+	@echo "  .\.venv\Scripts\Activate.ps1"
+	@echo ""
+
+activate:
+	@echo ""
+	@echo "To activate the virtual environment, run:"
+	@echo ""
+	@echo "  .\activate.ps1"
+	@echo ""
+	@echo "Or manually:"
+	@echo "  .\.venv\Scripts\Activate.ps1"
+	@echo ""
+	@echo "To deactivate when done:"
+	@echo "  deactivate"
 	@echo ""
 
 install:
