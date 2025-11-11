@@ -52,8 +52,8 @@ htmlcov/
 *.log
 logs/
 
-# Docker
-.dockerignore
+# Docker volumes and runtime files
+# (but keep .dockerignore tracked)
 
 # Environment files
 .env
