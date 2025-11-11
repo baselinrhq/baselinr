@@ -23,7 +23,8 @@ class TablePlan:
     name: str
     schema: Optional[str] = None
     status: str = "ready"
-    sample_ratio: float = 1.0
+    partition_config: Optional[Dict[str, Any]] = None
+    sampling_config: Optional[Dict[str, Any]] = None
     metrics: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
     
@@ -68,7 +69,8 @@ class ProfilingPlan:
                     "schema": table.schema,
                     "table": table.name,
                     "status": table.status,
-                    "sample_ratio": table.sample_ratio,
+                    "partition": table.partition_config,
+                    "sampling": table.sampling_config,
                     "metrics": table.metrics,
                     "metadata": table.metadata
                 }
@@ -146,9 +148,6 @@ class PlanBuilder:
         Returns:
             TablePlan for this table
         """
-        # Determine sample ratio
-        sample_ratio = pattern.sample_ratio or self.config.profiling.default_sample_ratio
-        
         # Get metrics to compute
         metrics = self.config.profiling.metrics.copy()
         
@@ -159,11 +158,16 @@ class PlanBuilder:
             "max_distinct_values": self.config.profiling.max_distinct_values
         }
         
+        # Convert partition/sampling configs to dicts
+        partition_dict = pattern.partition.model_dump() if pattern.partition else None
+        sampling_dict = pattern.sampling.model_dump() if pattern.sampling else None
+        
         return TablePlan(
             name=pattern.table,
             schema=pattern.schema_,
             status="ready",
-            sample_ratio=sample_ratio,
+            partition_config=partition_dict,
+            sampling_config=sampling_dict,
             metrics=metrics,
             metadata=metadata
         )
@@ -204,13 +208,15 @@ class PlanBuilder:
         if duplicates:
             warnings.append(f"Duplicate tables in plan: {', '.join(duplicates)}")
         
-        # Check sample ratios
+        # Check sampling configuration
         for table in plan.tables:
-            if table.sample_ratio < 0.0 or table.sample_ratio > 1.0:
-                warnings.append(
-                    f"Invalid sample_ratio for {table.full_name}: {table.sample_ratio} "
-                    "(must be between 0.0 and 1.0)"
-                )
+            if table.sampling_config and table.sampling_config.get('enabled'):
+                fraction = table.sampling_config.get('fraction', 0.01)
+                if fraction <= 0.0 or fraction > 1.0:
+                    warnings.append(
+                        f"Invalid sampling fraction for {table.full_name}: {fraction} "
+                        "(must be between 0.0 and 1.0)"
+                    )
         
         # Check if any metrics are configured
         if not any(table.metrics for table in plan.tables):
@@ -256,7 +262,30 @@ def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
     for i, table in enumerate(plan.tables, 1):
         print(f"\n{i}. {table.full_name}")
         print(f"   Status: {table.status}")
-        print(f"   Sample Ratio: {table.sample_ratio * 100:.1f}%")
+        
+        # Show partition configuration
+        if table.partition_config:
+            partition = table.partition_config
+            print(f"   Partition: {partition.get('strategy', 'all')}", end="")
+            if partition.get('key'):
+                print(f" on {partition['key']}", end="")
+            if partition.get('strategy') == 'recent_n' and partition.get('recent_n'):
+                print(f" (N={partition['recent_n']})", end="")
+            print()
+        else:
+            print(f"   Partition: full table")
+        
+        # Show sampling configuration
+        if table.sampling_config and table.sampling_config.get('enabled'):
+            sampling = table.sampling_config
+            fraction = sampling.get('fraction', 0.01) * 100
+            method = sampling.get('method', 'random')
+            print(f"   Sampling: {method} ({fraction:.2f}%)", end="")
+            if sampling.get('max_rows'):
+                print(f", max {sampling['max_rows']:,} rows", end="")
+            print()
+        else:
+            print(f"   Sampling: none (full dataset)")
         
         if verbose:
             print(f"   Metrics ({len(table.metrics)}): {', '.join(table.metrics)}")

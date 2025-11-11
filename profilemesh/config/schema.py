@@ -45,13 +45,58 @@ class ConnectionConfig(BaseModel):
     }
 
 
+class PartitionConfig(BaseModel):
+    """Partition-aware profiling configuration."""
+    
+    key: Optional[str] = None  # Partition column name
+    strategy: str = Field("all")  # latest | recent_n | sample | all
+    recent_n: Optional[int] = Field(None, gt=0)  # For recent_n strategy
+    metadata_fallback: bool = Field(True)  # Try to infer partition key from metadata
+    
+    @field_validator("strategy")
+    @classmethod
+    def validate_strategy(cls, v: str) -> str:
+        """Validate partition strategy."""
+        valid_strategies = ["latest", "recent_n", "sample", "all"]
+        if v not in valid_strategies:
+            raise ValueError(f"Strategy must be one of {valid_strategies}")
+        return v
+    
+    @field_validator("recent_n")
+    @classmethod
+    def validate_recent_n(cls, v: Optional[int], info) -> Optional[int]:
+        """Validate recent_n is provided when strategy is recent_n."""
+        strategy = info.data.get('strategy')
+        if strategy == 'recent_n' and v is None:
+            raise ValueError("recent_n must be specified when strategy is 'recent_n'")
+        return v
+
+
+class SamplingConfig(BaseModel):
+    """Sampling configuration for profiling."""
+    
+    enabled: bool = Field(False)
+    method: str = Field("random")  # random | stratified | topk
+    fraction: float = Field(0.01, gt=0.0, le=1.0)  # Fraction of rows to sample
+    max_rows: Optional[int] = Field(None, gt=0)  # Cap on sampled rows
+    
+    @field_validator("method")
+    @classmethod
+    def validate_method(cls, v: str) -> str:
+        """Validate sampling method."""
+        valid_methods = ["random", "stratified", "topk"]
+        if v not in valid_methods:
+            raise ValueError(f"Method must be one of {valid_methods}")
+        return v
+
+
 class TablePattern(BaseModel):
     """Table selection pattern."""
     
     schema_: Optional[str] = Field(None, alias="schema")
     table: str
-    sample_size: Optional[int] = None
-    sample_ratio: Optional[float] = Field(None, ge=0.0, le=1.0)
+    partition: Optional[PartitionConfig] = None
+    sampling: Optional[SamplingConfig] = None
     
     model_config = {
         "populate_by_name": True
@@ -62,7 +107,6 @@ class ProfilingConfig(BaseModel):
     """Profiling behavior configuration."""
     
     tables: List[TablePattern] = Field(default_factory=list)
-    default_sample_ratio: float = Field(1.0, ge=0.0, le=1.0)
     max_distinct_values: int = Field(1000)
     compute_histograms: bool = Field(True)
     histogram_bins: int = Field(10)

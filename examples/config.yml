@@ -31,20 +31,29 @@ storage:
 profiling:
   # Tables to profile
   tables:
+    # Full table profiling (no partition or sampling)
     - table: customers
       schema: public
-      sample_ratio: 1.0
     
+    # Full table profiling
     - table: products
       schema: public
-      sample_ratio: 1.0
     
+    # Example with partition-aware profiling (commented out)
     - table: orders
       schema: public
-      sample_ratio: 1.0
-  
-  # Default sampling ratio (1.0 = 100%)
-  default_sample_ratio: 1.0
+      # Uncomment to enable partition-aware profiling:
+      # partition:
+      #   key: order_date              # Partition column
+      #   strategy: latest             # Options: latest | recent_n | sample | all
+      #   metadata_fallback: true      # Try to infer partition key if not specified
+      
+      # Uncomment to enable sampling:
+      # sampling:
+      #   enabled: true
+      #   method: random               # Options: random | stratified | topk
+      #   fraction: 0.01               # Sample 1% of rows
+      #   max_rows: 500000             # Cap at 500k rows
   
   # Maximum distinct values to compute
   max_distinct_values: 1000

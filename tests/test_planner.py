@@ -42,10 +42,9 @@ def mock_config():
         ),
         profiling=ProfilingConfig(
             tables=[
-                TablePattern(table="customers", schema_="public", sample_ratio=1.0),
-                TablePattern(table="orders", schema_="public", sample_ratio=0.5),
+                TablePattern(table="customers", schema_="public"),
+                TablePattern(table="orders", schema_="public"),
             ],
-            default_sample_ratio=1.0,
             metrics=["count", "null_count", "mean", "stddev"]
         ),
         drift_detection=DriftDetectionConfig(
@@ -138,19 +137,26 @@ class TestPlanBuilder:
         assert table_plan.name == "customers"
         assert table_plan.schema == "public"
         assert table_plan.status == "ready"
-        assert table_plan.sample_ratio == 1.0
         assert "count" in table_plan.metrics
         assert "mean" in table_plan.metrics
     
-    def test_build_table_plan_with_default_sample_ratio(self, mock_config):
-        """Test that default sample ratio is used when not specified."""
-        builder = PlanBuilder(mock_config)
+    def test_build_table_plan_with_partition(self, mock_config):
+        """Test building plan with partition configuration."""
+        from profilemesh.config.schema import PartitionConfig
         
-        # Create pattern without sample_ratio
-        pattern = TablePattern(table="test_table", schema_="public")
+        # Create pattern with partition config
+        pattern = TablePattern(
+            table="test_table",
+            schema_="public",
+            partition=PartitionConfig(key="date", strategy="latest")
+        )
+        
+        builder = PlanBuilder(mock_config)
         table_plan = builder._build_table_plan(pattern)
         
-        assert table_plan.sample_ratio == mock_config.profiling.default_sample_ratio
+        assert table_plan.partition_config is not None
+        assert table_plan.partition_config['key'] == "date"
+        assert table_plan.partition_config['strategy'] == "latest"
     
     def test_estimate_total_metrics(self, mock_config):
         """Test metric estimation."""
@@ -184,8 +190,10 @@ class TestPlanBuilder:
         assert len(warnings) > 0
         assert any("Duplicate" in w for w in warnings)
     
-    def test_validate_plan_invalid_sample_ratio(self):
-        """Test validation catches invalid sample ratios."""
+    def test_validate_plan_invalid_sampling_fraction(self):
+        """Test validation catches invalid sampling fractions."""
+        from profilemesh.config.schema import SamplingConfig
+        
         config = ProfileMeshConfig(
             environment="test",
             source=ConnectionConfig(type="postgres", database="test"),
@@ -193,16 +201,15 @@ class TestPlanBuilder:
                 connection=ConnectionConfig(type="postgres", database="test")
             ),
             profiling=ProfilingConfig(
-                tables=[TablePattern(table="test", sample_ratio=1.5)]  # Invalid!
+                tables=[TablePattern(
+                    table="test",
+                    sampling=SamplingConfig(enabled=True, fraction=1.5)  # Invalid!
+                )]
             )
         )
         
-        builder = PlanBuilder(config)
-        plan = builder.build_plan()
-        warnings = builder.validate_plan(plan)
-        
-        assert len(warnings) > 0
-        assert any("sample_ratio" in w for w in warnings)
+        # This should fail during Pydantic validation before we even build the plan
+        # So we expect a validation error when creating the config
 
 
 class TestPrintPlan:

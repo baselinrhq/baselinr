@@ -13,6 +13,7 @@ import uuid
 from ..connectors.base import BaseConnector
 from ..config.schema import ProfileMeshConfig, TablePattern
 from .metrics import MetricCalculator
+from .query_builder import QueryBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -118,13 +119,17 @@ class ProfileEngine:
         else:
             raise ValueError(f"Unsupported database type: {self.config.source.type}")
         
+        # Create query builder for partition/sampling support
+        self.query_builder = QueryBuilder(database_type=self.config.source.type)
+        
         # Create metric calculator
         self.metric_calculator = MetricCalculator(
             engine=self.connector.engine,
             max_distinct_values=self.config.profiling.max_distinct_values,
             compute_histograms=self.config.profiling.compute_histograms,
             histogram_bins=self.config.profiling.histogram_bins,
-            enabled_metrics=self.config.profiling.metrics
+            enabled_metrics=self.config.profiling.metrics,
+            query_builder=self.query_builder
         )
         
         # Profile each table pattern
@@ -169,12 +174,19 @@ class ProfileEngine:
             profiled_at=profiled_at
         )
         
-        # Add table metadata
-        result.metadata['row_count'] = self._get_row_count(table)
-        result.metadata['column_count'] = len(table.columns)
+        # Infer partition key if metadata_fallback is enabled
+        partition_config = pattern.partition
+        if partition_config and partition_config.metadata_fallback and not partition_config.key:
+            inferred_key = self.query_builder.infer_partition_key(table)
+            if inferred_key:
+                partition_config.key = inferred_key
+                logger.info(f"Using inferred partition key: {inferred_key}")
         
-        # Determine sample ratio
-        sample_ratio = pattern.sample_ratio or self.config.profiling.default_sample_ratio
+        # Add table metadata
+        result.metadata['row_count'] = self._get_row_count(table, partition_config, pattern.sampling)
+        result.metadata['column_count'] = len(table.columns)
+        result.metadata['partition_config'] = partition_config.model_dump() if partition_config else None
+        result.metadata['sampling_config'] = pattern.sampling.model_dump() if pattern.sampling else None
         
         # Profile each column
         for column in table.columns:
@@ -184,7 +196,8 @@ class ProfileEngine:
                 metrics = self.metric_calculator.calculate_all_metrics(
                     table=table,
                     column_name=column.name,
-                    sample_ratio=sample_ratio
+                    partition_config=partition_config,
+                    sampling_config=pattern.sampling
                 )
                 
                 result.add_column_metrics(
@@ -204,11 +217,34 @@ class ProfileEngine:
         logger.info(f"Successfully profiled {pattern.table} with {len(result.columns)} columns")
         return result
     
-    def _get_row_count(self, table) -> int:
-        """Get total row count for a table."""
+    def _get_row_count(
+        self,
+        table,
+        partition_config=None,
+        sampling_config=None
+    ) -> int:
+        """
+        Get row count for a table (with optional partition/sampling).
+        
+        Args:
+            table: SQLAlchemy Table object
+            partition_config: Partition configuration
+            sampling_config: Sampling configuration
+            
+        Returns:
+            Row count
+        """
         from sqlalchemy import select, func
         
         with self.connector.engine.connect() as conn:
-            query = select(func.count()).select_from(table)
-            return conn.execute(query).scalar()
+            # Build query with partition filtering
+            query, _ = self.query_builder.build_profiling_query(
+                table=table,
+                partition_config=partition_config,
+                sampling_config=None  # Don't apply sampling for count
+            )
+            
+            # Count rows
+            count_query = select(func.count()).select_from(query.alias())
+            return conn.execute(count_query).scalar()
 

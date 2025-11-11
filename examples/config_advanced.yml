@@ -1,0 +1,100 @@
+# ProfileMesh Advanced Configuration
+# This example demonstrates partition-aware profiling and sampling
+
+environment: development
+
+# Source database connection
+source:
+  type: postgres
+  host: localhost
+  port: 5432
+  database: profilemesh
+  username: profilemesh
+  password: profilemesh
+  schema: public
+
+# Storage configuration
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: profilemesh
+    username: profilemesh
+    password: profilemesh
+    schema: public
+  results_table: profilemesh_results
+  runs_table: profilemesh_runs
+  create_tables: true
+
+# Advanced profiling configuration
+profiling:
+  tables:
+    # Example 1: Full table profiling (default behavior)
+    - table: customers
+      schema: public
+    
+    # Example 2: Latest partition only
+    - table: orders
+      schema: public
+      partition:
+        key: order_date
+        strategy: latest
+        metadata_fallback: true
+    
+    # Example 3: Recent N partitions
+    - table: events
+      schema: analytics
+      partition:
+        key: event_date
+        strategy: recent_n
+        recent_n: 7  # Last 7 days
+        metadata_fallback: true
+    
+    # Example 4: Sampling only (no partitioning)
+    - table: large_table
+      schema: public
+      sampling:
+        enabled: true
+        method: random
+        fraction: 0.05  # 5% sample
+        max_rows: 1000000  # Cap at 1M rows
+    
+    # Example 5: Partition + Sampling combined
+    - table: clickstream
+      schema: analytics
+      partition:
+        key: date
+        strategy: latest
+      sampling:
+        enabled: true
+        method: stratified
+        fraction: 0.01  # 1% sample
+        max_rows: 500000
+  
+  # Metric configuration
+  max_distinct_values: 1000
+  compute_histograms: true
+  histogram_bins: 10
+  
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+

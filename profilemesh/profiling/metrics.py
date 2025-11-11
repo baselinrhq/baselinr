@@ -12,6 +12,8 @@ from sqlalchemy import Table
 import logging
 import json
 
+from ..config.schema import PartitionConfig, SamplingConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,8 @@ class MetricCalculator:
         max_distinct_values: int = 1000,
         compute_histograms: bool = True,
         histogram_bins: int = 10,
-        enabled_metrics: Optional[List[str]] = None
+        enabled_metrics: Optional[List[str]] = None,
+        query_builder = None
     ):
         """
         Initialize metric calculator.
@@ -35,18 +38,21 @@ class MetricCalculator:
             compute_histograms: Whether to compute histograms
             histogram_bins: Number of histogram bins
             enabled_metrics: List of metrics to compute (None = all metrics)
+            query_builder: QueryBuilder for partition/sampling support
         """
         self.engine = engine
         self.max_distinct_values = max_distinct_values
         self.compute_histograms = compute_histograms
         self.histogram_bins = histogram_bins
         self.enabled_metrics = enabled_metrics
+        self.query_builder = query_builder
     
     def calculate_all_metrics(
         self,
         table: Table,
         column_name: str,
-        sample_ratio: float = 1.0
+        partition_config: Optional[PartitionConfig] = None,
+        sampling_config: Optional[SamplingConfig] = None
     ) -> Dict[str, Any]:
         """
         Calculate all metrics for a column.
@@ -54,7 +60,8 @@ class MetricCalculator:
         Args:
             table: SQLAlchemy Table object
             column_name: Name of the column to profile
-            sample_ratio: Sampling ratio (0.0 to 1.0)
+            partition_config: Partition configuration (optional)
+            sampling_config: Sampling configuration (optional)
             
         Returns:
             Dictionary of metric_name -> metric_value
@@ -70,7 +77,7 @@ class MetricCalculator:
         
         # Basic counts (if any count metric is requested)
         if compute_counts:
-            all_counts = self._calculate_counts(table, col, sample_ratio)
+            all_counts = self._calculate_counts(table, col, partition_config, sampling_config)
             # Filter to only requested metrics
             if self.enabled_metrics:
                 all_counts = {k: v for k, v in all_counts.items() if k in self.enabled_metrics}
@@ -80,17 +87,17 @@ class MetricCalculator:
         col_type = str(col.type)
         
         if self._is_numeric_type(col_type) and compute_numeric:
-            all_numeric = self._calculate_numeric_metrics(table, col, sample_ratio)
+            all_numeric = self._calculate_numeric_metrics(table, col, partition_config, sampling_config)
             # Filter to only requested metrics
             if self.enabled_metrics:
                 all_numeric = {k: v for k, v in all_numeric.items() if k in self.enabled_metrics}
             metrics.update(all_numeric)
             
             if compute_histogram:
-                metrics.update(self._calculate_histogram(table, col, sample_ratio))
+                metrics.update(self._calculate_histogram(table, col, partition_config, sampling_config))
         
         if self._is_string_type(col_type) and compute_string:
-            all_string = self._calculate_string_metrics(table, col, sample_ratio)
+            all_string = self._calculate_string_metrics(table, col, partition_config, sampling_config)
             # Filter to only requested metrics
             if self.enabled_metrics:
                 all_string = {k: v for k, v in all_string.items() if k in self.enabled_metrics}
@@ -114,21 +121,32 @@ class MetricCalculator:
         self,
         table: Table,
         col,
-        sample_ratio: float
+        partition_config: Optional[PartitionConfig],
+        sampling_config: Optional[SamplingConfig]
     ) -> Dict[str, Any]:
         """Calculate basic count metrics."""
         with self.engine.connect() as conn:
-            # Build query with optional sampling
-            query = select(
-                func.count().label('count'),
-                func.count(col).label('non_null_count'),
-                func.count(distinct(col)).label('distinct_count')
-            ).select_from(table)
-            
-            if sample_ratio < 1.0:
-                # Note: Sampling syntax varies by database
-                # This is a simplified version
-                pass
+            # Build base query with partition filtering
+            if self.query_builder:
+                base_query, _ = self.query_builder.build_profiling_query(
+                    table=table,
+                    partition_config=partition_config,
+                    sampling_config=sampling_config
+                )
+                # Use subquery for counts
+                subquery = base_query.alias('filtered')
+                query = select(
+                    func.count().label('count'),
+                    func.count(subquery.c[col.name]).label('non_null_count'),
+                    func.count(distinct(subquery.c[col.name])).label('distinct_count')
+                ).select_from(subquery)
+            else:
+                # Fallback to direct query
+                query = select(
+                    func.count().label('count'),
+                    func.count(col).label('non_null_count'),
+                    func.count(distinct(col)).label('distinct_count')
+                ).select_from(table)
             
             result = conn.execute(query).fetchone()
             
@@ -149,19 +167,40 @@ class MetricCalculator:
         self,
         table: Table,
         col,
-        sample_ratio: float
+        partition_config: Optional[PartitionConfig],
+        sampling_config: Optional[SamplingConfig]
     ) -> Dict[str, Any]:
         """Calculate numeric metrics (min, max, mean, stddev)."""
         with self.engine.connect() as conn:
-            # Cast to float for calculations
-            col_float = cast(col, Float)
+            # Build base query with partition filtering
+            if self.query_builder:
+                base_query, _ = self.query_builder.build_profiling_query(
+                    table=table,
+                    partition_config=partition_config,
+                    sampling_config=sampling_config
+                )
+                subquery = base_query.alias('filtered')
+                col_ref = subquery.c[col.name]
+            else:
+                col_ref = col
             
-            query = select(
-                func.min(col).label('min'),
-                func.max(col).label('max'),
-                func.avg(col_float).label('mean'),
-                func.stddev(col_float).label('stddev')
-            ).select_from(table)
+            # Cast to float for calculations
+            col_float = cast(col_ref, Float)
+            
+            if self.query_builder:
+                query = select(
+                    func.min(col_ref).label('min'),
+                    func.max(col_ref).label('max'),
+                    func.avg(col_float).label('mean'),
+                    func.stddev(col_float).label('stddev')
+                ).select_from(subquery)
+            else:
+                query = select(
+                    func.min(col).label('min'),
+                    func.max(col).label('max'),
+                    func.avg(col_float).label('mean'),
+                    func.stddev(col_float).label('stddev')
+                ).select_from(table)
             
             result = conn.execute(query).fetchone()
             
@@ -176,13 +215,28 @@ class MetricCalculator:
         self,
         table: Table,
         col,
-        sample_ratio: float
+        partition_config: Optional[PartitionConfig],
+        sampling_config: Optional[SamplingConfig]
     ) -> Dict[str, Any]:
         """Calculate histogram for numeric columns."""
         try:
             with self.engine.connect() as conn:
-                # Get min and max
-                query = select(func.min(col), func.max(col)).select_from(table)
+                # Build base query
+                if self.query_builder:
+                    base_query, _ = self.query_builder.build_profiling_query(
+                        table=table,
+                        partition_config=partition_config,
+                        sampling_config=sampling_config
+                    )
+                    subquery = base_query.alias('filtered')
+                    col_ref = subquery.c[col.name]
+                    
+                    # Get min and max
+                    query = select(func.min(col_ref), func.max(col_ref)).select_from(subquery)
+                else:
+                    col_ref = col
+                    # Get min and max
+                    query = select(func.min(col), func.max(col)).select_from(table)
                 result = conn.execute(query).fetchone()
                 min_val, max_val = result[0], result[1]
                 
@@ -202,15 +256,25 @@ class MetricCalculator:
                     bin_end = min_val + ((i + 1) * bin_width)
                     
                     # Count values in this bin
-                    if i == self.histogram_bins - 1:
-                        # Last bin includes upper bound
-                        count_query = select(func.count()).select_from(table).where(
-                            (col >= bin_start) & (col <= bin_end)
-                        )
+                    if self.query_builder:
+                        if i == self.histogram_bins - 1:
+                            # Last bin includes upper bound
+                            count_query = select(func.count()).select_from(subquery).where(
+                                (col_ref >= bin_start) & (col_ref <= bin_end)
+                            )
+                        else:
+                            count_query = select(func.count()).select_from(subquery).where(
+                                (col_ref >= bin_start) & (col_ref < bin_end)
+                            )
                     else:
-                        count_query = select(func.count()).select_from(table).where(
-                            (col >= bin_start) & (col < bin_end)
-                        )
+                        if i == self.histogram_bins - 1:
+                            count_query = select(func.count()).select_from(table).where(
+                                (col >= bin_start) & (col <= bin_end)
+                            )
+                        else:
+                            count_query = select(func.count()).select_from(table).where(
+                                (col >= bin_start) & (col < bin_end)
+                            )
                     
                     count = conn.execute(count_query).scalar()
                     
@@ -230,16 +294,33 @@ class MetricCalculator:
         self,
         table: Table,
         col,
-        sample_ratio: float
+        partition_config: Optional[PartitionConfig],
+        sampling_config: Optional[SamplingConfig]
     ) -> Dict[str, Any]:
         """Calculate string-specific metrics."""
         try:
             with self.engine.connect() as conn:
-                query = select(
-                    func.min(func.length(col)).label('min_length'),
-                    func.max(func.length(col)).label('max_length'),
-                    func.avg(func.length(col)).label('avg_length')
-                ).select_from(table)
+                # Build base query
+                if self.query_builder:
+                    base_query, _ = self.query_builder.build_profiling_query(
+                        table=table,
+                        partition_config=partition_config,
+                        sampling_config=sampling_config
+                    )
+                    subquery = base_query.alias('filtered')
+                    col_ref = subquery.c[col.name]
+                    
+                    query = select(
+                        func.min(func.length(col_ref)).label('min_length'),
+                        func.max(func.length(col_ref)).label('max_length'),
+                        func.avg(func.length(col_ref)).label('avg_length')
+                    ).select_from(subquery)
+                else:
+                    query = select(
+                        func.min(func.length(col)).label('min_length'),
+                        func.max(func.length(col)).label('max_length'),
+                        func.avg(func.length(col)).label('avg_length')
+                    ).select_from(table)
                 
                 result = conn.execute(query).fetchone()
                 
