@@ -31,3 +31,24 @@ CREATE TABLE IF NOT EXISTS profilemesh_results (
     FOREIGN KEY (run_id) REFERENCES profilemesh_runs(run_id)
 );
 
+-- Events table - stores alert events and drift notifications
+-- Used by SQL and Snowflake event hooks for historical tracking
+CREATE TABLE IF NOT EXISTS profilemesh_events (
+    event_id VARCHAR(36) PRIMARY KEY,
+    event_type VARCHAR(100) NOT NULL,
+    table_name VARCHAR(255),
+    column_name VARCHAR(255),
+    metric_name VARCHAR(100),
+    baseline_value FLOAT,
+    current_value FLOAT,
+    change_percent FLOAT,
+    drift_severity VARCHAR(20),
+    timestamp TIMESTAMP NOT NULL,
+    metadata TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_type (event_type),
+    INDEX idx_table_name (table_name),
+    INDEX idx_timestamp (timestamp DESC),
+    INDEX idx_drift_severity (drift_severity)
+);
+

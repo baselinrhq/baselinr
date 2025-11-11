@@ -9,11 +9,13 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 import uuid
+import time
 
 from ..connectors.base import BaseConnector
 from ..config.schema import ProfileMeshConfig, TablePattern
 from .metrics import MetricCalculator
 from .query_builder import QueryBuilder
+from ..events import EventBus, ProfilingStarted, ProfilingCompleted, ProfilingFailed
 
 logger = logging.getLogger(__name__)
 
@@ -79,16 +81,18 @@ class ProfilingResult:
 class ProfileEngine:
     """Main profiling engine for ProfileMesh."""
     
-    def __init__(self, config: ProfileMeshConfig):
+    def __init__(self, config: ProfileMeshConfig, event_bus: Optional[EventBus] = None):
         """
         Initialize profiling engine.
         
         Args:
             config: ProfileMesh configuration
+            event_bus: Optional event bus for emitting profiling events
         """
         self.config = config
         self.connector: Optional[BaseConnector] = None
         self.metric_calculator: Optional[MetricCalculator] = None
+        self.event_bus = event_bus
     
     def profile(self, table_patterns: Optional[List[TablePattern]] = None) -> List[ProfilingResult]:
         """
@@ -162,60 +166,101 @@ class ProfileEngine:
         # Generate run ID
         run_id = str(uuid.uuid4())
         profiled_at = datetime.utcnow()
+        start_time = time.time()
         
-        # Get table metadata
-        table = self.connector.get_table(pattern.table, schema=pattern.schema_)
+        # Emit profiling started event
+        if self.event_bus:
+            self.event_bus.emit(ProfilingStarted(
+                event_type="ProfilingStarted",
+                timestamp=profiled_at,
+                table=pattern.table,
+                run_id=run_id,
+                metadata={}
+            ))
         
-        # Create result container
-        result = ProfilingResult(
-            run_id=run_id,
-            dataset_name=pattern.table,
-            schema_name=pattern.schema_,
-            profiled_at=profiled_at
-        )
-        
-        # Infer partition key if metadata_fallback is enabled
-        partition_config = pattern.partition
-        if partition_config and partition_config.metadata_fallback and not partition_config.key:
-            inferred_key = self.query_builder.infer_partition_key(table)
-            if inferred_key:
-                partition_config.key = inferred_key
-                logger.info(f"Using inferred partition key: {inferred_key}")
-        
-        # Add table metadata
-        result.metadata['row_count'] = self._get_row_count(table, partition_config, pattern.sampling)
-        result.metadata['column_count'] = len(table.columns)
-        result.metadata['partition_config'] = partition_config.model_dump() if partition_config else None
-        result.metadata['sampling_config'] = pattern.sampling.model_dump() if pattern.sampling else None
-        
-        # Profile each column
-        for column in table.columns:
-            logger.debug(f"Profiling column: {column.name}")
+        try:
+            # Get table metadata
+            table = self.connector.get_table(pattern.table, schema=pattern.schema_)
             
-            try:
-                metrics = self.metric_calculator.calculate_all_metrics(
-                    table=table,
-                    column_name=column.name,
-                    partition_config=partition_config,
-                    sampling_config=pattern.sampling
-                )
+            # Create result container
+            result = ProfilingResult(
+                run_id=run_id,
+                dataset_name=pattern.table,
+                schema_name=pattern.schema_,
+                profiled_at=profiled_at
+            )
+            
+            # Infer partition key if metadata_fallback is enabled
+            partition_config = pattern.partition
+            if partition_config and partition_config.metadata_fallback and not partition_config.key:
+                inferred_key = self.query_builder.infer_partition_key(table)
+                if inferred_key:
+                    partition_config.key = inferred_key
+                    logger.info(f"Using inferred partition key: {inferred_key}")
+            
+            # Add table metadata
+            result.metadata['row_count'] = self._get_row_count(table, partition_config, pattern.sampling)
+            result.metadata['column_count'] = len(table.columns)
+            result.metadata['partition_config'] = partition_config.model_dump() if partition_config else None
+            result.metadata['sampling_config'] = pattern.sampling.model_dump() if pattern.sampling else None
+            
+            # Profile each column
+            for column in table.columns:
+                logger.debug(f"Profiling column: {column.name}")
                 
-                result.add_column_metrics(
-                    column_name=column.name,
-                    column_type=str(column.type),
-                    metrics=metrics
-                )
-            except Exception as e:
-                logger.error(f"Failed to profile column {column.name}: {e}")
-                # Add error marker
-                result.add_column_metrics(
-                    column_name=column.name,
-                    column_type=str(column.type),
-                    metrics={'error': str(e)}
-                )
-        
-        logger.info(f"Successfully profiled {pattern.table} with {len(result.columns)} columns")
-        return result
+                try:
+                    metrics = self.metric_calculator.calculate_all_metrics(
+                        table=table,
+                        column_name=column.name,
+                        partition_config=partition_config,
+                        sampling_config=pattern.sampling
+                    )
+                    
+                    result.add_column_metrics(
+                        column_name=column.name,
+                        column_type=str(column.type),
+                        metrics=metrics
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to profile column {column.name}: {e}")
+                    # Add error marker
+                    result.add_column_metrics(
+                        column_name=column.name,
+                        column_type=str(column.type),
+                        metrics={'error': str(e)}
+                    )
+            
+            # Calculate duration
+            duration = time.time() - start_time
+            
+            # Emit profiling completed event
+            if self.event_bus:
+                self.event_bus.emit(ProfilingCompleted(
+                    event_type="ProfilingCompleted",
+                    timestamp=datetime.utcnow(),
+                    table=pattern.table,
+                    run_id=run_id,
+                    row_count=result.metadata.get('row_count', 0),
+                    column_count=result.metadata.get('column_count', 0),
+                    duration_seconds=duration,
+                    metadata={}
+                ))
+            
+            logger.info(f"Successfully profiled {pattern.table} with {len(result.columns)} columns in {duration:.2f}s")
+            return result
+            
+        except Exception as e:
+            # Emit profiling failed event
+            if self.event_bus:
+                self.event_bus.emit(ProfilingFailed(
+                    event_type="ProfilingFailed",
+                    timestamp=datetime.utcnow(),
+                    table=pattern.table,
+                    run_id=run_id,
+                    error=str(e),
+                    metadata={}
+                ))
+            raise
     
     def _get_row_count(
         self,

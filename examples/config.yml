@@ -99,3 +99,47 @@ drift_detection:
   #   model_type: isolation_forest
   #   sensitivity: 0.8
 
+# Event hooks configuration
+hooks:
+  # Master switch - set to false to disable all hooks
+  enabled: true
+  
+  hooks:
+    # Example 1: Logging hook (useful for development)
+    - type: logging
+      enabled: true
+      log_level: INFO
+    
+    # Example 2: SQL event persistence (commented out)
+    # - type: sql
+    #   enabled: true
+    #   table_name: profilemesh_events
+    #   connection:
+    #     type: postgres
+    #     host: localhost
+    #     port: 5432
+    #     database: profilemesh
+    #     username: profilemesh
+    #     password: profilemesh
+    
+    # Example 3: Snowflake event persistence (commented out)
+    # - type: snowflake
+    #   enabled: true
+    #   table_name: profilemesh_events
+    #   connection:
+    #     type: snowflake
+    #     account: myaccount
+    #     database: monitoring
+    #     warehouse: compute_wh
+    #     username: user
+    #     password: pass
+    
+    # Example 4: Custom hook (commented out)
+    # - type: custom
+    #   enabled: true
+    #   module: my_custom_hooks
+    #   class_name: SlackAlertHook
+    #   params:
+    #     webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    #     channel: "#data-alerts"
+

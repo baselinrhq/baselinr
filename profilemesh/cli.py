@@ -8,15 +8,17 @@ import sys
 import argparse
 import logging
 import json
+import importlib
 from pathlib import Path
 from typing import Optional
 
 from .config.loader import ConfigLoader
-from .config.schema import ProfileMeshConfig
+from .config.schema import ProfileMeshConfig, HookConfig
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
 from .drift.detector import DriftDetector
 from .planner import PlanBuilder, print_plan
+from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
 
 # Setup logging
 logging.basicConfig(
@@ -24,6 +26,95 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def create_event_bus(config: ProfileMeshConfig) -> Optional[EventBus]:
+    """
+    Create and configure an event bus from configuration.
+    
+    Args:
+        config: ProfileMesh configuration
+        
+    Returns:
+        Configured EventBus or None if hooks are disabled
+    """
+    if not config.hooks.enabled or not config.hooks.hooks:
+        logger.debug("Event hooks are disabled or no hooks configured")
+        return None
+    
+    bus = EventBus()
+    
+    for hook_config in config.hooks.hooks:
+        if not hook_config.enabled:
+            logger.debug(f"Skipping disabled hook: {hook_config.type}")
+            continue
+        
+        try:
+            hook = _create_hook(hook_config)
+            if hook:
+                bus.register(hook)
+                logger.info(f"Registered hook: {hook_config.type}")
+        except Exception as e:
+            logger.error(f"Failed to create hook {hook_config.type}: {e}")
+    
+    if bus.hook_count == 0:
+        logger.warning("No hooks registered - event bus will be inactive")
+        return None
+    
+    return bus
+
+
+def _create_hook(hook_config: HookConfig):
+    """
+    Create a hook instance from configuration.
+    
+    Args:
+        hook_config: Hook configuration
+        
+    Returns:
+        Hook instance
+    """
+    if hook_config.type == "logging":
+        log_level = hook_config.log_level or "INFO"
+        return LoggingAlertHook(log_level=log_level)
+    
+    elif hook_config.type == "snowflake":
+        if not hook_config.connection:
+            raise ValueError("Snowflake hook requires connection configuration")
+        
+        # Create engine for Snowflake connection
+        from .connectors import SnowflakeConnector
+        connector = SnowflakeConnector(hook_config.connection)
+        table_name = hook_config.table_name or "profilemesh_events"
+        return SnowflakeEventHook(engine=connector.engine, table_name=table_name)
+    
+    elif hook_config.type == "sql":
+        if not hook_config.connection:
+            raise ValueError("SQL hook requires connection configuration")
+        
+        # Create engine based on connection type
+        from .connectors import PostgresConnector, SQLiteConnector
+        if hook_config.connection.type == "postgres":
+            connector = PostgresConnector(hook_config.connection)
+        elif hook_config.connection.type == "sqlite":
+            connector = SQLiteConnector(hook_config.connection)
+        else:
+            raise ValueError(f"Unsupported SQL database type: {hook_config.connection.type}")
+        
+        table_name = hook_config.table_name or "profilemesh_events"
+        return SQLEventHook(engine=connector.engine, table_name=table_name)
+    
+    elif hook_config.type == "custom":
+        if not hook_config.module or not hook_config.class_name:
+            raise ValueError("Custom hook requires module and class_name")
+        
+        # Dynamically import and instantiate custom hook
+        module = importlib.import_module(hook_config.module)
+        hook_class = getattr(module, hook_config.class_name)
+        return hook_class(**hook_config.params)
+    
+    else:
+        raise ValueError(f"Unknown hook type: {hook_config.type}")
 
 
 def profile_command(args):
@@ -35,8 +126,13 @@ def profile_command(args):
         config = ConfigLoader.load_from_file(args.config)
         logger.info(f"Configuration loaded for environment: {config.environment}")
         
+        # Create event bus and register hooks
+        event_bus = create_event_bus(config)
+        if event_bus:
+            logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
+        
         # Create profiling engine
-        engine = ProfileEngine(config)
+        engine = ProfileEngine(config, event_bus=event_bus)
         
         # Run profiling
         logger.info("Starting profiling...")
@@ -89,8 +185,13 @@ def drift_command(args):
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
         
-        # Create drift detector with drift detection config
-        detector = DriftDetector(config.storage, config.drift_detection)
+        # Create event bus and register hooks
+        event_bus = create_event_bus(config)
+        if event_bus:
+            logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
+        
+        # Create drift detector with drift detection config and event bus
+        detector = DriftDetector(config.storage, config.drift_detection, event_bus=event_bus)
         
         # Detect drift
         logger.info(f"Detecting drift for dataset: {args.dataset}")

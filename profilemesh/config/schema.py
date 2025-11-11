@@ -162,6 +162,41 @@ class DriftDetectionConfig(BaseModel):
     ml_based: Dict[str, Any] = Field(default_factory=dict)
 
 
+class HookConfig(BaseModel):
+    """Configuration for a single alert hook."""
+    
+    type: str  # logging | sql | snowflake | custom
+    enabled: bool = Field(True)
+    
+    # Logging hook parameters
+    log_level: Optional[str] = Field("INFO")
+    
+    # SQL/Snowflake hook parameters
+    connection: Optional[ConnectionConfig] = None
+    table_name: Optional[str] = Field("profilemesh_events")
+    
+    # Custom hook parameters (module path and class name)
+    module: Optional[str] = None
+    class_name: Optional[str] = None
+    params: Dict[str, Any] = Field(default_factory=dict)
+    
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        """Validate hook type."""
+        valid_types = ["logging", "sql", "snowflake", "custom"]
+        if v not in valid_types:
+            raise ValueError(f"Hook type must be one of {valid_types}")
+        return v
+
+
+class HooksConfig(BaseModel):
+    """Event hooks configuration."""
+    
+    enabled: bool = Field(True)  # Master switch for all hooks
+    hooks: List[HookConfig] = Field(default_factory=list)
+
+
 class ProfileMeshConfig(BaseModel):
     """Main ProfileMesh configuration."""
     
@@ -170,6 +205,7 @@ class ProfileMeshConfig(BaseModel):
     storage: StorageConfig
     profiling: ProfilingConfig = Field(default_factory=ProfilingConfig)
     drift_detection: DriftDetectionConfig = Field(default_factory=DriftDetectionConfig)
+    hooks: HooksConfig = Field(default_factory=HooksConfig)
     
     @field_validator("environment")
     @classmethod

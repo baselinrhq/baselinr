@@ -8,7 +8,9 @@ from .schema import (
     DriftDetectionConfig,
     PartitionConfig,
     SamplingConfig,
-    TablePattern
+    TablePattern,
+    HookConfig,
+    HooksConfig
 )
 
 __all__ = [
@@ -20,5 +22,7 @@ __all__ = [
     "PartitionConfig",
     "SamplingConfig",
     "TablePattern",
+    "HookConfig",
+    "HooksConfig",
 ]
 

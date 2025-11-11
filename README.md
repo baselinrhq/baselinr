@@ -5,7 +5,10 @@
 ## 🚀 Features
 
 - **Automated Profiling**: Profile tables with column-level metrics (count, null %, distinct values, mean, stddev, histograms, etc.)
-- **Drift Detection**: Compare profiling runs to detect schema and statistical drift
+- **Drift Detection**: Compare profiling runs to detect schema and statistical drift with configurable strategies
+- **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
+- **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
+- **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
 - **Multi-Database Support**: Works with PostgreSQL, Snowflake, and SQLite
 - **Dagster Integration**: Built-in orchestration support with Dagster assets and schedules
 - **Configuration-Driven**: Simple YAML/JSON configuration for defining profiling targets
@@ -265,6 +268,75 @@ ProfileMesh uses the following thresholds for drift severity:
 - **Low**: 5% change
 - **Medium**: 15% change
 - **High**: 30% change
+
+Thresholds are fully configurable via the `drift_detection` configuration. See [DRIFT_DETECTION.md](DRIFT_DETECTION.md) for details on configurable strategies.
+
+## 🔔 Event & Alert Hooks
+
+ProfileMesh includes a pluggable event system that emits events for drift detection, schema changes, and profiling lifecycle events. You can register hooks to process these events for logging, persistence, or alerting.
+
+### Built-in Hooks
+
+- **LoggingAlertHook**: Log events to stdout
+- **SQLEventHook**: Persist events to any SQL database
+- **SnowflakeEventHook**: Persist events to Snowflake with VARIANT support
+
+### Example Configuration
+
+```yaml
+hooks:
+  enabled: true
+  hooks:
+    # Log all events
+    - type: logging
+      log_level: INFO
+    
+    # Persist to database
+    - type: sql
+      table_name: profilemesh_events
+      connection:
+        type: postgres
+        host: localhost
+        database: monitoring
+        username: user
+        password: pass
+```
+
+### Event Types
+
+- **DataDriftDetected**: Emitted when drift is detected
+- **SchemaChangeDetected**: Emitted when schema changes
+- **ProfilingStarted**: Emitted when profiling begins
+- **ProfilingCompleted**: Emitted when profiling completes
+- **ProfilingFailed**: Emitted when profiling fails
+
+### Custom Hooks
+
+Create custom hooks by implementing the `AlertHook` protocol:
+
+```python
+from profilemesh.events import BaseEvent
+
+class MyCustomHook:
+    def handle_event(self, event: BaseEvent) -> None:
+        # Process the event
+        print(f"Event: {event.event_type}")
+```
+
+Configure custom hooks:
+
+```yaml
+hooks:
+  enabled: true
+  hooks:
+    - type: custom
+      module: my_hooks
+      class_name: MyCustomHook
+      params:
+        webhook_url: https://api.example.com/alerts
+```
+
+See [EVENTS_AND_HOOKS.md](EVENTS_AND_HOOKS.md) for comprehensive documentation and examples.
 
 ## 🛠️ Configuration Options
 

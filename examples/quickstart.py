@@ -18,6 +18,7 @@ from profilemesh.config.loader import ConfigLoader
 from profilemesh.profiling.core import ProfileEngine
 from profilemesh.storage.writer import ResultWriter
 from profilemesh.drift.detector import DriftDetector
+from profilemesh.events import EventBus, LoggingAlertHook
 
 
 def main():
@@ -39,9 +40,19 @@ def main():
     config = ConfigLoader.load_from_file(str(config_path))
     print(f"✓ Configuration loaded (environment: {config.environment})")
     
+    # Initialize event bus with hooks (if configured)
+    event_bus = None
+    if config.hooks.enabled and config.hooks.hooks:
+        event_bus = EventBus()
+        for hook_config in config.hooks.hooks:
+            if hook_config.enabled and hook_config.type == "logging":
+                event_bus.register(LoggingAlertHook(log_level=hook_config.log_level))
+        if event_bus.hook_count > 0:
+            print(f"✓ Event bus initialized with {event_bus.hook_count} hook(s)")
+    
     # 2. Profile tables
     print("\n[2/4] Profiling tables...")
-    engine = ProfileEngine(config)
+    engine = ProfileEngine(config, event_bus=event_bus)
     results = engine.profile()
     
     if not results:
@@ -63,7 +74,7 @@ def main():
     # 4. Try drift detection (if we have previous runs)
     print("\n[4/4] Checking for drift...")
     try:
-        detector = DriftDetector(config.storage, config.drift_detection)
+        detector = DriftDetector(config.storage, config.drift_detection, event_bus=event_bus)
         
         # Try to detect drift for the first table
         first_table = results[0].dataset_name

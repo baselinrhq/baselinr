@@ -13,6 +13,7 @@ from sqlalchemy import text
 
 from ..config.schema import StorageConfig, DriftDetectionConfig
 from .strategies import create_drift_strategy, DriftDetectionStrategy
+from ..events import EventBus, DataDriftDetected, SchemaChangeDetected
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,8 @@ class DriftDetector:
     def __init__(
         self,
         storage_config: StorageConfig,
-        drift_config: Optional[DriftDetectionConfig] = None
+        drift_config: Optional[DriftDetectionConfig] = None,
+        event_bus: Optional[EventBus] = None
     ):
         """
         Initialize drift detector.
@@ -89,10 +91,12 @@ class DriftDetector:
         Args:
             storage_config: Storage configuration
             drift_config: Drift detection configuration (uses defaults if not provided)
+            event_bus: Optional event bus for emitting drift events
         """
         self.storage_config = storage_config
         self.drift_config = drift_config or DriftDetectionConfig()
         self.engine = self._setup_connection()
+        self.event_bus = event_bus
         
         # Create drift detection strategy based on config
         self.strategy = self._create_strategy()
@@ -179,7 +183,11 @@ class DriftDetector:
         report.schema_changes = self._detect_schema_changes(baseline_run_id, current_run_id)
         
         # Detect metric drifts
-        report.column_drifts = self._detect_metric_drifts(baseline_run_id, current_run_id)
+        report.column_drifts = self._detect_metric_drifts(
+            baseline_run_id, 
+            current_run_id,
+            table_name=dataset_name
+        )
         
         # Generate summary
         report.summary = self._generate_summary(report)
@@ -238,15 +246,39 @@ class DriftDetector:
         baseline_columns = self._get_columns(baseline_run_id)
         current_columns = self._get_columns(current_run_id)
         
+        # Get table name from metadata
+        baseline_meta = self._get_run_metadata(baseline_run_id)
+        table_name = baseline_meta.get('dataset_name', 'unknown')
+        
         # Detect added columns
         added = current_columns - baseline_columns
         for col in added:
             changes.append(f"Column added: {col}")
+            # Emit schema change event
+            if self.event_bus:
+                self.event_bus.emit(SchemaChangeDetected(
+                    event_type="SchemaChangeDetected",
+                    timestamp=datetime.utcnow(),
+                    table=table_name,
+                    change_type="column_added",
+                    column=col,
+                    metadata={}
+                ))
         
         # Detect removed columns
         removed = baseline_columns - current_columns
         for col in removed:
             changes.append(f"Column removed: {col}")
+            # Emit schema change event
+            if self.event_bus:
+                self.event_bus.emit(SchemaChangeDetected(
+                    event_type="SchemaChangeDetected",
+                    timestamp=datetime.utcnow(),
+                    table=table_name,
+                    change_type="column_removed",
+                    column=col,
+                    metadata={}
+                ))
         
         return changes
     
@@ -261,7 +293,12 @@ class DriftDetector:
             result = conn.execute(query, {'run_id': run_id})
             return {row[0] for row in result}
     
-    def _detect_metric_drifts(self, baseline_run_id: str, current_run_id: str) -> List[ColumnDrift]:
+    def _detect_metric_drifts(
+        self, 
+        baseline_run_id: str, 
+        current_run_id: str,
+        table_name: Optional[str] = None
+    ) -> List[ColumnDrift]:
         """Detect metric drifts between runs."""
         drifts = []
         
@@ -284,6 +321,21 @@ class DriftDetector:
             drift = self._calculate_drift(column, metric, baseline_value, current_value)
             if drift:
                 drifts.append(drift)
+                
+                # Emit drift event if detected and event bus is available
+                if drift.drift_detected and self.event_bus and table_name:
+                    self.event_bus.emit(DataDriftDetected(
+                        event_type="DataDriftDetected",
+                        timestamp=datetime.utcnow(),
+                        table=table_name,
+                        column=column,
+                        metric=metric,
+                        baseline_value=baseline_value,
+                        current_value=current_value,
+                        change_percent=drift.change_percent,
+                        drift_severity=drift.drift_severity,
+                        metadata={}
+                    ))
         
         return drifts
     
@@ -329,7 +381,7 @@ class DriftDetector:
             return None
         
         # Convert DriftResult to ColumnDrift
-        return ColumnDrift(
+        drift = ColumnDrift(
             column_name=column_name,
             metric_name=metric_name,
             baseline_value=baseline_value,
@@ -339,6 +391,25 @@ class DriftDetector:
             drift_detected=result.drift_detected,
             drift_severity=result.drift_severity
         )
+        
+        # Emit drift event if drift was detected and event bus is available
+        if drift.drift_detected and self.event_bus:
+            # Get table name from current context (we'll need to pass this through)
+            # For now, we'll extract it from the run metadata
+            self.event_bus.emit(DataDriftDetected(
+                event_type="DataDriftDetected",
+                timestamp=datetime.utcnow(),
+                table="unknown",  # Will be set in detect_drift
+                column=column_name,
+                metric=metric_name,
+                baseline_value=baseline_value,
+                current_value=current_value,
+                change_percent=result.change_percent,
+                drift_severity=result.drift_severity,
+                metadata={}
+            ))
+        
+        return drift
     
     def _generate_summary(self, report: DriftReport) -> Dict[str, Any]:
         """Generate summary statistics for drift report."""
