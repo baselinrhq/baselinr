@@ -2,6 +2,7 @@
 
 load_from:
   - python_file:
-      relative_path: ../examples/dagster_repository.py
+      relative_path: /app/examples/dagster_repository.py
       working_directory: /app
+      location_name: profilemesh
 

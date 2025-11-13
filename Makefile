@@ -24,9 +24,11 @@ help:
 	@echo "  make clean          Clean build artifacts"
 	@echo ""
 	@echo "Docker:"
-	@echo "  make docker-up      Start Docker environment"
-	@echo "  make docker-down    Stop Docker environment"
-	@echo "  make docker-logs    View Docker logs"
+	@echo "  make docker-up           Start Docker environment"
+	@echo "  make docker-down         Stop Docker environment"
+	@echo "  make docker-down-volumes Stop and remove volumes"
+	@echo "  make docker-rebuild      Full rebuild (down -v, build, up)"
+	@echo "  make docker-logs         View Docker logs"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make quickstart     Run the quickstart example"
@@ -107,10 +109,29 @@ docker-up:
 	@echo ""
 	@echo "Docker environment started!"
 	@echo "Dagster UI: http://localhost:3000"
-	@echo "PostgreSQL: localhost:5432 (user: profilemesh, password: profilemesh)"
+	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
 
 docker-down:
 	cd docker && docker compose down
+
+docker-down-volumes:
+	cd docker && docker compose down -v
+	@echo ""
+	@echo "Containers stopped and volumes removed"
+
+docker-rebuild:
+	@echo "Stopping containers and removing volumes..."
+	cd docker && docker compose down -v
+	@echo ""
+	@echo "Rebuilding images..."
+	cd docker && docker compose build
+	@echo ""
+	@echo "Starting containers..."
+	cd docker && docker compose up -d
+	@echo ""
+	@echo "Docker environment rebuilt and started!"
+	@echo "Dagster UI: http://localhost:3000"
+	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
 
 docker-logs:
 	cd docker && docker compose logs -f

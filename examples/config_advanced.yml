@@ -7,7 +7,7 @@ environment: development
 source:
   type: postgres
   host: localhost
-  port: 5432
+  port: 5433
   database: profilemesh
   username: profilemesh
   password: profilemesh
@@ -18,7 +18,7 @@ storage:
   connection:
     type: postgres
     host: localhost
-    port: 5432
+    port: 5433
     database: profilemesh
     username: profilemesh
     password: profilemesh

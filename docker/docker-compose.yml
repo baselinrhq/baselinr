@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: profilemesh
       POSTGRES_DB: profilemesh
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
@@ -27,6 +27,11 @@ services:
     environment:
       - DAGSTER_HOME=/opt/dagster/dagster_home
       - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
+      # ProfileMesh config overrides for Docker
+      - PROFILEMESH_SOURCE__HOST=postgres
+      - PROFILEMESH_SOURCE__PORT=5432
+      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
+      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
     volumes:
       - ../:/app
       - dagster_home:/opt/dagster/dagster_home
@@ -44,6 +49,11 @@ services:
     environment:
       - DAGSTER_HOME=/opt/dagster/dagster_home
       - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
+      # ProfileMesh config overrides for Docker
+      - PROFILEMESH_SOURCE__HOST=postgres
+      - PROFILEMESH_SOURCE__PORT=5432
+      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
+      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
     ports:
       - "3000:3000"
     volumes:
