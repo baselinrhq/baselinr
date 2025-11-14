@@ -115,9 +115,56 @@ class BaseConnector(ABC):
         Returns:
             List of result rows as dictionaries
         """
-        with self.engine.connect() as conn:
-            result = conn.execute(query)
-            return [dict(row) for row in result]
+        import time
+        from ..logging import log_event, get_logger
+        
+        # Get logger - use existing logger or create one
+        try:
+            query_logger = get_logger(__name__)
+        except:
+            query_logger = logger
+        
+        # Truncate query for logging if too long
+        query_preview = query[:200] + "..." if len(query) > 200 else query
+        
+        start_time = time.time()
+        log_event(
+            query_logger, "query_started", 
+            f"Executing query: {query_preview}",
+            metadata={"query_length": len(query)}
+        )
+        
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(query)
+                rows = [dict(row) for row in result]
+                duration = time.time() - start_time
+                
+                log_event(
+                    query_logger, "query_completed",
+                    f"Query completed: {len(rows)} rows in {duration:.2f}s",
+                    metadata={
+                        "row_count": len(rows),
+                        "duration_seconds": duration,
+                        "query_preview": query_preview
+                    }
+                )
+                
+                return rows
+        except Exception as e:
+            duration = time.time() - start_time
+            log_event(
+                query_logger, "query_failed",
+                f"Query failed after {duration:.2f}s: {e}",
+                level="error",
+                metadata={
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "duration_seconds": duration,
+                    "query_preview": query_preview
+                }
+            )
+            raise
     
     def close(self):
         """Close database connection."""

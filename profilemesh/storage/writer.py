@@ -120,6 +120,16 @@ class ResultWriter:
     
     def _write_run(self, conn, result: ProfilingResult, environment: str):
         """Write run metadata."""
+        # Check if run already exists (multiple tables can share the same run_id)
+        check_query = text(f"""
+            SELECT run_id FROM {self.config.runs_table} WHERE run_id = :run_id LIMIT 1
+        """)
+        existing = conn.execute(check_query, {'run_id': result.run_id}).fetchone()
+        
+        if existing:
+            # Run already exists, skip insert
+            return
+        
         insert_query = text(f"""
             INSERT INTO {self.config.runs_table}
             (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)

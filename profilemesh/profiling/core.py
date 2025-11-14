@@ -81,18 +81,31 @@ class ProfilingResult:
 class ProfileEngine:
     """Main profiling engine for ProfileMesh."""
     
-    def __init__(self, config: ProfileMeshConfig, event_bus: Optional[EventBus] = None):
+    def __init__(self, config: ProfileMeshConfig, event_bus: Optional[EventBus] = None, 
+                 run_context: Optional[Any] = None):
         """
         Initialize profiling engine.
         
         Args:
             config: ProfileMesh configuration
             event_bus: Optional event bus for emitting profiling events
+            run_context: Optional run context with logger and run_id
         """
         self.config = config
         self.connector: Optional[BaseConnector] = None
         self.metric_calculator: Optional[MetricCalculator] = None
         self.event_bus = event_bus
+        self.run_context = run_context
+        
+        # Get logger from run_context or create fallback
+        if run_context:
+            self.logger = run_context.logger
+            self.run_id = run_context.run_id
+        else:
+            import logging
+            self.logger = logging.getLogger(__name__)
+            import uuid
+            self.run_id = str(uuid.uuid4())
     
     def profile(self, table_patterns: Optional[List[TablePattern]] = None) -> List[ProfilingResult]:
         """
@@ -148,11 +161,41 @@ class ProfileEngine:
         # Profile each table pattern
         results = []
         for pattern in patterns:
+            fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
+            
             try:
+                from ..logging import log_and_emit
+                
+                # Log and emit profiling started
+                log_and_emit(
+                    self.logger, self.event_bus, "profiling_started",
+                    f"Starting profiling for table: {fq_table}",
+                    table=fq_table, run_id=self.run_id
+                )
+                
                 result = self._profile_table(pattern)
                 results.append(result)
+                
+                # Log and emit profiling completed
+                log_and_emit(
+                    self.logger, self.event_bus, "profiling_completed",
+                    f"Profiling completed for table: {fq_table}",
+                    table=fq_table, run_id=self.run_id,
+                    metadata={
+                        "column_count": len(result.columns),
+                        "row_count": result.metadata.get("row_count", 0)
+                    }
+                )
             except Exception as e:
-                logger.error(f"Failed to profile {pattern.table}: {e}", exc_info=True)
+                from ..logging import log_and_emit
+                
+                # Log and emit failure
+                log_and_emit(
+                    self.logger, self.event_bus, "profiling_error",
+                    f"Failed to profile table {fq_table}: {e}",
+                    level="error", table=fq_table, run_id=self.run_id,
+                    metadata={"error": str(e), "error_type": type(e).__name__}
+                )
         
         # Cleanup
         if self.connector:
@@ -170,12 +213,15 @@ class ProfileEngine:
         Returns:
             ProfilingResult for this table
         """
-        logger.info(f"Profiling table: {pattern.table}")
-        
-        # Generate run ID
-        run_id = str(uuid.uuid4())
+        # Use run_id from context
+        run_id = self.run_id
         profiled_at = datetime.utcnow()
         start_time = time.time()
+        
+        fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
+        from ..logging import log_event
+        log_event(self.logger, "table_profiling_started", f"Profiling table: {fq_table}",
+                  table=fq_table, metadata={"pattern": pattern.table})
         
         # Emit profiling started event
         if self.event_bus:

@@ -19,8 +19,9 @@ from .storage.writer import ResultWriter
 from .drift.detector import DriftDetector
 from .planner import PlanBuilder, print_plan
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
+from .logging import RunContext, log_event, log_and_emit
 
-# Setup logging
+# Setup fallback logging (will be replaced by structured logging per command)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -128,47 +129,57 @@ def _create_hook(hook_config: HookConfig):
 
 def profile_command(args):
     """Execute profiling command."""
-    logger.info(f"Loading configuration from: {args.config}")
+    # Create run context with structured logging
+    ctx = RunContext.create(component="cli")
+    
+    log_event(ctx.logger, "command_started", f"Loading configuration from: {args.config}",
+              metadata={"config_path": args.config, "command": "profile"})
     
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        logger.info(f"Configuration loaded for environment: {config.environment}")
+        log_event(ctx.logger, "config_loaded", f"Configuration loaded for environment: {config.environment}",
+                  metadata={"environment": config.environment})
         
         # Create event bus and register hooks
         event_bus = create_event_bus(config)
         if event_bus:
-            logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
+            log_event(ctx.logger, "event_bus_initialized", 
+                     f"Event bus initialized with {event_bus.hook_count} hooks",
+                     metadata={"hook_count": event_bus.hook_count})
         
-        # Create profiling engine
-        engine = ProfileEngine(config, event_bus=event_bus)
+        # Create profiling engine with run context
+        engine = ProfileEngine(config, event_bus=event_bus, run_context=ctx)
         
         # Run profiling
-        logger.info("Starting profiling...")
+        log_event(ctx.logger, "profiling_batch_started", "Starting profiling...")
         results = engine.profile()
         
         if not results:
-            logger.warning("No profiling results generated")
+            log_event(ctx.logger, "no_results", "No profiling results generated", level="warning")
             return 1
         
-        logger.info(f"Profiling completed: {len(results)} tables profiled")
+        log_event(ctx.logger, "profiling_batch_completed", f"Profiling completed: {len(results)} tables profiled",
+                  metadata={"table_count": len(results)})
         
         # Write results to storage
         if not args.dry_run:
-            logger.info("Writing results to storage...")
+            log_event(ctx.logger, "storage_write_started", "Writing results to storage...")
             writer = ResultWriter(config.storage)
             writer.write_results(results, environment=config.environment)
-            logger.info("Results written successfully")
+            log_event(ctx.logger, "storage_write_completed", "Results written successfully",
+                      metadata={"result_count": len(results)})
             writer.close()
         else:
-            logger.info("Dry run - results not written to storage")
+            log_event(ctx.logger, "dry_run", "Dry run - results not written to storage")
         
         # Output results
         if args.output:
             output_path = Path(args.output)
             with open(output_path, 'w') as f:
                 json.dump([r.to_dict() for r in results], f, indent=2)
-            logger.info(f"Results saved to: {args.output}")
+            log_event(ctx.logger, "results_exported", f"Results saved to: {args.output}",
+                      metadata={"output_path": str(args.output)})
         
         # Print summary
         for result in results:
@@ -182,7 +193,8 @@ def profile_command(args):
         return 0
     
     except Exception as e:
-        logger.error(f"Profiling failed: {e}", exc_info=True)
+        log_event(ctx.logger, "error", f"Profiling failed: {e}",
+                  level="error", metadata={"error": str(e), "error_type": type(e).__name__})
         return 1
 
 

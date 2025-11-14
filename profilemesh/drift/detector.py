@@ -163,16 +163,44 @@ class DriftDetector:
         Returns:
             DriftReport with detected changes
         """
+        from ..logging import log_event
+        import time
+        
+        start_time = time.time()
+        log_event(
+            logger, "drift_detection_started",
+            f"Starting drift detection for dataset: {dataset_name}",
+            metadata={
+                "dataset_name": dataset_name,
+                "schema_name": schema_name,
+                "baseline_run_id": baseline_run_id,
+                "current_run_id": current_run_id
+            }
+        )
+        
         # Get run IDs if not provided
         if current_run_id is None or baseline_run_id is None:
             run_ids = self._get_latest_runs(dataset_name, schema_name, limit=2)
             if len(run_ids) < 2:
-                raise ValueError(f"Need at least 2 runs for drift detection, found {len(run_ids)}")
+                error_msg = f"Need at least 2 runs for drift detection, found {len(run_ids)}"
+                log_event(
+                    logger, "drift_detection_failed",
+                    error_msg,
+                    level="error",
+                    metadata={"dataset_name": dataset_name, "run_count": len(run_ids)}
+                )
+                raise ValueError(error_msg)
             
             if current_run_id is None:
                 current_run_id = run_ids[0]
             if baseline_run_id is None:
                 baseline_run_id = run_ids[1]
+            
+            log_event(
+                logger, "drift_runs_selected",
+                f"Using runs: baseline={baseline_run_id}, current={current_run_id}",
+                metadata={"baseline_run_id": baseline_run_id, "current_run_id": current_run_id}
+            )
         
         # Get run metadata
         baseline_meta = self._get_run_metadata(baseline_run_id)
@@ -189,9 +217,11 @@ class DriftDetector:
         )
         
         # Detect schema changes
+        log_event(logger, "schema_change_detection_started", "Detecting schema changes")
         report.schema_changes = self._detect_schema_changes(baseline_run_id, current_run_id)
         
         # Detect metric drifts
+        log_event(logger, "metric_drift_detection_started", "Detecting metric drifts")
         report.column_drifts = self._detect_metric_drifts(
             baseline_run_id, 
             current_run_id,
@@ -200,6 +230,46 @@ class DriftDetector:
         
         # Generate summary
         report.summary = self._generate_summary(report)
+        
+        duration = time.time() - start_time
+        log_event(
+            logger, "drift_detection_completed",
+            f"Drift detection completed in {duration:.2f}s",
+            metadata={
+                "dataset_name": dataset_name,
+                "duration_seconds": duration,
+                "total_drifts": report.summary.get("total_drifts", 0),
+                "schema_changes": len(report.schema_changes),
+                "has_critical_drift": report.summary.get("has_critical_drift", False)
+            }
+        )
+        
+        # Emit events for detected drift
+        if self.event_bus and report.summary.get("total_drifts", 0) > 0:
+            for drift in report.column_drifts:
+                if drift.drift_detected:
+                    self.event_bus.emit(DataDriftDetected(
+                        event_type="DataDriftDetected",
+                        timestamp=datetime.utcnow(),
+                        table=dataset_name,
+                        column=drift.column_name,
+                        metric=drift.metric_name,
+                        baseline_value=drift.baseline_value,
+                        current_value=drift.current_value,
+                        change_percent=drift.change_percent,
+                        drift_severity=drift.drift_severity,
+                        metadata={}
+                    ))
+        
+        # Emit events for schema changes
+        if self.event_bus and report.schema_changes:
+            self.event_bus.emit(SchemaChangeDetected(
+                event_type="SchemaChangeDetected",
+                timestamp=datetime.utcnow(),
+                table=dataset_name,
+                changes=report.schema_changes,
+                metadata={}
+            ))
         
         return report
     
