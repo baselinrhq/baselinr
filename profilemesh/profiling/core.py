@@ -160,11 +160,19 @@ class ProfileEngine:
         
         # Profile each table pattern
         results = []
+        warehouse = self.config.source.type  # Get warehouse type for metrics
+        
         for pattern in patterns:
             fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
+            start_time = time.time()
             
             try:
                 from ..logging import log_and_emit
+                
+                # Record metrics: profiling started
+                if self.run_context and self.run_context.metrics_enabled:
+                    from ..metrics import record_profile_started
+                    record_profile_started(warehouse, fq_table)
                 
                 # Log and emit profiling started
                 log_and_emit(
@@ -175,6 +183,18 @@ class ProfileEngine:
                 
                 result = self._profile_table(pattern)
                 results.append(result)
+                
+                # Calculate duration
+                duration = time.time() - start_time
+                
+                # Record metrics: profiling completed
+                if self.run_context and self.run_context.metrics_enabled:
+                    from ..metrics import record_profile_completed
+                    record_profile_completed(
+                        warehouse, fq_table, duration,
+                        row_count=result.metadata.get("row_count", 0),
+                        column_count=len(result.columns)
+                    )
                 
                 # Log and emit profiling completed
                 log_and_emit(
@@ -188,6 +208,14 @@ class ProfileEngine:
                 )
             except Exception as e:
                 from ..logging import log_and_emit
+                
+                # Calculate duration
+                duration = time.time() - start_time
+                
+                # Record metrics: profiling failed
+                if self.run_context and self.run_context.metrics_enabled:
+                    from ..metrics import record_profile_failed
+                    record_profile_failed(warehouse, fq_table, duration)
                 
                 # Log and emit failure
                 log_and_emit(

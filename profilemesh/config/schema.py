@@ -206,6 +206,22 @@ class HooksConfig(BaseModel):
     hooks: List[HookConfig] = Field(default_factory=list)
 
 
+class MonitoringConfig(BaseModel):
+    """Monitoring and metrics configuration."""
+    
+    enable_metrics: bool = Field(False)  # Enable Prometheus metrics
+    port: int = Field(9753, gt=0, le=65535)  # Metrics server port
+    keep_alive: bool = Field(True)  # Keep server running after profiling completes
+    
+    @field_validator("port")
+    @classmethod
+    def validate_port(cls, v: int) -> int:
+        """Validate port is in valid range."""
+        if not (1 <= v <= 65535):
+            raise ValueError("Port must be between 1 and 65535")
+        return v
+
+
 class ProfileMeshConfig(BaseModel):
     """Main ProfileMesh configuration."""
     
@@ -215,6 +231,7 @@ class ProfileMeshConfig(BaseModel):
     profiling: ProfilingConfig = Field(default_factory=ProfilingConfig)
     drift_detection: DriftDetectionConfig = Field(default_factory=DriftDetectionConfig)
     hooks: HooksConfig = Field(default_factory=HooksConfig)
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     
     @field_validator("environment")
     @classmethod

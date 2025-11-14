@@ -24,11 +24,12 @@ help:
 	@echo "  make clean          Clean build artifacts"
 	@echo ""
 	@echo "Docker:"
-	@echo "  make docker-up           Start Docker environment"
+	@echo "  make docker-up           Start Docker environment (includes Prometheus & Grafana)"
 	@echo "  make docker-down         Stop Docker environment"
 	@echo "  make docker-down-volumes Stop and remove volumes"
 	@echo "  make docker-rebuild      Full rebuild (down -v, build, up)"
 	@echo "  make docker-logs         View Docker logs"
+	@echo "  make docker-metrics      Start only Prometheus & Grafana services"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make quickstart     Run the quickstart example"
@@ -109,6 +110,8 @@ docker-up:
 	@echo ""
 	@echo "Docker environment started!"
 	@echo "Dagster UI: http://localhost:3000"
+	@echo "Grafana: http://localhost:3001 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
 	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
 
 docker-down:
@@ -131,10 +134,22 @@ docker-rebuild:
 	@echo ""
 	@echo "Docker environment rebuilt and started!"
 	@echo "Dagster UI: http://localhost:3000"
+	@echo "Grafana: http://localhost:3001 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
 	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
 
 docker-logs:
 	cd docker && docker compose logs -f
+
+docker-metrics:
+	cd docker && docker compose up -d prometheus grafana
+	@echo ""
+	@echo "Metrics services started!"
+	@echo "Grafana: http://localhost:3001 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
+	@echo ""
+	@echo "Note: Make sure ProfileMesh is running with metrics enabled:"
+	@echo "  profilemesh profile --config examples/config.yml"
 
 quickstart:
 	python examples/quickstart.py

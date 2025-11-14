@@ -140,6 +140,15 @@ class BaseConnector(ABC):
                 rows = [dict(row) for row in result]
                 duration = time.time() - start_time
                 
+                # Record metrics: query completed
+                try:
+                    from ..metrics import is_metrics_enabled, record_query_completed, get_warehouse_type
+                    if is_metrics_enabled():
+                        warehouse = get_warehouse_type(self.config)
+                        record_query_completed(warehouse, duration)
+                except:
+                    pass  # Metrics optional
+                
                 log_event(
                     query_logger, "query_completed",
                     f"Query completed: {len(rows)} rows in {duration:.2f}s",
@@ -153,6 +162,16 @@ class BaseConnector(ABC):
                 return rows
         except Exception as e:
             duration = time.time() - start_time
+            
+            # Record metrics: error
+            try:
+                from ..metrics import is_metrics_enabled, record_error, get_warehouse_type
+                if is_metrics_enabled():
+                    warehouse = get_warehouse_type(self.config)
+                    record_error(warehouse, type(e).__name__, "connector")
+            except:
+                pass  # Metrics optional
+            
             log_event(
                 query_logger, "query_failed",
                 f"Query failed after {duration:.2f}s: {e}",

@@ -129,17 +129,37 @@ def _create_hook(hook_config: HookConfig):
 
 def profile_command(args):
     """Execute profiling command."""
-    # Create run context with structured logging
-    ctx = RunContext.create(component="cli")
-    
-    log_event(ctx.logger, "command_started", f"Loading configuration from: {args.config}",
+    log_event(logger, "command_started", f"Loading configuration from: {args.config}",
               metadata={"config_path": args.config, "command": "profile"})
+    
+    # Initialize ctx early for error handling
+    ctx = None
     
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        log_event(ctx.logger, "config_loaded", f"Configuration loaded for environment: {config.environment}",
+        log_event(logger, "config_loaded", f"Configuration loaded for environment: {config.environment}",
                   metadata={"environment": config.environment})
+        
+        # Start metrics server if enabled
+        metrics_enabled = config.monitoring.enable_metrics
+        if metrics_enabled:
+            try:
+                from .metrics import start_metrics_server
+                start_metrics_server(config.monitoring.port)
+            except ImportError:
+                log_event(logger, "metrics_import_failed", 
+                         "prometheus_client not installed. Install with: pip install prometheus_client",
+                         level="warning")
+                metrics_enabled = False
+            except Exception as e:
+                log_event(logger, "metrics_server_failed", 
+                         f"Failed to start metrics server: {e}",
+                         level="warning")
+                metrics_enabled = False
+        
+        # Create run context with structured logging
+        ctx = RunContext.create(component="cli", metrics_enabled=metrics_enabled)
         
         # Create event bus and register hooks
         event_bus = create_event_bus(config)
@@ -190,10 +210,34 @@ def profile_command(args):
             print(f"Columns profiled: {len(result.columns)}")
             print(f"Row count: {result.metadata.get('row_count', 'N/A')}")
         
+        # Keep metrics server alive if enabled (unless disabled in config)
+        keep_alive = config.monitoring.keep_alive if config.monitoring.enable_metrics else False
+        if metrics_enabled and keep_alive:
+            import time
+            
+            log_event(ctx.logger, "metrics_server_keepalive", 
+                     f"Profiling completed. Metrics server running on port {config.monitoring.port}",
+                     metadata={"port": config.monitoring.port})
+            print(f"\n{'='*60}")
+            print("Profiling completed. Metrics server is running at:")
+            print(f"  http://localhost:{config.monitoring.port}/metrics")
+            print(f"\nPress Ctrl+C to stop the server and exit.")
+            print(f"{'='*60}\n")
+            
+            try:
+                while True:
+                    time.sleep(1)
+            except (KeyboardInterrupt, SystemExit):
+                log_event(ctx.logger, "metrics_server_stopped", 
+                         "Metrics server stopped by user")
+                print("\nStopping metrics server...")
+                return 0
+        
         return 0
     
     except Exception as e:
-        log_event(ctx.logger, "error", f"Profiling failed: {e}",
+        error_logger = ctx.logger if ctx else logger
+        log_event(error_logger, "error", f"Profiling failed: {e}",
                   level="error", metadata={"error": str(e), "error_type": type(e).__name__})
         return 1
 
@@ -206,13 +250,26 @@ def drift_command(args):
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
         
+        # Start metrics server if enabled
+        if config.monitoring.enable_metrics:
+            from .metrics import start_metrics_server
+            try:
+                start_metrics_server(config.monitoring.port)
+            except Exception as e:
+                logger.warning(f"Failed to start metrics server: {e}")
+        
         # Create event bus and register hooks
         event_bus = create_event_bus(config)
         if event_bus:
             logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
         
         # Create drift detector with drift detection config and event bus
-        detector = DriftDetector(config.storage, config.drift_detection, event_bus=event_bus)
+        detector = DriftDetector(
+            config.storage, 
+            config.drift_detection, 
+            event_bus=event_bus,
+            metrics_enabled=config.monitoring.enable_metrics
+        )
         
         # Detect drift
         logger.info(f"Detecting drift for dataset: {args.dataset}")

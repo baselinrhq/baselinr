@@ -1,0 +1,77 @@
+# ProfileMesh Configuration Example with Metrics Enabled
+# This config demonstrates Prometheus metrics integration
+
+environment: development
+
+# Source database connection
+source:
+  type: postgres
+  host: localhost
+  port: 5433
+  database: profilemesh
+  username: profilemesh
+  password: profilemesh
+  schema: public
+
+# Storage configuration
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5433
+    database: profilemesh
+    username: profilemesh
+    password: profilemesh
+    schema: public
+  results_table: profilemesh_results
+  runs_table: profilemesh_runs
+  create_tables: true
+
+# Profiling configuration
+profiling:
+  tables:
+    - table: customers
+      schema: public
+    - table: products
+      schema: public
+    - table: orders
+      schema: public
+  
+  max_distinct_values: 1000
+  compute_histograms: true
+  histogram_bins: 10
+  
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+# Monitoring configuration - ENABLED
+monitoring:
+  enable_metrics: true  # ✅ Prometheus metrics enabled
+  port: 9753            # Metrics available at http://localhost:9753/metrics
+  keep_alive: true      # Keep server running after profiling completes
+
+# Event hooks configuration
+hooks:
+  enabled: true
+  hooks:
+    - type: logging
+      enabled: true
+      log_level: INFO
+

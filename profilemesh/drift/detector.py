@@ -83,7 +83,8 @@ class DriftDetector:
         self,
         storage_config: StorageConfig,
         drift_config: Optional[DriftDetectionConfig] = None,
-        event_bus: Optional[EventBus] = None
+        event_bus: Optional[EventBus] = None,
+        metrics_enabled: bool = False
     ):
         """
         Initialize drift detector.
@@ -92,11 +93,13 @@ class DriftDetector:
             storage_config: Storage configuration
             drift_config: Drift detection configuration (uses defaults if not provided)
             event_bus: Optional event bus for emitting drift events
+            metrics_enabled: Whether Prometheus metrics are enabled
         """
         self.storage_config = storage_config
         self.drift_config = drift_config or DriftDetectionConfig()
         self.engine = self._setup_connection()
         self.event_bus = event_bus
+        self.metrics_enabled = metrics_enabled
         
         # Create drift detection strategy based on config
         self.strategy = self._create_strategy()
@@ -232,6 +235,15 @@ class DriftDetector:
         report.summary = self._generate_summary(report)
         
         duration = time.time() - start_time
+        
+        # Get warehouse type for metrics
+        warehouse = self.storage_config.connection.type
+        
+        # Record metrics: drift detection completed
+        if self.metrics_enabled:
+            from ..metrics import record_drift_detection_completed
+            record_drift_detection_completed(warehouse, dataset_name, duration)
+        
         log_event(
             logger, "drift_detection_completed",
             f"Drift detection completed in {duration:.2f}s",
@@ -248,6 +260,11 @@ class DriftDetector:
         if self.event_bus and report.summary.get("total_drifts", 0) > 0:
             for drift in report.column_drifts:
                 if drift.drift_detected:
+                    # Record metrics: drift event
+                    if self.metrics_enabled:
+                        from ..metrics import record_drift_event
+                        record_drift_event(warehouse, dataset_name, drift.metric_name, drift.drift_severity)
+                    
                     self.event_bus.emit(DataDriftDetected(
                         event_type="DataDriftDetected",
                         timestamp=datetime.utcnow(),
@@ -263,6 +280,16 @@ class DriftDetector:
         
         # Emit events for schema changes
         if self.event_bus and report.schema_changes:
+            # Record metrics: schema changes
+            if self.metrics_enabled:
+                from ..metrics import record_schema_change
+                for change in report.schema_changes:
+                    # Parse change type from string (e.g., "Column added: foo" -> "column_added")
+                    change_type = "column_added" if "added" in change.lower() else \
+                                  "column_removed" if "removed" in change.lower() else \
+                                  "type_changed" if "changed" in change.lower() else "unknown"
+                    record_schema_change(warehouse, dataset_name, change_type)
+            
             self.event_bus.emit(SchemaChangeDetected(
                 event_type="SchemaChangeDetected",
                 timestamp=datetime.utcnow(),

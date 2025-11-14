@@ -28,19 +28,22 @@ class RunContext:
         run_id: Unique identifier for this profiling run
         logger: Structured logger instance
         component: Component name (cli, profile_engine, etc.)
+        metrics_enabled: Whether Prometheus metrics are enabled
     """
     run_id: str
     logger: Any
     component: str = "profilemesh"
+    metrics_enabled: bool = False
     
     @classmethod
-    def create(cls, component: str = "profilemesh", run_id: Optional[str] = None) -> "RunContext":
+    def create(cls, component: str = "profilemesh", run_id: Optional[str] = None, metrics_enabled: bool = False) -> "RunContext":
         """
         Create a new run context with a fresh run_id and logger.
         
         Args:
             component: Component name
             run_id: Optional run_id (generates new one if not provided)
+            metrics_enabled: Whether Prometheus metrics are enabled
             
         Returns:
             RunContext instance
@@ -49,7 +52,7 @@ class RunContext:
             run_id = str(uuid.uuid4())
         
         logger = get_logger(component=component, run_id=run_id)
-        return cls(run_id=run_id, logger=logger, component=component)
+        return cls(run_id=run_id, logger=logger, component=component, metrics_enabled=metrics_enabled)
 
 
 def init_logging(run_id: str, component: str = "profilemesh", level: str = "INFO") -> Any:

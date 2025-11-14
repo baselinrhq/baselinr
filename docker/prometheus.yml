@@ -1,0 +1,27 @@
+# Prometheus configuration for ProfileMesh
+global:
+  scrape_interval: 15s      # Scrape targets every 15 seconds
+  evaluation_interval: 15s  # Evaluate rules every 15 seconds
+  external_labels:
+    cluster: 'profilemesh'
+    environment: 'development'
+
+scrape_configs:
+  # ProfileMesh metrics endpoint
+  # Note: host.docker.internal works on Windows/Mac to reach host machine
+  # On Linux, you may need to use the host's IP address or add network_mode: host
+  - job_name: 'profilemesh'
+    scrape_interval: 10s  # Scrape more frequently for real-time monitoring
+    static_configs:
+      - targets: ['host.docker.internal:9753']  # ProfileMesh metrics endpoint
+        labels:
+          service: 'profilemesh'
+          environment: 'development'
+    metrics_path: '/metrics'
+    scheme: 'http'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
