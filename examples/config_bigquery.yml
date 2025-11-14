@@ -1,0 +1,71 @@
+# ProfileMesh Configuration Example for Google BigQuery
+# This is a sample configuration for profiling BigQuery tables
+
+environment: development
+
+# Source database connection (BigQuery)
+source:
+  type: bigquery
+  database: my-project-id  # BigQuery project ID
+  schema: my_dataset       # BigQuery dataset name
+  # Credentials via extra_params (see below)
+  extra_params:
+    credentials_path: /path/to/service-account-key.json
+    # Alternative: use credentials_info for inline JSON
+    # credentials_info: '{"type": "service_account", ...}'
+
+# Storage configuration (where to save profiling results)
+# Note: BigQuery can be used for storage, or use PostgreSQL/MySQL
+storage:
+  connection:
+    type: postgres  # Recommended: use PostgreSQL for storage
+    host: localhost
+    port: 5432
+    database: profilemesh_storage
+    username: profilemesh
+    password: profilemesh
+  results_table: profilemesh_results
+  runs_table: profilemesh_runs
+  create_tables: true
+
+# Profiling configuration
+profiling:
+  tables:
+    - table: customers
+      schema: my_dataset
+    
+    - table: orders
+      schema: my_dataset
+      # BigQuery supports partitioning
+      partition:
+        key: order_date
+        strategy: latest
+        metadata_fallback: true
+
+  max_distinct_values: 1000
+  compute_histograms: true
+  histogram_bins: 10
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+# Event hooks configuration
+hooks:
+  enabled: false
+

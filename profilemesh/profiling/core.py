@@ -112,7 +112,10 @@ class ProfileEngine:
             return []
         
         # Create connector
-        from ..connectors import PostgresConnector, SnowflakeConnector, SQLiteConnector
+        from ..connectors import (
+            PostgresConnector, SnowflakeConnector, SQLiteConnector,
+            MySQLConnector, BigQueryConnector, RedshiftConnector
+        )
         
         if self.config.source.type == "postgres":
             self.connector = PostgresConnector(self.config.source)
@@ -120,6 +123,12 @@ class ProfileEngine:
             self.connector = SnowflakeConnector(self.config.source)
         elif self.config.source.type == "sqlite":
             self.connector = SQLiteConnector(self.config.source)
+        elif self.config.source.type == "mysql":
+            self.connector = MySQLConnector(self.config.source)
+        elif self.config.source.type == "bigquery":
+            self.connector = BigQueryConnector(self.config.source)
+        elif self.config.source.type == "redshift":
+            self.connector = RedshiftConnector(self.config.source)
         else:
             raise ValueError(f"Unsupported database type: {self.config.source.type}")
         

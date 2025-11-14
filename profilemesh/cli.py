@@ -93,11 +93,20 @@ def _create_hook(hook_config: HookConfig):
             raise ValueError("SQL hook requires connection configuration")
         
         # Create engine based on connection type
-        from .connectors import PostgresConnector, SQLiteConnector
+        from .connectors import (
+            PostgresConnector, SQLiteConnector, MySQLConnector,
+            BigQueryConnector, RedshiftConnector
+        )
         if hook_config.connection.type == "postgres":
             connector = PostgresConnector(hook_config.connection)
         elif hook_config.connection.type == "sqlite":
             connector = SQLiteConnector(hook_config.connection)
+        elif hook_config.connection.type == "mysql":
+            connector = MySQLConnector(hook_config.connection)
+        elif hook_config.connection.type == "bigquery":
+            connector = BigQueryConnector(hook_config.connection)
+        elif hook_config.connection.type == "redshift":
+            connector = RedshiftConnector(hook_config.connection)
         else:
             raise ValueError(f"Unsupported SQL database type: {hook_config.connection.type}")
         

@@ -12,6 +12,17 @@ psycopg2-binary>=2.9.0
 # snowflake-sqlalchemy>=1.5.0
 # snowflake-connector-python>=3.0.0
 
+# Optional: MySQL support
+# pymysql>=1.0.0
+
+# Optional: BigQuery support
+# pybigquery>=0.10.0
+# google-cloud-bigquery>=3.0.0
+
+# Optional: Redshift support
+# sqlalchemy-redshift>=0.8.0
+# redshift-connector>=2.0.0
+
 # Optional: Dagster orchestration
 dagster>=1.5.0
 dagster-webserver>=1.5.0

@@ -1,0 +1,64 @@
+# ProfileMesh Configuration Example for MySQL
+# This is a sample configuration for profiling MySQL tables
+
+environment: development
+
+# Source database connection (MySQL)
+source:
+  type: mysql
+  host: localhost
+  port: 3306
+  database: mydatabase
+  username: myuser
+  password: mypassword
+  schema: my_schema  # Optional: MySQL schema/database name
+
+# Storage configuration (where to save profiling results)
+storage:
+  connection:
+    type: mysql
+    host: localhost
+    port: 3306
+    database: profilemesh_storage
+    username: myuser
+    password: mypassword
+  results_table: profilemesh_results
+  runs_table: profilemesh_runs
+  create_tables: true
+
+# Profiling configuration
+profiling:
+  tables:
+    - table: customers
+      schema: my_schema
+    
+    - table: orders
+      schema: my_schema
+
+  max_distinct_values: 1000
+  compute_histograms: true
+  histogram_bins: 10
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+# Event hooks configuration
+hooks:
+  enabled: false
+

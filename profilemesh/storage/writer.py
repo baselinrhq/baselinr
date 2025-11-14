@@ -36,7 +36,10 @@ class ResultWriter:
     
     def _setup_connection(self):
         """Setup database connection for storage."""
-        from ..connectors import PostgresConnector, SnowflakeConnector, SQLiteConnector
+        from ..connectors import (
+            PostgresConnector, SnowflakeConnector, SQLiteConnector,
+            MySQLConnector, BigQueryConnector, RedshiftConnector
+        )
         
         if self.config.connection.type == "postgres":
             connector = PostgresConnector(self.config.connection)
@@ -44,6 +47,12 @@ class ResultWriter:
             connector = SnowflakeConnector(self.config.connection)
         elif self.config.connection.type == "sqlite":
             connector = SQLiteConnector(self.config.connection)
+        elif self.config.connection.type == "mysql":
+            connector = MySQLConnector(self.config.connection)
+        elif self.config.connection.type == "bigquery":
+            connector = BigQueryConnector(self.config.connection)
+        elif self.config.connection.type == "redshift":
+            connector = RedshiftConnector(self.config.connection)
         else:
             raise ValueError(f"Unsupported storage type: {self.config.connection.type}")
         

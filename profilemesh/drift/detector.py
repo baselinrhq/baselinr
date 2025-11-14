@@ -122,7 +122,10 @@ class DriftDetector:
     
     def _setup_connection(self):
         """Setup database connection."""
-        from ..connectors import PostgresConnector, SnowflakeConnector, SQLiteConnector
+        from ..connectors import (
+            PostgresConnector, SnowflakeConnector, SQLiteConnector,
+            MySQLConnector, BigQueryConnector, RedshiftConnector
+        )
         
         if self.storage_config.connection.type == "postgres":
             connector = PostgresConnector(self.storage_config.connection)
@@ -130,6 +133,12 @@ class DriftDetector:
             connector = SnowflakeConnector(self.storage_config.connection)
         elif self.storage_config.connection.type == "sqlite":
             connector = SQLiteConnector(self.storage_config.connection)
+        elif self.storage_config.connection.type == "mysql":
+            connector = MySQLConnector(self.storage_config.connection)
+        elif self.storage_config.connection.type == "bigquery":
+            connector = BigQueryConnector(self.storage_config.connection)
+        elif self.storage_config.connection.type == "redshift":
+            connector = RedshiftConnector(self.storage_config.connection)
         else:
             raise ValueError(f"Unsupported storage type: {self.storage_config.connection.type}")
         

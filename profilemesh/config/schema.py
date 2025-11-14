@@ -15,6 +15,9 @@ class DatabaseType(str, Enum):
     POSTGRES = "postgres"
     SNOWFLAKE = "snowflake"
     SQLITE = "sqlite"
+    MYSQL = "mysql"
+    BIGQUERY = "bigquery"
+    REDSHIFT = "redshift"
 
 
 class ConnectionConfig(BaseModel):
@@ -36,7 +39,13 @@ class ConnectionConfig(BaseModel):
     # SQLite-specific
     filepath: Optional[str] = None
     
+    # BigQuery-specific (use extra_params for credentials_path)
+    # Example: extra_params: {"credentials_path": "/path/to/key.json"}
+    
     # Additional connection parameters
+    # For BigQuery: use credentials_path in extra_params
+    # For MySQL: standard host/port/database/username/password
+    # For Redshift: standard host/port/database/username/password (uses port 5439 by default)
     extra_params: Dict[str, Any] = Field(default_factory=dict)
     
     model_config = {
