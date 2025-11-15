@@ -18,6 +18,7 @@ jobs:
       DOCKER_NETWORK_NAME: profilemesh-ci_default
       DOCKER_IMAGE_NAME: profilemesh-cli-tests
       PROFILEMESH_CONFIG_PATH: examples/config.yml
+      PROFILEMESH_DB_HOST: profilemesh_postgres
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,9 +50,9 @@ jobs:
         run: |
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=postgres \
+              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
             -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=postgres \
+              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
             -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
             profilemesh plan --config $PROFILEMESH_CONFIG_PATH
@@ -62,9 +63,9 @@ jobs:
             echo "Starting profiling run #${run_number}"
             docker run --rm \
               --network $DOCKER_NETWORK_NAME \
-              -e PROFILEMESH_SOURCE__HOST=postgres \
+              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
               -e PROFILEMESH_SOURCE__PORT=5432 \
-              -e PROFILEMESH_STORAGE__CONNECTION__HOST=postgres \
+              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
               -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
               $DOCKER_IMAGE_NAME \
               profilemesh profile --config $PROFILEMESH_CONFIG_PATH
@@ -74,9 +75,9 @@ jobs:
         run: |
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=postgres \
+            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
             -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=postgres \
+            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
             -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
             profilemesh drift --config $PROFILEMESH_CONFIG_PATH --dataset customers
