@@ -67,6 +67,14 @@ monitoring:
   port: 9753            # Metrics available at http://localhost:9753/metrics
   keep_alive: true      # Keep server running after profiling completes
 
+# Retry and recovery configuration
+retry:
+  enabled: true           # Enable retry logic for transient warehouse errors
+  retries: 3              # Maximum number of retry attempts (0-10)
+  backoff_strategy: exponential  # Options: exponential | fixed
+  min_backoff: 0.5        # Minimum backoff delay in seconds
+  max_backoff: 8.0        # Maximum backoff delay in seconds
+
 # Event hooks configuration
 hooks:
   enabled: true

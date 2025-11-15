@@ -20,14 +20,16 @@ logger = logging.getLogger(__name__)
 class ResultWriter:
     """Writes profiling results to storage backend."""
     
-    def __init__(self, config: StorageConfig):
+    def __init__(self, config: StorageConfig, retry_config=None):
         """
         Initialize result writer.
         
         Args:
             config: Storage configuration
+            retry_config: Optional retry configuration
         """
         self.config = config
+        self.retry_config = retry_config
         self.engine: Optional[Engine] = None
         self._setup_connection()
         
@@ -42,17 +44,17 @@ class ResultWriter:
         )
         
         if self.config.connection.type == "postgres":
-            connector = PostgresConnector(self.config.connection)
+            connector = PostgresConnector(self.config.connection, self.retry_config)
         elif self.config.connection.type == "snowflake":
-            connector = SnowflakeConnector(self.config.connection)
+            connector = SnowflakeConnector(self.config.connection, self.retry_config)
         elif self.config.connection.type == "sqlite":
-            connector = SQLiteConnector(self.config.connection)
+            connector = SQLiteConnector(self.config.connection, self.retry_config)
         elif self.config.connection.type == "mysql":
-            connector = MySQLConnector(self.config.connection)
+            connector = MySQLConnector(self.config.connection, self.retry_config)
         elif self.config.connection.type == "bigquery":
-            connector = BigQueryConnector(self.config.connection)
+            connector = BigQueryConnector(self.config.connection, self.retry_config)
         elif self.config.connection.type == "redshift":
-            connector = RedshiftConnector(self.config.connection)
+            connector = RedshiftConnector(self.config.connection, self.retry_config)
         else:
             raise ValueError(f"Unsupported storage type: {self.config.connection.type}")
         

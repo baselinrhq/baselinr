@@ -19,7 +19,7 @@ from .storage.writer import ResultWriter
 from .drift.detector import DriftDetector
 from .planner import PlanBuilder, print_plan
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
-from .logging import RunContext, log_event, log_and_emit
+from .utils.logging import RunContext, log_event, log_and_emit
 
 # Setup fallback logging (will be replaced by structured logging per command)
 logging.basicConfig(
@@ -145,7 +145,7 @@ def profile_command(args):
         metrics_enabled = config.monitoring.enable_metrics
         if metrics_enabled:
             try:
-                from .metrics import start_metrics_server
+                from .utils.metrics import start_metrics_server
                 start_metrics_server(config.monitoring.port)
             except ImportError:
                 log_event(logger, "metrics_import_failed", 
@@ -185,7 +185,7 @@ def profile_command(args):
         # Write results to storage
         if not args.dry_run:
             log_event(ctx.logger, "storage_write_started", "Writing results to storage...")
-            writer = ResultWriter(config.storage)
+            writer = ResultWriter(config.storage, config.retry)
             writer.write_results(results, environment=config.environment)
             log_event(ctx.logger, "storage_write_completed", "Results written successfully",
                       metadata={"result_count": len(results)})
@@ -252,7 +252,7 @@ def drift_command(args):
         
         # Start metrics server if enabled
         if config.monitoring.enable_metrics:
-            from .metrics import start_metrics_server
+            from .utils.metrics import start_metrics_server
             try:
                 start_metrics_server(config.monitoring.port)
             except Exception as e:
@@ -268,6 +268,7 @@ def drift_command(args):
             config.storage, 
             config.drift_detection, 
             event_bus=event_bus,
+            retry_config=config.retry,
             metrics_enabled=config.monitoring.enable_metrics
         )
         

@@ -124,24 +124,26 @@ class ProfileEngine:
             logger.warning("No table patterns specified for profiling")
             return []
         
-        # Create connector
+        # Create connector with retry config
         from ..connectors import (
             PostgresConnector, SnowflakeConnector, SQLiteConnector,
             MySQLConnector, BigQueryConnector, RedshiftConnector
         )
         
+        retry_config = self.config.retry
+        
         if self.config.source.type == "postgres":
-            self.connector = PostgresConnector(self.config.source)
+            self.connector = PostgresConnector(self.config.source, retry_config)
         elif self.config.source.type == "snowflake":
-            self.connector = SnowflakeConnector(self.config.source)
+            self.connector = SnowflakeConnector(self.config.source, retry_config)
         elif self.config.source.type == "sqlite":
-            self.connector = SQLiteConnector(self.config.source)
+            self.connector = SQLiteConnector(self.config.source, retry_config)
         elif self.config.source.type == "mysql":
-            self.connector = MySQLConnector(self.config.source)
+            self.connector = MySQLConnector(self.config.source, retry_config)
         elif self.config.source.type == "bigquery":
-            self.connector = BigQueryConnector(self.config.source)
+            self.connector = BigQueryConnector(self.config.source, retry_config)
         elif self.config.source.type == "redshift":
-            self.connector = RedshiftConnector(self.config.source)
+            self.connector = RedshiftConnector(self.config.source, retry_config)
         else:
             raise ValueError(f"Unsupported database type: {self.config.source.type}")
         
@@ -167,11 +169,11 @@ class ProfileEngine:
             start_time = time.time()
             
             try:
-                from ..logging import log_and_emit
+                from ..utils.logging import log_and_emit
                 
                 # Record metrics: profiling started
                 if self.run_context and self.run_context.metrics_enabled:
-                    from ..metrics import record_profile_started
+                    from ..utils.metrics import record_profile_started
                     record_profile_started(warehouse, fq_table)
                 
                 # Log and emit profiling started
@@ -189,7 +191,7 @@ class ProfileEngine:
                 
                 # Record metrics: profiling completed
                 if self.run_context and self.run_context.metrics_enabled:
-                    from ..metrics import record_profile_completed
+                    from ..utils.metrics import record_profile_completed
                     record_profile_completed(
                         warehouse, fq_table, duration,
                         row_count=result.metadata.get("row_count", 0),
@@ -207,14 +209,14 @@ class ProfileEngine:
                     }
                 )
             except Exception as e:
-                from ..logging import log_and_emit
+                from ..utils.logging import log_and_emit
                 
                 # Calculate duration
                 duration = time.time() - start_time
                 
                 # Record metrics: profiling failed
                 if self.run_context and self.run_context.metrics_enabled:
-                    from ..metrics import record_profile_failed
+                    from ..utils.metrics import record_profile_failed
                     record_profile_failed(warehouse, fq_table, duration)
                 
                 # Log and emit failure
@@ -224,6 +226,9 @@ class ProfileEngine:
                     level="error", table=fq_table, run_id=self.run_id,
                     metadata={"error": str(e), "error_type": type(e).__name__}
                 )
+                
+                # Continue processing other tables instead of aborting
+                logger.warning(f"Continuing with remaining tables after failure on {fq_table}")
         
         # Cleanup
         if self.connector:
@@ -247,7 +252,7 @@ class ProfileEngine:
         start_time = time.time()
         
         fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
-        from ..logging import log_event
+        from ..utils.logging import log_event
         log_event(self.logger, "table_profiling_started", f"Profiling table: {fq_table}",
                   table=fq_table, metadata={"pattern": pattern.table})
         

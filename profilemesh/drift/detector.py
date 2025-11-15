@@ -84,7 +84,8 @@ class DriftDetector:
         storage_config: StorageConfig,
         drift_config: Optional[DriftDetectionConfig] = None,
         event_bus: Optional[EventBus] = None,
-        metrics_enabled: bool = False
+        metrics_enabled: bool = False,
+        retry_config = None
     ):
         """
         Initialize drift detector.
@@ -94,9 +95,11 @@ class DriftDetector:
             drift_config: Drift detection configuration (uses defaults if not provided)
             event_bus: Optional event bus for emitting drift events
             metrics_enabled: Whether Prometheus metrics are enabled
+            retry_config: Optional retry configuration
         """
         self.storage_config = storage_config
         self.drift_config = drift_config or DriftDetectionConfig()
+        self.retry_config = retry_config
         self.engine = self._setup_connection()
         self.event_bus = event_bus
         self.metrics_enabled = metrics_enabled
@@ -131,17 +134,17 @@ class DriftDetector:
         )
         
         if self.storage_config.connection.type == "postgres":
-            connector = PostgresConnector(self.storage_config.connection)
+            connector = PostgresConnector(self.storage_config.connection, self.retry_config)
         elif self.storage_config.connection.type == "snowflake":
-            connector = SnowflakeConnector(self.storage_config.connection)
+            connector = SnowflakeConnector(self.storage_config.connection, self.retry_config)
         elif self.storage_config.connection.type == "sqlite":
-            connector = SQLiteConnector(self.storage_config.connection)
+            connector = SQLiteConnector(self.storage_config.connection, self.retry_config)
         elif self.storage_config.connection.type == "mysql":
-            connector = MySQLConnector(self.storage_config.connection)
+            connector = MySQLConnector(self.storage_config.connection, self.retry_config)
         elif self.storage_config.connection.type == "bigquery":
-            connector = BigQueryConnector(self.storage_config.connection)
+            connector = BigQueryConnector(self.storage_config.connection, self.retry_config)
         elif self.storage_config.connection.type == "redshift":
-            connector = RedshiftConnector(self.storage_config.connection)
+            connector = RedshiftConnector(self.storage_config.connection, self.retry_config)
         else:
             raise ValueError(f"Unsupported storage type: {self.storage_config.connection.type}")
         
@@ -166,7 +169,7 @@ class DriftDetector:
         Returns:
             DriftReport with detected changes
         """
-        from ..logging import log_event
+        from ..utils.logging import log_event
         import time
         
         start_time = time.time()
@@ -241,7 +244,7 @@ class DriftDetector:
         
         # Record metrics: drift detection completed
         if self.metrics_enabled:
-            from ..metrics import record_drift_detection_completed
+            from ..utils.metrics import record_drift_detection_completed
             record_drift_detection_completed(warehouse, dataset_name, duration)
         
         log_event(
@@ -262,7 +265,7 @@ class DriftDetector:
                 if drift.drift_detected:
                     # Record metrics: drift event
                     if self.metrics_enabled:
-                        from ..metrics import record_drift_event
+                        from ..utils.metrics import record_drift_event
                         record_drift_event(warehouse, dataset_name, drift.metric_name, drift.drift_severity)
                     
                     self.event_bus.emit(DataDriftDetected(
@@ -282,7 +285,7 @@ class DriftDetector:
         if self.event_bus and report.schema_changes:
             # Record metrics: schema changes
             if self.metrics_enabled:
-                from ..metrics import record_schema_change
+                from ..utils.metrics import record_schema_change
                 for change in report.schema_changes:
                     # Parse change type from string (e.g., "Column added: foo" -> "column_added")
                     change_type = "column_added" if "added" in change.lower() else \

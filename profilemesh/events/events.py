@@ -135,3 +135,44 @@ class ProfilingFailed(BaseEvent):
             "error": self.error,
         })
 
+
+@dataclass
+class RetryAttempt(BaseEvent):
+    """Event emitted when a retry is attempted."""
+    
+    function: str
+    attempt: int
+    error: str
+    error_type: str
+    
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update({
+            "function": self.function,
+            "attempt": self.attempt,
+            "error": self.error,
+            "error_type": self.error_type,
+        })
+
+
+@dataclass
+class RetryExhausted(BaseEvent):
+    """Event emitted when all retry attempts are exhausted."""
+    
+    function: str
+    total_attempts: int
+    error: str
+    error_type: str
+    
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update({
+            "function": self.function,
+            "total_attempts": self.total_attempts,
+            "error": self.error,
+            "error_type": self.error_type,
+        })

@@ -206,6 +206,34 @@ class HooksConfig(BaseModel):
     hooks: List[HookConfig] = Field(default_factory=list)
 
 
+class RetryConfig(BaseModel):
+    """Retry and recovery configuration."""
+    
+    enabled: bool = Field(True)  # Enable retry logic
+    retries: int = Field(3, ge=0, le=10)  # Maximum retry attempts
+    backoff_strategy: str = Field("exponential")  # exponential | fixed
+    min_backoff: float = Field(0.5, gt=0.0, le=60.0)  # Minimum backoff in seconds
+    max_backoff: float = Field(8.0, gt=0.0, le=300.0)  # Maximum backoff in seconds
+    
+    @field_validator("backoff_strategy")
+    @classmethod
+    def validate_strategy(cls, v: str) -> str:
+        """Validate backoff strategy."""
+        valid_strategies = ["exponential", "fixed"]
+        if v not in valid_strategies:
+            raise ValueError(f"Backoff strategy must be one of {valid_strategies}")
+        return v
+    
+    @field_validator("max_backoff")
+    @classmethod
+    def validate_max_backoff(cls, v: float, info) -> float:
+        """Validate max_backoff is greater than min_backoff."""
+        min_backoff = info.data.get('min_backoff')
+        if min_backoff and v < min_backoff:
+            raise ValueError("max_backoff must be greater than or equal to min_backoff")
+        return v
+
+
 class MonitoringConfig(BaseModel):
     """Monitoring and metrics configuration."""
     
@@ -232,6 +260,7 @@ class ProfileMeshConfig(BaseModel):
     drift_detection: DriftDetectionConfig = Field(default_factory=DriftDetectionConfig)
     hooks: HooksConfig = Field(default_factory=HooksConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+    retry: RetryConfig = Field(default_factory=RetryConfig)
     
     @field_validator("environment")
     @classmethod

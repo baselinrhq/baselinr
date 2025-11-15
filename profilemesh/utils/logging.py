@@ -230,7 +230,7 @@ def log_and_emit(
     
     # Emit to event bus if available
     if event_bus:
-        from .events import BaseEvent
+        from ..events import BaseEvent
         
         # Build event metadata
         event_metadata = metadata.copy() if metadata else {}

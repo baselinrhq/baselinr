@@ -103,7 +103,15 @@ drift_detection:
 monitoring:
   enable_metrics: true   # Set to true to enable Prometheus metrics
   port: 9753             # Port for metrics HTTP server
-  keep_alive: true       # Keep server running after profiling (default: true)
+  keep_alive: false       # Keep server running after profiling (default: true)
+
+# Retry and recovery configuration
+retry:
+  enabled: true           # Enable retry logic for transient warehouse errors
+  retries: 3              # Maximum number of retry attempts (0-10)
+  backoff_strategy: exponential  # Options: exponential | fixed
+  min_backoff: 0.5        # Minimum backoff delay in seconds
+  max_backoff: 8.0        # Maximum backoff delay in seconds
 
 # Event hooks configuration
 hooks:
