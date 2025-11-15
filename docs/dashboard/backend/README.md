@@ -122,3 +122,7 @@ psql "postgresql://profilemesh:profilemesh@localhost:5433/profilemesh"
 \dt profilemesh*
 ```
 
+## Orchestration Integrations
+
+Looking to run profiling plans from Dagster? See `docs/dashboard/backend/DAGSTER.md` for a full guide on the new `profilemesh.integrations.dagster` package (assets, sensors, and helper definitions).
+
