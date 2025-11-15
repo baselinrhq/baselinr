@@ -406,10 +406,11 @@ class TestConnectionPooling:
             def get_connection_string(self):
                 return "test://"
         
-        connector = TestConnector(
-            ConnectionConfig(type="postgres", database="test"),
-            execution_config=ExecutionConfig(max_workers=30)
-        )
+        with patch('profilemesh.config.schema.os.cpu_count', return_value=32):
+            connector = TestConnector(
+                ConnectionConfig(type="postgres", database="test"),
+                execution_config=ExecutionConfig(max_workers=30)
+            )
         
         pool_config = connector._get_pool_config()
         

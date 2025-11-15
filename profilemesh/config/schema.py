@@ -59,15 +59,16 @@ class PartitionConfig(BaseModel):
     """Partition-aware profiling configuration."""
     
     key: Optional[str] = None  # Partition column name
-    strategy: str = Field("all")  # latest | recent_n | sample | all
-    recent_n: Optional[int] = Field(None, gt=0)  # For recent_n strategy
+    strategy: str = Field("all")  # latest | recent_n | sample | all | specific_values
+    recent_n: Optional[int] = Field(None, gt=0)  # For recent_n.strategy
+    values: Optional[List[Any]] = None  # Explicit list of partition values (specific_values)
     metadata_fallback: bool = Field(True)  # Try to infer partition key from metadata
     
     @field_validator("strategy")
     @classmethod
     def validate_strategy(cls, v: str) -> str:
         """Validate partition strategy."""
-        valid_strategies = ["latest", "recent_n", "sample", "all"]
+        valid_strategies = ["latest", "recent_n", "sample", "all", "specific_values"]
         if v not in valid_strategies:
             raise ValueError(f"Strategy must be one of {valid_strategies}")
         return v
@@ -79,6 +80,15 @@ class PartitionConfig(BaseModel):
         strategy = info.data.get('strategy')
         if strategy == 'recent_n' and v is None:
             raise ValueError("recent_n must be specified when strategy is 'recent_n'")
+        return v
+    
+    @field_validator("values")
+    @classmethod
+    def validate_values(cls, v: Optional[List[Any]], info) -> Optional[List[Any]]:
+        """Ensure values are provided when using specific_values strategy."""
+        strategy = info.data.get('strategy')
+        if strategy == 'specific_values' and (not v or len(v) == 0):
+            raise ValueError("values must be provided when strategy is 'specific_values'")
         return v
 
 
@@ -134,6 +144,7 @@ class ProfilingConfig(BaseModel):
             "histogram"
         ]
     )
+    default_sample_ratio: float = Field(1.0, gt=0.0, le=1.0)
 
 
 class StorageConfig(BaseModel):
@@ -277,11 +288,78 @@ class ExecutionConfig(BaseModel):
     def validate_max_workers(cls, v: int) -> int:
         """Ensure max_workers is reasonable."""
         if v > 1:
-            # Only validate if parallelism is enabled
             cpu_count = os.cpu_count() or 4
-            if v > cpu_count * 4:
-                raise ValueError(f"max_workers ({v}) should not exceed {cpu_count * 4} (4x CPU count)")
+            max_allowed = cpu_count * 4
+            if v > max_allowed:
+                raise ValueError(f"max_workers ({v}) should not exceed {max_allowed} (4x CPU count)")
         return v
+
+
+class ChangeDetectionConfig(BaseModel):
+    """Configuration for change detection and metadata caching."""
+    
+    enabled: bool = Field(True)
+    metadata_table: str = Field("profilemesh_table_state")
+    connector_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    snapshot_ttl_minutes: int = Field(1440, ge=1)
+
+
+class PartialProfilingConfig(BaseModel):
+    """Configuration for partial profiling decisions."""
+    
+    enabled: bool = Field(True)
+    allow_partition_pruning: bool = Field(True)
+    max_partitions_per_run: int = Field(64, ge=1, le=10000)
+    mergeable_metrics: List[str] = Field(
+        default_factory=lambda: [
+            "count",
+            "null_count",
+            "null_percent",
+            "min",
+            "max",
+            "mean",
+            "stddev"
+        ]
+    )
+
+
+class AdaptiveSchedulingConfig(BaseModel):
+    """Adaptive scheduling / staleness scoring configuration."""
+    
+    enabled: bool = Field(True)
+    default_interval_minutes: int = Field(1440, ge=5)
+    min_interval_minutes: int = Field(60, ge=5)
+    max_interval_minutes: int = Field(10080, ge=60)  # 7 days
+    priority_overrides: Dict[str, int] = Field(default_factory=dict)  # table_name -> minutes
+    staleness_penalty_minutes: int = Field(1440, ge=5)
+
+
+class CostControlConfig(BaseModel):
+    """Cost guardrails for incremental profiling."""
+    
+    enabled: bool = Field(True)
+    max_bytes_scanned: Optional[int] = Field(None, ge=1)
+    max_rows_scanned: Optional[int] = Field(None, ge=1)
+    fallback_strategy: str = Field("sample")  # sample | defer | full
+    sample_fraction: float = Field(0.1, gt=0.0, le=1.0)
+
+    @field_validator("fallback_strategy")
+    @classmethod
+    def validate_fallback(cls, v: str) -> str:
+        valid = ["sample", "defer", "full"]
+        if v not in valid:
+            raise ValueError(f"fallback_strategy must be one of {valid}")
+        return v
+
+
+class IncrementalConfig(BaseModel):
+    """Top-level incremental profiling configuration."""
+    
+    enabled: bool = Field(False)
+    change_detection: ChangeDetectionConfig = Field(default_factory=ChangeDetectionConfig)
+    partial_profiling: PartialProfilingConfig = Field(default_factory=PartialProfilingConfig)
+    adaptive_scheduling: AdaptiveSchedulingConfig = Field(default_factory=AdaptiveSchedulingConfig)
+    cost_controls: CostControlConfig = Field(default_factory=CostControlConfig)
 
 
 class ProfileMeshConfig(BaseModel):
@@ -296,6 +374,7 @@ class ProfileMeshConfig(BaseModel):
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     retry: RetryConfig = Field(default_factory=RetryConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
+    incremental: IncrementalConfig = Field(default_factory=IncrementalConfig)
     
     @field_validator("environment")
     @classmethod

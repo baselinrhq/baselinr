@@ -93,6 +93,36 @@ Expects these tables from ProfileMesh Phase 1:
 - `profilemesh_runs`
 - `profilemesh_results`
 - `profilemesh_events`
+- `profilemesh_table_state` (new incremental metadata cache)
+
+`profilemesh_table_state` stores the last snapshot ID, decision, and staleness score per table. The incremental planner and Dagster sensors consult this table to decide whether to skip, partially profile, or fully scan each dataset.
+
+### Incremental Profiling Configuration
+
+Enable incremental profiling in your main ProfileMesh config:
+
+```yaml
+incremental:
+  enabled: true
+  change_detection:
+    metadata_table: profilemesh_table_state
+  partial_profiling:
+    allow_partition_pruning: true
+    max_partitions_per_run: 64
+  cost_controls:
+    enabled: true
+    max_rows_scanned: 100000000
+    fallback_strategy: sample  # sample | defer | full
+    sample_fraction: 0.05
+```
+
+With this block enabled the CLI, sensors, and dashboard metrics automatically:
+
+1. Compare warehouse metadata (row counts, partition manifests, snapshot IDs) with `profilemesh_table_state`.
+2. Skip runs when nothing changed (`profile_skipped_no_change` events are emitted for observability).
+3. Issue partial runs when detectors pinpoint specific partitions/batches.
+4. Downgrade to sampling or defer when cost guardrails would be exceeded.
+5. Persist the final decision, snapshot ID, and cost estimate back into `profilemesh_table_state` so subsequent scheduler ticks stay in sync with the dashboard.
 
 ## Development
 

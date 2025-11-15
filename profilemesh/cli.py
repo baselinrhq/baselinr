@@ -13,11 +13,12 @@ from pathlib import Path
 from typing import Optional
 
 from .config.loader import ConfigLoader
-from .config.schema import ProfileMeshConfig, HookConfig
+from .config.schema import ProfileMeshConfig, HookConfig, SamplingConfig, TablePattern
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
 from .drift.detector import DriftDetector
 from .planner import PlanBuilder, print_plan
+from .incremental import IncrementalPlan, TableRunDecision, TableStateStore, TableState
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
 from .utils.logging import RunContext, log_event, log_and_emit
 
@@ -168,12 +169,19 @@ def profile_command(args):
                      f"Event bus initialized with {event_bus.hook_count} hooks",
                      metadata={"hook_count": event_bus.hook_count})
         
+        plan_builder = PlanBuilder(config)
+        incremental_plan = plan_builder.get_tables_to_run()
+        tables_to_profile = _select_tables_from_plan(incremental_plan, config)
+        if not tables_to_profile:
+            log_event(ctx.logger, "incremental_noop", "No tables selected for this run")
+            return 0
+        
         # Create profiling engine with run context
         engine = ProfileEngine(config, event_bus=event_bus, run_context=ctx)
         
         # Run profiling
         log_event(ctx.logger, "profiling_batch_started", "Starting profiling...")
-        results = engine.profile()
+        results = engine.profile(table_patterns=tables_to_profile)
         
         if not results:
             log_event(ctx.logger, "no_results", "No profiling results generated", level="warning")
@@ -190,6 +198,7 @@ def profile_command(args):
             log_event(ctx.logger, "storage_write_completed", "Results written successfully",
                       metadata={"result_count": len(results)})
             writer.close()
+            _update_state_store_with_results(config, incremental_plan, results)
         else:
             log_event(ctx.logger, "dry_run", "Dry run - results not written to storage")
         
@@ -474,6 +483,79 @@ def main():
     else:
         parser.print_help()
         return 1
+
+
+def _select_tables_from_plan(plan: IncrementalPlan, config: ProfileMeshConfig):
+    """Convert plan decisions into table patterns for execution."""
+    selected = []
+    for decision in plan.decisions:
+        if decision.action not in ("full", "partial", "sample"):
+            continue
+        pattern = decision.table
+        table_pattern = pattern.model_copy(deep=True)
+        
+        if decision.action == "partial" and decision.changed_partitions:
+            if not table_pattern.partition or not table_pattern.partition.key:
+                logger.warning(
+                    "Partial run requested for %s but no partition key configured; falling back to full scan",
+                    pattern.table
+                )
+            else:
+                table_pattern.partition.strategy = "specific_values"
+                table_pattern.partition.values = decision.changed_partitions
+        
+        if decision.action == "sample":
+            sample_fraction = config.incremental.cost_controls.sample_fraction
+            table_pattern.sampling = SamplingConfig(
+                enabled=True,
+                method="random",
+                fraction=sample_fraction,
+            )
+        
+        selected.append(table_pattern)
+    return selected
+
+
+def _update_state_store_with_results(config: ProfileMeshConfig, plan: IncrementalPlan, results):
+    """Persist latest run metadata for incremental planner."""
+    if not config.incremental.enabled or not results:
+        return
+    store = TableStateStore(
+        storage_config=config.storage,
+        table_name=config.incremental.change_detection.metadata_table,
+        retry_config=config.retry,
+        create_tables=config.storage.create_tables,
+    )
+    decision_map = {
+        (_plan_table_key(decision.table)): decision
+        for decision in plan.decisions
+        if decision.action in ("full", "partial", "sample")
+    }
+    for result in results:
+        key = _plan_table_key_raw(result.schema_name, result.dataset_name)
+        decision = decision_map.get(key)
+        state = TableState(
+            table_name=result.dataset_name,
+            schema_name=result.schema_name,
+            last_run_id=result.run_id,
+            snapshot_id=decision.snapshot_id if decision else None,
+            change_token=None,
+            decision=decision.action if decision else "full",
+            decision_reason=decision.reason if decision else "manual_run",
+            last_profiled_at=result.profiled_at,
+            row_count=result.metadata.get("row_count"),
+            bytes_scanned=decision.estimated_cost if decision else None,
+            metadata=decision.metadata if decision else {},
+        )
+        store.upsert_state(state)
+
+
+def _plan_table_key(pattern: TablePattern) -> str:
+    return _plan_table_key_raw(pattern.schema_, pattern.table)
+
+
+def _plan_table_key_raw(schema: Optional[str], table: str) -> str:
+    return f"{schema}.{table}" if schema else table
 
 
 if __name__ == '__main__':

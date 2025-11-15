@@ -150,7 +150,7 @@ class WorkerPool:
         Returns:
             List of results (or None for failed tasks)
         """
-        results = []
+        results_map: Dict[Future, Any] = {}
         successful = 0
         failed = 0
         start_time = time.time()
@@ -159,7 +159,7 @@ class WorkerPool:
             for future in as_completed(futures, timeout=timeout):
                 try:
                     result = future.result()
-                    results.append(result)
+                    results_map[future] = result
                     successful += 1
                     
                     # Remove from active tasks
@@ -170,7 +170,7 @@ class WorkerPool:
                     
                 except Exception as e:
                     failed += 1
-                    results.append(None)
+                    results_map[future] = None
                     
                     # Remove from active tasks
                     task_name = self.active_tasks.pop(future, "unknown")
@@ -194,7 +194,10 @@ class WorkerPool:
         # Record batch duration metric
         self._record_batch_duration(len(futures), duration)
         
-        return results
+        ordered_results = []
+        for future in futures:
+            ordered_results.append(results_map.get(future))
+        return ordered_results
     
     def shutdown(self, wait: bool = True, timeout: Optional[float] = None):
         """

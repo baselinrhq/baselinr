@@ -12,6 +12,15 @@ import uuid
 import time
 
 from ..connectors.base import BaseConnector
+from ..connectors.factory import create_connector
+from ..connectors import (
+    PostgresConnector,
+    SnowflakeConnector,
+    SQLiteConnector,
+    MySQLConnector,
+    BigQueryConnector,
+    RedshiftConnector,
+)
 from ..config.schema import ProfileMeshConfig, TablePattern
 from .metrics import MetricCalculator
 from .query_builder import QueryBuilder
@@ -158,28 +167,14 @@ class ProfileEngine:
             return []
         
         # Create connector with retry config
-        from ..connectors import (
-            PostgresConnector, SnowflakeConnector, SQLiteConnector,
-            MySQLConnector, BigQueryConnector, RedshiftConnector
-        )
-        
         retry_config = self.config.retry
         execution_config = self.config.execution
         
-        if self.config.source.type == "postgres":
-            self.connector = PostgresConnector(self.config.source, retry_config, execution_config)
-        elif self.config.source.type == "snowflake":
-            self.connector = SnowflakeConnector(self.config.source, retry_config, execution_config)
-        elif self.config.source.type == "sqlite":
-            self.connector = SQLiteConnector(self.config.source, retry_config, execution_config)
-        elif self.config.source.type == "mysql":
-            self.connector = MySQLConnector(self.config.source, retry_config, execution_config)
-        elif self.config.source.type == "bigquery":
-            self.connector = BigQueryConnector(self.config.source, retry_config, execution_config)
-        elif self.config.source.type == "redshift":
-            self.connector = RedshiftConnector(self.config.source, retry_config, execution_config)
-        else:
-            raise ValueError(f"Unsupported database type: {self.config.source.type}")
+        self.connector = create_connector(
+            self.config.source,
+            retry_config=retry_config,
+            execution_config=execution_config
+        )
         
         # Create query builder for partition/sampling support
         self.query_builder = QueryBuilder(database_type=self.config.source.type)

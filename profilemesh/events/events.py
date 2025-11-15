@@ -137,6 +137,48 @@ class ProfilingFailed(BaseEvent):
 
 
 @dataclass
+class ProfilingSkipped(BaseEvent):
+    """Event emitted when a table is skipped or deferred."""
+    
+    table: str
+    schema: Optional[str]
+    reason: str
+    action: str
+    snapshot_id: Optional[str] = None
+    
+    def __post_init__(self):
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update({
+            "table": self.table,
+            "schema": self.schema,
+            "reason": self.reason,
+            "action": self.action,
+            "snapshot_id": self.snapshot_id,
+        })
+    
+    @classmethod
+    def create(
+        cls,
+        table: str,
+        schema: Optional[str],
+        reason: str,
+        action: str,
+        snapshot_id: Optional[str] = None,
+    ) -> "ProfilingSkipped":
+        return cls(
+            event_type="ProfilingSkipped",
+            timestamp=datetime.utcnow(),
+            table=table,
+            schema=schema,
+            reason=reason,
+            action=action,
+            snapshot_id=snapshot_id,
+            metadata={},
+        )
+
+
+@dataclass
 class RetryAttempt(BaseEvent):
     """Event emitted when a retry is attempted."""
     

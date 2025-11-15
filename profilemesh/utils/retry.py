@@ -11,7 +11,19 @@ import logging
 from functools import wraps
 from typing import Callable, Any, Optional, Tuple, Type
 
+try:
+    from prometheus_client import Counter
+except ImportError:
+    Counter = None
+
+try:
+    from .metrics import is_metrics_enabled
+except ImportError:
+    def is_metrics_enabled() -> bool:
+        return False
+
 logger = logging.getLogger(__name__)
+event_bus = None  # Optional event bus injected at runtime or during tests
 
 
 # ============================================================
@@ -259,14 +271,16 @@ def _log_retry_exhausted(func_name: str, total_attempts: int, error: Exception):
 
 def _emit_retry_event(func_name: str, attempt: int, error: Exception):
     """Emit retry event to event bus."""
+    global event_bus
+    if event_bus is None:
+        return
     try:
-        from ..events.event_bus import event_bus
         from ..events.events import BaseEvent
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         event = BaseEvent(
             event_type="retry_attempt",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "function": func_name,
                 "attempt": attempt,
@@ -276,21 +290,22 @@ def _emit_retry_event(func_name: str, attempt: int, error: Exception):
         )
         
         event_bus.emit(event)
-    except (ImportError, Exception) as e:
-        # Silently fail if event bus not available or emission fails
+    except Exception as e:
         logger.debug(f"Could not emit retry event: {e}")
 
 
 def _emit_retry_failure(func_name: str, error: Exception):
     """Emit retry failure event to event bus."""
+    global event_bus
+    if event_bus is None:
+        return
     try:
-        from ..events.event_bus import event_bus
         from ..events.events import BaseEvent
-        from datetime import datetime
+        from datetime import datetime, timezone
         
         event = BaseEvent(
             event_type="retry_exhausted",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(timezone.utc),
             metadata={
                 "function": func_name,
                 "error": str(error),
@@ -299,28 +314,22 @@ def _emit_retry_failure(func_name: str, error: Exception):
         )
         
         event_bus.emit(event)
-    except (ImportError, Exception) as e:
-        # Silently fail if event bus not available or emission fails
+    except Exception as e:
         logger.debug(f"Could not emit retry failure event: {e}")
 
 
 def _record_retry_metric():
     """Record retry metric in Prometheus."""
+    if Counter is None:
+        return
     try:
-        from .metrics import is_metrics_enabled
-        
         if is_metrics_enabled():
-            from prometheus_client import Counter
-            
-            # Get or create the transient errors counter
             transient_errors_counter = Counter(
                 "profilemesh_warehouse_transient_errors_total",
                 "Total number of transient warehouse errors encountered"
             )
-            
             transient_errors_counter.inc()
     except (ImportError, Exception) as e:
-        # Silently fail if metrics not available
         logger.debug(f"Could not record retry metric: {e}")
 
 

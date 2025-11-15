@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import Mock
 from datetime import datetime
+from pydantic import ValidationError
 
 from profilemesh.planner import PlanBuilder, ProfilingPlan, TablePlan, print_plan
 from profilemesh.config.schema import (
@@ -132,7 +133,7 @@ class TestPlanBuilder:
         builder = PlanBuilder(mock_config)
         pattern = mock_config.profiling.tables[0]
         
-        table_plan = builder._build_table_plan(pattern)
+        table_plan = builder._build_table_plan(pattern, None)
         
         assert table_plan.name == "customers"
         assert table_plan.schema == "public"
@@ -152,7 +153,7 @@ class TestPlanBuilder:
         )
         
         builder = PlanBuilder(mock_config)
-        table_plan = builder._build_table_plan(pattern)
+        table_plan = builder._build_table_plan(pattern, None)
         
         assert table_plan.partition_config is not None
         assert table_plan.partition_config['key'] == "date"
@@ -194,22 +195,20 @@ class TestPlanBuilder:
         """Test validation catches invalid sampling fractions."""
         from profilemesh.config.schema import SamplingConfig
         
-        config = ProfileMeshConfig(
-            environment="test",
-            source=ConnectionConfig(type="postgres", database="test"),
-            storage=StorageConfig(
-                connection=ConnectionConfig(type="postgres", database="test")
-            ),
-            profiling=ProfilingConfig(
-                tables=[TablePattern(
-                    table="test",
-                    sampling=SamplingConfig(enabled=True, fraction=1.5)  # Invalid!
-                )]
+        with pytest.raises(ValidationError):
+            ProfileMeshConfig(
+                environment="test",
+                source=ConnectionConfig(type="postgres", database="test"),
+                storage=StorageConfig(
+                    connection=ConnectionConfig(type="postgres", database="test")
+                ),
+                profiling=ProfilingConfig(
+                    tables=[TablePattern(
+                        table="test",
+                        sampling=SamplingConfig(enabled=True, fraction=1.5)  # Invalid!
+                    )]
+                )
             )
-        )
-        
-        # This should fail during Pydantic validation before we even build the plan
-        # So we expect a validation error when creating the config
 
 
 class TestPrintPlan:
