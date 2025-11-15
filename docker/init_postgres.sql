@@ -112,7 +112,8 @@ CREATE TABLE IF NOT EXISTS profilemesh_runs (
     status VARCHAR(20),
     row_count INTEGER,
     column_count INTEGER,
-    PRIMARY KEY (run_id, dataset_name)
+    PRIMARY KEY (run_id, dataset_name),
+    UNIQUE (run_id)
 );
 
 -- Create index for runs table
