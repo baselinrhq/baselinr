@@ -106,10 +106,43 @@ class ProfileEngine:
             self.logger = logging.getLogger(__name__)
             import uuid
             self.run_id = str(uuid.uuid4())
+        
+        # Initialize worker pool ONLY if parallelism is enabled
+        self.execution_config = config.execution
+        self.worker_pool: Optional[Any] = None
+        
+        # Only create worker pool if max_workers > 1
+        if self.execution_config.max_workers > 1:
+            # Determine warehouse-specific worker limit
+            warehouse_limit = self.execution_config.warehouse_limits.get(
+                self.config.source.type,
+                self.execution_config.max_workers
+            )
+            
+            # Special handling for SQLite (single writer)
+            if self.config.source.type == "sqlite":
+                warehouse_limit = 1  # SQLite doesn't support concurrent writes well
+                self.logger.warning("SQLite does not support parallel writes. Using sequential execution.")
+            
+            if warehouse_limit > 1:
+                from ..utils.worker_pool import WorkerPool
+                self.worker_pool = WorkerPool(
+                    max_workers=warehouse_limit,
+                    queue_size=self.execution_config.queue_size,
+                    warehouse_type=self.config.source.type
+                )
+                self.logger.info(f"Parallel execution enabled with {warehouse_limit} workers")
+        else:
+            from ..utils.logging import log_event
+            log_event(self.logger, "execution_mode", "Sequential execution (max_workers=1, default)", 
+                     level="debug")
     
     def profile(self, table_patterns: Optional[List[TablePattern]] = None) -> List[ProfilingResult]:
         """
-        Profile tables according to configuration.
+        Profile tables with optional parallel execution.
+        
+        If max_workers=1 (default), uses sequential execution (existing behavior).
+        If max_workers > 1, uses parallel execution via worker pool.
         
         Args:
             table_patterns: Optional list of table patterns to profile
@@ -131,19 +164,20 @@ class ProfileEngine:
         )
         
         retry_config = self.config.retry
+        execution_config = self.config.execution
         
         if self.config.source.type == "postgres":
-            self.connector = PostgresConnector(self.config.source, retry_config)
+            self.connector = PostgresConnector(self.config.source, retry_config, execution_config)
         elif self.config.source.type == "snowflake":
-            self.connector = SnowflakeConnector(self.config.source, retry_config)
+            self.connector = SnowflakeConnector(self.config.source, retry_config, execution_config)
         elif self.config.source.type == "sqlite":
-            self.connector = SQLiteConnector(self.config.source, retry_config)
+            self.connector = SQLiteConnector(self.config.source, retry_config, execution_config)
         elif self.config.source.type == "mysql":
-            self.connector = MySQLConnector(self.config.source, retry_config)
+            self.connector = MySQLConnector(self.config.source, retry_config, execution_config)
         elif self.config.source.type == "bigquery":
-            self.connector = BigQueryConnector(self.config.source, retry_config)
+            self.connector = BigQueryConnector(self.config.source, retry_config, execution_config)
         elif self.config.source.type == "redshift":
-            self.connector = RedshiftConnector(self.config.source, retry_config)
+            self.connector = RedshiftConnector(self.config.source, retry_config, execution_config)
         else:
             raise ValueError(f"Unsupported database type: {self.config.source.type}")
         
@@ -160,7 +194,67 @@ class ProfileEngine:
             query_builder=self.query_builder
         )
         
-        # Profile each table pattern
+        # Route to parallel or sequential execution
+        try:
+            if self.worker_pool:
+                return self._profile_parallel(patterns)
+            else:
+                return self._profile_sequential(patterns)
+        finally:
+            # Cleanup
+            if self.connector:
+                self.connector.close()
+            if self.worker_pool:
+                self.worker_pool.shutdown(wait=True)
+    
+    def _profile_parallel(self, patterns: List[TablePattern]) -> List[ProfilingResult]:
+        """
+        Profile tables in parallel using worker pool.
+        Only called when max_workers > 1.
+        
+        Args:
+            patterns: List of table patterns to profile
+        
+        Returns:
+            List of profiling results
+        """
+        from ..utils.worker_pool import profile_table_task
+        
+        # Submit all tasks
+        futures = []
+        for pattern in patterns:
+            future = self.worker_pool.submit(
+                profile_table_task,
+                self,  # Pass engine instance
+                pattern,
+                self.run_context,
+                self.event_bus
+            )
+            futures.append(future)
+        
+        # Wait for completion
+        results = self.worker_pool.wait_for_completion(futures)
+        
+        # Filter out None results (failed tasks)
+        successful = [r for r in results if r is not None]
+        failed_count = len(results) - len(successful)
+        
+        if failed_count > 0:
+            logger.warning(f"Parallel profiling completed: {len(successful)} succeeded, {failed_count} failed")
+        
+        return successful
+    
+    def _profile_sequential(self, patterns: List[TablePattern]) -> List[ProfilingResult]:
+        """
+        Profile tables sequentially (existing implementation).
+        This is the default behavior when max_workers=1.
+        
+        Args:
+            patterns: List of table patterns to profile
+        
+        Returns:
+            List of profiling results
+        """
         results = []
         warehouse = self.config.source.type  # Get warehouse type for metrics
         
@@ -229,10 +323,6 @@ class ProfileEngine:
                 
                 # Continue processing other tables instead of aborting
                 logger.warning(f"Continuing with remaining tables after failure on {fq_table}")
-        
-        # Cleanup
-        if self.connector:
-            self.connector.close()
         
         return results
     

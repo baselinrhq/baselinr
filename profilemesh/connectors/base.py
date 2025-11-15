@@ -18,16 +18,18 @@ logger = logging.getLogger(__name__)
 class BaseConnector(ABC):
     """Abstract base class for database connectors."""
     
-    def __init__(self, config: ConnectionConfig, retry_config=None):
+    def __init__(self, config: ConnectionConfig, retry_config=None, execution_config=None):
         """
         Initialize connector with configuration.
         
         Args:
             config: Connection configuration
             retry_config: Optional retry configuration (RetryConfig object)
+            execution_config: Optional execution configuration (ExecutionConfig object)
         """
         self.config = config
         self.retry_config = retry_config
+        self.execution_config = execution_config
         self._engine: Optional[Engine] = None
         self._metadata: Optional[MetaData] = None
     
@@ -55,6 +57,30 @@ class BaseConnector(ABC):
             Configured SQLAlchemy engine
         """
         pass
+    
+    def _get_pool_config(self) -> Dict[str, int]:
+        """
+        Calculate pool configuration based on execution settings.
+        Only adjusts pool size when parallelism is enabled (max_workers > 1).
+        
+        Returns:
+            Dictionary with pool_size and max_overflow
+        """
+        if self.execution_config and self.execution_config.max_workers > 1:
+            max_workers = self.execution_config.max_workers
+            # Set pool size based on worker count
+            pool_size = min(max_workers + 2, 20)  # Cap at 20
+            max_overflow = max_workers
+        else:
+            # Default pool size for sequential execution
+            pool_size = 5
+            max_overflow = 10
+        
+        return {
+            "pool_size": pool_size,
+            "max_overflow": max_overflow,
+            "pool_pre_ping": True  # Verify connections before use
+        }
     
     @abstractmethod
     def get_connection_string(self) -> str:

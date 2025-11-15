@@ -66,7 +66,27 @@ query_duration_seconds = Histogram(
 
 active_workers = Gauge(
     "profilemesh_active_workers",
-    "Number of currently running worker threads"
+    "Number of currently running worker threads",
+    ["warehouse"]
+)
+
+worker_tasks_total = Counter(
+    "profilemesh_worker_tasks_total",
+    "Total number of worker tasks",
+    ["warehouse", "status"]  # status: started, completed, failed
+)
+
+worker_queue_size = Gauge(
+    "profilemesh_worker_queue_size",
+    "Current size of worker task queue",
+    ["warehouse"]
+)
+
+batch_duration_seconds = Histogram(
+    "profilemesh_batch_duration_seconds",
+    "Histogram of batch execution times",
+    ["warehouse", "batch_size"],
+    buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0)
 )
 
 rows_profiled_total = Counter(
@@ -94,7 +114,7 @@ def record_profile_started(warehouse: str, table: str):
         warehouse: Warehouse type (postgres, snowflake, etc.)
         table: Fully qualified table name
     """
-    active_workers.inc()
+    active_workers.labels(warehouse=warehouse).inc()
     logger.debug(f"Metrics: Profile started for {warehouse}/{table}")
 
 
@@ -117,7 +137,7 @@ def record_profile_completed(
     """
     profile_runs_total.labels(warehouse, table, "success").inc()
     profile_duration_seconds.labels(warehouse, table).observe(duration_seconds)
-    active_workers.dec()
+    active_workers.labels(warehouse=warehouse).dec()
     
     if row_count is not None:
         rows_profiled_total.labels(warehouse, table).inc(row_count)
@@ -139,7 +159,7 @@ def record_profile_failed(warehouse: str, table: str, duration_seconds: float):
     """
     profile_runs_total.labels(warehouse, table, "failed").inc()
     profile_duration_seconds.labels(warehouse, table).observe(duration_seconds)
-    active_workers.dec()
+    active_workers.labels(warehouse=warehouse).dec()
     
     logger.debug(f"Metrics: Profile failed for {warehouse}/{table} after {duration_seconds:.2f}s")
 

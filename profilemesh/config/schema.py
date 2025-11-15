@@ -5,6 +5,7 @@ Defines the structure for ProfileMesh configuration including
 warehouse connections, profiling targets, and output settings.
 """
 
+import os
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 from enum import Enum
@@ -250,6 +251,39 @@ class MonitoringConfig(BaseModel):
         return v
 
 
+class ExecutionConfig(BaseModel):
+    """Execution and parallelism configuration.
+    
+    This configuration is OPTIONAL and defaults to sequential execution
+    (max_workers=1) for backward compatibility. Enable parallelism by
+    setting max_workers > 1.
+    
+    Note: Dagster users already benefit from asset-level parallelism.
+    This feature is primarily useful for CLI execution or when batching
+    multiple tables within a single Dagster asset.
+    """
+    
+    # CRITICAL: Default to 1 (sequential) for backward compatibility
+    max_workers: int = Field(1, ge=1, le=64)
+    batch_size: int = Field(10, ge=1, le=100)
+    queue_size: int = Field(100, ge=10, le=1000)  # Bounded queue size
+    
+    # Warehouse-specific overrides (optional)
+    warehouse_limits: Dict[str, int] = Field(default_factory=dict)
+    # Example: {"snowflake": 20, "postgres": 8, "sqlite": 1}
+    
+    @field_validator("max_workers")
+    @classmethod
+    def validate_max_workers(cls, v: int) -> int:
+        """Ensure max_workers is reasonable."""
+        if v > 1:
+            # Only validate if parallelism is enabled
+            cpu_count = os.cpu_count() or 4
+            if v > cpu_count * 4:
+                raise ValueError(f"max_workers ({v}) should not exceed {cpu_count * 4} (4x CPU count)")
+        return v
+
+
 class ProfileMeshConfig(BaseModel):
     """Main ProfileMesh configuration."""
     
@@ -261,6 +295,7 @@ class ProfileMeshConfig(BaseModel):
     hooks: HooksConfig = Field(default_factory=HooksConfig)
     monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
     retry: RetryConfig = Field(default_factory=RetryConfig)
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     
     @field_validator("environment")
     @classmethod

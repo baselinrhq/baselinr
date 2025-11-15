@@ -113,6 +113,21 @@ retry:
   min_backoff: 0.5        # Minimum backoff delay in seconds
   max_backoff: 8.0        # Maximum backoff delay in seconds
 
+# Execution and parallelism configuration (OPTIONAL)
+# Default: max_workers=1 (sequential execution)
+# Enable parallelism by setting max_workers > 1
+# Note: Dagster users already benefit from asset-level parallelism
+execution:
+  max_workers: 1          # Default: 1 (sequential). Set > 1 to enable parallelism
+  batch_size: 10          # Tables per batch (default: 10)
+  queue_size: 100         # Maximum queue size (default: 100)
+  
+  # Warehouse-specific worker limits (optional, only used if max_workers > 1)
+  # warehouse_limits:
+  #   snowflake: 20       # Snowflake can handle more concurrency
+  #   postgres: 8         # Postgres moderate concurrency
+  #   sqlite: 1           # SQLite single writer (parallelism disabled)
+
 # Event hooks configuration
 hooks:
   # Master switch - set to false to disable all hooks

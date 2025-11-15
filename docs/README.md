@@ -11,6 +11,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 ### 📖 [Guides](guides/)
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection
 - **[Partition & Sampling](guides/PARTITION_SAMPLING.md)** - Advanced profiling strategies
+- **[Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)** - Optional parallel execution for faster profiling
 - **[Prometheus Metrics](guides/PROMETHEUS_METRICS.md)** - Setting up monitoring and metrics
 - **[Retry & Recovery](guides/RETRY_AND_RECOVERY.md)** - Automatic retry for transient warehouse failures
 - **[Retry Quick Start](guides/RETRY_QUICK_START.md)** - Quick reference for retry system
@@ -54,6 +55,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 - **New to ProfileMesh?** → Start with [Getting Started](getting-started/QUICKSTART.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
+- **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)
 - **Troubleshooting?** → Check the relevant component's README or fix guides
