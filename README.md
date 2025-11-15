@@ -46,6 +46,18 @@ pip install -e ".[dagster]"
 pip install -e ".[all]"
 ```
 
+## 📚 Documentation
+
+All documentation has been organized into the [`docs/`](docs/) directory:
+
+- **Getting Started**: [docs/getting-started/](docs/getting-started/) - Quick start and installation guides
+- **User Guides**: [docs/guides/](docs/guides/) - Drift detection, partitioning, metrics
+- **Architecture**: [docs/architecture/](docs/architecture/) - System design and implementation
+- **Dashboard**: [docs/dashboard/](docs/dashboard/) - Dashboard setup and development
+- **Development**: [docs/development/](docs/development/) - Contributing and development
+
+See [docs/README.md](docs/README.md) for the complete documentation index.
+
 ## 🏃 Quick Start
 
 ### 1. Create a Configuration File
@@ -269,7 +281,7 @@ ProfileMesh uses the following thresholds for drift severity:
 - **Medium**: 15% change
 - **High**: 30% change
 
-Thresholds are fully configurable via the `drift_detection` configuration. See [DRIFT_DETECTION.md](DRIFT_DETECTION.md) for details on configurable strategies.
+Thresholds are fully configurable via the `drift_detection` configuration. See [docs/guides/DRIFT_DETECTION.md](docs/guides/DRIFT_DETECTION.md) for details on configurable strategies.
 
 ## 🔔 Event & Alert Hooks
 
@@ -336,7 +348,7 @@ hooks:
         webhook_url: https://api.example.com/alerts
 ```
 
-See [EVENTS_AND_HOOKS.md](EVENTS_AND_HOOKS.md) for comprehensive documentation and examples.
+See [docs/architecture/EVENTS_AND_HOOKS.md](docs/architecture/EVENTS_AND_HOOKS.md) for comprehensive documentation and examples.
 
 ## 🛠️ Configuration Options
 

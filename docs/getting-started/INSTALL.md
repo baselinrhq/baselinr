@@ -263,7 +263,7 @@ docker-compose down -v  # -v removes volumes
 
 After successful installation:
 
-1. **Read QUICKSTART.md** for a guided tutorial
+1. **Read [QUICKSTART.md](QUICKSTART.md)** for a guided tutorial
 2. **Run the quickstart example**: `python examples/quickstart.py`
 3. **Check the README.md** for full documentation
 4. **Explore Dagster integration** at http://localhost:3000 (if using Docker)
@@ -302,6 +302,6 @@ ProfileMesh is tested on:
 
 For more information, see:
 - **README.md** - Main documentation
-- **QUICKSTART.md** - Getting started guide
+- **[QUICKSTART.md](QUICKSTART.md)** - Getting started guide
 - **DEVELOPMENT.md** - Developer guide
 

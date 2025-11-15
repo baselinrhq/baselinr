@@ -330,7 +330,7 @@ def main():
     print("=" * 60 + "\n")
     
     print("Next steps:")
-    print("  1. Review EVENTS_AND_HOOKS.md for detailed documentation")
+    print("  1. Review docs/architecture/EVENTS_AND_HOOKS.md for detailed documentation")
     print("  2. Configure hooks in your config.yml")
     print("  3. Create custom hooks for your specific needs")
     print("  4. Integrate with your orchestration platform")

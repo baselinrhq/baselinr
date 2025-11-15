@@ -36,7 +36,7 @@ The ProfileMesh Phase 2 Internal Dashboard MVP has been successfully created!
 ```
 dashboard/
 ├── README.md                   # Main documentation
-├── QUICKSTART.md               # 5-minute setup guide
+├── QUICKSTART.md               # 5-minute setup guide (this file)
 ├── ARCHITECTURE.md             # Technical architecture
 ├── SETUP_COMPLETE.md           # This file
 ├── .gitignore                  # Git ignore rules
@@ -279,7 +279,7 @@ docker-compose up
 ## 📚 Documentation
 
 - **README.md**: Comprehensive feature overview
-- **QUICKSTART.md**: 5-minute setup guide
+- **QUICKSTART.md**: 5-minute setup guide (in this directory)
 - **ARCHITECTURE.md**: Technical architecture deep-dive
 - **backend/README.md**: Backend-specific docs
 - **frontend/README.md**: Frontend-specific docs
@@ -337,7 +337,7 @@ The dashboard is structured with:
 ## 🤝 Support
 
 For issues or questions:
-1. Check **QUICKSTART.md** for setup help
+1. Check [QUICKSTART.md](QUICKSTART.md) for setup help
 2. Review **ARCHITECTURE.md** for technical details
 3. Check API docs at http://localhost:8000/docs
 4. Review backend/frontend README files

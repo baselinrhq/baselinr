@@ -66,7 +66,7 @@ profile_mesh/
 ├── .dockerignore       # Docker ignore patterns
 ├── LICENSE             # MIT License
 ├── README.md           # Main documentation
-├── QUICKSTART.md       # Quick start guide
+├── docs/getting-started/QUICKSTART.md       # Quick start guide
 ├── DEVELOPMENT.md      # Developer guide
 ├── PROJECT_OVERVIEW.md # This file
 └── MANIFEST.in        # Package manifest
@@ -224,7 +224,7 @@ profilemesh profile --config examples/config.yml
 | File | Purpose |
 |------|---------|
 | README.md | Main documentation and feature overview |
-| QUICKSTART.md | Step-by-step getting started guide |
+| docs/getting-started/QUICKSTART.md | Step-by-step getting started guide |
 | DEVELOPMENT.md | Architecture and contribution guide |
 | PROJECT_OVERVIEW.md | This file - project structure |
 

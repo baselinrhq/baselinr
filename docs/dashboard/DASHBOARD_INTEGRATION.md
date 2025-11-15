@@ -298,6 +298,6 @@ open http://localhost:3000
 
 ---
 
-For detailed dashboard setup, see `dashboard/QUICKSTART.md`  
+For detailed dashboard setup, see [Dashboard Quick Start](QUICKSTART.md)  
 For architecture details, see `dashboard/ARCHITECTURE.md`
 

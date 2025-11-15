@@ -693,6 +693,6 @@ Planned improvements to the event system:
 ## Related Documentation
 
 - [Configuration Guide](README.md#configuration)
-- [Drift Detection](DRIFT_DETECTION.md)
+- [Drift Detection](../guides/DRIFT_DETECTION.md)
 - [Storage Schema](profilemesh/storage/schema.sql)
 
