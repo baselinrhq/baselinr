@@ -120,6 +120,18 @@ class QueryBuilder:
             # Sample from partition values (not implemented yet - use all for now)
             logger.warning("Partition strategy 'sample' not fully implemented, using all partitions")
         
+        elif strategy == "specific_values":
+            values = partition_config.values or []
+            if not values:
+                logger.warning("specific_values strategy requested without values; using full table")
+            else:
+                query = query.where(partition_column.in_(values))
+                logger.info(
+                    "Applied 'specific_values' partition filter on %s (%d values)",
+                    partition_key,
+                    len(values)
+                )
+        
         elif strategy == "all":
             # No filtering - profile all partitions
             logger.info("Using all partitions (no filter)")

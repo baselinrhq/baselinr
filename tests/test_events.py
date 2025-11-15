@@ -360,10 +360,11 @@ class TestSQLEventHook:
         
         # Create events table
         with engine.begin() as conn:
-            conn.execute("""
+            conn.exec_driver_sql("""
                 CREATE TABLE test_events (
                     event_id VARCHAR(36) PRIMARY KEY,
                     event_type VARCHAR(100) NOT NULL,
+                    run_id VARCHAR(36),
                     table_name VARCHAR(255),
                     column_name VARCHAR(255),
                     metric_name VARCHAR(100),
@@ -397,12 +398,13 @@ class TestSQLEventHook:
         
         # Verify event was persisted
         with engine.connect() as conn:
-            result = conn.execute("SELECT * FROM test_events").fetchone()
+            result = conn.exec_driver_sql("SELECT * FROM test_events").fetchone()
             assert result is not None
-            assert result[1] == "DataDriftDetected"  # event_type
-            assert result[2] == "users"  # table_name
-            assert result[3] == "age"  # column_name
-            assert result[4] == "mean"  # metric_name
+            row = result._mapping
+            assert row["event_type"] == "DataDriftDetected"
+            assert row["table_name"] == "users"
+            assert row["column_name"] == "age"
+            assert row["metric_name"] == "mean"
     
     def test_sql_hook_persists_profiling_event(self):
         """Test that SQL hook persists a profiling event."""
@@ -411,10 +413,11 @@ class TestSQLEventHook:
         
         # Create events table
         with engine.begin() as conn:
-            conn.execute("""
+            conn.exec_driver_sql("""
                 CREATE TABLE test_events (
                     event_id VARCHAR(36) PRIMARY KEY,
                     event_type VARCHAR(100) NOT NULL,
+                    run_id VARCHAR(36),
                     table_name VARCHAR(255),
                     column_name VARCHAR(255),
                     metric_name VARCHAR(100),
@@ -446,9 +449,10 @@ class TestSQLEventHook:
         
         # Verify event was persisted
         with engine.connect() as conn:
-            result = conn.execute("SELECT * FROM test_events").fetchone()
+            result = conn.exec_driver_sql("SELECT * FROM test_events").fetchone()
             assert result is not None
-            assert result[1] == "ProfilingCompleted"  # event_type
+            row = result._mapping
+            assert row["event_type"] == "ProfilingCompleted"
 
 
 class TestEventBusIntegration:
@@ -462,10 +466,11 @@ class TestEventBusIntegration:
         # Create in-memory database for SQL hook
         engine = create_engine("sqlite:///:memory:")
         with engine.begin() as conn:
-            conn.execute("""
+            conn.exec_driver_sql("""
                 CREATE TABLE test_events (
                     event_id VARCHAR(36) PRIMARY KEY,
                     event_type VARCHAR(100) NOT NULL,
+                    run_id VARCHAR(36),
                     table_name VARCHAR(255),
                     column_name VARCHAR(255),
                     metric_name VARCHAR(100),
@@ -507,8 +512,9 @@ class TestEventBusIntegration:
         
         # Check SQL persistence
         with engine.connect() as conn:
-            result = conn.execute("SELECT * FROM test_events").fetchone()
+            result = conn.exec_driver_sql("SELECT * FROM test_events").fetchone()
             assert result is not None
-            assert result[1] == "DataDriftDetected"
-            assert result[8] == "high"  # drift_severity
+            row = result._mapping
+            assert row["event_type"] == "DataDriftDetected"
+            assert row["drift_severity"] == "high"
 

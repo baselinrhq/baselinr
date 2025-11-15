@@ -12,6 +12,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection
 - **[Partition & Sampling](guides/PARTITION_SAMPLING.md)** - Advanced profiling strategies
 - **[Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)** - Optional parallel execution for faster profiling
+- **[Incremental Profiling](guides/INCREMENTAL_PROFILING.md)** - Skip unchanged tables and control profiling costs
 - **[Prometheus Metrics](guides/PROMETHEUS_METRICS.md)** - Setting up monitoring and metrics
 - **[Retry & Recovery](guides/RETRY_AND_RECOVERY.md)** - Automatic retry for transient warehouse failures
 - **[Retry Quick Start](guides/RETRY_QUICK_START.md)** - Quick reference for retry system

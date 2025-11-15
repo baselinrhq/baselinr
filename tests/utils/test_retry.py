@@ -346,7 +346,6 @@ class TestConnectorIntegration:
         connector = MockConnector(config, retry_config)
         assert connector.retry_config == retry_config
     
-    @patch.object(Mock, 'execute')
     def test_connector_retry_on_transient_error(self):
         """Test that connector retries on transient errors."""
         from profilemesh.connectors.base import BaseConnector

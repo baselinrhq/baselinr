@@ -13,6 +13,7 @@ from .events import (
     ProfilingStarted,
     ProfilingCompleted,
     ProfilingFailed,
+    ProfilingSkipped,
 )
 from .hooks import AlertHook
 from .event_bus import EventBus
@@ -25,6 +26,7 @@ __all__ = [
     "ProfilingStarted",
     "ProfilingCompleted",
     "ProfilingFailed",
+    "ProfilingSkipped",
     "AlertHook",
     "EventBus",
     "LoggingAlertHook",

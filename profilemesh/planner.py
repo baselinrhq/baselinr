@@ -12,6 +12,7 @@ import uuid
 import logging
 
 from .config.schema import ProfileMeshConfig, TablePattern
+from .incremental import IncrementalPlanner, IncrementalPlan, TableRunDecision
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,7 @@ class PlanBuilder:
             config: ProfileMesh configuration
         """
         self.config = config
+        self._incremental_planner: Optional[IncrementalPlanner] = None
     
     def build_plan(self) -> ProfilingPlan:
         """
@@ -124,9 +126,18 @@ class PlanBuilder:
             drift_strategy=self.config.drift_detection.strategy
         )
         
+        incremental_plan: Optional[IncrementalPlan] = None
+        decision_map: Dict[str, TableRunDecision] = {}
+        if self.config.incremental.enabled:
+            incremental_plan = self.get_tables_to_run(plan.timestamp)
+            decision_map = {
+                self._table_key(decision.table): decision
+                for decision in incremental_plan.decisions
+            }
+        
         # Build table plans
         for table_pattern in self.config.profiling.tables:
-            table_plan = self._build_table_plan(table_pattern)
+            table_plan = self._build_table_plan(table_pattern, decision_map.get(self._table_key(table_pattern)))
             plan.tables.append(table_plan)
         
         # Calculate summary statistics
@@ -138,7 +149,7 @@ class PlanBuilder:
         
         return plan
     
-    def _build_table_plan(self, pattern: TablePattern) -> TablePlan:
+    def _build_table_plan(self, pattern: TablePattern, decision: Optional[TableRunDecision]) -> TablePlan:
         """
         Build plan for a single table pattern.
         
@@ -162,10 +173,20 @@ class PlanBuilder:
         partition_dict = pattern.partition.model_dump() if pattern.partition else None
         sampling_dict = pattern.sampling.model_dump() if pattern.sampling else None
         
+        status = "ready"
+        if decision:
+            status = decision.action
+            metadata.update({
+                "incremental_reason": decision.reason,
+                "changed_partitions": decision.changed_partitions,
+                "estimated_cost": decision.estimated_cost,
+                "snapshot_id": decision.snapshot_id,
+            })
+        
         return TablePlan(
             name=pattern.table,
             schema=pattern.schema_,
-            status="ready",
+            status=status,
             partition_config=partition_dict,
             sampling_config=sampling_dict,
             metrics=metrics,
@@ -223,6 +244,15 @@ class PlanBuilder:
             warnings.append("No metrics configured for profiling")
         
         return warnings
+
+    def get_tables_to_run(self, current_time: Optional[datetime] = None) -> IncrementalPlan:
+        """Expose incremental planner decisions for sensors/CLI."""
+        if self._incremental_planner is None:
+            self._incremental_planner = IncrementalPlanner(self.config)
+        return self._incremental_planner.get_tables_to_run(current_time)
+
+    def _table_key(self, pattern: TablePattern) -> str:
+        return f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
 
 
 def print_plan(plan: ProfilingPlan, format: str = "text", verbose: bool = False):

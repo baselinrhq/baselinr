@@ -174,6 +174,7 @@ The dashboard connects to the ProfileMesh storage database to read:
 - **profilemesh_runs**: Run history and metadata
 - **profilemesh_results**: Column-level metrics
 - **profilemesh_events**: Drift detection events
+- **profilemesh_table_state**: Incremental profiling metadata (snapshot IDs, last decisions)
 
 Ensure your ProfileMesh Phase 1 installation has created these tables.
 

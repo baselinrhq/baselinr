@@ -13,6 +13,7 @@ from sqlalchemy.engine import Engine
 
 from ..profiling.core import ProfilingResult
 from ..config.schema import StorageConfig
+from ..connectors.factory import create_connector
 
 logger = logging.getLogger(__name__)
 
@@ -38,26 +39,7 @@ class ResultWriter:
     
     def _setup_connection(self):
         """Setup database connection for storage."""
-        from ..connectors import (
-            PostgresConnector, SnowflakeConnector, SQLiteConnector,
-            MySQLConnector, BigQueryConnector, RedshiftConnector
-        )
-        
-        if self.config.connection.type == "postgres":
-            connector = PostgresConnector(self.config.connection, self.retry_config)
-        elif self.config.connection.type == "snowflake":
-            connector = SnowflakeConnector(self.config.connection, self.retry_config)
-        elif self.config.connection.type == "sqlite":
-            connector = SQLiteConnector(self.config.connection, self.retry_config)
-        elif self.config.connection.type == "mysql":
-            connector = MySQLConnector(self.config.connection, self.retry_config)
-        elif self.config.connection.type == "bigquery":
-            connector = BigQueryConnector(self.config.connection, self.retry_config)
-        elif self.config.connection.type == "redshift":
-            connector = RedshiftConnector(self.config.connection, self.retry_config)
-        else:
-            raise ValueError(f"Unsupported storage type: {self.config.connection.type}")
-        
+        connector = create_connector(self.config.connection, self.retry_config)
         self.engine = connector.engine
     
     def _create_tables(self):

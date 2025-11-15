@@ -73,3 +73,19 @@ ON profilemesh_events (timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_events_drift_severity 
 ON profilemesh_events (drift_severity);
 
+-- Incremental metadata table - tracks last snapshot/change state per table
+CREATE TABLE IF NOT EXISTS profilemesh_table_state (
+    schema_name VARCHAR(255),
+    table_name VARCHAR(255) NOT NULL,
+    last_run_id VARCHAR(36),
+    snapshot_id VARCHAR(255),
+    change_token VARCHAR(255),
+    decision VARCHAR(50),
+    decision_reason VARCHAR(255),
+    last_profiled_at TIMESTAMP_NTZ,
+    staleness_score INTEGER,
+    row_count NUMBER,
+    bytes_scanned NUMBER,
+    metadata VARIANT,
+    PRIMARY KEY (schema_name, table_name)
+);
