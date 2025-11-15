@@ -1,0 +1,74 @@
+name: Dagster Integration
+
+on:
+  push:
+    paths:
+      - 'profilemesh/**'
+      - 'examples/**'
+      - 'docker/**'
+      - 'tests/**'
+      - 'docs/**'
+      - 'requirements.txt'
+      - '.github/workflows/dagster-integration.yml'
+  pull_request:
+    paths:
+      - 'profilemesh/**'
+      - 'examples/**'
+      - 'docker/**'
+      - 'tests/**'
+      - 'docs/**'
+      - 'requirements.txt'
+      - '.github/workflows/dagster-integration.yml'
+
+jobs:
+  dagster-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run Dagster integration tests
+        run: pytest tests/test_dagster_integration.py
+
+      - name: Build Docker image
+        run: docker compose -f docker/docker-compose.yml build dagster_daemon
+
+      - name: Start PostgreSQL
+        run: docker compose -f docker/docker-compose.yml up -d postgres
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U profilemesh; then
+              ready=1
+              break
+            fi
+            echo "Waiting for postgres startup..."
+            sleep 5
+          done
+          if [ -z "$ready" ]; then
+            echo "PostgreSQL did not become ready in time"
+            docker compose -f docker/docker-compose.yml logs postgres
+            exit 1
+          fi
+
+      - name: Validate Dagster definitions inside Docker
+        run: |
+          docker compose -f docker/docker-compose.yml run --rm dagster_daemon \
+            dagster job list -w /opt/dagster/dagster_home/workspace.yaml | tee job_list.txt
+          grep -q "profile_all_tables" job_list.txt
+
+      - name: Tear down Docker resources
+        if: always()
+        run: docker compose -f docker/docker-compose.yml down -v
