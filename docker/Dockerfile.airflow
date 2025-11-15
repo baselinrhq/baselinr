@@ -1,0 +1,33 @@
+FROM apache/airflow:2.8.1-python3.10
+
+USER root
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+# Copy application code
+COPY --chown=airflow:root . /app
+
+WORKDIR /app
+
+# Install ProfileMesh with Airflow integration
+RUN pip install --no-cache-dir -e ".[airflow]"
+
+# Set Airflow home
+ENV AIRFLOW_HOME=/opt/airflow
+
+# Create necessary directories
+RUN mkdir -p ${AIRFLOW_HOME}/dags ${AIRFLOW_HOME}/logs ${AIRFLOW_HOME}/plugins
+
+# Copy example DAGs
+RUN ln -s /app/examples/airflow_dags ${AIRFLOW_HOME}/dags/profilemesh_examples
+
+EXPOSE 8080
+
+CMD ["airflow", "webserver"]

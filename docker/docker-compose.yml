@@ -104,9 +104,101 @@ services:
     depends_on:
       - prometheus
 
+  # Airflow PostgreSQL (separate from main postgres)
+  airflow_postgres:
+    image: postgres:15
+    container_name: profilemesh_airflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5434:5432"
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Airflow Webserver
+  airflow_webserver:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: profilemesh_airflow_webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow_postgres/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+      # ProfileMesh config overrides for Docker
+      - PROFILEMESH_CONFIG=/app/examples/config.yml
+      - PROFILEMESH_SOURCE__HOST=postgres
+      - PROFILEMESH_SOURCE__PORT=5432
+      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
+      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../:/app
+      - airflow_logs:/opt/airflow/logs
+    depends_on:
+      airflow_postgres:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
+        airflow webserver
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Airflow Scheduler
+  airflow_scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: profilemesh_airflow_scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow_postgres/airflow
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      # ProfileMesh config overrides for Docker
+      - PROFILEMESH_CONFIG=/app/examples/config.yml
+      - PROFILEMESH_SOURCE__HOST=postgres
+      - PROFILEMESH_SOURCE__PORT=5432
+      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
+      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
+    volumes:
+      - ../:/app
+      - airflow_logs:/opt/airflow/logs
+    depends_on:
+      airflow_postgres:
+        condition: service_healthy
+      airflow_webserver:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: airflow scheduler
+
 volumes:
   postgres_data:
   dagster_home:
   prometheus_data:
   grafana_data:
+  airflow_postgres_data:
+  airflow_logs:
 

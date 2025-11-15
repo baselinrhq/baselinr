@@ -48,6 +48,10 @@ setup(
             "dagster-webserver>=1.5.0",
             "dagster-postgres>=0.21.0",
         ],
+        "airflow": [
+            "apache-airflow>=2.8.0",
+            "apache-airflow-providers-postgres>=5.0.0",
+        ],
         "dev": [
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
@@ -62,6 +66,8 @@ setup(
             "dagster>=1.5.0",
             "dagster-webserver>=1.5.0",
             "dagster-postgres>=0.21.0",
+            "apache-airflow>=2.8.0",
+            "apache-airflow-providers-postgres>=5.0.0",
         ],
     },
     entry_points={

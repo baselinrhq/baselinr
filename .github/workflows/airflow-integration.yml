@@ -1,0 +1,148 @@
+name: Airflow Integration
+
+on:
+  push:
+    paths:
+      - 'profilemesh/**'
+      - 'examples/**'
+      - 'docker/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'setup.py'
+      - '.github/workflows/airflow-integration.yml'
+  pull_request:
+    paths:
+      - 'profilemesh/**'
+      - 'examples/**'
+      - 'docker/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'setup.py'
+      - '.github/workflows/airflow-integration.yml'
+
+jobs:
+  airflow-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install apache-airflow==2.8.1
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run Airflow integration tests
+        run: pytest tests/test_airflow_integration.py -v
+
+      - name: Build Airflow Docker image
+        run: docker compose -f docker/docker-compose.yml build airflow_webserver
+
+      - name: Start PostgreSQL services
+        run: |
+          docker compose -f docker/docker-compose.yml up -d postgres airflow_postgres
+
+      - name: Wait for PostgreSQL services
+        run: |
+          echo "Waiting for main PostgreSQL..."
+          for i in {1..20}; do
+            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U profilemesh; then
+              postgres_ready=1
+              break
+            fi
+            echo "Waiting for postgres startup..."
+            sleep 5
+          done
+          if [ -z "$postgres_ready" ]; then
+            echo "Main PostgreSQL did not become ready in time"
+            docker compose -f docker/docker-compose.yml logs postgres
+            exit 1
+          fi
+
+          echo "Waiting for Airflow PostgreSQL..."
+          for i in {1..20}; do
+            if docker compose -f docker/docker-compose.yml exec -T airflow_postgres pg_isready -U airflow; then
+              airflow_postgres_ready=1
+              break
+            fi
+            echo "Waiting for airflow postgres startup..."
+            sleep 5
+          done
+          if [ -z "$airflow_postgres_ready" ]; then
+            echo "Airflow PostgreSQL did not become ready in time"
+            docker compose -f docker/docker-compose.yml logs airflow_postgres
+            exit 1
+          fi
+
+      - name: Start Airflow services
+        run: |
+          docker compose -f docker/docker-compose.yml up -d airflow_webserver airflow_scheduler
+
+      - name: Wait for Airflow webserver
+        run: |
+          for i in {1..60}; do
+            if curl -f http://localhost:8080/health 2>/dev/null; then
+              ready=1
+              break
+            fi
+            echo "Waiting for Airflow webserver... (attempt $i/60)"
+            sleep 10
+          done
+          if [ -z "$ready" ]; then
+            echo "Airflow webserver did not become ready"
+            docker compose -f docker/docker-compose.yml logs airflow_webserver
+            docker compose -f docker/docker-compose.yml logs airflow_scheduler
+            exit 1
+          fi
+
+      - name: List Airflow DAGs
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+            airflow dags list | tee dags_list.txt
+          cat dags_list.txt
+
+      - name: Validate ProfileMesh DAGs exist
+        run: |
+          grep -q "profilemesh_profile_all" dags_list.txt
+          grep -q "profilemesh_profile_parallel" dags_list.txt
+          grep -q "profilemesh_plan_monitor" dags_list.txt
+
+      - name: Test DAG parsing (profile_all)
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+            python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_profile_all' in dag_bag.dags, 'DAG not found'; assert dag_bag.import_errors == {}, f'Import errors: {dag_bag.import_errors}'"
+
+      - name: Test DAG parsing (profile_parallel)
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+            python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_profile_parallel' in dag_bag.dags, 'DAG not found'"
+
+      - name: Test DAG parsing (plan_monitor)
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+            python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_plan_monitor' in dag_bag.dags, 'DAG not found'"
+
+      - name: Verify ProfileMesh operators are importable
+        run: |
+          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+            python -c "from profilemesh.integrations.airflow import ProfileMeshProfilingOperator, ProfileMeshPlanSensor, ProfileMeshTableOperator; print('All operators imported successfully')"
+
+      - name: Check Airflow logs for errors
+        if: always()
+        run: |
+          echo "=== Airflow Webserver Logs ==="
+          docker compose -f docker/docker-compose.yml logs airflow_webserver | tail -100
+          echo ""
+          echo "=== Airflow Scheduler Logs ==="
+          docker compose -f docker/docker-compose.yml logs airflow_scheduler | tail -100
+
+      - name: Tear down Docker resources
+        if: always()
+        run: docker compose -f docker/docker-compose.yml down -v
