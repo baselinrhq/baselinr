@@ -58,6 +58,7 @@ class SnowflakeEventHook:
         CREATE TABLE profilemesh_events (
             event_id VARCHAR PRIMARY KEY,
             event_type VARCHAR NOT NULL,
+            run_id VARCHAR,
             table_name VARCHAR,
             column_name VARCHAR,
             metric_name VARCHAR,
@@ -101,17 +102,18 @@ class SnowflakeEventHook:
             current_value = metadata.get("current_value")
             change_percent = metadata.get("change_percent")
             drift_severity = metadata.get("drift_severity")
+            run_id = metadata.get("run_id")
             
             # Convert metadata to JSON string for VARIANT column
             metadata_json = json.dumps(metadata)
             
             sql = text(f"""
                 INSERT INTO {self.table_name}
-                (event_id, event_type, table_name, column_name, metric_name,
+                (event_id, event_type, run_id, table_name, column_name, metric_name,
                  baseline_value, current_value, change_percent, drift_severity,
                  timestamp, metadata)
                 VALUES (
-                    :event_id, :event_type, :table_name, :column_name, :metric_name,
+                    :event_id, :event_type, :run_id, :table_name, :column_name, :metric_name,
                     :baseline_value, :current_value, :change_percent, :drift_severity,
                     :timestamp, PARSE_JSON(:metadata)
                 )
@@ -123,6 +125,7 @@ class SnowflakeEventHook:
                     {
                         "event_id": event_id,
                         "event_type": event.event_type,
+                        "run_id": run_id,
                         "table_name": table_name,
                         "column_name": column_name,
                         "metric_name": metric_name,
@@ -153,6 +156,7 @@ class SQLEventHook:
         CREATE TABLE profilemesh_events (
             event_id VARCHAR(36) PRIMARY KEY,
             event_type VARCHAR(100) NOT NULL,
+            run_id VARCHAR(36),
             table_name VARCHAR(255),
             column_name VARCHAR(255),
             metric_name VARCHAR(100),
@@ -196,17 +200,18 @@ class SQLEventHook:
             current_value = metadata.get("current_value")
             change_percent = metadata.get("change_percent")
             drift_severity = metadata.get("drift_severity")
+            run_id = metadata.get("run_id")
             
             # Convert metadata to JSON string
             metadata_json = json.dumps(metadata)
             
             sql = text(f"""
                 INSERT INTO {self.table_name}
-                (event_id, event_type, table_name, column_name, metric_name,
+                (event_id, event_type, run_id, table_name, column_name, metric_name,
                  baseline_value, current_value, change_percent, drift_severity,
                  timestamp, metadata)
                 VALUES (
-                    :event_id, :event_type, :table_name, :column_name, :metric_name,
+                    :event_id, :event_type, :run_id, :table_name, :column_name, :metric_name,
                     :baseline_value, :current_value, :change_percent, :drift_severity,
                     :timestamp, :metadata
                 )
@@ -218,6 +223,7 @@ class SQLEventHook:
                     {
                         "event_id": event_id,
                         "event_type": event.event_type,
+                        "run_id": run_id,
                         "table_name": table_name,
                         "column_name": column_name,
                         "metric_name": metric_name,

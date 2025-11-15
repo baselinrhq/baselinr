@@ -63,11 +63,12 @@ class ResultWriter:
         metadata = MetaData()
         
         # Runs table - tracks profiling runs
+        # Note: Composite primary key (run_id, dataset_name) to allow multiple tables per run
         runs_table = Table(
             self.config.runs_table,
             metadata,
             Column('run_id', String(36), primary_key=True),
-            Column('dataset_name', String(255), nullable=False),
+            Column('dataset_name', String(255), primary_key=True),
             Column('schema_name', String(255)),
             Column('profiled_at', DateTime, nullable=False),
             Column('environment', String(50)),
@@ -120,14 +121,19 @@ class ResultWriter:
     
     def _write_run(self, conn, result: ProfilingResult, environment: str):
         """Write run metadata."""
-        # Check if run already exists (multiple tables can share the same run_id)
+        # Check if run for this specific table already exists
+        # Multiple tables can share the same run_id, but each table should have its own run record
         check_query = text(f"""
-            SELECT run_id FROM {self.config.runs_table} WHERE run_id = :run_id LIMIT 1
+            SELECT run_id FROM {self.config.runs_table} 
+            WHERE run_id = :run_id AND dataset_name = :dataset_name LIMIT 1
         """)
-        existing = conn.execute(check_query, {'run_id': result.run_id}).fetchone()
+        existing = conn.execute(check_query, {
+            'run_id': result.run_id,
+            'dataset_name': result.dataset_name
+        }).fetchone()
         
         if existing:
-            # Run already exists, skip insert
+            # Run for this table already exists, skip insert
             return
         
         insert_query = text(f"""
