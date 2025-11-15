@@ -89,9 +89,11 @@ Drift detection:
 3. Compare metrics (calculate % change)
 4. Classify severity (low/medium/high)
 
-### `dagster_integration/`
+### `integrations/dagster/`
 - **`assets.py`**: Factory for creating Dagster assets from config
 - **`events.py`**: Structured event emission for Dagster
+- **`sensors.py`**: Plan-aware sensor helpers
+- **`__init__.py`**: `build_profilemesh_definitions` entrypoint for Dagster repos
 
 ## Development Setup
 

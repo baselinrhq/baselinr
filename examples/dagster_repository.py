@@ -11,7 +11,12 @@ from pathlib import Path
 
 from dagster import Definitions, ScheduleDefinition
 
-from profilemesh.dagster_integration import create_profiling_assets, create_profiling_job
+from profilemesh.integrations.dagster import (
+    ProfileMeshResource,
+    create_profiling_assets,
+    create_profiling_job,
+    profilemesh_plan_sensor,
+)
 
 # Determine config path
 # In Docker, this will be /app/examples/config.yml
@@ -25,15 +30,21 @@ CONFIG_PATH = os.getenv(
 try:
     profiling_assets = create_profiling_assets(
         config_path=CONFIG_PATH,
-        asset_name_prefix="profilemesh"
+        asset_name_prefix="profilemesh",
     )
-    
-    # Create a job that runs all profiling assets
+
     profiling_job = create_profiling_job(
         assets=profiling_assets,
-        job_name="profile_all_tables"
+        job_name="profile_all_tables",
     )
-    
+
+    plan_sensor = profilemesh_plan_sensor(
+        config_path=CONFIG_PATH,
+        job_name="profile_all_tables",
+        asset_prefix="profilemesh",
+        sensor_name="profilemesh_plan_sensor",
+    )
+
     # Create a schedule to run profiling daily at midnight
     daily_profiling_schedule = ScheduleDefinition(
         name="daily_profiling",
@@ -41,12 +52,13 @@ try:
         cron_schedule="0 0 * * *",  # Daily at midnight
         description="Run ProfileMesh profiling daily"
     )
-    
-    # Define Dagster definitions
+
     defs = Definitions(
         assets=profiling_assets,
         jobs=[profiling_job],
-        schedules=[daily_profiling_schedule]
+        schedules=[daily_profiling_schedule],
+        sensors=[plan_sensor],
+        resources={"profilemesh": ProfileMeshResource(config_path=CONFIG_PATH)},
     )
 
 except Exception as e:

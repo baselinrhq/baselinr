@@ -35,10 +35,12 @@ profile_mesh/
 │   │   ├── __init__.py
 │   │   └── detector.py     # Drift detector and reporter
 │   │
-│   └── dagster_integration/  # Dagster orchestration
-│       ├── __init__.py
-│       ├── assets.py        # Asset factory
-│       └── events.py        # Event emission
+│   └── integrations/
+│       └── dagster/         # Dagster orchestration
+│           ├── __init__.py
+│           ├── assets.py    # Asset factory
+│           ├── sensors.py   # Plan-aware sensor
+│           └── events.py    # Event emission
 │
 ├── examples/                # Example configurations
 │   ├── config.yml          # PostgreSQL config

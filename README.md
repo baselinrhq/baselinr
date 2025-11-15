@@ -173,23 +173,13 @@ ProfileMesh computes the following metrics:
 ProfileMesh can create Dagster assets dynamically from your configuration:
 
 ```python
-# dagster_repository.py
-from dagster import Definitions
-from profilemesh.dagster_integration import create_profiling_assets, create_profiling_job
+from profilemesh.integrations.dagster import build_profilemesh_definitions
 
-# Create assets from config
-assets = create_profiling_assets(
+defs = build_profilemesh_definitions(
     config_path="config.yml",
-    asset_name_prefix="profilemesh"
-)
-
-# Create a job
-job = create_profiling_job(assets=assets)
-
-# Define Dagster definitions
-defs = Definitions(
-    assets=assets,
-    jobs=[job]
+    asset_prefix="profilemesh",
+    job_name="profilemesh_profile_all",
+    enable_sensor=True,  # optional
 )
 ```
 
@@ -211,7 +201,8 @@ profilemesh/
 │   ├── profiling/        # Profiling engine
 │   ├── storage/          # Results storage
 │   ├── drift/            # Drift detection
-│   ├── dagster_integration/  # Dagster assets
+│   ├── integrations/
+│   │   └── dagster/      # Dagster assets & sensors
 │   └── cli.py            # CLI interface
 ├── examples/             # Example configurations
 │   ├── config.yml        # PostgreSQL example
