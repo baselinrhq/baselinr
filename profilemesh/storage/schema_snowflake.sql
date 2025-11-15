@@ -3,14 +3,15 @@
 
 -- Runs table - tracks profiling runs
 CREATE TABLE IF NOT EXISTS profilemesh_runs (
-    run_id VARCHAR(36) PRIMARY KEY,
+    run_id VARCHAR(36) NOT NULL,
     dataset_name VARCHAR(255) NOT NULL,
     schema_name VARCHAR(255),
     profiled_at TIMESTAMP_NTZ NOT NULL,
     environment VARCHAR(50),
     status VARCHAR(20),
     row_count INTEGER,
-    column_count INTEGER
+    column_count INTEGER,
+    PRIMARY KEY (run_id, dataset_name)
 );
 
 -- Create indexes
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS profilemesh_results (
     metric_name VARCHAR(100) NOT NULL,
     metric_value VARCHAR,
     profiled_at TIMESTAMP_NTZ NOT NULL,
-    FOREIGN KEY (run_id) REFERENCES profilemesh_runs(run_id)
+    FOREIGN KEY (run_id, dataset_name) REFERENCES profilemesh_runs(run_id, dataset_name)
 );
 
 -- Create indexes

@@ -1,0 +1,91 @@
+name: CLI E2E (Docker)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cli-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      COMPOSE_PROJECT_NAME: profilemesh-ci
+      DOCKER_NETWORK_NAME: profilemesh-ci_default
+      DOCKER_IMAGE_NAME: profilemesh-cli-tests
+      PROFILEMESH_CONFIG_PATH: examples/config.yml
+      PROFILEMESH_DB_HOST: profilemesh_postgres
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start PostgreSQL dependency
+        run: docker compose -f docker/docker-compose.yml -p $COMPOSE_PROJECT_NAME up -d postgres
+
+      - name: Wait for PostgreSQL to become healthy
+        run: |
+          for i in {1..30}; do
+            if docker exec profilemesh_postgres pg_isready -U profilemesh >/dev/null 2>&1; then
+              echo "PostgreSQL is ready"
+              exit 0
+            fi
+            echo "Waiting for PostgreSQL (attempt ${i}/30)..."
+            sleep 2
+          done
+          echo "PostgreSQL failed to become healthy in time" >&2
+          docker compose -f docker/docker-compose.yml -p $COMPOSE_PROJECT_NAME logs postgres || true
+          exit 1
+
+      - name: Build CLI image
+        run: docker build -t $DOCKER_IMAGE_NAME -f docker/Dockerfile .
+
+      - name: Run plan command
+        run: |
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
+            -e PROFILEMESH_SOURCE__PORT=5432 \
+              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
+            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            profilemesh plan --config $PROFILEMESH_CONFIG_PATH
+
+      - name: Run profile command twice to seed drift history
+        run: |
+          for run_number in 1 2; do
+            echo "Starting profiling run #${run_number}"
+            docker run --rm \
+              --network $DOCKER_NETWORK_NAME \
+              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
+              -e PROFILEMESH_SOURCE__PORT=5432 \
+              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
+              -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+              $DOCKER_IMAGE_NAME \
+              profilemesh profile --config $PROFILEMESH_CONFIG_PATH
+          done
+
+      - name: Run drift detection command
+        run: |
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
+            -e PROFILEMESH_SOURCE__PORT=5432 \
+            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
+            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            profilemesh drift --config $PROFILEMESH_CONFIG_PATH --dataset customers
+
+      - name: Dump PostgreSQL logs on failure
+        if: failure()
+        run: docker logs profilemesh_postgres || true
+
+      - name: Shutdown Docker services
+        if: always()
+        run: docker compose -f docker/docker-compose.yml -p $COMPOSE_PROJECT_NAME down -v

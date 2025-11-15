@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS profilemesh_results (
     metric_name VARCHAR(100) NOT NULL,
     metric_value TEXT,
     profiled_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (run_id) REFERENCES profilemesh_runs(run_id)
+    FOREIGN KEY (run_id, dataset_name) REFERENCES profilemesh_runs(run_id, dataset_name)
 );
 
 -- Create indexes for results table
