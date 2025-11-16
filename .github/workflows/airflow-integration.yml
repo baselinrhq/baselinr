@@ -45,51 +45,18 @@ jobs:
       # Note: Skipping import checks because Airflow initializes on import
       # Docker validation below will catch any import/syntax errors
 
-      - name: Build Airflow Docker image
-        run: docker compose -f docker/docker-compose.yml build airflow_webserver
-
-      - name: Start PostgreSQL services
+      - name: Start Airflow stack (official setup)
         run: |
-          docker compose -f docker/docker-compose.yml up -d postgres airflow_postgres
-
-      - name: Wait for PostgreSQL services
-        run: |
-          echo "Waiting for main PostgreSQL..."
-          for i in {1..20}; do
-            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U profilemesh; then
-              postgres_ready=1
-              break
-            fi
-            echo "Waiting for postgres startup..."
-            sleep 5
-          done
-          if [ -z "$postgres_ready" ]; then
-            echo "Main PostgreSQL did not become ready in time"
-            docker compose -f docker/docker-compose.yml logs postgres
-            exit 1
-          fi
-
-          echo "Waiting for Airflow PostgreSQL..."
-          for i in {1..20}; do
-            if docker compose -f docker/docker-compose.yml exec -T airflow_postgres pg_isready -U airflow; then
-              airflow_postgres_ready=1
-              break
-            fi
-            echo "Waiting for airflow postgres startup..."
-            sleep 5
-          done
-          if [ -z "$airflow_postgres_ready" ]; then
-            echo "Airflow PostgreSQL did not become ready in time"
-            docker compose -f docker/docker-compose.yml logs airflow_postgres
-            exit 1
-          fi
-
-      - name: Start Airflow services
-        run: |
-          docker compose -f docker/docker-compose.yml up -d airflow_webserver airflow_scheduler
+          cd docker
+          # Start all services (init will run migrations and create admin user)
+          docker compose -f docker-compose-airflow.yml up -d
 
       - name: Wait for Airflow webserver
         run: |
+          cd docker
+          echo "Waiting for Airflow init to complete..."
+          docker compose -f docker-compose-airflow.yml logs -f airflow-init &
+          
           for i in {1..60}; do
             if curl -f http://localhost:8080/health 2>/dev/null; then
               ready=1
@@ -100,16 +67,18 @@ jobs:
           done
           if [ -z "$ready" ]; then
             echo "Airflow webserver did not become ready"
-            docker compose -f docker/docker-compose.yml logs airflow_webserver
-            docker compose -f docker/docker-compose.yml logs airflow_scheduler
+            docker compose -f docker-compose-airflow.yml logs airflow-webserver
+            docker compose -f docker-compose-airflow.yml logs airflow-scheduler
             exit 1
           fi
+          echo "✓ Airflow webserver is healthy"
 
       - name: List Airflow DAGs
         run: |
-          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
-            airflow dags list | tee dags_list.txt
-          cat dags_list.txt
+          cd docker
+          docker compose -f docker-compose-airflow.yml exec -T airflow-webserver \
+            airflow dags list | tee ../dags_list.txt
+          cat ../dags_list.txt
 
       - name: Validate ProfileMesh DAGs exist
         run: |
@@ -119,33 +88,43 @@ jobs:
 
       - name: Test DAG parsing (profile_all)
         run: |
-          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+          cd docker
+          docker compose -f docker-compose-airflow.yml exec -T airflow-webserver \
             python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_profile_all' in dag_bag.dags, 'DAG not found'; assert dag_bag.import_errors == {}, f'Import errors: {dag_bag.import_errors}'"
 
       - name: Test DAG parsing (profile_parallel)
         run: |
-          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+          cd docker
+          docker compose -f docker-compose-airflow.yml exec -T airflow-webserver \
             python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_profile_parallel' in dag_bag.dags, 'DAG not found'"
 
       - name: Test DAG parsing (plan_monitor)
         run: |
-          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+          cd docker
+          docker compose -f docker-compose-airflow.yml exec -T airflow-webserver \
             python -c "from airflow.models import DagBag; dag_bag = DagBag(dag_folder='/opt/airflow/dags'); assert 'profilemesh_plan_monitor' in dag_bag.dags, 'DAG not found'"
 
       - name: Verify ProfileMesh operators are importable
         run: |
-          docker compose -f docker/docker-compose.yml exec -T airflow_webserver \
+          cd docker
+          docker compose -f docker-compose-airflow.yml exec -T airflow-webserver \
             python -c "from profilemesh.integrations.airflow import ProfileMeshProfilingOperator, ProfileMeshPlanSensor, ProfileMeshTableOperator; print('All operators imported successfully')"
 
       - name: Check Airflow logs for errors
         if: always()
         run: |
+          cd docker
+          echo "=== Airflow Init Logs ==="
+          docker compose -f docker-compose-airflow.yml logs airflow-init | tail -100
+          echo ""
           echo "=== Airflow Webserver Logs ==="
-          docker compose -f docker/docker-compose.yml logs airflow_webserver | tail -100
+          docker compose -f docker-compose-airflow.yml logs airflow-webserver | tail -100
           echo ""
           echo "=== Airflow Scheduler Logs ==="
-          docker compose -f docker/docker-compose.yml logs airflow_scheduler | tail -100
+          docker compose -f docker-compose-airflow.yml logs airflow-scheduler | tail -100
 
       - name: Tear down Docker resources
         if: always()
-        run: docker compose -f docker/docker-compose.yml down -v
+        run: |
+          cd docker
+          docker compose -f docker-compose-airflow.yml down -v
