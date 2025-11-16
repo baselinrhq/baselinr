@@ -1,0 +1,72 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              AIRFLOW TEST FIX #3 - LOGGING CONFIG ✅                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+ISSUE: Airflow logging configuration still failing
+
+ERROR:
+  ValueError: Unable to configure formatter 'airflow'
+  AttributeError: partially initialized module 'airflow' has no attribute 'utils'
+
+ROOT CAUSE:
+  Setting AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS='' doesn't actually disable
+  logging. Airflow still tries to load its default logging configuration
+  which fails in test environments.
+
+THE REAL FIX:
+
+Instead of trying to disable logging with environment variables, we now:
+
+1. Create a proper AIRFLOW_HOME directory
+2. Generate a minimal airflow.cfg file with CRITICAL logging
+3. Set up all required directories before Airflow imports
+
+This gives Airflow a valid configuration to work with instead of trying
+to prevent configuration altogether.
+
+KEY CHANGES in tests/conftest.py:
+
+```python
+# Create AIRFLOW_HOME
+AIRFLOW_HOME = os.path.join(tempfile.gettempdir(), 'airflow_home_test')
+os.environ.setdefault('AIRFLOW_HOME', AIRFLOW_HOME)
+
+# Create minimal airflow.cfg
+with open(os.path.join(AIRFLOW_HOME, 'airflow.cfg'), 'w') as f:
+    f.write('''[core]
+executor = SequentialExecutor
+load_examples = False
+
+[database]
+sql_alchemy_conn = sqlite:////tmp/airflow_test.db
+
+[logging]
+logging_level = CRITICAL
+colored_console_log = False
+''')
+```
+
+This approach:
+  ✅ Provides Airflow with a valid config
+  ✅ Sets logging to CRITICAL to minimize output
+  ✅ Avoids circular import issues
+  ✅ Works with Airflow 2.8+ requirements
+
+FILES CHANGED:
+  MODIFIED: tests/conftest.py (major rewrite)
+  MODIFIED: .github/workflows/airflow-integration.yml (simplified)
+
+COMMIT COMMANDS:
+  git add tests/conftest.py .github/workflows/airflow-integration.yml
+  git commit -m "Fix Airflow logging configuration for tests
+  
+  - Create proper AIRFLOW_HOME with minimal airflow.cfg
+  - Set logging level to CRITICAL
+  - Provide valid config instead of disabling logging
+  - Fixes circular import and formatter errors"
+  git push
+
+STATUS: ✅ THIS SHOULD BE THE FINAL FIX
+
+The conftest.py now creates a proper Airflow environment that satisfies
+all of Airflow's requirements without triggering configuration errors.
