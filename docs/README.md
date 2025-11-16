@@ -10,6 +10,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 ### 📖 [Guides](guides/)
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection
+- **[Slack Alerts](guides/SLACK_ALERTS.md)** - Set up Slack notifications for drift detection events
 - **[Partition & Sampling](guides/PARTITION_SAMPLING.md)** - Advanced profiling strategies
 - **[Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)** - Optional parallel execution for faster profiling
 - **[Incremental Profiling](guides/INCREMENTAL_PROFILING.md)** - Skip unchanged tables and control profiling costs
@@ -56,6 +57,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 - **New to ProfileMesh?** → Start with [Getting Started](getting-started/QUICKSTART.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
+- **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)

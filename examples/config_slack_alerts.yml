@@ -1,0 +1,104 @@
+# ProfileMesh Configuration with Slack Alerts for Drift Detection
+#
+# This example demonstrates how to configure Slack alerts when drift
+# is detected during profiling runs.
+#
+# Setup Instructions:
+# 1. Create a Slack App at https://api.slack.com/apps
+# 2. Enable Incoming Webhooks
+# 3. Add webhook to your workspace
+# 4. Copy the webhook URL and set it below (or use environment variable)
+
+environment: production
+
+# Source data warehouse connection
+source:
+  type: postgres
+  host: localhost
+  port: 5432
+  database: analytics
+  username: profilemesh_user
+  password: ${DB_PASSWORD}  # Use environment variable for security
+
+# Storage for profiling results
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: profilemesh
+    username: profilemesh_user
+    password: ${DB_PASSWORD}
+  results_table: profilemesh_results
+  runs_table: profilemesh_runs
+  create_tables: true
+
+# Tables to profile
+profiling:
+  tables:
+    - schema: public
+      table: users
+    - schema: public
+      table: orders
+    - schema: public
+      table: products
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0      # Alert when metric changes by > 5%
+    medium_threshold: 15.0  # Alert when metric changes by > 15%
+    high_threshold: 30.0    # Alert when metric changes by > 30%
+
+# Event hooks configuration
+hooks:
+  enabled: true
+  hooks:
+    # Slack alerts for drift detection
+    - type: slack
+      enabled: true
+      webhook_url: ${SLACK_WEBHOOK_URL}  # Required: Your Slack webhook URL
+      channel: "#data-alerts"             # Optional: Override default channel
+      username: "ProfileMesh Bot"         # Optional: Bot display name
+      min_severity: medium                # Only alert on medium+ severity drift
+      alert_on_drift: true                # Send alerts for drift events
+      alert_on_schema_change: true        # Send alerts for schema changes
+      alert_on_profiling_failure: true    # Send alerts for profiling failures
+      timeout: 10                         # Request timeout in seconds
+    
+    # Optional: Also log all events for debugging
+    - type: logging
+      enabled: true
+      log_level: INFO
+    
+    # Optional: Persist events to database for historical analysis
+    - type: sql
+      enabled: false
+      connection:
+        type: postgres
+        host: localhost
+        port: 5432
+        database: profilemesh
+        username: profilemesh_user
+        password: ${DB_PASSWORD}
+      table_name: profilemesh_events
+
+# Monitoring (optional)
+monitoring:
+  enable_metrics: false
+  port: 9753
+
+# Retry configuration
+retry:
+  enabled: true
+  retries: 3
+  backoff_strategy: exponential
+  min_backoff: 0.5
+  max_backoff: 8.0
+
+# Execution configuration
+execution:
+  max_workers: 4      # Enable parallel profiling
+  batch_size: 10
+  queue_size: 100

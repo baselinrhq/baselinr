@@ -242,3 +242,290 @@ class SQLEventHook:
             logger.error(f"Failed to persist event to database: {e}", exc_info=True)
             raise
 
+
+class SlackAlertHook:
+    """
+    Hook that sends drift detection alerts to Slack.
+    
+    This hook sends formatted messages to a Slack channel via webhook when
+    drift detection events occur. It can filter by minimum severity and
+    event types.
+    
+    To get a webhook URL:
+        1. Go to https://api.slack.com/apps
+        2. Create a new app or select existing
+        3. Enable Incoming Webhooks
+        4. Add webhook to workspace
+        5. Copy the webhook URL
+    """
+    
+    def __init__(
+        self,
+        webhook_url: str,
+        channel: Optional[str] = None,
+        username: str = "ProfileMesh",
+        min_severity: str = "low",
+        alert_on_drift: bool = True,
+        alert_on_schema_change: bool = True,
+        alert_on_profiling_failure: bool = True,
+        timeout: int = 10
+    ):
+        """
+        Initialize the Slack alert hook.
+        
+        Args:
+            webhook_url: Slack webhook URL
+            channel: Optional channel override (e.g., "#alerts")
+            username: Bot username (default: "ProfileMesh")
+            min_severity: Minimum severity for drift alerts ("low", "medium", "high")
+            alert_on_drift: Send alerts for drift detection events
+            alert_on_schema_change: Send alerts for schema changes
+            alert_on_profiling_failure: Send alerts for profiling failures
+            timeout: Request timeout in seconds
+        """
+        self.webhook_url = webhook_url
+        self.channel = channel
+        self.username = username
+        self.min_severity = min_severity
+        self.alert_on_drift = alert_on_drift
+        self.alert_on_schema_change = alert_on_schema_change
+        self.alert_on_profiling_failure = alert_on_profiling_failure
+        self.timeout = timeout
+        self.severity_order = {"low": 1, "medium": 2, "high": 3}
+        
+        # Import here to avoid hard dependency
+        try:
+            import requests
+            self.requests = requests
+        except ImportError:
+            raise ImportError(
+                "requests library is required for SlackAlertHook. "
+                "Install with: pip install requests"
+            )
+    
+    def handle_event(self, event: BaseEvent) -> None:
+        """
+        Handle event and send to Slack if appropriate.
+        
+        Args:
+            event: The event to handle
+        """
+        from .events import DataDriftDetected, SchemaChangeDetected, ProfilingFailed
+        
+        try:
+            # Filter based on event type
+            if isinstance(event, DataDriftDetected) and self.alert_on_drift:
+                # Check severity threshold
+                event_severity = self.severity_order.get(event.drift_severity, 0)
+                min_severity = self.severity_order.get(self.min_severity, 0)
+                
+                if event_severity >= min_severity:
+                    self._send_drift_alert(event)
+            
+            elif isinstance(event, SchemaChangeDetected) and self.alert_on_schema_change:
+                self._send_schema_change_alert(event)
+            
+            elif isinstance(event, ProfilingFailed) and self.alert_on_profiling_failure:
+                self._send_profiling_failure_alert(event)
+        
+        except Exception as e:
+            # Log but don't raise - hook failures shouldn't stop profiling
+            logger.error(f"Failed to send Slack alert: {e}", exc_info=True)
+    
+    def _send_drift_alert(self, event) -> None:
+        """Send drift detection alert to Slack."""
+        from .events import DataDriftDetected
+        
+        # Determine emoji based on severity
+        emoji = {
+            "low": "⚠️",
+            "medium": "🔶",
+            "high": "🚨"
+        }.get(event.drift_severity, "⚠️")
+        
+        # Determine color based on severity
+        color = {
+            "low": "#FFA500",      # Orange
+            "medium": "#FF8C00",   # Dark Orange
+            "high": "#FF0000"      # Red
+        }.get(event.drift_severity, "#FFA500")
+        
+        # Format change percentage
+        change_sign = "+" if event.change_percent >= 0 else ""
+        change_str = f"{change_sign}{event.change_percent:.1f}%" if event.change_percent is not None else "N/A"
+        
+        payload = {
+            "username": self.username,
+            "text": f"{emoji} *Data Drift Detected*",
+            "attachments": [{
+                "color": color,
+                "fields": [
+                    {
+                        "title": "Severity",
+                        "value": event.drift_severity.upper(),
+                        "short": True
+                    },
+                    {
+                        "title": "Table",
+                        "value": f"`{event.table}`",
+                        "short": True
+                    },
+                    {
+                        "title": "Column",
+                        "value": f"`{event.column}`",
+                        "short": True
+                    },
+                    {
+                        "title": "Metric",
+                        "value": event.metric,
+                        "short": True
+                    },
+                    {
+                        "title": "Baseline Value",
+                        "value": f"{event.baseline_value:.2f}" if isinstance(event.baseline_value, (int, float)) else str(event.baseline_value),
+                        "short": True
+                    },
+                    {
+                        "title": "Current Value",
+                        "value": f"{event.current_value:.2f}" if isinstance(event.current_value, (int, float)) else str(event.current_value),
+                        "short": True
+                    },
+                    {
+                        "title": "Change",
+                        "value": change_str,
+                        "short": True
+                    },
+                    {
+                        "title": "Timestamp",
+                        "value": event.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "short": True
+                    }
+                ],
+                "footer": "ProfileMesh Drift Detection",
+                "ts": int(event.timestamp.timestamp())
+            }]
+        }
+        
+        if self.channel:
+            payload["channel"] = self.channel
+        
+        self._send_to_slack(payload)
+    
+    def _send_schema_change_alert(self, event) -> None:
+        """Send schema change alert to Slack."""
+        from .events import SchemaChangeDetected
+        
+        # Determine emoji based on change type
+        emoji = {
+            "column_added": "➕",
+            "column_removed": "➖",
+            "type_changed": "🔄"
+        }.get(event.change_type, "🔄")
+        
+        # Build description
+        if event.change_type == "type_changed":
+            description = f"Column `{event.column}` type changed from `{event.old_type}` to `{event.new_type}`"
+        elif event.change_type == "column_added":
+            description = f"Column `{event.column}` was added"
+        elif event.change_type == "column_removed":
+            description = f"Column `{event.column}` was removed"
+        else:
+            description = f"Schema change: {event.change_type}"
+        
+        payload = {
+            "username": self.username,
+            "text": f"{emoji} *Schema Change Detected*",
+            "attachments": [{
+                "color": "#36a64f",  # Green
+                "fields": [
+                    {
+                        "title": "Table",
+                        "value": f"`{event.table}`",
+                        "short": True
+                    },
+                    {
+                        "title": "Change Type",
+                        "value": event.change_type.replace("_", " ").title(),
+                        "short": True
+                    },
+                    {
+                        "title": "Description",
+                        "value": description,
+                        "short": False
+                    },
+                    {
+                        "title": "Timestamp",
+                        "value": event.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "short": True
+                    }
+                ],
+                "footer": "ProfileMesh Schema Detection",
+                "ts": int(event.timestamp.timestamp())
+            }]
+        }
+        
+        if self.channel:
+            payload["channel"] = self.channel
+        
+        self._send_to_slack(payload)
+    
+    def _send_profiling_failure_alert(self, event) -> None:
+        """Send profiling failure alert to Slack."""
+        from .events import ProfilingFailed
+        
+        payload = {
+            "username": self.username,
+            "text": "❌ *Profiling Failed*",
+            "attachments": [{
+                "color": "#FF0000",  # Red
+                "fields": [
+                    {
+                        "title": "Table",
+                        "value": f"`{event.table}`",
+                        "short": True
+                    },
+                    {
+                        "title": "Run ID",
+                        "value": event.run_id,
+                        "short": True
+                    },
+                    {
+                        "title": "Error",
+                        "value": f"```{event.error}```",
+                        "short": False
+                    },
+                    {
+                        "title": "Timestamp",
+                        "value": event.timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "short": True
+                    }
+                ],
+                "footer": "ProfileMesh Profiling",
+                "ts": int(event.timestamp.timestamp())
+            }]
+        }
+        
+        if self.channel:
+            payload["channel"] = self.channel
+        
+        self._send_to_slack(payload)
+    
+    def _send_to_slack(self, payload: dict) -> None:
+        """
+        Send payload to Slack webhook.
+        
+        Args:
+            payload: Slack message payload
+        """
+        try:
+            response = self.requests.post(
+                self.webhook_url,
+                json=payload,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            logger.debug(f"Sent Slack alert: {payload.get('text', 'Unknown')}")
+        except Exception as e:
+            logger.error(f"Failed to send Slack message: {e}")
+            raise
+

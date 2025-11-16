@@ -517,4 +517,127 @@ class TestEventBusIntegration:
             row = result._mapping
             assert row["event_type"] == "DataDriftDetected"
             assert row["drift_severity"] == "high"
+    
+    def test_slack_alert_hook_drift(self):
+        """Test Slack alert hook with drift event."""
+        from unittest.mock import Mock, patch, MagicMock
+        
+        # Mock requests module before importing SlackAlertHook
+        mock_requests = MagicMock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_requests.post.return_value = mock_response
+        
+        with patch.dict('sys.modules', {'requests': mock_requests}):
+            from profilemesh.events import SlackAlertHook
+            
+            # Create hook
+            hook = SlackAlertHook(
+                webhook_url="https://hooks.slack.com/test",
+                channel="#test",
+                username="TestBot",
+                min_severity="low"
+            )
+            
+            # Create and emit drift event
+            event = DataDriftDetected(
+                event_type="DataDriftDetected",
+                timestamp=datetime.utcnow(),
+                table="orders",
+                column="total_amount",
+                metric="mean",
+                baseline_value=100.0,
+                current_value=150.0,
+                change_percent=50.0,
+                drift_severity="high",
+                metadata={}
+            )
+            
+            hook.handle_event(event)
+            
+            # Verify Slack was called
+            assert mock_requests.post.called
+            call_args = mock_requests.post.call_args
+            assert call_args[0][0] == "https://hooks.slack.com/test"
+            
+            # Verify payload structure
+            payload = call_args[1]["json"]
+            assert payload["username"] == "TestBot"
+            assert "Data Drift Detected" in payload["text"]
+            assert len(payload["attachments"]) > 0
+            assert payload["attachments"][0]["color"] == "#FF0000"  # Red for high severity
+    
+    def test_slack_alert_hook_severity_filter(self):
+        """Test Slack alert hook filters by severity."""
+        from unittest.mock import Mock, patch, MagicMock
+        
+        # Mock requests module before importing SlackAlertHook
+        mock_requests = MagicMock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_requests.post.return_value = mock_response
+        
+        with patch.dict('sys.modules', {'requests': mock_requests}):
+            from profilemesh.events import SlackAlertHook
+            
+            # Create hook with high severity threshold
+            hook = SlackAlertHook(
+                webhook_url="https://hooks.slack.com/test",
+                min_severity="high"  # Only high severity
+            )
+            
+            # Create low severity event (should be filtered)
+            event = DataDriftDetected(
+                event_type="DataDriftDetected",
+                timestamp=datetime.utcnow(),
+                table="orders",
+                column="total_amount",
+                metric="mean",
+                baseline_value=100.0,
+                current_value=105.0,
+                change_percent=5.0,
+                drift_severity="low",
+                metadata={}
+            )
+            
+            hook.handle_event(event)
+            
+            # Verify Slack was NOT called (filtered by severity)
+            assert not mock_requests.post.called
+    
+    def test_slack_alert_hook_schema_change(self):
+        """Test Slack alert hook with schema change event."""
+        from unittest.mock import Mock, patch, MagicMock
+        
+        # Mock requests module before importing SlackAlertHook
+        mock_requests = MagicMock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_requests.post.return_value = mock_response
+        
+        with patch.dict('sys.modules', {'requests': mock_requests}):
+            from profilemesh.events import SlackAlertHook
+            
+            # Create hook
+            hook = SlackAlertHook(
+                webhook_url="https://hooks.slack.com/test",
+                username="TestBot"
+            )
+            
+            # Create schema change event
+            event = SchemaChangeDetected(
+                event_type="SchemaChangeDetected",
+                timestamp=datetime.utcnow(),
+                table="users",
+                change_type="column_added",
+                column="email",
+                metadata={}
+            )
+            
+            hook.handle_event(event)
+            
+            # Verify Slack was called
+            assert mock_requests.post.called
+            payload = mock_requests.post.call_args[1]["json"]
+            assert "Schema Change Detected" in payload["text"]
 

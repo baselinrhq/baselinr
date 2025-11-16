@@ -17,7 +17,7 @@ from .events import (
 )
 from .hooks import AlertHook
 from .event_bus import EventBus
-from .builtin_hooks import LoggingAlertHook, SnowflakeEventHook, SQLEventHook
+from .builtin_hooks import LoggingAlertHook, SnowflakeEventHook, SQLEventHook, SlackAlertHook
 
 __all__ = [
     "BaseEvent",
@@ -32,5 +32,6 @@ __all__ = [
     "LoggingAlertHook",
     "SnowflakeEventHook",
     "SQLEventHook",
+    "SlackAlertHook",
 ]
 
