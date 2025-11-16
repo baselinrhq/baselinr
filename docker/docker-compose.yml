@@ -136,6 +136,8 @@ services:
       - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
       - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth
+      # Fix for SQLAlchemy 2.x compatibility
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_ENGINE_ARG_ENCODING=
       # ProfileMesh config overrides for Docker
       - PROFILEMESH_CONFIG=/app/examples/config.yml
       - PROFILEMESH_SOURCE__HOST=postgres
@@ -180,6 +182,8 @@ services:
       - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=False
+      # Fix for SQLAlchemy 2.x compatibility
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_ENGINE_ARG_ENCODING=
       # ProfileMesh config overrides for Docker
       - PROFILEMESH_CONFIG=/app/examples/config.yml
       - PROFILEMESH_SOURCE__HOST=postgres

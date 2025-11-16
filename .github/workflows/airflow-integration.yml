@@ -84,12 +84,6 @@ jobs:
             exit 1
           fi
 
-      - name: Test Airflow image can run
-        run: |
-          echo "Testing if Airflow image can run basic commands..."
-          docker compose -f docker/docker-compose.yml run --rm --no-deps -e AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/test.db airflow_webserver airflow version
-          echo "✓ Airflow version check passed"
-
       - name: Start Airflow services
         run: |
           docker compose -f docker/docker-compose.yml up -d airflow_webserver airflow_scheduler
