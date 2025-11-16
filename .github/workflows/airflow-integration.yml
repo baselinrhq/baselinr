@@ -46,7 +46,7 @@ jobs:
         run: |
           export AIRFLOW__CORE__DAGS_FOLDER=/tmp/dags
           export AIRFLOW__CORE__LOAD_EXAMPLES=False
-          export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow.db
+          export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow_test.db
           mkdir -p /tmp/dags
           airflow db init || echo "DB init failed, continuing with tests"
 
@@ -54,6 +54,7 @@ jobs:
         run: |
           export AIRFLOW__CORE__UNIT_TEST_MODE=True
           export AIRFLOW__CORE__LOAD_EXAMPLES=False
+          export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow_test.db
           pytest tests/test_airflow_integration.py -v --tb=short
 
       - name: Build Airflow Docker image

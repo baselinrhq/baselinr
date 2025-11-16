@@ -1,0 +1,49 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              AIRFLOW TEST FIX #2 APPLIED ✅                              ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+NEW ISSUE: Airflow 2.8+ doesn't allow in-memory SQLite
+
+ERROR:
+  AirflowConfigException: Cannot use relative path: `sqlite:///:memory:`
+  to connect to sqlite. Please use absolute path such as 
+  `sqlite:////tmp/airflow.db`.
+
+ROOT CAUSE:
+  Airflow 2.8+ added a validation that requires absolute paths for SQLite
+  databases. The `:memory:` special path is no longer allowed.
+
+FIX APPLIED:
+
+1. ✅ Updated tests/conftest.py
+   Changed from: sqlite:///:memory:
+   Changed to:   sqlite:////tmp/airflow_test.db
+   
+   Uses tempfile.gettempdir() for cross-platform compatibility
+
+2. ✅ Updated .github/workflows/airflow-integration.yml  
+   Set AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow_test.db
+
+CODE CHANGE IN conftest.py:
+```python
+# Before (didn't work with Airflow 2.8+)
+os.environ.setdefault('AIRFLOW__DATABASE__SQL_ALCHEMY_CONN', 'sqlite:///:memory:')
+
+# After (works with Airflow 2.8+)
+AIRFLOW_DB_PATH = os.path.join(tempfile.gettempdir(), 'airflow_test.db')
+os.environ.setdefault('AIRFLOW__DATABASE__SQL_ALCHEMY_CONN', f'sqlite:///{AIRFLOW_DB_PATH}')
+```
+
+FILES CHANGED:
+  MODIFIED: tests/conftest.py
+  MODIFIED: .github/workflows/airflow-integration.yml
+
+COMMIT COMMAND:
+  git add tests/conftest.py .github/workflows/airflow-integration.yml
+  git commit -m "Fix Airflow 2.8+ SQLite path requirement"
+  git push
+
+STATUS: ✅ READY TO COMMIT AND PUSH (AGAIN)
+
+NOTE: This is a breaking change in Airflow 2.8+ that requires absolute paths
+      for SQLite databases. The fix uses a temporary file instead of :memory:

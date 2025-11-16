@@ -28,7 +28,8 @@ Your GitHub Actions run failed with these errors:
 
 ```python
 os.environ.setdefault('AIRFLOW__CORE__UNIT_TEST_MODE', 'True')
-os.environ.setdefault('AIRFLOW__DATABASE__SQL_ALCHEMY_CONN', 'sqlite:///:memory:')
+# Airflow 2.8+ requires absolute path, not :memory:
+os.environ.setdefault('AIRFLOW__DATABASE__SQL_ALCHEMY_CONN', 'sqlite:////tmp/airflow_test.db')
 os.environ.setdefault('AIRFLOW__LOGGING__LOGGING_CONFIG_CLASS', '')  # KEY FIX
 ```
 
