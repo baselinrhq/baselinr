@@ -1,5 +1,15 @@
 -- ProfileMesh Storage Schema
 -- SQL schema for profiling results storage
+-- Schema Version: 1
+
+-- Schema version tracking table
+CREATE TABLE IF NOT EXISTS profilemesh_schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(500),
+    migration_script VARCHAR(255),
+    checksum VARCHAR(64)
+);
 
 -- Runs table - tracks profiling runs
 CREATE TABLE IF NOT EXISTS profilemesh_runs (
