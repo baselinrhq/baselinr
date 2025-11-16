@@ -100,6 +100,16 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO profilemesh;
 -- ProfileMesh Storage Schema
 -- ============================================================================
 -- Create ProfileMesh storage tables for profiling results and events
+-- Schema Version: 1
+
+-- Schema version tracking table
+CREATE TABLE IF NOT EXISTS profilemesh_schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    description VARCHAR(500),
+    migration_script VARCHAR(255),
+    checksum VARCHAR(64)
+);
 
 -- Runs table - tracks profiling runs
 -- Note: Primary key is composite (run_id, dataset_name) to allow multiple tables per run

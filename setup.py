@@ -37,6 +37,7 @@ setup(
         "pyyaml>=6.0",
         "sqlalchemy>=2.0.0",
         "psycopg2-binary>=2.9.0",  # PostgreSQL driver
+        "tabulate>=0.9.0",  # CLI table formatting
     ],
     extras_require={
         "snowflake": [

@@ -404,6 +404,210 @@ def plan_command(args):
         return 1
 
 
+def query_command(args):
+    """Execute query command."""
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+        
+        # Create query client
+        from .connectors.factory import create_connector
+        from .query import MetadataQueryClient, format_runs, format_drift, format_table_history
+        
+        connector = create_connector(config.storage.connection, config.retry)
+        client = MetadataQueryClient(
+            connector.engine,
+            runs_table=config.storage.runs_table,
+            results_table=config.storage.results_table,
+            events_table="profilemesh_events"
+        )
+        
+        # Execute subcommand
+        if args.query_command == 'runs':
+            runs = client.query_runs(
+                schema=args.schema,
+                table=args.table,
+                status=args.status,
+                environment=args.environment,
+                days=args.days,
+                limit=args.limit,
+                offset=args.offset
+            )
+            
+            output = format_runs(runs, format=args.format)
+            print(output)
+            
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output)
+                logger.info(f"Results saved to: {args.output}")
+        
+        elif args.query_command == 'drift':
+            events = client.query_drift_events(
+                table=args.table,
+                severity=args.severity,
+                days=args.days,
+                limit=args.limit,
+                offset=args.offset
+            )
+            
+            output = format_drift(events, format=args.format)
+            print(output)
+            
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output)
+                logger.info(f"Results saved to: {args.output}")
+        
+        elif args.query_command == 'run':
+            details = client.query_run_details(args.run_id, dataset_name=args.table)
+            
+            if not details:
+                print(f"Run {args.run_id} not found")
+                return 1
+            
+            if args.format == 'json':
+                output = json.dumps(details, indent=2, default=str)
+            else:
+                # Pretty print for table format
+                output = f"""
+RUN DETAILS
+{'=' * 80}
+Run ID: {details['run_id']}
+Dataset: {details['dataset_name']}
+Schema: {details.get('schema_name') or 'N/A'}
+Profiled: {details['profiled_at']}
+Status: {details['status']}
+Environment: {details.get('environment') or 'N/A'}
+Row Count: {details['row_count']:,}
+Column Count: {details['column_count']}
+
+COLUMN METRICS:
+"""
+                for col in details['columns']:
+                    output += f"\n  {col['column_name']} ({col['column_type']}):\n"
+                    for metric, value in col['metrics'].items():
+                        output += f"    {metric}: {value}\n"
+            
+            print(output)
+            
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output)
+                logger.info(f"Results saved to: {args.output}")
+        
+        elif args.query_command == 'table':
+            history = client.query_table_history(
+                args.table,
+                schema_name=args.schema,
+                days=args.days
+            )
+            
+            output = format_table_history(history, format=args.format)
+            print(output)
+            
+            if args.output:
+                with open(args.output, 'w') as f:
+                    f.write(output)
+                logger.info(f"Results saved to: {args.output}")
+        
+        return 0
+    
+    except Exception as e:
+        logger.error(f"Query command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
+def migrate_command(args):
+    """Execute schema migration command."""
+    logger.info(f"Loading configuration from: {args.config}")
+    
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+        
+        # Create migration manager
+        from .connectors.factory import create_connector
+        from .storage.migrations import MigrationManager
+        from .storage.migrations.versions import ALL_MIGRATIONS
+        
+        connector = create_connector(config.storage.connection, config.retry)
+        manager = MigrationManager(connector.engine)
+        
+        # Register all migrations
+        for migration in ALL_MIGRATIONS:
+            manager.register_migration(migration)
+        
+        # Execute subcommand
+        if args.migrate_command == 'status':
+            current = manager.get_current_version()
+            from .storage.schema_version import CURRENT_SCHEMA_VERSION
+            
+            print(f"\n{'='*60}")
+            print("SCHEMA VERSION STATUS")
+            print(f"{'='*60}")
+            print(f"Current database version: {current or 'not initialized'}")
+            print(f"Current code version: {CURRENT_SCHEMA_VERSION}")
+            
+            if current is None:
+                print("\n⚠️  Schema version not initialized")
+                print("Run: profilemesh migrate apply --target 1")
+            elif current < CURRENT_SCHEMA_VERSION:
+                print(f"\n⚠️  Database schema is behind (v{current} < v{CURRENT_SCHEMA_VERSION})")
+                print(f"Run: profilemesh migrate apply --target {CURRENT_SCHEMA_VERSION}")
+            elif current > CURRENT_SCHEMA_VERSION:
+                print(f"\n❌ Database schema is ahead (v{current} > v{CURRENT_SCHEMA_VERSION})")
+                print("Update ProfileMesh package to match database version")
+            else:
+                print("\n✅ Schema version is up to date")
+        
+        elif args.migrate_command == 'apply':
+            target = args.target
+            dry_run = args.dry_run
+            
+            if dry_run:
+                print("🔍 DRY RUN MODE - No changes will be applied\n")
+            
+            success = manager.migrate_to(target, dry_run=dry_run)
+            
+            if success:
+                if not dry_run:
+                    print(f"\n✅ Successfully migrated to version {target}")
+                return 0
+            else:
+                print(f"\n❌ Migration failed")
+                return 1
+        
+        elif args.migrate_command == 'validate':
+            print("Validating schema integrity...\n")
+            results = manager.validate_schema()
+            
+            print(f"Schema Version: {results['version']}")
+            print(f"Valid: {'✅ Yes' if results['valid'] else '❌ No'}\n")
+            
+            if results['errors']:
+                print("Errors:")
+                for error in results['errors']:
+                    print(f"  ❌ {error}")
+                print()
+            
+            if results['warnings']:
+                print("Warnings:")
+                for warning in results['warnings']:
+                    print(f"  ⚠️  {warning}")
+                print()
+            
+            return 0 if results['valid'] else 1
+        
+        return 0
+    
+    except Exception as e:
+        logger.error(f"Migration command failed: {e}", exc_info=True)
+        print(f"\n❌ Error: {e}")
+        return 1
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -482,6 +686,69 @@ def main():
         help='Exit with error code if critical drift detected'
     )
     
+    # Migrate command
+    migrate_parser = subparsers.add_parser('migrate', help='Manage schema migrations')
+    migrate_subparsers = migrate_parser.add_subparsers(dest='migrate_command', help='Migration operation')
+    
+    # migrate status
+    status_parser = migrate_subparsers.add_parser('status', help='Show current schema version')
+    status_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
+    
+    # migrate apply
+    apply_parser = migrate_subparsers.add_parser('apply', help='Apply migrations')
+    apply_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
+    apply_parser.add_argument('--target', type=int, required=True, help='Target schema version')
+    apply_parser.add_argument('--dry-run', action='store_true', help='Preview changes without applying')
+    
+    # migrate validate
+    validate_parser = migrate_subparsers.add_parser('validate', help='Validate schema integrity')
+    validate_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
+    
+    # Query command
+    query_parser = subparsers.add_parser('query', help='Query profiling metadata')
+    query_subparsers = query_parser.add_subparsers(dest='query_command', help='Query type')
+    
+    # query runs
+    runs_parser = query_subparsers.add_parser('runs', help='Query profiling runs')
+    runs_parser.add_argument('--config', '-c', required=True, help='Configuration file')
+    runs_parser.add_argument('--schema', help='Filter by schema name')
+    runs_parser.add_argument('--table', help='Filter by table name')
+    runs_parser.add_argument('--status', choices=['completed', 'failed'], help='Filter by status')
+    runs_parser.add_argument('--environment', help='Filter by environment')
+    runs_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
+    runs_parser.add_argument('--limit', type=int, default=100, help='Max results (default: 100)')
+    runs_parser.add_argument('--offset', type=int, default=0, help='Pagination offset')
+    runs_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
+    runs_parser.add_argument('--output', '-o', help='Output file')
+    
+    # query drift
+    drift_query_parser = query_subparsers.add_parser('drift', help='Query drift events')
+    drift_query_parser.add_argument('--config', '-c', required=True, help='Configuration file')
+    drift_query_parser.add_argument('--table', help='Filter by table name')
+    drift_query_parser.add_argument('--severity', choices=['low', 'medium', 'high'], help='Filter by severity')
+    drift_query_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
+    drift_query_parser.add_argument('--limit', type=int, default=100, help='Max results (default: 100)')
+    drift_query_parser.add_argument('--offset', type=int, default=0, help='Pagination offset')
+    drift_query_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
+    drift_query_parser.add_argument('--output', '-o', help='Output file')
+    
+    # query run (specific run details)
+    run_parser = query_subparsers.add_parser('run', help='Query specific run details')
+    run_parser.add_argument('--config', '-c', required=True, help='Configuration file')
+    run_parser.add_argument('--run-id', required=True, help='Run ID to query')
+    run_parser.add_argument('--table', help='Dataset name (if run has multiple tables)')
+    run_parser.add_argument('--format', choices=['table', 'json'], default='table', help='Output format')
+    run_parser.add_argument('--output', '-o', help='Output file')
+    
+    # query table (table history)
+    table_parser = query_subparsers.add_parser('table', help='Query table profiling history')
+    table_parser.add_argument('--config', '-c', required=True, help='Configuration file')
+    table_parser.add_argument('--table', required=True, help='Table name')
+    table_parser.add_argument('--schema', help='Schema name')
+    table_parser.add_argument('--days', type=int, default=30, help='Days of history (default: 30)')
+    table_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
+    table_parser.add_argument('--output', '-o', help='Output file')
+    
     # Parse arguments
     args = parser.parse_args()
     
@@ -496,6 +763,16 @@ def main():
         return profile_command(args)
     elif args.command == 'drift':
         return drift_command(args)
+    elif args.command == 'migrate':
+        if not args.migrate_command:
+            migrate_parser.print_help()
+            return 1
+        return migrate_command(args)
+    elif args.command == 'query':
+        if not args.query_command:
+            query_parser.print_help()
+            return 1
+        return query_command(args)
     else:
         parser.print_help()
         return 1

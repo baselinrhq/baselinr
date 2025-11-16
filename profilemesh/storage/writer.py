@@ -82,6 +82,9 @@ class ResultWriter:
             conn.commit()
         
         logger.info("Storage tables created successfully")
+        
+        # Initialize or verify schema version
+        self._init_schema_version()
     
     def write_results(self, results: List[ProfilingResult], environment: str = "development"):
         """
@@ -193,6 +196,66 @@ class ResultWriter:
         with self.engine.connect() as conn:
             result = conn.execute(query, params).fetchone()
             return result[0] if result else None
+    
+    def _init_schema_version(self):
+        """Initialize or verify schema version."""
+        from .schema_version import CURRENT_SCHEMA_VERSION, get_version_table_ddl
+        
+        # Create version table if it doesn't exist
+        with self.engine.connect() as conn:
+            dialect = "snowflake" if "snowflake" in str(self.engine.url) else "generic"
+            conn.execute(text(get_version_table_ddl(dialect)))
+            conn.commit()
+            
+            # Check current version
+            version_query = text("""
+                SELECT version FROM profilemesh_schema_version 
+                ORDER BY version DESC LIMIT 1
+            """)
+            result = conn.execute(version_query).fetchone()
+            
+            if result is None:
+                # First time - insert initial version
+                insert_query = text("""
+                    INSERT INTO profilemesh_schema_version 
+                    (version, description, migration_script)
+                    VALUES (:version, :description, :script)
+                """)
+                conn.execute(insert_query, {
+                    'version': CURRENT_SCHEMA_VERSION,
+                    'description': 'Initial schema version',
+                    'script': 'schema.sql'
+                })
+                conn.commit()
+                logger.info(f"Initialized schema version: {CURRENT_SCHEMA_VERSION}")
+            else:
+                current_version = result[0]
+                if current_version != CURRENT_SCHEMA_VERSION:
+                    logger.warning(
+                        f"Schema version mismatch: DB={current_version}, "
+                        f"Code={CURRENT_SCHEMA_VERSION}. Migration may be needed."
+                    )
+                else:
+                    logger.debug(f"Schema version verified: {current_version}")
+    
+    def get_schema_version(self) -> Optional[int]:
+        """
+        Get current schema version from database.
+        
+        Returns:
+            Current schema version or None if not initialized
+        """
+        query = text("""
+            SELECT version FROM profilemesh_schema_version 
+            ORDER BY version DESC LIMIT 1
+        """)
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(query).fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.debug(f"Could not read schema version: {e}")
+            return None
     
     def close(self):
         """Close database connection."""
