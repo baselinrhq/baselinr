@@ -115,6 +115,22 @@ def _create_hook(hook_config: HookConfig):
         table_name = hook_config.table_name or "profilemesh_events"
         return SQLEventHook(engine=connector.engine, table_name=table_name)
     
+    elif hook_config.type == "slack":
+        if not hook_config.webhook_url:
+            raise ValueError("Slack hook requires webhook_url")
+        
+        from .events import SlackAlertHook
+        return SlackAlertHook(
+            webhook_url=hook_config.webhook_url,
+            channel=hook_config.channel,
+            username=hook_config.username or "ProfileMesh",
+            min_severity=hook_config.min_severity or "low",
+            alert_on_drift=hook_config.alert_on_drift if hook_config.alert_on_drift is not None else True,
+            alert_on_schema_change=hook_config.alert_on_schema_change if hook_config.alert_on_schema_change is not None else True,
+            alert_on_profiling_failure=hook_config.alert_on_profiling_failure if hook_config.alert_on_profiling_failure is not None else True,
+            timeout=hook_config.timeout or 10
+        )
+    
     elif hook_config.type == "custom":
         if not hook_config.module or not hook_config.class_name:
             raise ValueError("Custom hook requires module and class_name")

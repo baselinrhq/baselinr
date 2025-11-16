@@ -186,7 +186,7 @@ class DriftDetectionConfig(BaseModel):
 class HookConfig(BaseModel):
     """Configuration for a single alert hook."""
     
-    type: str  # logging | sql | snowflake | custom
+    type: str  # logging | sql | snowflake | slack | custom
     enabled: bool = Field(True)
     
     # Logging hook parameters
@@ -195,6 +195,16 @@ class HookConfig(BaseModel):
     # SQL/Snowflake hook parameters
     connection: Optional[ConnectionConfig] = None
     table_name: Optional[str] = Field("profilemesh_events")
+    
+    # Slack hook parameters
+    webhook_url: Optional[str] = None
+    channel: Optional[str] = None
+    username: Optional[str] = Field("ProfileMesh")
+    min_severity: Optional[str] = Field("low")
+    alert_on_drift: Optional[bool] = Field(True)
+    alert_on_schema_change: Optional[bool] = Field(True)
+    alert_on_profiling_failure: Optional[bool] = Field(True)
+    timeout: Optional[int] = Field(10)
     
     # Custom hook parameters (module path and class name)
     module: Optional[str] = None
@@ -205,7 +215,7 @@ class HookConfig(BaseModel):
     @classmethod
     def validate_type(cls, v: str) -> str:
         """Validate hook type."""
-        valid_types = ["logging", "sql", "snowflake", "custom"]
+        valid_types = ["logging", "sql", "snowflake", "slack", "custom"]
         if v not in valid_types:
             raise ValueError(f"Hook type must be one of {valid_types}")
         return v

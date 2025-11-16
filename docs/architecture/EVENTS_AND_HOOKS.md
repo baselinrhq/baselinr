@@ -218,6 +218,34 @@ hooks:
 
 **Use Case:** Enterprise data warehousing, Snowflake-native monitoring
 
+### SlackAlertHook
+
+Sends formatted alerts to Slack channels when drift or other events occur:
+
+```yaml
+hooks:
+  enabled: true
+  hooks:
+    - type: slack
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: "#data-alerts"
+      username: "ProfileMesh Bot"
+      min_severity: medium
+      alert_on_drift: true
+      alert_on_schema_change: true
+      alert_on_profiling_failure: true
+      timeout: 10
+```
+
+**Use Case:** Real-time team notifications, incident response, monitoring dashboards
+
+**Features:**
+- Severity-based filtering (low, medium, high)
+- Rich formatted messages with color coding
+- Separate alerts for drift, schema changes, and failures
+- Configurable channel and username
+- Environment variable support for webhook URLs
+
 ## Configuration
 
 ### Master Switch
@@ -467,45 +495,52 @@ hooks:
         password: ${SNOWFLAKE_PASSWORD}
 ```
 
-### Example 4: Drift-Only Alerts
+### Example 4: Slack Alerts for Drift Detection
 
-Create a custom hook that only processes drift events:
+Configure Slack alerts using the built-in SlackAlertHook:
+
+```yaml
+# config.yml
+hooks:
+  enabled: true
+  hooks:
+    - type: slack
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: "#data-alerts"
+      username: "ProfileMesh Bot"
+      min_severity: medium
+      alert_on_drift: true
+      alert_on_schema_change: true
+      alert_on_profiling_failure: true
+```
+
+Or use it programmatically:
 
 ```python
-# drift_alerts.py
-from profilemesh.events import BaseEvent, DataDriftDetected
-import slack_sdk
+from profilemesh.events import EventBus, SlackAlertHook
+from profilemesh.drift import DriftDetector
+import os
 
-class SlackDriftAlertHook:
-    def __init__(self, webhook_url: str, min_severity: str = "medium"):
-        self.webhook_url = webhook_url
-        self.min_severity = min_severity
-        self.severity_order = {"low": 1, "medium": 2, "high": 3}
-    
-    def handle_event(self, event: BaseEvent) -> None:
-        if not isinstance(event, DataDriftDetected):
-            return  # Ignore non-drift events
-        
-        if self.severity_order.get(event.drift_severity, 0) < \
-           self.severity_order.get(self.min_severity, 0):
-            return  # Below threshold
-        
-        # Send Slack notification
-        message = {
-            "text": f"🚨 Data Drift Alert",
-            "blocks": [{
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*{event.drift_severity.upper()}* drift in `{event.table}.{event.column}`\n"
-                            f"• Metric: {event.metric}\n"
-                            f"• Change: {event.change_percent:+.1f}%"
-                }
-            }]
-        }
-        
-        requests.post(self.webhook_url, json=message)
+# Create event bus with Slack hook
+bus = EventBus()
+bus.register(SlackAlertHook(
+    webhook_url=os.getenv("SLACK_WEBHOOK_URL"),
+    channel="#data-alerts",
+    min_severity="medium"
+))
+
+# Run drift detection with Slack alerts
+detector = DriftDetector(
+    storage_config=storage_config,
+    drift_config=drift_config,
+    event_bus=bus
+)
+
+report = detector.detect_drift("orders")
+# Drift events automatically sent to Slack
 ```
+
+See [Slack Alerts Guide](../guides/SLACK_ALERTS.md) for detailed setup instructions.
 
 ## Best Practices
 
