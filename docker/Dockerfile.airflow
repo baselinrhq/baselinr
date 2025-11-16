@@ -2,11 +2,12 @@ FROM apache/airflow:2.8.1-python3.10
 
 USER root
 
-# Install system dependencies
+# Install system dependencies (including curl for health checks)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     postgresql-client \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 USER airflow
