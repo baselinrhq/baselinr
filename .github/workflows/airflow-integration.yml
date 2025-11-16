@@ -42,17 +42,9 @@ jobs:
           # Install profilemesh with airflow extras
           pip install -e ".[airflow]"
 
-      - name: Initialize Airflow for tests
-        run: |
-          export AIRFLOW_HOME=/tmp/airflow_home_test
-          export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=sqlite:////tmp/airflow_test.db
-          mkdir -p $AIRFLOW_HOME/dags $AIRFLOW_HOME/plugins $AIRFLOW_HOME/logs
-          # conftest.py will create the minimal airflow.cfg
-          airflow db check || echo "DB check completed"
-
       - name: Run Airflow integration tests
         run: |
-          # conftest.py handles all environment setup
+          # conftest.py will handle all environment setup and DB initialization
           pytest tests/test_airflow_integration.py -v --tb=short
 
       - name: Build Airflow Docker image

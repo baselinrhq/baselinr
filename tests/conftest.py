@@ -52,3 +52,21 @@ logging_level = CRITICAL
 fab_logging_level = CRITICAL
 colored_console_log = False
 ''')
+
+# Initialize Airflow database BEFORE any tests try to import airflow
+# This prevents the "Unable to configure formatter" error
+try:
+    import subprocess
+    result = subprocess.run(
+        ['airflow', 'db', 'init'],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=os.environ.copy()
+    )
+    if result.returncode == 0:
+        print("✓ Airflow DB initialized successfully")
+    else:
+        print(f"⚠ Airflow DB init completed with code {result.returncode}")
+except Exception as e:
+    print(f"⚠ Airflow DB init skipped: {e}")
