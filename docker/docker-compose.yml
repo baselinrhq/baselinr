@@ -154,9 +154,12 @@ services:
         condition: service_healthy
     command: >
       bash -c "
-        airflow db init &&
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com || true &&
-        airflow webserver
+        echo 'Starting Airflow initialization...' &&
+        airflow db migrate &&
+        echo 'Database migrated' &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com 2>/dev/null || echo 'User already exists' &&
+        echo 'Starting webserver...' &&
+        exec airflow webserver
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
