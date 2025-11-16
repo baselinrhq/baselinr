@@ -196,7 +196,11 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    command: airflow scheduler
+    command: >
+      bash -c "
+        echo 'Starting Airflow scheduler...' &&
+        exec airflow scheduler
+      "
 
 volumes:
   postgres_data:
