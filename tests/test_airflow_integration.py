@@ -10,19 +10,35 @@ import yaml
 from profilemesh.profiling.core import ProfilingResult
 
 
+@pytest.fixture(scope="session", autouse=True)
+def initialize_airflow_db():
+    """Initialize Airflow database for tests."""
+    try:
+        # Import here to ensure env vars from conftest.py are set first
+        from airflow import settings
+        from airflow.utils import db
+        
+        # Initialize Airflow database for test environment
+        db.initdb()
+    except Exception as e:
+        # If initialization fails, just continue - tests will use mocks
+        # This is acceptable since we're mocking most Airflow interactions
+        print(f"Note: Airflow DB initialization skipped: {e}")
+    
+    yield
+
+
 def _write_config(path: Path, tables) -> Path:
     """Helper to write a test config file."""
     config = {
         "environment": "test",
         "source": {
             "type": "sqlite",
-            "database": "source.db",
             "filepath": str(path.parent / "source.db"),
         },
         "storage": {
             "connection": {
                 "type": "sqlite",
-                "database": "results.db",
                 "filepath": str(path.parent / "results.db"),
             },
             "results_table": "profilemesh_results",
