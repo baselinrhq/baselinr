@@ -20,6 +20,14 @@ from profilemesh.drift.strategies import (
     StatisticalStrategy,
     create_drift_strategy,
 )
+from profilemesh.drift.type_normalizer import (
+    get_type_category,
+    normalize_column_type,
+)
+from profilemesh.drift.type_thresholds import (
+    TypeSpecificThresholds,
+    create_type_thresholds,
+)
 
 
 class TestAbsoluteThresholdStrategy:
@@ -372,3 +380,256 @@ class TestStatisticalStrategy:
         assert isinstance(strategy, StatisticalStrategy)
         assert strategy.sensitivity == "high"
         assert len(strategy.test_instances) == 2
+
+
+class TestTypeNormalizer:
+    """Tests for type normalization utility."""
+
+    def test_normalize_numeric_types(self):
+        """Test normalization of numeric types."""
+        assert normalize_column_type("INTEGER") == "numeric"
+        assert normalize_column_type("BIGINT") == "numeric"
+        assert normalize_column_type("FLOAT") == "numeric"
+        assert normalize_column_type("DECIMAL(10,2)") == "numeric"
+        assert normalize_column_type("NUMERIC") == "numeric"
+        assert normalize_column_type("DOUBLE") == "numeric"
+
+    def test_normalize_categorical_types(self):
+        """Test normalization of categorical types."""
+        assert normalize_column_type("VARCHAR(255)") == "categorical"
+        assert normalize_column_type("TEXT") == "categorical"
+        assert normalize_column_type("CHAR(10)") == "categorical"
+        assert normalize_column_type("STRING") == "categorical"
+        assert normalize_column_type("ENUM") == "categorical"
+
+    def test_normalize_timestamp_types(self):
+        """Test normalization of timestamp types."""
+        assert normalize_column_type("TIMESTAMP") == "timestamp"
+        assert normalize_column_type("DATETIME") == "timestamp"
+        assert normalize_column_type("DATE") == "timestamp"
+        assert normalize_column_type("TIME") == "timestamp"
+
+    def test_normalize_boolean_types(self):
+        """Test normalization of boolean types."""
+        assert normalize_column_type("BOOLEAN") == "boolean"
+        assert normalize_column_type("BOOL") == "boolean"
+        assert normalize_column_type("BIT") == "boolean"
+
+    def test_normalize_unknown_types(self):
+        """Test normalization of unknown types."""
+        assert normalize_column_type("UNKNOWN_TYPE") == "unknown"
+        assert normalize_column_type("") == "unknown"
+        assert normalize_column_type(None) == "unknown"
+
+    def test_get_type_category_alias(self):
+        """Test get_type_category alias function."""
+        assert get_type_category("INTEGER") == "numeric"
+        assert get_type_category("VARCHAR(255)") == "categorical"
+
+
+class TestTypeSpecificThresholds:
+    """Tests for type-specific threshold configuration."""
+
+    def test_create_default_thresholds(self):
+        """Test creating default type thresholds."""
+        thresholds = create_type_thresholds()
+        assert thresholds.enabled is True
+        assert "numeric" in thresholds.config
+        assert "categorical" in thresholds.config
+        assert "timestamp" in thresholds.config
+        assert "boolean" in thresholds.config
+
+    def test_get_numeric_mean_thresholds(self):
+        """Test getting thresholds for numeric mean metric."""
+        thresholds = create_type_thresholds()
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("numeric", "mean", base)
+        # Mean should have higher thresholds (more lenient)
+        assert result["low_threshold"] == 10.0
+        assert result["medium_threshold"] == 25.0
+        assert result["high_threshold"] == 50.0
+
+    def test_get_numeric_stddev_thresholds(self):
+        """Test getting thresholds for numeric stddev metric."""
+        thresholds = create_type_thresholds()
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("numeric", "stddev", base)
+        # Stddev should have lower thresholds (more sensitive)
+        assert result["low_threshold"] == 3.0
+        assert result["medium_threshold"] == 8.0
+        assert result["high_threshold"] == 15.0
+
+    def test_get_categorical_distinct_count_thresholds(self):
+        """Test getting thresholds for categorical distinct_count metric."""
+        thresholds = create_type_thresholds()
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("categorical", "distinct_count", base)
+        # Distinct count should have lower thresholds (more sensitive)
+        assert result["low_threshold"] == 2.0
+        assert result["medium_threshold"] == 5.0
+        assert result["high_threshold"] == 10.0
+
+    def test_get_boolean_default_thresholds(self):
+        """Test getting thresholds for boolean columns."""
+        thresholds = create_type_thresholds()
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("boolean", "count", base)
+        # Boolean should have lower thresholds (more sensitive)
+        assert result["low_threshold"] == 2.0
+        assert result["medium_threshold"] == 5.0
+        assert result["high_threshold"] == 10.0
+
+    def test_get_default_thresholds_for_unknown_metric(self):
+        """Test getting default thresholds when metric-specific config doesn't exist."""
+        thresholds = create_type_thresholds()
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("numeric", "unknown_metric", base)
+        # Should use default thresholds for the type
+        assert result["low_threshold"] == 5.0
+        assert result["medium_threshold"] == 15.0
+        assert result["high_threshold"] == 30.0
+
+    def test_should_ignore_metric_categorical(self):
+        """Test that certain metrics are ignored for categorical columns."""
+        thresholds = create_type_thresholds()
+        assert thresholds.should_ignore_metric_for_type("categorical", "mean") is True
+        assert thresholds.should_ignore_metric_for_type("categorical", "stddev") is True
+        assert thresholds.should_ignore_metric_for_type("categorical", "min") is True
+        assert thresholds.should_ignore_metric_for_type("categorical", "max") is True
+        assert thresholds.should_ignore_metric_for_type("categorical", "distinct_count") is False
+
+    def test_should_ignore_metric_boolean(self):
+        """Test that certain metrics are ignored for boolean columns."""
+        thresholds = create_type_thresholds()
+        assert thresholds.should_ignore_metric_for_type("boolean", "mean") is True
+        assert thresholds.should_ignore_metric_for_type("boolean", "stddev") is True
+        assert thresholds.should_ignore_metric_for_type("boolean", "histogram") is True
+        assert thresholds.should_ignore_metric_for_type("boolean", "count") is False
+
+    def test_should_ignore_metric_numeric(self):
+        """Test that no metrics are ignored for numeric columns."""
+        thresholds = create_type_thresholds()
+        assert thresholds.should_ignore_metric_for_type("numeric", "mean") is False
+        assert thresholds.should_ignore_metric_for_type("numeric", "stddev") is False
+        assert thresholds.should_ignore_metric_for_type("numeric", "count") is False
+
+    def test_disabled_thresholds(self):
+        """Test that disabled thresholds return base values."""
+        thresholds = create_type_thresholds(enabled=False)
+        base = {"low_threshold": 5.0, "medium_threshold": 15.0, "high_threshold": 30.0}
+        result = thresholds.get_thresholds_for_type("numeric", "mean", base)
+        # Should return base thresholds when disabled
+        assert result["low_threshold"] == 5.0
+        assert result["medium_threshold"] == 15.0
+        assert result["high_threshold"] == 30.0
+        assert thresholds.should_ignore_metric_for_type("categorical", "mean") is False
+
+
+class TestTypeSpecificStrategyIntegration:
+    """Tests for type-specific thresholds integrated with strategies."""
+
+    def test_absolute_threshold_with_type_specific_numeric_mean(self):
+        """Test absolute threshold strategy with type-specific thresholds for numeric mean."""
+        type_thresholds = create_type_thresholds()
+        strategy = AbsoluteThresholdStrategy(
+            low_threshold=5.0,
+            medium_threshold=15.0,
+            high_threshold=30.0,
+            type_thresholds=type_thresholds,
+        )
+
+        # 8% change should not trigger drift with default thresholds (5%)
+        # but with numeric mean thresholds (10%), it should not trigger
+        result = strategy.calculate_drift(
+            100.0, 108.0, "mean", "test_column", column_type="integer"
+        )
+        assert result is not None
+        assert result.drift_detected is False  # 8% < 10% (type-specific threshold)
+
+        # 12% change should trigger low severity with numeric mean thresholds
+        result = strategy.calculate_drift(
+            100.0, 112.0, "mean", "test_column", column_type="integer"
+        )
+        assert result is not None
+        assert result.drift_detected is True
+        assert result.drift_severity == "low"
+
+    def test_absolute_threshold_with_type_specific_numeric_stddev(self):
+        """Test absolute threshold strategy with type-specific thresholds for numeric stddev."""
+        type_thresholds = create_type_thresholds()
+        strategy = AbsoluteThresholdStrategy(
+            low_threshold=5.0,
+            medium_threshold=15.0,
+            high_threshold=30.0,
+            type_thresholds=type_thresholds,
+        )
+
+        # 2% change should not trigger with default (5%) but should with stddev (3%)
+        result = strategy.calculate_drift(
+            100.0, 102.0, "stddev", "test_column", column_type="float"
+        )
+        assert result is not None
+        assert result.drift_detected is False  # 2% < 3% (type-specific threshold)
+
+        # 4% change should trigger low severity with stddev thresholds
+        result = strategy.calculate_drift(
+            100.0, 104.0, "stddev", "test_column", column_type="float"
+        )
+        assert result is not None
+        assert result.drift_detected is True
+        assert result.drift_severity == "low"
+
+    def test_absolute_threshold_ignores_metrics_for_categorical(self):
+        """Test that categorical columns ignore numeric metrics."""
+        type_thresholds = create_type_thresholds()
+        strategy = AbsoluteThresholdStrategy(
+            low_threshold=5.0,
+            medium_threshold=15.0,
+            high_threshold=30.0,
+            type_thresholds=type_thresholds,
+        )
+
+        # Mean should be ignored for categorical columns
+        result = strategy.calculate_drift(
+            100.0, 150.0, "mean", "test_column", column_type="varchar"
+        )
+        assert result is None  # Should return None when metric is ignored
+
+        # But distinct_count should work
+        result = strategy.calculate_drift(
+            100.0, 105.0, "distinct_count", "test_column", column_type="varchar"
+        )
+        assert result is not None
+        assert result.drift_detected is True  # 5% > 2% (categorical distinct_count threshold)
+
+    def test_absolute_threshold_without_type_thresholds(self):
+        """Test that strategy works without type thresholds."""
+        strategy = AbsoluteThresholdStrategy(
+            low_threshold=5.0, medium_threshold=15.0, high_threshold=30.0, type_thresholds=None
+        )
+
+        # Should use default thresholds
+        result = strategy.calculate_drift(
+            100.0, 108.0, "mean", "test_column", column_type="integer"
+        )
+        assert result is not None
+        assert result.drift_detected is True  # 8% > 5% (default threshold)
+
+    def test_standard_deviation_with_type_specific(self):
+        """Test standard deviation strategy with type-specific thresholds."""
+        type_thresholds = create_type_thresholds()
+        strategy = StandardDeviationStrategy(
+            low_threshold=1.0,
+            medium_threshold=2.0,
+            high_threshold=3.0,
+            type_thresholds=type_thresholds,
+        )
+
+        # With type-specific thresholds, stddev thresholds are converted from percentages
+        # 10% change ≈ 1 std dev, so 3% threshold ≈ 0.3 std devs
+        result = strategy.calculate_drift(
+            100.0, 104.0, "stddev", "test_column", column_type="float"
+        )
+        # 4% change ≈ 0.4 std devs, which is > 0.3 (low threshold for stddev)
+        assert result is not None
+        assert result.drift_detected is True

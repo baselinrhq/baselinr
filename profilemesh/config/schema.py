@@ -246,6 +246,30 @@ class DriftDetectionConfig(BaseModel):
 
         return v
 
+    # Type-specific threshold configuration
+    enable_type_specific_thresholds: bool = Field(True)
+
+    type_specific_thresholds: Dict[str, Dict[str, Any]] = Field(
+        default_factory=lambda: {
+            "numeric": {
+                "mean": {"low": 10.0, "medium": 25.0, "high": 50.0},
+                "stddev": {"low": 3.0, "medium": 8.0, "high": 15.0},
+                "default": {"low": 5.0, "medium": 15.0, "high": 30.0},
+            },
+            "categorical": {
+                "distinct_count": {"low": 2.0, "medium": 5.0, "high": 10.0},
+                "distinct_percent": {"low": 2.0, "medium": 5.0, "high": 10.0},
+                "default": {"low": 5.0, "medium": 15.0, "high": 30.0},
+            },
+            "timestamp": {
+                "default": {"low": 5.0, "medium": 15.0, "high": 30.0},
+            },
+            "boolean": {
+                "default": {"low": 2.0, "medium": 5.0, "high": 10.0},
+            },
+        }
+    )
+
 
 class HookConfig(BaseModel):
     """Configuration for a single alert hook."""

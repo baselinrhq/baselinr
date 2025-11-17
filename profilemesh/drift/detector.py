@@ -16,6 +16,8 @@ from ..config.schema import DriftDetectionConfig, StorageConfig
 from ..events import DataDriftDetected, EventBus, SchemaChangeDetected
 from .baseline_selector import BaselineResult, BaselineSelector
 from .strategies import DriftDetectionStrategy, create_drift_strategy
+from .type_normalizer import normalize_column_type
+from .type_thresholds import create_type_thresholds
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +122,13 @@ class DriftDetector:
         self.event_bus = event_bus
         self.metrics_enabled = metrics_enabled
 
+        # Create type-specific thresholds if enabled
+        self.type_thresholds = None
+        if self.drift_config.enable_type_specific_thresholds:
+            self.type_thresholds = create_type_thresholds(
+                config=self.drift_config.type_specific_thresholds, enabled=True
+            )
+
         # Create drift detection strategy based on config
         self.strategy = self._create_strategy()
 
@@ -129,11 +138,11 @@ class DriftDetector:
 
         # Get parameters for the selected strategy
         if strategy_name == "absolute_threshold":
-            params = self.drift_config.absolute_threshold
+            params: Dict[str, Any] = self.drift_config.absolute_threshold.copy()
         elif strategy_name == "standard_deviation":
-            params = self.drift_config.standard_deviation
+            params = self.drift_config.standard_deviation.copy()
         elif strategy_name == "ml_based":
-            params = self.drift_config.ml_based
+            params = self.drift_config.ml_based.copy()
         elif strategy_name == "statistical":
             # Statistical strategy needs special handling
             stat_config = self.drift_config.statistical
@@ -145,7 +154,11 @@ class DriftDetector:
         else:
             logger.warning(f"Unknown strategy '{strategy_name}', using absolute_threshold")
             strategy_name = "absolute_threshold"
-            params = self.drift_config.absolute_threshold
+            params = self.drift_config.absolute_threshold.copy()
+
+        # Add type_thresholds to params if available
+        if self.type_thresholds:
+            params["type_thresholds"] = self.type_thresholds
 
         logger.info(f"Using drift detection strategy: {strategy_name} with params: {params}")
         return create_drift_strategy(strategy_name, **params)
@@ -742,14 +755,18 @@ class DriftDetector:
         current_run_id: Optional[str] = None,
     ) -> Optional[ColumnDrift]:
         """Calculate drift for a metric using the configured strategy."""
-        # Prepare additional data for statistical tests if strategy is statistical
+        # Always get column type for type-specific threshold support
         kwargs = {}
-        if self.drift_config.strategy == "statistical" and baseline_run_id and current_run_id:
-            # Get column type
-            column_type = self._get_column_type(baseline_run_id, column_name)
-            if column_type:
+        column_type = None
+        if baseline_run_id:
+            column_type_raw = self._get_column_type(baseline_run_id, column_name)
+            if column_type_raw:
+                # Normalize column type
+                column_type = normalize_column_type(column_type_raw)
                 kwargs["column_type"] = column_type
 
+        # Prepare additional data for statistical tests if strategy is statistical
+        if self.drift_config.strategy == "statistical" and baseline_run_id and current_run_id:
             # Get histogram data if available
             baseline_hist = self._get_histogram_data(baseline_run_id, column_name)
             current_hist = self._get_histogram_data(current_run_id, column_name)

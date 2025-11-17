@@ -133,6 +133,57 @@ drift_detection:
   #     top_k:
   #       k: 10                    # Number of top categories to track
   #       similarity_threshold: 0.7  # Similarity threshold for stability
+  
+  # Type-specific threshold configuration
+  # Adjusts drift detection sensitivity based on column data type to reduce false positives
+  enable_type_specific_thresholds: true  # Enable type-specific thresholds (default: true)
+  
+  type_specific_thresholds:
+    # Numeric columns: Accept larger drift in mean, but be sensitive to stddev changes
+    numeric:
+      mean:
+        low: 10.0      # 10% change in mean triggers low severity (more lenient)
+        medium: 25.0   # 25% change triggers medium severity
+        high: 50.0     # 50% change triggers high severity
+      stddev:
+        low: 3.0       # 3% change in stddev triggers low severity (more sensitive)
+        medium: 8.0    # 8% change triggers medium severity
+        high: 15.0     # 15% change triggers high severity
+      default:          # Default thresholds for other numeric metrics
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+    
+    # Categorical columns: Focus on cardinality changes, ignore numeric metrics
+    categorical:
+      distinct_count:   # Cardinality changes are high signal
+        low: 2.0       # 2% change in distinct count triggers low severity
+        medium: 5.0    # 5% change triggers medium severity
+        high: 10.0     # 10% change triggers high severity
+      distinct_percent:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
+      default:          # Default thresholds for other categorical metrics
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+      # Note: mean, stddev, min, max are automatically ignored for categorical columns
+    
+    # Timestamp columns: Detect freshness and latency distribution spikes
+    timestamp:
+      default:
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+    
+    # Boolean columns: Use lower thresholds for proportion changes (binomial test logic)
+    boolean:
+      default:
+        low: 2.0       # 2% change triggers low severity (more sensitive)
+        medium: 5.0    # 5% change triggers medium severity
+        high: 10.0     # 10% change triggers high severity
+      # Note: mean, stddev, min, max, histogram are automatically ignored for boolean columns
 
 # Monitoring configuration (Prometheus metrics)
 monitoring:
