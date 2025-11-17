@@ -1,5 +1,6 @@
 """Drift detection module for ProfileMesh."""
 
+from .baseline_selector import BaselineResult, BaselineSelector
 from .detector import ColumnDrift, DriftDetector, DriftReport
 from .statistical_tests import (
     STATISTICAL_TESTS,
@@ -27,6 +28,8 @@ __all__ = [
     "DriftDetector",
     "DriftReport",
     "ColumnDrift",
+    "BaselineSelector",
+    "BaselineResult",
     "DriftDetectionStrategy",
     "AbsoluteThresholdStrategy",
     "StandardDeviationStrategy",

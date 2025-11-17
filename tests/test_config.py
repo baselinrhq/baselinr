@@ -107,3 +107,69 @@ def test_default_profiling_config():
     assert config.compute_histograms is True
     assert "count" in config.metrics
     assert "null_percent" in config.metrics
+
+
+def test_baseline_config_default():
+    """Test default baseline configuration."""
+    from profilemesh.config.schema import DriftDetectionConfig
+
+    config = DriftDetectionConfig()
+
+    assert config.baselines["strategy"] == "last_run"
+    assert config.baselines["windows"]["moving_average"] == 7
+    assert config.baselines["windows"]["prior_period"] == 7
+    assert config.baselines["windows"]["min_runs"] == 3
+
+
+def test_baseline_config_validation():
+    """Test baseline configuration validation."""
+    from profilemesh.config.schema import DriftDetectionConfig
+
+    # Valid strategies
+    config = DriftDetectionConfig(baselines={"strategy": "auto"})
+    assert config.baselines["strategy"] == "auto"
+
+    config = DriftDetectionConfig(baselines={"strategy": "moving_average"})
+    assert config.baselines["strategy"] == "moving_average"
+
+    config = DriftDetectionConfig(baselines={"strategy": "prior_period"})
+    assert config.baselines["strategy"] == "prior_period"
+
+    # Invalid strategy
+    with pytest.raises(ValueError, match="Baseline strategy must be one of"):
+        DriftDetectionConfig(baselines={"strategy": "invalid_strategy"})
+
+    # Invalid moving_average window
+    with pytest.raises(ValueError, match="moving_average window must be at least 2"):
+        DriftDetectionConfig(baselines={"windows": {"moving_average": 1}})
+
+    # Invalid prior_period
+    with pytest.raises(
+        ValueError, match="prior_period must be 1 \\(day\\), 7 \\(week\\), or 30 \\(month\\)"
+    ):
+        DriftDetectionConfig(baselines={"windows": {"prior_period": 5}})
+
+    # Invalid min_runs
+    with pytest.raises(ValueError, match="min_runs must be at least 2"):
+        DriftDetectionConfig(baselines={"windows": {"min_runs": 1}})
+
+
+def test_baseline_config_custom_windows():
+    """Test custom baseline window configuration."""
+    from profilemesh.config.schema import DriftDetectionConfig
+
+    config = DriftDetectionConfig(
+        baselines={
+            "strategy": "moving_average",
+            "windows": {
+                "moving_average": 14,
+                "prior_period": 30,
+                "min_runs": 5,
+            },
+        }
+    )
+
+    assert config.baselines["strategy"] == "moving_average"
+    assert config.baselines["windows"]["moving_average"] == 14
+    assert config.baselines["windows"]["prior_period"] == 30
+    assert config.baselines["windows"]["min_runs"] == 5

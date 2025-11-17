@@ -101,6 +101,253 @@ drift_detection:
 
 ---
 
+## Baseline Selection
+
+ProfileMesh supports intelligent baseline selection for drift detection. Instead of always comparing to the previous run, you can configure the system to automatically select the best baseline based on column characteristics.
+
+### Baseline Selection Strategies
+
+#### 1. Auto Selection (Recommended)
+
+**Name**: `auto`
+
+**Description**: Automatically selects the optimal baseline method per column based on historical data analysis.
+
+**Heuristic**:
+- **High variance columns** (CV > 0.2) → Uses **moving average** to smooth out noise
+- **Seasonal columns** (weekly/monthly patterns detected) → Uses **prior period** to account for seasonality
+- **Stable columns** → Uses **last run** for simplicity
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  strategy: absolute_threshold
+  baselines:
+    strategy: auto
+    windows:
+      moving_average: 7
+      prior_period: 7
+      min_runs: 3
+```
+
+**Best for**:
+- Mixed data types with varying characteristics
+- When you want the system to adapt automatically
+- Production environments with diverse columns
+
+#### 2. Last Run (Default)
+
+**Name**: `last_run`
+
+**Description**: Simple comparison to the most recent previous run.
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  baselines:
+    strategy: last_run
+```
+
+**Best for**:
+- Stable, low-variance data
+- Simple drift detection needs
+- When you want predictable baseline behavior
+
+#### 3. Moving Average
+
+**Name**: `moving_average`
+
+**Description**: Computes baseline as the average of the last N runs.
+
+**Parameters**:
+- `moving_average`: Number of runs to average (default: 7)
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  baselines:
+    strategy: moving_average
+    windows:
+      moving_average: 10  # Average of last 10 runs
+```
+
+**Best for**:
+- High-variance columns with noisy data
+- When you want to smooth out short-term fluctuations
+- Reducing false positives from natural variation
+
+#### 4. Prior Period
+
+**Name**: `prior_period`
+
+**Description**: Compares to the same period last week/month to account for seasonality.
+
+**Parameters**:
+- `prior_period`: Number of days (1=day, 7=week, 30=month)
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  baselines:
+    strategy: prior_period
+    windows:
+      prior_period: 7  # Same day last week
+```
+
+**Best for**:
+- Time-series data with weekly/monthly patterns
+- Seasonal business metrics (daily, weekly, monthly cycles)
+- Reducing false alerts from expected seasonal changes
+
+**Example**: Daily sales data that peaks on weekends
+- Without prior period: Monday might show "drift" compared to Sunday
+- With prior period: Monday compares to last Monday (more meaningful)
+
+#### 5. Stable Window
+
+**Name**: `stable_window`
+
+**Description**: Finds a historical window with minimal drift and uses its average as baseline.
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  baselines:
+    strategy: stable_window
+```
+
+**How it works**:
+1. Analyzes historical runs to find periods with low drift
+2. Selects the most stable window (lowest average drift)
+3. Uses the average of that window as the baseline
+
+**Best for**:
+- Finding the most reliable baseline period
+- Data that has known stable periods
+- Reducing false positives from historical anomalies
+
+### Configuration Options
+
+```yaml
+drift_detection:
+  baselines:
+    # Strategy: auto | last_run | moving_average | prior_period | stable_window
+    strategy: auto
+    
+    windows:
+      # Number of runs for moving average baseline
+      moving_average: 7
+      
+      # Prior period days (1=day, 7=week, 30=month)
+      prior_period: 7
+      
+      # Minimum runs required for auto-selection
+      min_runs: 3
+```
+
+### How Auto Selection Works
+
+When `strategy: auto` is enabled, ProfileMesh analyzes each column's historical metrics:
+
+1. **Variance Analysis**: Calculates coefficient of variation (CV = std/mean)
+   - CV > 0.2 → High variance → Use moving average
+
+2. **Seasonality Detection**: Checks for weekly or monthly patterns
+   - Detects periodicity in metric values over time
+   - Strong patterns detected → Use prior period
+
+3. **Fallback**: If neither high variance nor seasonality is detected
+   - Use last run (simplest, most stable baseline)
+
+**Example**:
+- `sales_count` column with daily variation → Detects seasonality → Uses prior period (compares to same day last week)
+- `user_age_mean` column with high variance → Uses moving average (smooths noise)
+- `status_code_count` column (stable) → Uses last run
+
+### Per-Column Baseline Selection
+
+With auto-selection enabled, each column gets its own optimal baseline:
+- High-variance columns automatically use moving averages
+- Seasonal columns automatically use prior periods
+- Stable columns use last run
+
+This provides more accurate drift detection across diverse data types.
+
+### Usage Examples
+
+#### Example 1: Enable Auto Selection
+
+```yaml
+drift_detection:
+  strategy: absolute_threshold
+  baselines:
+    strategy: auto
+    windows:
+      moving_average: 7
+      prior_period: 7
+      min_runs: 3
+```
+
+With this configuration, each column gets its optimal baseline automatically.
+
+#### Example 2: Force Moving Average for All Columns
+
+```yaml
+drift_detection:
+  strategy: absolute_threshold
+  baselines:
+    strategy: moving_average
+    windows:
+      moving_average: 14  # Use 2 weeks of runs
+```
+
+#### Example 3: Weekly Seasonality
+
+```yaml
+drift_detection:
+  strategy: absolute_threshold
+  baselines:
+    strategy: prior_period
+    windows:
+      prior_period: 7  # Compare to same day last week
+```
+
+Perfect for daily business metrics that follow weekly patterns.
+
+#### Example 4: Python API with Baseline Selection
+
+```python
+from profilemesh.drift.detector import DriftDetector
+from profilemesh.drift.baseline_selector import BaselineSelector
+from profilemesh.config.schema import DriftDetectionConfig, StorageConfig
+
+# Configure with auto-selection
+drift_config = DriftDetectionConfig(
+    strategy="absolute_threshold",
+    baselines={
+        "strategy": "auto",
+        "windows": {
+            "moving_average": 7,
+            "prior_period": 7,
+            "min_runs": 3,
+        },
+    },
+)
+
+# Create detector
+detector = DriftDetector(storage_config, drift_config)
+
+# Detect drift - baseline selected automatically
+report = detector.detect_drift("customers")
+
+# Check which baseline method was used for each column
+for drift in report.column_drifts:
+    baseline_method = drift.metadata.get("baseline_method", "unknown")
+    print(f"{drift.column_name}: baseline={baseline_method}")
+```
+
+---
+
 ### 3. Statistical Test Strategy (Advanced)
 
 **Name**: `statistical`
@@ -207,10 +454,10 @@ config = ConfigLoader.load_from_file("config.yml")
 # Create detector with config
 detector = DriftDetector(config.storage, config.drift_detection)
 
-# Detect drift
+# Detect drift (baseline selected automatically based on config)
 report = detector.detect_drift(
     dataset_name="customers",
-    baseline_run_id=None,  # Uses second-latest
+    baseline_run_id=None,  # Auto-selected based on baselines.strategy
     current_run_id=None     # Uses latest
 )
 
@@ -220,7 +467,12 @@ print(f"High severity: {report.summary['drift_by_severity']['high']}")
 
 for drift in report.column_drifts:
     if drift.drift_detected:
-        print(f"{drift.column_name}.{drift.metric_name}: {drift.drift_severity}")
+        # Baseline method used is in metadata
+        baseline_method = drift.metadata.get("baseline_method", "last_run")
+        print(
+            f"{drift.column_name}.{drift.metric_name}: "
+            f"{drift.drift_severity} (baseline: {baseline_method})"
+        )
 ```
 
 ### Using Different Strategies
@@ -467,7 +719,7 @@ if report.summary['has_critical_drift']:
 Future enhancements planned:
 
 - [x] **Statistical tests**: KS test, PSI, Chi-squared, Entropy, Top-K stability ✅
-- [ ] **Historical baseline**: Use rolling window of past runs instead of single baseline
+- [x] **Intelligent baseline selection**: Automatic baseline selection based on column characteristics ✅
 - [ ] **Column-specific thresholds**: Different thresholds per column or metric
 - [ ] **ML-based detection**: Implement actual ML strategies
 - [ ] **Drift trends**: Track drift over time, not just point-in-time

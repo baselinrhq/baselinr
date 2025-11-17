@@ -88,6 +88,15 @@ drift_detection:
     medium_threshold: 15.0   # 15% change triggers medium severity
     high_threshold: 30.0     # 30% change triggers high severity
   
+  # Baseline auto-selection configuration
+  # Let the system pick the correct baseline automatically
+  baselines:
+    strategy: auto  # auto | last_run | moving_average | prior_period | stable_window
+    windows:
+      moving_average: 7    # Number of runs for moving average
+      prior_period: 7      # Days for prior period (1=day, 7=week, 30=month)
+      min_runs: 3          # Minimum runs required for auto-selection
+  
   # Parameters for standard_deviation strategy (alternative)
   # standard_deviation:
   #   low_threshold: 1.0     # 1 std dev triggers low severity

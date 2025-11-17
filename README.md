@@ -6,6 +6,7 @@
 
 - **Automated Profiling**: Profile tables with column-level metrics (count, null %, distinct values, mean, stddev, histograms, etc.)
 - **Drift Detection**: Compare profiling runs to detect schema and statistical drift with configurable strategies
+- **Intelligent Baseline Selection**: Automatically selects optimal baseline method (last run, moving average, prior period, stable window) based on column characteristics
 - **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
 - **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
@@ -340,7 +341,7 @@ profilemesh migrate validate --config examples/config.yml
 
 ## 🔍 Drift Detection
 
-ProfileMesh provides multiple drift detection strategies:
+ProfileMesh provides multiple drift detection strategies and intelligent baseline selection:
 
 ### Available Strategies
 
@@ -356,7 +357,20 @@ ProfileMesh provides multiple drift detection strategies:
    - **Categorical columns**: Chi-square, Entropy, Top-K stability
    - Automatically selects appropriate tests based on column type
 
-Thresholds are fully configurable via the `drift_detection` configuration. See [docs/guides/DRIFT_DETECTION.md](docs/guides/DRIFT_DETECTION.md) for general drift detection and [docs/guides/STATISTICAL_DRIFT_DETECTION.md](docs/guides/STATISTICAL_DRIFT_DETECTION.md) for statistical tests.
+### Intelligent Baseline Selection
+
+ProfileMesh automatically selects the optimal baseline for drift detection based on column characteristics:
+
+- **Auto Selection**: Automatically chooses the best baseline method per column
+  - High variance columns → Moving average (smooths noise)
+  - Seasonal columns → Prior period (accounts for weekly/monthly patterns)
+  - Stable columns → Last run (simplest baseline)
+- **Moving Average**: Average of last N runs (configurable, default: 7)
+- **Prior Period**: Same period last week/month (handles seasonality)
+- **Stable Window**: Historical window with low drift (most reliable)
+- **Last Run**: Simple comparison to previous run (default)
+
+Thresholds and baseline selection are fully configurable via the `drift_detection` configuration. See [docs/guides/DRIFT_DETECTION.md](docs/guides/DRIFT_DETECTION.md) for general drift detection and [docs/guides/STATISTICAL_DRIFT_DETECTION.md](docs/guides/STATISTICAL_DRIFT_DETECTION.md) for statistical tests.
 
 ## 🔔 Event & Alert Hooks
 
@@ -569,6 +583,14 @@ drift_detection:
     low_threshold: 5.0
     medium_threshold: 15.0
     high_threshold: 30.0
+  
+  # Baseline auto-selection configuration
+  baselines:
+    strategy: auto  # auto | last_run | moving_average | prior_period | stable_window
+    windows:
+      moving_average: 7    # Number of runs for moving average
+      prior_period: 7      # Days for prior period (1=day, 7=week, 30=month)
+      min_runs: 3          # Minimum runs required for auto-selection
   
   # Statistical tests (advanced)
   # statistical:

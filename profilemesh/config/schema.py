@@ -195,6 +195,57 @@ class DriftDetectionConfig(BaseModel):
         }
     )
 
+    # Baseline auto-selection configuration
+    baselines: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            # auto | last_run | moving_average | prior_period | stable_window
+            "strategy": "last_run",
+            "windows": {
+                "moving_average": 7,  # Number of runs for moving average
+                "prior_period": 7,  # Days for prior period (7 = week, 30 = month)
+                "min_runs": 3,  # Minimum runs required for auto-selection
+            },
+        }
+    )
+
+    @field_validator("baselines")
+    @classmethod
+    def validate_baselines(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        """Validate baseline configuration."""
+        if isinstance(v, dict):
+            valid_strategies = [
+                "auto",
+                "last_run",
+                "moving_average",
+                "prior_period",
+                "stable_window",
+            ]
+            strategy = v.get("strategy", "last_run")
+            if strategy not in valid_strategies:
+                raise ValueError(
+                    f"Baseline strategy must be one of {valid_strategies}, got: {strategy}"
+                )
+
+            # Ensure windows dict exists with defaults
+            if "windows" not in v:
+                v["windows"] = {}
+            windows = v["windows"]
+
+            # Set defaults for window parameters
+            windows.setdefault("moving_average", 7)
+            windows.setdefault("prior_period", 7)
+            windows.setdefault("min_runs", 3)
+
+            # Validate window parameters
+            if windows["moving_average"] < 2:
+                raise ValueError("moving_average window must be at least 2")
+            if windows["prior_period"] not in [1, 7, 30]:
+                raise ValueError("prior_period must be 1 (day), 7 (week), or 30 (month)")
+            if windows["min_runs"] < 2:
+                raise ValueError("min_runs must be at least 2")
+
+        return v
+
 
 class HookConfig(BaseModel):
     """Configuration for a single alert hook."""
