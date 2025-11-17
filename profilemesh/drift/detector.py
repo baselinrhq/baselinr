@@ -14,6 +14,7 @@ from sqlalchemy import text
 
 from ..config.schema import DriftDetectionConfig, StorageConfig
 from ..events import DataDriftDetected, EventBus, SchemaChangeDetected
+from .baseline_selector import BaselineResult, BaselineSelector
 from .strategies import DriftDetectionStrategy, create_drift_strategy
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,11 @@ class ColumnDrift:
     change_absolute: Optional[float] = None
     drift_detected: bool = False
     drift_severity: str = "none"  # none, low, medium, high
+    metadata: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        if self.metadata is None:
+            self.metadata = {}
 
 
 @dataclass
@@ -66,6 +72,7 @@ class DriftReport:
                     "change_absolute": d.change_absolute,
                     "drift_detected": d.drift_detected,
                     "drift_severity": d.drift_severity,
+                    "metadata": d.metadata or {},
                 }
                 for d in self.column_drifts
             ],
@@ -207,11 +214,11 @@ class DriftDetector:
             },
         )
 
-        # Get run IDs if not provided
-        if current_run_id is None or baseline_run_id is None:
-            run_ids = self._get_latest_runs(dataset_name, schema_name, limit=2)
-            if len(run_ids) < 2:
-                error_msg = f"Need at least 2 runs for drift detection, found {len(run_ids)}"
+        # Get current run ID if not provided
+        if current_run_id is None:
+            run_ids = self._get_latest_runs(dataset_name, schema_name, limit=1)
+            if len(run_ids) < 1:
+                error_msg = f"Need at least 1 run for drift detection, found {len(run_ids)}"
                 log_event(
                     logger,
                     "drift_detection_failed",
@@ -220,17 +227,65 @@ class DriftDetector:
                     metadata={"dataset_name": dataset_name, "run_count": len(run_ids)},
                 )
                 raise ValueError(error_msg)
+            current_run_id = run_ids[0]
 
-            if current_run_id is None:
-                current_run_id = run_ids[0]
-            if baseline_run_id is None:
+        # Select baseline using BaselineSelector if not explicitly provided
+        baseline_results: Optional[Dict[str, BaselineResult]] = None
+        if baseline_run_id is None:
+            baseline_strategy = self.drift_config.baselines.get("strategy", "last_run")
+
+            # For auto-selection or non-last_run strategies, we need to select per-column
+            # We'll defer the actual selection until we know which columns exist
+            # For now, use BaselineSelector to get a baseline run ID for schema comparison
+            if baseline_strategy == "auto" or baseline_strategy in [
+                "moving_average",
+                "prior_period",
+                "stable_window",
+            ]:
+                # We'll select baselines per-column during metric drift detection
+                # For schema detection, use last run as baseline
+                fallback_runs = self._get_latest_runs(dataset_name, schema_name, limit=2)
+                if len(fallback_runs) < 2:
+                    error_msg = (
+                        f"Need at least 2 runs for drift detection, " f"found {len(fallback_runs)}"
+                    )
+                    log_event(
+                        logger,
+                        "drift_detection_failed",
+                        error_msg,
+                        level="error",
+                        metadata={"dataset_name": dataset_name, "run_count": len(fallback_runs)},
+                    )
+                    raise ValueError(error_msg)
+                baseline_run_id = fallback_runs[1]  # Use second-latest for schema comparison
+                baseline_results = {}  # Will be populated per-column
+            else:
+                # Simple last_run strategy: use second-latest run
+                run_ids = self._get_latest_runs(dataset_name, schema_name, limit=2)
+                if len(run_ids) < 2:
+                    error_msg = f"Need at least 2 runs for drift detection, found {len(run_ids)}"
+                    log_event(
+                        logger,
+                        "drift_detection_failed",
+                        error_msg,
+                        level="error",
+                        metadata={"dataset_name": dataset_name, "run_count": len(run_ids)},
+                    )
+                    raise ValueError(error_msg)
                 baseline_run_id = run_ids[1]
 
             log_event(
                 logger,
                 "drift_runs_selected",
-                f"Using runs: baseline={baseline_run_id}, current={current_run_id}",
-                metadata={"baseline_run_id": baseline_run_id, "current_run_id": current_run_id},
+                (
+                    f"Using runs: baseline={baseline_run_id}, "
+                    f"current={current_run_id} (strategy={baseline_strategy})"
+                ),
+                metadata={
+                    "baseline_run_id": baseline_run_id,
+                    "current_run_id": current_run_id,
+                    "baseline_strategy": baseline_strategy,
+                },
             )
 
         # Get run metadata
@@ -254,7 +309,11 @@ class DriftDetector:
         # Detect metric drifts
         log_event(logger, "metric_drift_detection_started", "Detecting metric drifts")
         report.column_drifts = self._detect_metric_drifts(
-            baseline_run_id, current_run_id, table_name=dataset_name
+            baseline_run_id,
+            current_run_id,
+            table_name=dataset_name,
+            schema_name=schema_name,
+            baseline_results=baseline_results,
         )
 
         # Generate summary
@@ -468,37 +527,92 @@ class DriftDetector:
             return {row[0] for row in result}
 
     def _detect_metric_drifts(
-        self, baseline_run_id: str, current_run_id: str, table_name: Optional[str] = None
+        self,
+        baseline_run_id: str,
+        current_run_id: str,
+        table_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        baseline_results: Optional[Dict[str, BaselineResult]] = None,
     ) -> List[ColumnDrift]:
         """Detect metric drifts between runs."""
         drifts = []
 
-        # Get metrics for both runs
-        baseline_metrics = self._get_metrics(baseline_run_id)
+        # Get current run metrics
         current_metrics = self._get_metrics(current_run_id)
 
+        # Initialize baseline selector if needed
+        baseline_selector = None
+        if baseline_results is not None:
+            baseline_selector = BaselineSelector(
+                self.storage_config, self.drift_config, self.engine
+            )
+
         # Compare metrics
-        for (column, metric), baseline_value in baseline_metrics.items():
-            if (column, metric) not in current_metrics:
-                continue
-
-            current_value = current_metrics[(column, metric)]
-
+        for (column, metric), current_value in current_metrics.items():
             # Only compare numeric drift metrics
             if metric not in self.NUMERIC_DRIFT_METRICS:
                 continue
 
+            # Get baseline value
+            baseline_value = None
+            baseline_result = None
+
+            if baseline_results is not None and baseline_selector:
+                # Use BaselineSelector for per-column baseline selection
+                key = f"{column}:{metric}"
+                if key not in baseline_results:
+                    try:
+                        baseline_result = baseline_selector.select_baseline(
+                            dataset_name=table_name or "",
+                            column_name=column,
+                            metric_name=metric,
+                            current_run_id=current_run_id,
+                            schema_name=schema_name,
+                        )
+                        baseline_results[key] = baseline_result
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to select baseline for {column}.{metric}: {e}, "
+                            "falling back to simple baseline"
+                        )
+                        # Fallback to simple baseline
+                        baseline_metrics = self._get_metrics(baseline_run_id)
+                        baseline_value = baseline_metrics.get((column, metric))
+                else:
+                    baseline_result = baseline_results[key]
+
+                if baseline_result:
+                    baseline_value = baseline_result.baseline_value
+            else:
+                # Use simple baseline from baseline_run_id
+                baseline_metrics = self._get_metrics(baseline_run_id)
+                baseline_value = baseline_metrics.get((column, metric))
+
+            if baseline_value is None:
+                continue
+
             # Calculate drift
+            # Use baseline_run_id from result if available, otherwise use the provided one
+            actual_baseline_run_id = (
+                baseline_result.baseline_run_id if baseline_result else baseline_run_id
+            )
             drift = self._calculate_drift(
                 column,
                 metric,
                 baseline_value,
                 current_value,
-                baseline_run_id=baseline_run_id,
+                baseline_run_id=actual_baseline_run_id,
                 current_run_id=current_run_id,
             )
             if drift:
                 drifts.append(drift)
+
+                # Add baseline method info to drift metadata if available
+                if baseline_result:
+                    drift.metadata = drift.metadata or {}
+                    drift.metadata["baseline_method"] = baseline_result.method
+                    if baseline_result.metadata:
+                        drift.metadata.update(baseline_result.metadata)
 
                 # Emit drift event if detected and event bus is available
                 if drift.drift_detected and self.event_bus and table_name:
@@ -513,7 +627,7 @@ class DriftDetector:
                             current_value=current_value,
                             change_percent=drift.change_percent,
                             drift_severity=drift.drift_severity,
-                            metadata={},
+                            metadata=drift.metadata or {},
                         )
                     )
 
@@ -683,6 +797,7 @@ class DriftDetector:
             change_absolute=result.change_absolute,
             drift_detected=result.drift_detected,
             drift_severity=result.drift_severity,
+            metadata=result.metadata or {},
         )
 
         # Emit drift event if drift was detected and event bus is available
