@@ -16,11 +16,11 @@ from .config.loader import ConfigLoader
 from .config.schema import HookConfig, ProfileMeshConfig, SamplingConfig, TablePattern
 from .drift.detector import DriftDetector
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
-from .incremental import IncrementalPlan, TableRunDecision, TableState, TableStateStore
+from .incremental import IncrementalPlan, TableState, TableStateStore
 from .planner import PlanBuilder, print_plan
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
-from .utils.logging import RunContext, log_and_emit, log_event
+from .utils.logging import RunContext, log_event
 
 # Setup fallback logging (will be replaced by structured logging per command)
 logging.basicConfig(
@@ -86,9 +86,9 @@ def _create_hook(hook_config: HookConfig):
         # Create engine for Snowflake connection
         from .connectors import SnowflakeConnector
 
-        connector = SnowflakeConnector(hook_config.connection)
+        snowflake_connector = SnowflakeConnector(hook_config.connection)
         table_name = hook_config.table_name or "profilemesh_events"
-        return SnowflakeEventHook(engine=connector.engine, table_name=table_name)
+        return SnowflakeEventHook(engine=snowflake_connector.engine, table_name=table_name)
 
     elif hook_config.type == "sql":
         if not hook_config.connection:
@@ -96,6 +96,7 @@ def _create_hook(hook_config: HookConfig):
 
         # Create engine based on connection type
         from .connectors import (
+            BaseConnector,
             BigQueryConnector,
             MySQLConnector,
             PostgresConnector,
@@ -103,6 +104,7 @@ def _create_hook(hook_config: HookConfig):
             SQLiteConnector,
         )
 
+        connector: BaseConnector
         if hook_config.connection.type == "postgres":
             connector = PostgresConnector(hook_config.connection)
         elif hook_config.connection.type == "sqlite":
@@ -294,7 +296,7 @@ def profile_command(args):
             print(f"\n{'='*60}")
             print("Profiling completed. Metrics server is running at:")
             print(f"  http://localhost:{config.monitoring.port}/metrics")
-            print(f"\nPress Ctrl+C to stop the server and exit.")
+            print("\nPress Ctrl+C to stop the server and exit.")
             print(f"{'='*60}\n")
 
             try:
@@ -366,7 +368,7 @@ def drift_command(args):
         print(f"Dataset: {report.dataset_name}")
         print(f"Baseline: {report.baseline_run_id} ({report.baseline_timestamp})")
         print(f"Current: {report.current_run_id} ({report.current_timestamp})")
-        print(f"\nSummary:")
+        print("\nSummary:")
         print(f"  Total drifts detected: {report.summary['total_drifts']}")
         print(f"  Schema changes: {report.summary['schema_changes']}")
         print(f"  High severity: {report.summary['drift_by_severity']['high']}")
@@ -374,17 +376,17 @@ def drift_command(args):
         print(f"  Low severity: {report.summary['drift_by_severity']['low']}")
 
         if report.schema_changes:
-            print(f"\nSchema Changes:")
+            print("\nSchema Changes:")
             for change in report.schema_changes:
                 print(f"  - {change}")
 
         if report.column_drifts:
-            print(f"\nMetric Drifts:")
+            print("\nMetric Drifts:")
             for drift in report.column_drifts:
                 if drift.drift_detected:
-                    print(
-                        f"  [{drift.drift_severity.upper()}] {drift.column_name}.{drift.metric_name}"
-                    )
+                    severity = drift.drift_severity.upper()
+                    col_metric = f"{drift.column_name}.{drift.metric_name}"
+                    print(f"  [{severity}] {col_metric}")
                     print(f"    Baseline: {drift.baseline_value:.2f}")
                     print(f"    Current: {drift.current_value:.2f}")
                     if drift.change_percent is not None:
@@ -438,7 +440,7 @@ def plan_command(args):
 
         return 0
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         logger.error(f"Configuration file not found: {args.config}")
         print(f"\nError: Configuration file not found: {args.config}")
         print("Please specify a valid configuration file with --config")
@@ -629,7 +631,7 @@ def migrate_command(args):
                     print(f"\n✅ Successfully migrated to version {target}")
                 return 0
             else:
-                print(f"\n❌ Migration failed")
+                print("\n❌ Migration failed")
                 return 1
 
         elif args.migrate_command == "validate":
@@ -836,7 +838,8 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: ProfileMeshConfig):
         if decision.action == "partial" and decision.changed_partitions:
             if not table_pattern.partition or not table_pattern.partition.key:
                 logger.warning(
-                    "Partial run requested for %s but no partition key configured; falling back to full scan",
+                    "Partial run requested for %s but no partition key configured; "
+                    "falling back to full scan",
                     pattern.table,
                 )
             else:
@@ -849,6 +852,7 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: ProfileMeshConfig):
                 enabled=True,
                 method="random",
                 fraction=sample_fraction,
+                max_rows=None,
             )
 
         selected.append(table_pattern)

@@ -9,7 +9,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Float, Integer, Table, cast, column, distinct, func, select
+from sqlalchemy import Float, Table, cast, distinct, func, select
 from sqlalchemy.engine import Engine
 
 from ..config.schema import PartitionConfig, SamplingConfig
@@ -158,17 +158,28 @@ class MetricCalculator:
 
             result = conn.execute(query).fetchone()
 
-            total_count = result.count
-            non_null_count = result.non_null_count
+            if result is None:
+                return {
+                    "count": 0,
+                    "null_count": 0,
+                    "null_percent": 0.0,
+                    "distinct_count": 0,
+                    "distinct_percent": 0.0,
+                }
+
+            total_count = int(result[0]) if result[0] is not None else 0
+            non_null_count = int(result[1]) if result[1] is not None else 0
             null_count = total_count - non_null_count
-            distinct_count = result.distinct_count
+            distinct_count_val = int(result[2]) if result[2] is not None else 0
 
             return {
                 "count": total_count,
                 "null_count": null_count,
                 "null_percent": (null_count / total_count * 100) if total_count > 0 else 0,
-                "distinct_count": distinct_count,
-                "distinct_percent": (distinct_count / total_count * 100) if total_count > 0 else 0,
+                "distinct_count": distinct_count_val,
+                "distinct_percent": (
+                    (distinct_count_val / total_count * 100) if total_count > 0 else 0
+                ),
             }
 
     def _calculate_numeric_metrics(
@@ -210,6 +221,14 @@ class MetricCalculator:
 
             result = conn.execute(query).fetchone()
 
+            if result is None:
+                return {
+                    "min": None,
+                    "max": None,
+                    "mean": None,
+                    "stddev": None,
+                }
+
             return {
                 "min": result.min,
                 "max": result.max,
@@ -244,7 +263,10 @@ class MetricCalculator:
                     # Get min and max
                     query = select(func.min(col), func.max(col)).select_from(table)
                 result = conn.execute(query).fetchone()
-                min_val, max_val = result[0], result[1]
+                if result is None:
+                    min_val, max_val = None, None
+                else:
+                    min_val, max_val = result[0], result[1]
 
                 if min_val is None or max_val is None:
                     return {"histogram": None}
@@ -336,9 +358,16 @@ class MetricCalculator:
 
                 result = conn.execute(query).fetchone()
 
+                if result is None:
+                    return {
+                        "min_length": None,
+                        "max_length": None,
+                        "avg_length": None,
+                    }
+
                 return {
-                    "min_length": result.min_length,
-                    "max_length": result.max_length,
+                    "min_length": result.min_length if result.min_length is not None else None,
+                    "max_length": result.max_length if result.max_length is not None else None,
                     "avg_length": (
                         float(result.avg_length) if result.avg_length is not None else None
                     ),

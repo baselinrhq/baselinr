@@ -311,7 +311,7 @@ class KolmogorovSmirnovTest(StatisticalTest):
         if isinstance(histogram, str):
             try:
                 histogram = json.loads(histogram)
-            except:
+            except Exception:
                 return []
 
         if not isinstance(histogram, (list, dict)):
@@ -331,7 +331,7 @@ class KolmogorovSmirnovTest(StatisticalTest):
                     bin_float = float(bin_val)
                     count_int = int(count)
                     samples.extend([bin_float] * count_int)
-                except:
+                except Exception:
                     continue
 
         return samples
@@ -339,7 +339,7 @@ class KolmogorovSmirnovTest(StatisticalTest):
     def _generate_normal_samples(self, mean: float, std: float, n: int = 1000) -> List[float]:
         """Generate synthetic normal distribution samples."""
         if SCIPY_AVAILABLE:
-            return stats.norm.rvs(mean, std, size=n).tolist()
+            return stats.norm.rvs(mean, std, size=n).tolist()  # type: ignore[no-any-return]
         else:
             # Simple approximation using Box-Muller transform
             import random
@@ -424,14 +424,22 @@ class PopulationStabilityIndexTest(StatisticalTest):
             current_max = current_data.get("max")
 
             if all(x is not None for x in [baseline_min, baseline_max, current_min, current_max]):
+                # Ensure all values are floats
+                try:
+                    baseline_min_f: float = float(baseline_min)  # type: ignore[arg-type]
+                    baseline_max_f: float = float(baseline_max)  # type: ignore[arg-type]
+                    current_min_f: float = float(current_min)  # type: ignore[arg-type]
+                    current_max_f: float = float(current_max)  # type: ignore[arg-type]
+                except (ValueError, TypeError):
+                    return (None, None)
                 # Create synthetic buckets
-                overall_min = min(baseline_min, current_min)
-                overall_max = max(baseline_max, current_max)
+                overall_min: float = min(baseline_min_f, current_min_f)
+                overall_max: float = max(baseline_max_f, current_max_f)
                 baseline_buckets = self._create_buckets_from_range(
-                    baseline_min, baseline_max, overall_min, overall_max
+                    baseline_min_f, baseline_max_f, overall_min, overall_max
                 )
                 current_buckets = self._create_buckets_from_range(
-                    current_min, current_max, overall_min, overall_max
+                    current_min_f, current_max_f, overall_min, overall_max
                 )
                 return (baseline_buckets, current_buckets)
 
@@ -534,7 +542,7 @@ class PopulationStabilityIndexTest(StatisticalTest):
         if isinstance(data, str):
             try:
                 data = json.loads(data)
-            except:
+            except Exception:
                 return {}
 
         if isinstance(data, dict):
@@ -923,7 +931,7 @@ class ChiSquareTest(StatisticalTest):
         if isinstance(data, str):
             try:
                 data = json.loads(data)
-            except:
+            except Exception:
                 return {}
 
         if isinstance(data, dict):
@@ -1077,7 +1085,7 @@ class EntropyChangeTest(StatisticalTest):
         if isinstance(data, str):
             try:
                 data = json.loads(data)
-            except:
+            except Exception:
                 return {}
 
         if isinstance(data, dict):
@@ -1251,7 +1259,7 @@ class TopKStabilityTest(StatisticalTest):
         if isinstance(data, str):
             try:
                 data = json.loads(data)
-            except:
+            except Exception:
                 return {}
 
         if isinstance(data, dict):
@@ -1326,4 +1334,4 @@ def create_statistical_test(test_name: str, **params) -> StatisticalTest:
         raise ValueError(f"Unknown statistical test: {test_name}. " f"Available tests: {available}")
 
     test_class = STATISTICAL_TESTS[test_name]
-    return test_class(**params)
+    return test_class(**params)  # type: ignore[no-any-return]

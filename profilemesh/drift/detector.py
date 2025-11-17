@@ -107,7 +107,7 @@ class DriftDetector:
             retry_config: Optional retry configuration
         """
         self.storage_config = storage_config
-        self.drift_config = drift_config or DriftDetectionConfig()
+        self.drift_config = drift_config or DriftDetectionConfig()  # type: ignore[call-arg]
         self.retry_config = retry_config
         self.engine = self._setup_connection()
         self.event_bus = event_bus
@@ -330,15 +330,34 @@ class DriftDetector:
                     )
                     record_schema_change(warehouse, dataset_name, change_type)
 
-            self.event_bus.emit(
-                SchemaChangeDetected(
-                    event_type="SchemaChangeDetected",
-                    timestamp=datetime.utcnow(),
-                    table=dataset_name,
-                    changes=report.schema_changes,
-                    metadata={},
-                )
-            )
+            # Emit individual schema change events
+            for change in report.schema_changes:
+                # Parse change string like "column_added: new_column (varchar)"
+                if ":" in change:
+                    change_type, rest = change.split(":", 1)
+                    change_type = change_type.strip()
+                    column_info = rest.strip() if rest else None
+                    # Try to extract column name and type
+                    column = None
+                    new_type = None
+                    if column_info and "(" in column_info:
+                        column = column_info.split("(")[0].strip()
+                        type_part = column_info.split("(")[1].rstrip(")")
+                        new_type = type_part.strip() if type_part else None
+                    elif column_info:
+                        column = column_info.strip()
+
+                    self.event_bus.emit(
+                        SchemaChangeDetected(
+                            event_type="SchemaChangeDetected",
+                            timestamp=datetime.utcnow(),
+                            table=dataset_name,
+                            change_type=change_type,
+                            column=column,
+                            new_type=new_type,
+                            metadata={},
+                        )
+                    )
 
         return report
 
@@ -544,8 +563,8 @@ class DriftDetector:
             f"""
             SELECT metric_value
             FROM {self.storage_config.results_table}
-            WHERE run_id = :run_id 
-            AND column_name = :column_name 
+            WHERE run_id = :run_id
+            AND column_name = :column_name
             AND metric_name = 'histogram'
             LIMIT 1
         """
@@ -564,8 +583,8 @@ class DriftDetector:
             f"""
             SELECT metric_name, metric_value
             FROM {self.storage_config.results_table}
-            WHERE run_id = :run_id 
-            AND column_name = :column_name 
+            WHERE run_id = :run_id
+            AND column_name = :column_name
             AND metric_name IN ('top_values', 'distinct_count', 'category_distribution')
         """
         )
@@ -583,7 +602,7 @@ class DriftDetector:
                             distribution = json.loads(row.metric_value)
                         else:
                             distribution = row.metric_value
-                    except:
+                    except Exception:
                         pass
                 elif row.metric_name == "top_values":
                     # Parse top values
@@ -594,7 +613,7 @@ class DriftDetector:
                             distribution = json.loads(row.metric_value)
                         else:
                             distribution = row.metric_value
-                    except:
+                    except Exception:
                         pass
 
             return distribution if distribution else None
@@ -638,8 +657,8 @@ class DriftDetector:
             if current_cat:
                 current_data["category_distribution"] = current_cat
 
-            kwargs["baseline_data"] = baseline_data
-            kwargs["current_data"] = current_data
+            kwargs["baseline_data"] = baseline_data  # type: ignore[assignment]
+            kwargs["current_data"] = current_data  # type: ignore[assignment]
 
         # Use the configured strategy to calculate drift
         result = self.strategy.calculate_drift(

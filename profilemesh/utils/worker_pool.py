@@ -6,7 +6,6 @@ tasks concurrently with error isolation, structured logging, and metrics.
 """
 
 import logging
-import queue
 import time
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -64,7 +63,7 @@ class WorkerPool:
         self.logger = get_logger(__name__)
 
         self.logger.info(
-            f"WorkerPool initialized",
+            "WorkerPool initialized",
             max_workers=max_workers,
             queue_size=queue_size,
             warehouse_type=warehouse_type,
@@ -226,7 +225,7 @@ class WorkerPool:
 
             if is_metrics_enabled():
                 active_workers.labels(warehouse=self.warehouse_type).set(len(self.active_tasks))
-        except (ImportError, Exception) as e:
+        except (ImportError, Exception):
             # Silently fail if metrics not available
             pass
 
@@ -237,7 +236,7 @@ class WorkerPool:
 
             if is_metrics_enabled():
                 worker_queue_size.labels(warehouse=self.warehouse_type).set(len(self.active_tasks))
-        except (ImportError, Exception) as e:
+        except (ImportError, Exception):
             # Silently fail if metrics not available
             pass
 
@@ -288,7 +287,7 @@ class WorkerPool:
 
             if is_metrics_enabled():
                 worker_tasks_total.labels(warehouse=self.warehouse_type, status=status).inc()
-        except (ImportError, Exception) as e:
+        except (ImportError, Exception):
             # Silently fail if metrics not available
             pass
 
@@ -301,7 +300,7 @@ class WorkerPool:
                 batch_duration_seconds.labels(
                     warehouse=self.warehouse_type, batch_size=str(batch_size)
                 ).observe(duration)
-        except (ImportError, Exception) as e:
+        except (ImportError, Exception):
             # Silently fail if metrics not available
             pass
 
@@ -315,7 +314,9 @@ class WorkerPool:
     ):
         """Emit batch event to event bus."""
         try:
-            from ..events.event_bus import event_bus
+            # Note: No global event_bus instance available in worker pool context
+            # Batch events are logged but not emitted to event bus
+            # Individual table events are emitted via event_bus parameter in profile_table_task
             from ..events.events import BaseEvent
 
             metadata = {
@@ -329,10 +330,10 @@ class WorkerPool:
                     {"successful": successful, "failed": failed, "duration_seconds": duration}
                 )
 
-            event = BaseEvent(event_type=event_type, timestamp=datetime.now(), metadata=metadata)
-
-            event_bus.emit(event)
-        except (ImportError, Exception) as e:
+            # Create event for logging purposes only
+            _ = BaseEvent(event_type=event_type, timestamp=datetime.now(), metadata=metadata)
+            # Skip emit - no global event_bus in worker pool context
+        except (ImportError, Exception):
             # Silently fail if event bus not available
             pass
 
@@ -442,9 +443,15 @@ def profile_table_task(
             from .metrics import is_metrics_enabled
 
             if is_metrics_enabled():
-                from .metrics import record_profile_completed
+                from .metrics import get_warehouse_type, record_profile_completed
 
-                record_profile_completed(table_name, duration)
+                # Get warehouse type from engine's config
+                warehouse = (
+                    get_warehouse_type(engine.config.source)
+                    if hasattr(engine, "config") and hasattr(engine.config, "source")
+                    else "unknown"
+                )
+                record_profile_completed(warehouse, table_name, duration)
         except (ImportError, Exception):
             pass
 
@@ -497,9 +504,15 @@ def profile_table_task(
             from .metrics import is_metrics_enabled
 
             if is_metrics_enabled():
-                from .metrics import record_profile_failed
+                from .metrics import get_warehouse_type, record_profile_failed
 
-                record_profile_failed(table_name, str(e))
+                # Get warehouse type from engine's config
+                warehouse = (
+                    get_warehouse_type(engine.config.source)
+                    if hasattr(engine, "config") and hasattr(engine.config, "source")
+                    else "unknown"
+                )
+                record_profile_failed(warehouse, table_name, 0.0)
         except (ImportError, Exception):
             pass
 

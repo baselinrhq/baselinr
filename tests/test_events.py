@@ -2,20 +2,21 @@
 Tests for the event and alert hook system.
 """
 
-import pytest
 from datetime import datetime
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
 from sqlalchemy import create_engine
 
 from profilemesh.events import (
     BaseEvent,
     DataDriftDetected,
-    SchemaChangeDetected,
-    ProfilingStarted,
-    ProfilingCompleted,
-    ProfilingFailed,
     EventBus,
     LoggingAlertHook,
+    ProfilingCompleted,
+    ProfilingFailed,
+    ProfilingStarted,
+    SchemaChangeDetected,
     SQLEventHook,
 )
 
@@ -508,7 +509,7 @@ class TestEventBusIntegration:
 
     def test_slack_alert_hook_drift(self):
         """Test Slack alert hook with drift event."""
-        from unittest.mock import Mock, patch, MagicMock
+        from unittest.mock import MagicMock, Mock, patch
 
         # Mock requests module before importing SlackAlertHook
         mock_requests = MagicMock()
@@ -557,7 +558,7 @@ class TestEventBusIntegration:
 
     def test_slack_alert_hook_severity_filter(self):
         """Test Slack alert hook filters by severity."""
-        from unittest.mock import Mock, patch, MagicMock
+        from unittest.mock import MagicMock, Mock, patch
 
         # Mock requests module before importing SlackAlertHook
         mock_requests = MagicMock()
@@ -595,7 +596,7 @@ class TestEventBusIntegration:
 
     def test_slack_alert_hook_schema_change(self):
         """Test Slack alert hook with schema change event."""
-        from unittest.mock import Mock, patch, MagicMock
+        from unittest.mock import MagicMock, Mock, patch
 
         # Mock requests module before importing SlackAlertHook
         mock_requests = MagicMock()

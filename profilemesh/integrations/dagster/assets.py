@@ -337,20 +337,32 @@ if DAGSTER_AVAILABLE:
 
 else:  # pragma: no cover - exercised when Dagster missing
 
-    class ProfileMeshResource:
+    class ProfileMeshResource:  # type: ignore[no-redef]
         """Stub resource exposed when Dagster is unavailable."""
 
-        def __init__(self, *args, **kwargs):
+        def __init__(self, config_path: str, *args: Any, **kwargs: Any):
             raise ImportError(
                 "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
             )
 
-    def create_profiling_assets(*args, **kwargs):
+    def create_profiling_assets(
+        config_path: str,
+        *,
+        asset_name_prefix: str = "profilemesh",
+        group_name: str = "profilemesh_profiling",
+        default_tags: Optional[Mapping[str, str]] = None,
+        default_metadata: Optional[Mapping[str, Any]] = None,
+    ) -> List[Any]:
         raise ImportError(
             "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
         )
 
-    def create_profiling_job(*args, **kwargs):
+    def create_profiling_job(
+        *,
+        assets: Sequence[Any],
+        job_name: str = "profilemesh_profile_all",
+        description: str = "Run all ProfileMesh profiling assets",
+    ) -> Any:  # type: ignore[return-value]
         raise ImportError(
             "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
         )

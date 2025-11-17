@@ -1,19 +1,20 @@
 """Tests for profiling plan builder."""
 
-import pytest
-from unittest.mock import Mock
 from datetime import datetime
+from unittest.mock import Mock
+
+import pytest
 from pydantic import ValidationError
 
-from profilemesh.planner import PlanBuilder, ProfilingPlan, TablePlan, print_plan
 from profilemesh.config.schema import (
-    ProfileMeshConfig,
     ConnectionConfig,
-    StorageConfig,
-    ProfilingConfig,
-    TablePattern,
     DriftDetectionConfig,
+    ProfileMeshConfig,
+    ProfilingConfig,
+    StorageConfig,
+    TablePattern,
 )
+from profilemesh.planner import PlanBuilder, ProfilingPlan, TablePlan, print_plan
 
 
 @pytest.fixture

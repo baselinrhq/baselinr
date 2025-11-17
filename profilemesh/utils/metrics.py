@@ -9,7 +9,7 @@ This module provides Prometheus-compliant metrics for monitoring:
 """
 
 import logging
-from typing import Any, Optional
+from typing import Optional
 
 try:
     from prometheus_client import Counter, Gauge, Histogram, start_http_server
@@ -283,7 +283,7 @@ def start_metrics_server(port: int = 9753):
     global _metrics_server_started
 
     if _metrics_server_started:
-        logger.warning(f"Metrics server already started, skipping")
+        logger.warning("Metrics server already started, skipping")
         return
 
     try:
@@ -322,8 +322,8 @@ def get_warehouse_type(config) -> str:
         Warehouse type string (postgres, snowflake, etc.)
     """
     if hasattr(config, "type"):
-        return config.type
+        return config.type  # type: ignore[no-any-return]
     elif hasattr(config, "connection") and hasattr(config.connection, "type"):
-        return config.connection.type
+        return config.connection.type  # type: ignore[no-any-return]
     else:
         return "unknown"

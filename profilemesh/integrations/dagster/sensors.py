@@ -56,7 +56,8 @@ def _deserialize_cursor(cursor: Optional[str]) -> Optional[Dict[str, Any]]:
     if not cursor:
         return None
     try:
-        return json.loads(cursor)
+        result = json.loads(cursor)
+        return result if isinstance(result, dict) else None
     except json.JSONDecodeError:
         logger.warning("Invalid ProfileMesh plan sensor cursor; resetting.")
         return None
@@ -149,7 +150,15 @@ if DAGSTER_AVAILABLE:
 
 else:  # pragma: no cover - exercised when Dagster missing
 
-    def profilemesh_plan_sensor(*args, **kwargs):
+    def profilemesh_plan_sensor(
+        *,
+        config_path: str,
+        job_name: str,
+        asset_prefix: str = "profilemesh",
+        sensor_name: Optional[str] = None,
+        minimum_interval_seconds: int = 300,
+        force_run: bool = False,
+    ) -> Any:  # type: ignore[return-value]
         raise ImportError(
             "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
         )

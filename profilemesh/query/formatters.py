@@ -20,16 +20,22 @@ def format_runs(runs: List[Any], format: str = "table") -> str:
 
     elif format == "csv":
         if not runs:
-            return "run_id,dataset_name,schema_name,profiled_at,environment,status,row_count,column_count"
+            return (
+                "run_id,dataset_name,schema_name,profiled_at,environment,status,"
+                "row_count,column_count"
+            )
 
         lines = [
-            "run_id,dataset_name,schema_name,profiled_at,environment,status,row_count,column_count"
+            "run_id,dataset_name,schema_name,profiled_at,environment,status,"
+            "row_count,column_count"
         ]
         for run in runs:
+            profiled_at_str = run.profiled_at.isoformat() if run.profiled_at else ""
             lines.append(
                 f"{run.run_id},{run.dataset_name},{run.schema_name or ''},"
-                f"{run.profiled_at.isoformat() if run.profiled_at else ''},"
-                f"{run.environment or ''},{run.status or ''},{run.row_count or ''},{run.column_count or ''}"
+                f"{profiled_at_str},"
+                f"{run.environment or ''},{run.status or ''},"
+                f"{run.row_count or ''},{run.column_count or ''}"
             )
         return "\n".join(lines)
 
@@ -39,7 +45,7 @@ def format_runs(runs: List[Any], format: str = "table") -> str:
 
         # Use tabulate if available, otherwise simple formatting
         try:
-            from tabulate import tabulate
+            from tabulate import tabulate  # type: ignore[import-untyped]
 
             headers = ["Run ID", "Table", "Schema", "Profiled At", "Status", "Rows", "Cols"]
             rows = []
@@ -56,7 +62,7 @@ def format_runs(runs: List[Any], format: str = "table") -> str:
                     ]
                 )
 
-            return tabulate(rows, headers=headers, tablefmt="grid")
+            return tabulate(rows, headers=headers, tablefmt="grid")  # type: ignore[no-any-return]
 
         except ImportError:
             # Fallback to simple formatting
@@ -88,10 +94,14 @@ def format_drift(events: List[Any], format: str = "table") -> str:
 
     elif format == "csv":
         if not events:
-            return "event_id,event_type,table_name,column_name,metric_name,baseline_value,current_value,change_percent,severity,timestamp"
+            return (
+                "event_id,event_type,table_name,column_name,metric_name,"
+                "baseline_value,current_value,change_percent,severity,timestamp"
+            )
 
         lines = [
-            "event_id,event_type,table_name,column_name,metric_name,baseline_value,current_value,change_percent,severity,timestamp"
+            "event_id,event_type,table_name,column_name,metric_name,"
+            "baseline_value,current_value,change_percent,severity,timestamp"
         ]
         for event in events:
             lines.append(
@@ -139,13 +149,14 @@ def format_drift(events: List[Any], format: str = "table") -> str:
                     ]
                 )
 
-            return tabulate(rows, headers=headers, tablefmt="grid")
+            return tabulate(rows, headers=headers, tablefmt="grid")  # type: ignore[no-any-return]
 
         except ImportError:
             lines = ["DRIFT EVENTS", "=" * 80]
             for event in events:
                 lines.append(
-                    f"\n[{event.drift_severity.upper() if event.drift_severity else 'N/A'}] {event.table_name}.{event.column_name}"
+                    f"\n[{event.drift_severity.upper() if event.drift_severity else 'N/A'}] "
+                    f"{event.table_name}.{event.column_name}"
                 )
                 lines.append(f"  Metric: {event.metric_name}")
                 lines.append(f"  Baseline: {event.baseline_value}")

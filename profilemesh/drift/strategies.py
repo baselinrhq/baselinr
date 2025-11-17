@@ -22,7 +22,7 @@ class DriftResult:
     change_absolute: Optional[float] = None
     change_percent: Optional[float] = None
     score: Optional[float] = None  # Generic score for ML-based methods
-    metadata: Dict[str, Any] = None  # Additional method-specific data
+    metadata: Optional[Dict[str, Any]] = None  # Additional method-specific data
 
     def __post_init__(self):
         if self.metadata is None:
@@ -386,7 +386,6 @@ class StatisticalStrategy(DriftDetectionStrategy):
         self, test_results: List[Any], baseline_value: Any, current_value: Any, metric_name: str
     ) -> DriftResult:
         """Aggregate multiple test results into a single DriftResult."""
-        from .statistical_tests import TestResult
 
         # Determine overall drift and severity
         any_drift = any(tr.drift_detected for tr in test_results)
@@ -489,4 +488,4 @@ def create_drift_strategy(strategy_name: str, **kwargs) -> DriftDetectionStrateg
         )
 
     strategy_class = DRIFT_STRATEGIES[strategy_name]
-    return strategy_class(**kwargs)
+    return strategy_class(**kwargs)  # type: ignore[no-any-return]

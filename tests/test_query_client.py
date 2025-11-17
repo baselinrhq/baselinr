@@ -1,8 +1,10 @@
 """Tests for metadata query client."""
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from sqlalchemy import create_engine, text
+
 from profilemesh.query import MetadataQueryClient
 
 

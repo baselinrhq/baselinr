@@ -162,7 +162,7 @@ class PlanBuilder:
         metrics = self.config.profiling.metrics.copy()
 
         # Build metadata
-        metadata = {
+        metadata: Dict[str, Any] = {
             "compute_histograms": self.config.profiling.compute_histograms,
             "histogram_bins": self.config.profiling.histogram_bins,
             "max_distinct_values": self.config.profiling.max_distinct_values,
@@ -305,7 +305,7 @@ def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
                 print(f" (N={partition['recent_n']})", end="")
             print()
         else:
-            print(f"   Partition: full table")
+            print("   Partition: full table")
 
         # Show sampling configuration
         if table.sampling_config and table.sampling_config.get("enabled"):
@@ -317,12 +317,12 @@ def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
                 print(f", max {sampling['max_rows']:,} rows", end="")
             print()
         else:
-            print(f"   Sampling: none (full dataset)")
+            print("   Sampling: none (full dataset)")
 
         if verbose:
             print(f"   Metrics ({len(table.metrics)}): {', '.join(table.metrics)}")
             if table.metadata:
-                print(f"   Configuration:")
+                print("   Configuration:")
                 for key, value in table.metadata.items():
                     print(f"     - {key}: {value}")
 
@@ -334,16 +334,17 @@ def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
     print(f"Estimated Metrics: ~{plan.estimated_metrics}")
 
     if verbose:
-        print(f"\nConfiguration Details:")
-        print(
-            f"  - Compute Histograms: {plan.tables[0].metadata.get('compute_histograms', False) if plan.tables else 'N/A'}"
+        print("\nConfiguration Details:")
+        compute_hist = (
+            plan.tables[0].metadata.get("compute_histograms", False) if plan.tables else "N/A"
         )
-        print(
-            f"  - Histogram Bins: {plan.tables[0].metadata.get('histogram_bins', 'N/A') if plan.tables else 'N/A'}"
+        print(f"  - Compute Histograms: {compute_hist}")
+        hist_bins = plan.tables[0].metadata.get("histogram_bins", "N/A") if plan.tables else "N/A"
+        print(f"  - Histogram Bins: {hist_bins}")
+        max_dist = (
+            plan.tables[0].metadata.get("max_distinct_values", "N/A") if plan.tables else "N/A"
         )
-        print(
-            f"  - Max Distinct Values: {plan.tables[0].metadata.get('max_distinct_values', 'N/A') if plan.tables else 'N/A'}"
-        )
+        print(f"  - Max Distinct Values: {max_dist}")
 
     print("\n" + "=" * 70)
     print(f"Plan built successfully. Ready to profile {plan.total_tables} table(s).")

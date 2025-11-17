@@ -9,9 +9,9 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from .schema import ProfileMeshConfig
 

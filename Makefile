@@ -88,7 +88,7 @@ test:
 	pytest tests/ -v
 
 lint:
-	flake8 profilemesh/
+	flake8 profilemesh/ --config=.flake8
 	mypy profilemesh/
 
 format:

@@ -11,13 +11,14 @@ Verifies:
 - Thread safety
 """
 
-import pytest
 import time
-from unittest.mock import Mock, MagicMock, patch
 from datetime import datetime
+from unittest.mock import MagicMock, Mock, patch
 
-from profilemesh.utils.worker_pool import WorkerPool, profile_table_task
+import pytest
+
 from profilemesh.config.schema import ExecutionConfig, TablePattern
+from profilemesh.utils.worker_pool import WorkerPool, profile_table_task
 
 
 class TestExecutionConfig:
@@ -223,7 +224,7 @@ class TestBackwardCompatibility:
 
     def test_default_execution_config_no_worker_pool(self):
         """Default config (max_workers=1) should not create worker pool."""
-        from profilemesh.config.schema import ProfileMeshConfig, ConnectionConfig, StorageConfig
+        from profilemesh.config.schema import ConnectionConfig, ProfileMeshConfig, StorageConfig
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="sqlite", database="test.db"),
@@ -238,14 +239,14 @@ class TestBackwardCompatibility:
     @patch("profilemesh.profiling.core.MetricCalculator")
     def test_sequential_execution_no_worker_pool(self, mock_calc, mock_builder, mock_conn):
         """Sequential execution should not use worker pool."""
-        from profilemesh.profiling.core import ProfileEngine
         from profilemesh.config.schema import (
-            ProfileMeshConfig,
             ConnectionConfig,
-            StorageConfig,
+            ProfileMeshConfig,
             ProfilingConfig,
+            StorageConfig,
             TablePattern,
         )
+        from profilemesh.profiling.core import ProfileEngine
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
@@ -267,15 +268,15 @@ class TestBackwardCompatibility:
     @patch("profilemesh.profiling.core.MetricCalculator")
     def test_parallel_execution_creates_worker_pool(self, mock_calc, mock_builder, mock_conn):
         """Parallel execution (max_workers > 1) should create worker pool."""
-        from profilemesh.profiling.core import ProfileEngine
         from profilemesh.config.schema import (
-            ProfileMeshConfig,
             ConnectionConfig,
-            StorageConfig,
-            ProfilingConfig,
-            TablePattern,
             ExecutionConfig,
+            ProfileMeshConfig,
+            ProfilingConfig,
+            StorageConfig,
+            TablePattern,
         )
+        from profilemesh.profiling.core import ProfileEngine
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
@@ -301,14 +302,14 @@ class TestWarehouseSpecificLimits:
     @patch("profilemesh.profiling.core.SQLiteConnector")
     def test_sqlite_forces_sequential(self, mock_conn):
         """SQLite should force sequential execution even if parallel configured."""
-        from profilemesh.profiling.core import ProfileEngine
         from profilemesh.config.schema import (
-            ProfileMeshConfig,
             ConnectionConfig,
-            StorageConfig,
-            ProfilingConfig,
             ExecutionConfig,
+            ProfileMeshConfig,
+            ProfilingConfig,
+            StorageConfig,
         )
+        from profilemesh.profiling.core import ProfileEngine
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="sqlite", database="test.db"),
@@ -324,14 +325,14 @@ class TestWarehouseSpecificLimits:
     @patch("profilemesh.profiling.core.PostgresConnector")
     def test_warehouse_limit_overrides_max_workers(self, mock_conn):
         """Warehouse-specific limit should override max_workers."""
-        from profilemesh.profiling.core import ProfileEngine
         from profilemesh.config.schema import (
-            ProfileMeshConfig,
             ConnectionConfig,
-            StorageConfig,
-            ProfilingConfig,
             ExecutionConfig,
+            ProfileMeshConfig,
+            ProfilingConfig,
+            StorageConfig,
         )
+        from profilemesh.profiling.core import ProfileEngine
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
@@ -355,8 +356,8 @@ class TestConnectionPooling:
 
     def test_sequential_execution_default_pool(self):
         """Sequential execution should use default pool size."""
-        from profilemesh.connectors.base import BaseConnector
         from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
+        from profilemesh.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):
@@ -377,8 +378,8 @@ class TestConnectionPooling:
 
     def test_parallel_execution_larger_pool(self):
         """Parallel execution should use larger pool size."""
-        from profilemesh.connectors.base import BaseConnector
         from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
+        from profilemesh.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):
@@ -400,8 +401,8 @@ class TestConnectionPooling:
 
     def test_pool_size_capped_at_20(self):
         """Pool size should be capped at 20."""
-        from profilemesh.connectors.base import BaseConnector
         from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
+        from profilemesh.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):

@@ -5,7 +5,6 @@ import logging
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 
-from ..config.schema import ConnectionConfig
 from .base import BaseConnector
 
 logger = logging.getLogger(__name__)

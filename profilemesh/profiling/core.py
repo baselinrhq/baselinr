@@ -7,19 +7,10 @@ collecting schema information and computing metrics.
 
 import logging
 import time
-import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from ..config.schema import ProfileMeshConfig, TablePattern
-from ..connectors import (
-    BigQueryConnector,
-    MySQLConnector,
-    PostgresConnector,
-    RedshiftConnector,
-    SnowflakeConnector,
-    SQLiteConnector,
-)
 from ..connectors.base import BaseConnector
 from ..connectors.factory import create_connector
 from ..events import EventBus, ProfilingCompleted, ProfilingFailed, ProfilingStarted
@@ -215,6 +206,9 @@ class ProfileEngine:
         """
         from ..utils.worker_pool import profile_table_task
 
+        if self.worker_pool is None:
+            raise RuntimeError("Worker pool is not initialized")
+
         # Submit all tasks
         futures = []
         for pattern in patterns:
@@ -378,6 +372,8 @@ class ProfileEngine:
 
         try:
             # Get table metadata
+            if self.connector is None:
+                raise RuntimeError("Connector is not initialized")
             table = self.connector.get_table(pattern.table, schema=pattern.schema_)
 
             # Create result container
@@ -413,6 +409,8 @@ class ProfileEngine:
                 logger.debug(f"Profiling column: {column.name}")
 
                 try:
+                    if self.metric_calculator is None:
+                        raise RuntimeError("Metric calculator is not initialized")
                     metrics = self.metric_calculator.calculate_all_metrics(
                         table=table,
                         column_name=column.name,
@@ -451,7 +449,8 @@ class ProfileEngine:
                 )
 
             logger.info(
-                f"Successfully profiled {pattern.table} with {len(result.columns)} columns in {duration:.2f}s"
+                f"Successfully profiled {pattern.table} with {len(result.columns)} "
+                f"columns in {duration:.2f}s"
             )
             return result
 
@@ -484,6 +483,8 @@ class ProfileEngine:
         """
         from sqlalchemy import func, select
 
+        if self.connector is None:
+            raise RuntimeError("Connector is not initialized")
         with self.connector.engine.connect() as conn:
             # Build query with partition filtering
             query, _ = self.query_builder.build_profiling_query(
@@ -494,4 +495,5 @@ class ProfileEngine:
 
             # Count rows
             count_query = select(func.count()).select_from(query.alias())
-            return conn.execute(count_query).scalar()
+            result = conn.execute(count_query).scalar()
+            return int(result) if result is not None else 0

@@ -6,9 +6,9 @@ Defines the abstract interface that all database connectors must implement.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
-from sqlalchemy import MetaData, Table, create_engine, inspect
+from sqlalchemy import MetaData, Table, inspect
 from sqlalchemy.engine import Engine
 
 from ..config.schema import ConnectionConfig
@@ -149,7 +149,7 @@ class BaseConnector(ABC):
             inspector = inspect(self.engine)
             return inspector.get_schema_names()
 
-        return self._wrap_with_retry(_list_schemas)
+        return cast(List[str], self._wrap_with_retry(_list_schemas))
 
     def list_tables(self, schema: Optional[str] = None) -> List[str]:
         """
@@ -166,7 +166,7 @@ class BaseConnector(ABC):
             inspector = inspect(self.engine)
             return inspector.get_table_names(schema=schema)
 
-        return self._wrap_with_retry(_list_tables)
+        return cast(List[str], self._wrap_with_retry(_list_tables))
 
     def get_table(self, table_name: str, schema: Optional[str] = None) -> Table:
         """
@@ -183,7 +183,7 @@ class BaseConnector(ABC):
         def _get_table():
             return Table(table_name, MetaData(), autoload_with=self.engine, schema=schema)
 
-        return self._wrap_with_retry(_get_table)
+        return cast(Table, self._wrap_with_retry(_get_table))
 
     def execute_query(self, query: str) -> List[Dict[str, Any]]:
         """
@@ -204,7 +204,7 @@ class BaseConnector(ABC):
             # Get logger - use existing logger or create one
             try:
                 query_logger = get_logger(__name__)
-            except:
+            except Exception:
                 query_logger = logger
 
             # Truncate query for logging if too long
@@ -235,7 +235,7 @@ class BaseConnector(ABC):
                         if is_metrics_enabled():
                             warehouse = get_warehouse_type(self.config)
                             record_query_completed(warehouse, duration)
-                    except:
+                    except Exception:
                         pass  # Metrics optional
 
                     log_event(
@@ -260,7 +260,7 @@ class BaseConnector(ABC):
                     if is_metrics_enabled():
                         warehouse = get_warehouse_type(self.config)
                         record_error(warehouse, type(e).__name__, "connector")
-                except:
+                except Exception:
                     pass  # Metrics optional
 
                 log_event(
@@ -277,7 +277,7 @@ class BaseConnector(ABC):
                 )
                 raise
 
-        return self._wrap_with_retry(_execute_query)
+        return cast(List[Dict[str, Any]], self._wrap_with_retry(_execute_query))
 
     def close(self):
         """Close database connection."""

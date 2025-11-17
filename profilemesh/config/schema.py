@@ -381,10 +381,18 @@ class IncrementalConfig(BaseModel):
     """Top-level incremental profiling configuration."""
 
     enabled: bool = Field(False)
-    change_detection: ChangeDetectionConfig = Field(default_factory=ChangeDetectionConfig)
-    partial_profiling: PartialProfilingConfig = Field(default_factory=PartialProfilingConfig)
-    adaptive_scheduling: AdaptiveSchedulingConfig = Field(default_factory=AdaptiveSchedulingConfig)
-    cost_controls: CostControlConfig = Field(default_factory=CostControlConfig)
+    change_detection: ChangeDetectionConfig = Field(
+        default_factory=lambda: ChangeDetectionConfig()  # type: ignore[call-arg]
+    )
+    partial_profiling: PartialProfilingConfig = Field(
+        default_factory=lambda: PartialProfilingConfig()  # type: ignore[call-arg]
+    )
+    adaptive_scheduling: AdaptiveSchedulingConfig = Field(
+        default_factory=lambda: AdaptiveSchedulingConfig()  # type: ignore[call-arg]
+    )
+    cost_controls: CostControlConfig = Field(
+        default_factory=lambda: CostControlConfig()  # type: ignore[call-arg]
+    )
 
 
 class ProfileMeshConfig(BaseModel):
@@ -393,13 +401,23 @@ class ProfileMeshConfig(BaseModel):
     environment: str = Field("development")
     source: ConnectionConfig
     storage: StorageConfig
-    profiling: ProfilingConfig = Field(default_factory=ProfilingConfig)
-    drift_detection: DriftDetectionConfig = Field(default_factory=DriftDetectionConfig)
-    hooks: HooksConfig = Field(default_factory=HooksConfig)
-    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
-    retry: RetryConfig = Field(default_factory=RetryConfig)
-    execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
-    incremental: IncrementalConfig = Field(default_factory=IncrementalConfig)
+    profiling: ProfilingConfig = Field(
+        default_factory=lambda: ProfilingConfig()  # type: ignore[call-arg]
+    )
+    drift_detection: DriftDetectionConfig = Field(
+        default_factory=lambda: DriftDetectionConfig()  # type: ignore[call-arg]
+    )
+    hooks: HooksConfig = Field(default_factory=lambda: HooksConfig())  # type: ignore[call-arg]
+    monitoring: MonitoringConfig = Field(
+        default_factory=lambda: MonitoringConfig()  # type: ignore[call-arg]
+    )
+    retry: RetryConfig = Field(default_factory=lambda: RetryConfig())  # type: ignore[call-arg]
+    execution: ExecutionConfig = Field(
+        default_factory=lambda: ExecutionConfig()  # type: ignore[call-arg]
+    )
+    incremental: IncrementalConfig = Field(
+        default_factory=lambda: IncrementalConfig()  # type: ignore[call-arg]
+    )
 
     @field_validator("environment")
     @classmethod

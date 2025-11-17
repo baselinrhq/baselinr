@@ -23,6 +23,7 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.sql import Insert, Update
 
 from ..config.schema import StorageConfig
 from ..connectors.factory import create_connector
@@ -45,7 +46,7 @@ class TableState:
     staleness_score: Optional[int] = None
     row_count: Optional[int] = None
     bytes_scanned: Optional[int] = None
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
     @property
     def table_key(self) -> str:
@@ -147,7 +148,7 @@ class TableStateStore:
         )
         with self.engine.begin() as conn:
             if existing:
-                stmt = (
+                stmt: Update = (
                     update(self._table)
                     .where(self._table.c.table_name == state.table_name)
                     .where(schema_clause)
@@ -155,8 +156,8 @@ class TableStateStore:
                 )
                 conn.execute(stmt)
             else:
-                stmt = insert(self._table).values(**payload)
-                conn.execute(stmt)
+                stmt_insert: Insert = insert(self._table).values(**payload)
+                conn.execute(stmt_insert)
 
     def record_decision(
         self,

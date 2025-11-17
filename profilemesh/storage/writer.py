@@ -6,10 +6,9 @@ for historical tracking and drift detection.
 """
 
 import logging
-from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, Text, text
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
 from sqlalchemy.engine import Engine
 
 from ..config.schema import StorageConfig
@@ -49,7 +48,7 @@ class ResultWriter:
 
         # Runs table - tracks profiling runs
         # Note: Composite primary key (run_id, dataset_name) to allow multiple tables per run
-        runs_table = Table(
+        _runs_table = Table(  # noqa: F841
             self.config.runs_table,
             metadata,
             Column("run_id", String(36), primary_key=True),
@@ -63,7 +62,7 @@ class ResultWriter:
         )
 
         # Results table - stores individual metrics
-        results_table = Table(
+        _results_table = Table(  # noqa: F841
             self.config.results_table,
             metadata,
             Column("id", Integer, primary_key=True, autoincrement=True),
@@ -95,6 +94,8 @@ class ResultWriter:
             results: List of profiling results to write
             environment: Environment name (dev/test/prod)
         """
+        if self.engine is None:
+            raise RuntimeError("Engine is not initialized")
         with self.engine.connect() as conn:
             for result in results:
                 # Write run metadata
@@ -113,7 +114,7 @@ class ResultWriter:
         # Multiple tables can share the same run_id, but each table should have its own run record
         check_query = text(
             f"""
-            SELECT run_id FROM {self.config.runs_table} 
+            SELECT run_id FROM {self.config.runs_table}
             WHERE run_id = :run_id AND dataset_name = :dataset_name LIMIT 1
         """
         )
@@ -128,8 +129,10 @@ class ResultWriter:
         insert_query = text(
             f"""
             INSERT INTO {self.config.runs_table}
-            (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
-            VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
+            (run_id, dataset_name, schema_name, profiled_at, environment, status,
+             row_count, column_count)
+            VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment,
+                    :status, :row_count, :column_count)
         """
         )
 
@@ -152,8 +155,10 @@ class ResultWriter:
         insert_query = text(
             f"""
             INSERT INTO {self.config.results_table}
-            (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
-            VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
+            (run_id, dataset_name, schema_name, column_name, column_type, metric_name,
+             metric_value, profiled_at)
+            VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type,
+                    :metric_name, :metric_value, :profiled_at)
         """
         )
 
@@ -207,6 +212,8 @@ class ResultWriter:
         if schema_name:
             params["schema_name"] = schema_name
 
+        if self.engine is None:
+            raise RuntimeError("Engine is not initialized")
         with self.engine.connect() as conn:
             result = conn.execute(query, params).fetchone()
             return result[0] if result else None
@@ -224,7 +231,7 @@ class ResultWriter:
             # Check current version
             version_query = text(
                 """
-                SELECT version FROM profilemesh_schema_version 
+                SELECT version FROM profilemesh_schema_version
                 ORDER BY version DESC LIMIT 1
             """
             )
@@ -234,7 +241,7 @@ class ResultWriter:
                 # First time - insert initial version
                 insert_query = text(
                     """
-                    INSERT INTO profilemesh_schema_version 
+                    INSERT INTO profilemesh_schema_version
                     (version, description, migration_script)
                     VALUES (:version, :description, :script)
                 """
@@ -268,11 +275,13 @@ class ResultWriter:
         """
         query = text(
             """
-            SELECT version FROM profilemesh_schema_version 
+            SELECT version FROM profilemesh_schema_version
             ORDER BY version DESC LIMIT 1
         """
         )
         try:
+            if self.engine is None:
+                raise RuntimeError("Engine is not initialized")
             with self.engine.connect() as conn:
                 result = conn.execute(query).fetchone()
                 return result[0] if result else None
