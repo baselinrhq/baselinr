@@ -147,11 +147,12 @@ if DAGSTER_AVAILABLE:
 
         return _plan_sensor
 
-
 else:  # pragma: no cover - exercised when Dagster missing
 
     def profilemesh_plan_sensor(*args, **kwargs):
-        raise ImportError("Dagster is not installed. Install with `pip install profilemesh[dagster]`.")
+        raise ImportError(
+            "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
+        )
 
 
 __all__ = ["profilemesh_plan_sensor"]

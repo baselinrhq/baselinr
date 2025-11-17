@@ -8,15 +8,15 @@ settings consistent across the CLI, planner, and writer.
 
 from typing import Optional
 
-from ..config.schema import ConnectionConfig, RetryConfig, ExecutionConfig
+from ..config.schema import ConnectionConfig, ExecutionConfig, RetryConfig
 from . import (
     BaseConnector,
+    BigQueryConnector,
+    MySQLConnector,
     PostgresConnector,
+    RedshiftConnector,
     SnowflakeConnector,
     SQLiteConnector,
-    MySQLConnector,
-    BigQueryConnector,
-    RedshiftConnector,
 )
 
 

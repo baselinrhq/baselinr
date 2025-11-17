@@ -6,13 +6,15 @@ warehouse connections, profiling targets, and output settings.
 """
 
 import os
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class DatabaseType(str, Enum):
     """Supported database types."""
+
     POSTGRES = "postgres"
     SNOWFLAKE = "snowflake"
     SQLITE = "sqlite"
@@ -23,7 +25,7 @@ class DatabaseType(str, Enum):
 
 class ConnectionConfig(BaseModel):
     """Database connection configuration."""
-    
+
     type: DatabaseType
     host: Optional[str] = None
     port: Optional[int] = None
@@ -31,39 +33,36 @@ class ConnectionConfig(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     schema_: Optional[str] = Field(None, alias="schema")
-    
+
     # Snowflake-specific
     account: Optional[str] = None
     warehouse: Optional[str] = None
     role: Optional[str] = None
-    
+
     # SQLite-specific
     filepath: Optional[str] = None
-    
+
     # BigQuery-specific (use extra_params for credentials_path)
     # Example: extra_params: {"credentials_path": "/path/to/key.json"}
-    
+
     # Additional connection parameters
     # For BigQuery: use credentials_path in extra_params
     # For MySQL: standard host/port/database/username/password
     # For Redshift: standard host/port/database/username/password (uses port 5439 by default)
     extra_params: Dict[str, Any] = Field(default_factory=dict)
-    
-    model_config = {
-        "populate_by_name": True,
-        "use_enum_values": True
-    }
+
+    model_config = {"populate_by_name": True, "use_enum_values": True}
 
 
 class PartitionConfig(BaseModel):
     """Partition-aware profiling configuration."""
-    
+
     key: Optional[str] = None  # Partition column name
     strategy: str = Field("all")  # latest | recent_n | sample | all | specific_values
     recent_n: Optional[int] = Field(None, gt=0)  # For recent_n.strategy
     values: Optional[List[Any]] = None  # Explicit list of partition values (specific_values)
     metadata_fallback: bool = Field(True)  # Try to infer partition key from metadata
-    
+
     @field_validator("strategy")
     @classmethod
     def validate_strategy(cls, v: str) -> str:
@@ -72,34 +71,34 @@ class PartitionConfig(BaseModel):
         if v not in valid_strategies:
             raise ValueError(f"Strategy must be one of {valid_strategies}")
         return v
-    
+
     @field_validator("recent_n")
     @classmethod
     def validate_recent_n(cls, v: Optional[int], info) -> Optional[int]:
         """Validate recent_n is provided when strategy is recent_n."""
-        strategy = info.data.get('strategy')
-        if strategy == 'recent_n' and v is None:
+        strategy = info.data.get("strategy")
+        if strategy == "recent_n" and v is None:
             raise ValueError("recent_n must be specified when strategy is 'recent_n'")
         return v
-    
+
     @field_validator("values")
     @classmethod
     def validate_values(cls, v: Optional[List[Any]], info) -> Optional[List[Any]]:
         """Ensure values are provided when using specific_values strategy."""
-        strategy = info.data.get('strategy')
-        if strategy == 'specific_values' and (not v or len(v) == 0):
+        strategy = info.data.get("strategy")
+        if strategy == "specific_values" and (not v or len(v) == 0):
             raise ValueError("values must be provided when strategy is 'specific_values'")
         return v
 
 
 class SamplingConfig(BaseModel):
     """Sampling configuration for profiling."""
-    
+
     enabled: bool = Field(False)
     method: str = Field("random")  # random | stratified | topk
     fraction: float = Field(0.01, gt=0.0, le=1.0)  # Fraction of rows to sample
     max_rows: Optional[int] = Field(None, gt=0)  # Cap on sampled rows
-    
+
     @field_validator("method")
     @classmethod
     def validate_method(cls, v: str) -> str:
@@ -112,20 +111,18 @@ class SamplingConfig(BaseModel):
 
 class TablePattern(BaseModel):
     """Table selection pattern."""
-    
+
     schema_: Optional[str] = Field(None, alias="schema")
     table: str
     partition: Optional[PartitionConfig] = None
     sampling: Optional[SamplingConfig] = None
-    
-    model_config = {
-        "populate_by_name": True
-    }
+
+    model_config = {"populate_by_name": True}
 
 
 class ProfilingConfig(BaseModel):
     """Profiling behavior configuration."""
-    
+
     tables: List[TablePattern] = Field(default_factory=list)
     max_distinct_values: int = Field(1000)
     compute_histograms: bool = Field(True)
@@ -141,7 +138,7 @@ class ProfilingConfig(BaseModel):
             "max",
             "mean",
             "stddev",
-            "histogram"
+            "histogram",
         ]
     )
     default_sample_ratio: float = Field(1.0, gt=0.0, le=1.0)
@@ -149,7 +146,7 @@ class ProfilingConfig(BaseModel):
 
 class StorageConfig(BaseModel):
     """Results storage configuration."""
-    
+
     connection: ConnectionConfig
     results_table: str = Field("profilemesh_results")
     runs_table: str = Field("profilemesh_runs")
@@ -158,44 +155,60 @@ class StorageConfig(BaseModel):
 
 class DriftDetectionConfig(BaseModel):
     """Drift detection configuration."""
-    
+
     strategy: str = Field("absolute_threshold")
-    
+
     # Absolute threshold strategy parameters
     absolute_threshold: Dict[str, float] = Field(
         default_factory=lambda: {
             "low_threshold": 5.0,
             "medium_threshold": 15.0,
-            "high_threshold": 30.0
+            "high_threshold": 30.0,
         }
     )
-    
+
     # Standard deviation strategy parameters
     standard_deviation: Dict[str, float] = Field(
         default_factory=lambda: {
             "low_threshold": 1.0,
             "medium_threshold": 2.0,
-            "high_threshold": 3.0
+            "high_threshold": 3.0,
         }
     )
-    
+
     # ML-based strategy parameters (placeholder)
     ml_based: Dict[str, Any] = Field(default_factory=dict)
+
+    # Statistical test strategy parameters
+    statistical: Dict[str, Any] = Field(
+        default_factory=lambda: {
+            "tests": ["ks_test", "psi", "chi_square"],
+            "sensitivity": "medium",
+            "test_params": {
+                "ks_test": {"alpha": 0.05},
+                "psi": {"buckets": 10, "threshold": 0.2},
+                "z_score": {"z_threshold": 2.0},
+                "chi_square": {"alpha": 0.05},
+                "entropy": {"entropy_threshold": 0.1},
+                "top_k": {"k": 10, "similarity_threshold": 0.7},
+            },
+        }
+    )
 
 
 class HookConfig(BaseModel):
     """Configuration for a single alert hook."""
-    
+
     type: str  # logging | sql | snowflake | slack | custom
     enabled: bool = Field(True)
-    
+
     # Logging hook parameters
     log_level: Optional[str] = Field("INFO")
-    
+
     # SQL/Snowflake hook parameters
     connection: Optional[ConnectionConfig] = None
     table_name: Optional[str] = Field("profilemesh_events")
-    
+
     # Slack hook parameters
     webhook_url: Optional[str] = None
     channel: Optional[str] = None
@@ -205,12 +218,12 @@ class HookConfig(BaseModel):
     alert_on_schema_change: Optional[bool] = Field(True)
     alert_on_profiling_failure: Optional[bool] = Field(True)
     timeout: Optional[int] = Field(10)
-    
+
     # Custom hook parameters (module path and class name)
     module: Optional[str] = None
     class_name: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
-    
+
     @field_validator("type")
     @classmethod
     def validate_type(cls, v: str) -> str:
@@ -223,20 +236,20 @@ class HookConfig(BaseModel):
 
 class HooksConfig(BaseModel):
     """Event hooks configuration."""
-    
+
     enabled: bool = Field(True)  # Master switch for all hooks
     hooks: List[HookConfig] = Field(default_factory=list)
 
 
 class RetryConfig(BaseModel):
     """Retry and recovery configuration."""
-    
+
     enabled: bool = Field(True)  # Enable retry logic
     retries: int = Field(3, ge=0, le=10)  # Maximum retry attempts
     backoff_strategy: str = Field("exponential")  # exponential | fixed
     min_backoff: float = Field(0.5, gt=0.0, le=60.0)  # Minimum backoff in seconds
     max_backoff: float = Field(8.0, gt=0.0, le=300.0)  # Maximum backoff in seconds
-    
+
     @field_validator("backoff_strategy")
     @classmethod
     def validate_strategy(cls, v: str) -> str:
@@ -245,12 +258,12 @@ class RetryConfig(BaseModel):
         if v not in valid_strategies:
             raise ValueError(f"Backoff strategy must be one of {valid_strategies}")
         return v
-    
+
     @field_validator("max_backoff")
     @classmethod
     def validate_max_backoff(cls, v: float, info) -> float:
         """Validate max_backoff is greater than min_backoff."""
-        min_backoff = info.data.get('min_backoff')
+        min_backoff = info.data.get("min_backoff")
         if min_backoff and v < min_backoff:
             raise ValueError("max_backoff must be greater than or equal to min_backoff")
         return v
@@ -258,11 +271,11 @@ class RetryConfig(BaseModel):
 
 class MonitoringConfig(BaseModel):
     """Monitoring and metrics configuration."""
-    
+
     enable_metrics: bool = Field(False)  # Enable Prometheus metrics
     port: int = Field(9753, gt=0, le=65535)  # Metrics server port
     keep_alive: bool = Field(True)  # Keep server running after profiling completes
-    
+
     @field_validator("port")
     @classmethod
     def validate_port(cls, v: int) -> int:
@@ -274,25 +287,25 @@ class MonitoringConfig(BaseModel):
 
 class ExecutionConfig(BaseModel):
     """Execution and parallelism configuration.
-    
+
     This configuration is OPTIONAL and defaults to sequential execution
     (max_workers=1) for backward compatibility. Enable parallelism by
     setting max_workers > 1.
-    
+
     Note: Dagster users already benefit from asset-level parallelism.
     This feature is primarily useful for CLI execution or when batching
     multiple tables within a single Dagster asset.
     """
-    
+
     # CRITICAL: Default to 1 (sequential) for backward compatibility
     max_workers: int = Field(1, ge=1, le=64)
     batch_size: int = Field(10, ge=1, le=100)
     queue_size: int = Field(100, ge=10, le=1000)  # Bounded queue size
-    
+
     # Warehouse-specific overrides (optional)
     warehouse_limits: Dict[str, int] = Field(default_factory=dict)
     # Example: {"snowflake": 20, "postgres": 8, "sqlite": 1}
-    
+
     @field_validator("max_workers")
     @classmethod
     def validate_max_workers(cls, v: int) -> int:
@@ -301,13 +314,15 @@ class ExecutionConfig(BaseModel):
             cpu_count = os.cpu_count() or 4
             max_allowed = cpu_count * 4
             if v > max_allowed:
-                raise ValueError(f"max_workers ({v}) should not exceed {max_allowed} (4x CPU count)")
+                raise ValueError(
+                    f"max_workers ({v}) should not exceed {max_allowed} (4x CPU count)"
+                )
         return v
 
 
 class ChangeDetectionConfig(BaseModel):
     """Configuration for change detection and metadata caching."""
-    
+
     enabled: bool = Field(True)
     metadata_table: str = Field("profilemesh_table_state")
     connector_overrides: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
@@ -316,7 +331,7 @@ class ChangeDetectionConfig(BaseModel):
 
 class PartialProfilingConfig(BaseModel):
     """Configuration for partial profiling decisions."""
-    
+
     enabled: bool = Field(True)
     allow_partition_pruning: bool = Field(True)
     max_partitions_per_run: int = Field(64, ge=1, le=10000)
@@ -328,14 +343,14 @@ class PartialProfilingConfig(BaseModel):
             "min",
             "max",
             "mean",
-            "stddev"
+            "stddev",
         ]
     )
 
 
 class AdaptiveSchedulingConfig(BaseModel):
     """Adaptive scheduling / staleness scoring configuration."""
-    
+
     enabled: bool = Field(True)
     default_interval_minutes: int = Field(1440, ge=5)
     min_interval_minutes: int = Field(60, ge=5)
@@ -346,7 +361,7 @@ class AdaptiveSchedulingConfig(BaseModel):
 
 class CostControlConfig(BaseModel):
     """Cost guardrails for incremental profiling."""
-    
+
     enabled: bool = Field(True)
     max_bytes_scanned: Optional[int] = Field(None, ge=1)
     max_rows_scanned: Optional[int] = Field(None, ge=1)
@@ -364,7 +379,7 @@ class CostControlConfig(BaseModel):
 
 class IncrementalConfig(BaseModel):
     """Top-level incremental profiling configuration."""
-    
+
     enabled: bool = Field(False)
     change_detection: ChangeDetectionConfig = Field(default_factory=ChangeDetectionConfig)
     partial_profiling: PartialProfilingConfig = Field(default_factory=PartialProfilingConfig)
@@ -374,7 +389,7 @@ class IncrementalConfig(BaseModel):
 
 class ProfileMeshConfig(BaseModel):
     """Main ProfileMesh configuration."""
-    
+
     environment: str = Field("development")
     source: ConnectionConfig
     storage: StorageConfig
@@ -385,7 +400,7 @@ class ProfileMeshConfig(BaseModel):
     retry: RetryConfig = Field(default_factory=RetryConfig)
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     incremental: IncrementalConfig = Field(default_factory=IncrementalConfig)
-    
+
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> str:
@@ -394,4 +409,3 @@ class ProfileMeshConfig(BaseModel):
         if v not in valid_envs:
             raise ValueError(f"Environment must be one of {valid_envs}")
         return v
-

@@ -78,11 +78,7 @@ def test_asset_factory_emits_metadata(tmp_path, monkeypatch):
     monkeypatch.setattr("profilemesh.integrations.dagster.assets.ResultWriter", DummyWriter)
 
     assets = create_profiling_assets(str(config_path), asset_name_prefix="mesh")
-    user_asset = next(
-        asset_def
-        for asset_def in assets
-        if AssetKey("mesh_users") in asset_def.keys
-    )
+    user_asset = next(asset_def for asset_def in assets if AssetKey("mesh_users") in asset_def.keys)
 
     result = materialize(
         assets=[user_asset],

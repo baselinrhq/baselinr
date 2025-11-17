@@ -4,24 +4,24 @@ Persistence layer for incremental profiling metadata.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from typing import Optional, Dict, Any
 import json
 import logging
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from sqlalchemy import (
-    MetaData,
-    Table,
+    BigInteger,
     Column,
-    String,
     DateTime,
     Integer,
-    BigInteger,
+    MetaData,
+    String,
+    Table,
     Text,
+    insert,
     select,
     update,
-    insert,
 )
 
 from ..config.schema import StorageConfig
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TableState:
     """Row stored in the incremental metadata table."""
-    
+
     table_name: str
     schema_name: Optional[str]
     last_run_id: Optional[str] = None
@@ -46,7 +46,7 @@ class TableState:
     row_count: Optional[int] = None
     bytes_scanned: Optional[int] = None
     metadata: Dict[str, Any] = None
-    
+
     @property
     def table_key(self) -> str:
         if self.schema_name:
@@ -56,7 +56,7 @@ class TableState:
 
 class TableStateStore:
     """CRUD wrapper around the metadata table used by the incremental planner."""
-    
+
     def __init__(
         self,
         storage_config: StorageConfig,
@@ -72,24 +72,24 @@ class TableStateStore:
         self._table = Table(
             self.table_name,
             self._metadata,
-            Column('schema_name', String(255), primary_key=True, nullable=True),
-            Column('table_name', String(255), primary_key=True, nullable=False),
-            Column('last_run_id', String(36)),
-            Column('snapshot_id', String(255)),
-            Column('change_token', String(255)),
-            Column('decision', String(50)),
-            Column('decision_reason', String(255)),
-            Column('last_profiled_at', DateTime),
-            Column('staleness_score', Integer),
-            Column('row_count', BigInteger),
-            Column('bytes_scanned', BigInteger),
-            Column('metadata', Text),
-            extend_existing=True
+            Column("schema_name", String(255), primary_key=True, nullable=True),
+            Column("table_name", String(255), primary_key=True, nullable=False),
+            Column("last_run_id", String(36)),
+            Column("snapshot_id", String(255)),
+            Column("change_token", String(255)),
+            Column("decision", String(50)),
+            Column("decision_reason", String(255)),
+            Column("last_profiled_at", DateTime),
+            Column("staleness_score", Integer),
+            Column("row_count", BigInteger),
+            Column("bytes_scanned", BigInteger),
+            Column("metadata", Text),
+            extend_existing=True,
         )
         if create_tables and storage_config.create_tables:
             self._metadata.create_all(self.engine)
             logger.debug("Ensured incremental state table %s exists", self.table_name)
-    
+
     def load_state(self, table_name: str, schema_name: Optional[str]) -> Optional[TableState]:
         with self.engine.connect() as conn:
             schema_clause = (
@@ -123,7 +123,7 @@ class TableStateStore:
                 bytes_scanned=data.get("bytes_scanned"),
                 metadata=metadata,
             )
-    
+
     def upsert_state(self, state: TableState):
         payload = {
             "schema_name": state.schema_name,
@@ -157,7 +157,7 @@ class TableStateStore:
             else:
                 stmt = insert(self._table).values(**payload)
                 conn.execute(stmt)
-    
+
     def record_decision(
         self,
         table_name: str,

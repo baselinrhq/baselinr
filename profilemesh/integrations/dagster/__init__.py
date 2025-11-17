@@ -31,7 +31,9 @@ def build_profilemesh_definitions(
     """
 
     if not DAGSTER_AVAILABLE:
-        raise ImportError("Dagster is not installed. Install with `pip install profilemesh[dagster]`.")
+        raise ImportError(
+            "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
+        )
 
     assets = create_profiling_assets(
         config_path=config_path,

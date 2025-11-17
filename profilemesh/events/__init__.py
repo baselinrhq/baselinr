@@ -6,18 +6,18 @@ runtime events (like data drift or schema changes) to be emitted in-memory,
 processed by multiple registered hooks, and optionally persisted or alerted.
 """
 
+from .builtin_hooks import LoggingAlertHook, SlackAlertHook, SnowflakeEventHook, SQLEventHook
+from .event_bus import EventBus
 from .events import (
     BaseEvent,
     DataDriftDetected,
-    SchemaChangeDetected,
-    ProfilingStarted,
     ProfilingCompleted,
     ProfilingFailed,
     ProfilingSkipped,
+    ProfilingStarted,
+    SchemaChangeDetected,
 )
 from .hooks import AlertHook
-from .event_bus import EventBus
-from .builtin_hooks import LoggingAlertHook, SnowflakeEventHook, SQLEventHook, SlackAlertHook
 
 __all__ = [
     "BaseEvent",
@@ -34,4 +34,3 @@ __all__ = [
     "SQLEventHook",
     "SlackAlertHook",
 ]
-

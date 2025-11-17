@@ -6,6 +6,7 @@
 
 - **Automated Profiling**: Profile tables with column-level metrics (count, null %, distinct values, mean, stddev, histograms, etc.)
 - **Drift Detection**: Compare profiling runs to detect schema and statistical drift with configurable strategies
+- **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
 - **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
@@ -262,17 +263,60 @@ profilemesh drift --config examples/config.yml \
 profilemesh drift --config examples/config.yml \
   --dataset customers \
   --fail-on-drift
+
+# Use statistical tests for advanced drift detection
+# (configure in config.yml: strategy: statistical)
+
+# Query profiling runs
+profilemesh query runs --config examples/config.yml --limit 10
+
+# Query drift events for a table
+profilemesh query drift --config examples/config.yml \
+  --table customers \
+  --severity high \
+  --days 7
+
+# Get detailed run information
+profilemesh query run --config examples/config.yml \
+  --run-id <run-id> \
+  --format json
+
+# View table profiling history
+profilemesh query table --config examples/config.yml \
+  --table customers \
+  --days 30 \
+  --format csv \
+  --output history.csv
+
+# Check schema migration status
+profilemesh migrate status --config examples/config.yml
+
+# Apply schema migrations
+profilemesh migrate apply --config examples/config.yml --target 1
+
+# Validate schema integrity
+profilemesh migrate validate --config examples/config.yml
 ```
 
-## 🔍 Drift Detection Thresholds
+## 🔍 Drift Detection
 
-ProfileMesh uses the following thresholds for drift severity:
+ProfileMesh provides multiple drift detection strategies:
 
-- **Low**: 5% change
-- **Medium**: 15% change
-- **High**: 30% change
+### Available Strategies
 
-Thresholds are fully configurable via the `drift_detection` configuration. See [docs/guides/DRIFT_DETECTION.md](docs/guides/DRIFT_DETECTION.md) for details on configurable strategies.
+1. **Absolute Threshold** (default): Simple percentage-based thresholds
+   - Low: 5% change
+   - Medium: 15% change
+   - High: 30% change
+
+2. **Standard Deviation**: Statistical significance based on standard deviations
+
+3. **Statistical Tests** (advanced): Multiple statistical tests for rigorous detection
+   - **Numeric columns**: KS test, PSI, Z-score
+   - **Categorical columns**: Chi-square, Entropy, Top-K stability
+   - Automatically selects appropriate tests based on column type
+
+Thresholds are fully configurable via the `drift_detection` configuration. See [docs/guides/DRIFT_DETECTION.md](docs/guides/DRIFT_DETECTION.md) for general drift detection and [docs/guides/STATISTICAL_DRIFT_DETECTION.md](docs/guides/STATISTICAL_DRIFT_DETECTION.md) for statistical tests.
 
 ## 🔔 Event & Alert Hooks
 
@@ -375,7 +419,7 @@ profiling:
   
   default_sample_ratio: 1.0
   max_distinct_values: 1000
-  compute_histograms: true
+  compute_histograms: true  # Enable for statistical tests
   histogram_bins: 10
   
   metrics:
@@ -389,6 +433,37 @@ profiling:
     - mean
     - stddev
     - histogram
+```
+
+### Drift Detection Configuration
+
+```yaml
+drift_detection:
+  # Strategy: absolute_threshold | standard_deviation | statistical
+  strategy: absolute_threshold
+  
+  # Absolute threshold (default)
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+  
+  # Statistical tests (advanced)
+  # statistical:
+  #   tests:
+  #     - ks_test
+  #     - psi
+  #     - z_score
+  #     - chi_square
+  #     - entropy
+  #     - top_k
+  #   sensitivity: medium
+  #   test_params:
+  #     ks_test:
+  #       alpha: 0.05
+  #     psi:
+  #       buckets: 10
+  #       threshold: 0.2
 ```
 
 ## 🔐 Environment Variables

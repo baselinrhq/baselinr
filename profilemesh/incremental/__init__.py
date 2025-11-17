@@ -1,8 +1,8 @@
 """Incremental profiling utilities."""
 
-from .planner import IncrementalPlanner, TableRunDecision, IncrementalPlan
 from .change_detection import ChangeSummary
-from .state import TableStateStore, TableState
+from .planner import IncrementalPlan, IncrementalPlanner, TableRunDecision
+from .state import TableState, TableStateStore
 
 __all__ = [
     "IncrementalPlanner",

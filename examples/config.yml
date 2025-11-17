@@ -79,7 +79,7 @@ profiling:
 
 # Drift detection configuration
 drift_detection:
-  # Strategy to use: "absolute_threshold", "standard_deviation", "ml_based"
+  # Strategy to use: "absolute_threshold", "standard_deviation", "ml_based", "statistical"
   strategy: absolute_threshold
   
   # Parameters for absolute_threshold strategy
@@ -98,6 +98,32 @@ drift_detection:
   # ml_based:
   #   model_type: isolation_forest
   #   sensitivity: 0.8
+  
+  # Parameters for statistical test strategy (advanced drift detection)
+  # statistical:
+  #   tests:
+  #     - ks_test          # Kolmogorov-Smirnov test for distribution comparison
+  #     - psi              # Population Stability Index
+  #     - z_score          # Z-score test for mean/variance shifts
+  #     - chi_square       # Chi-square test for categorical distributions
+  #     - entropy          # Entropy change detection
+  #     - top_k            # Top-K category stability
+  #   sensitivity: medium  # low, medium, or high
+  #   test_params:
+  #     ks_test:
+  #       alpha: 0.05      # Significance level
+  #     psi:
+  #       buckets: 10      # Number of buckets for distribution
+  #       threshold: 0.2   # PSI threshold for drift detection
+  #     z_score:
+  #       z_threshold: 2.0 # Z-score threshold (standard deviations)
+  #     chi_square:
+  #       alpha: 0.05      # Significance level
+  #     entropy:
+  #       entropy_threshold: 0.1  # Threshold for entropy change
+  #     top_k:
+  #       k: 10                    # Number of top categories to track
+  #       similarity_threshold: 0.7  # Similarity threshold for stability
 
 # Monitoring configuration (Prometheus metrics)
 monitoring:

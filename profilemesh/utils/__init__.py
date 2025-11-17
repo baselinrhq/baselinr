@@ -2,34 +2,34 @@
 Utility modules for ProfileMesh.
 """
 
-from .retry import (
-    retry_with_backoff,
-    retryable_call,
-    TransientWarehouseError,
-    PermanentWarehouseError,
-    TimeoutError,
-    ConnectionLostError,
-    RateLimitError,
-)
 from .logging import (
     RunContext,
-    init_logging,
     get_logger,
-    log_event,
+    init_logging,
     log_and_emit,
+    log_event,
 )
 from .metrics import (
-    record_profile_started,
+    get_warehouse_type,
+    is_metrics_enabled,
+    record_drift_detection_completed,
+    record_drift_event,
+    record_error,
     record_profile_completed,
     record_profile_failed,
-    record_drift_event,
-    record_drift_detection_completed,
-    record_schema_change,
-    record_error,
+    record_profile_started,
     record_query_completed,
+    record_schema_change,
     start_metrics_server,
-    is_metrics_enabled,
-    get_warehouse_type,
+)
+from .retry import (
+    ConnectionLostError,
+    PermanentWarehouseError,
+    RateLimitError,
+    TimeoutError,
+    TransientWarehouseError,
+    retry_with_backoff,
+    retryable_call,
 )
 
 __all__ = [
@@ -60,4 +60,3 @@ __all__ = [
     "is_metrics_enabled",
     "get_warehouse_type",
 ]
-

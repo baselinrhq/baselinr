@@ -1,13 +1,26 @@
 """Drift detection module for ProfileMesh."""
 
-from .detector import DriftDetector, DriftReport, ColumnDrift
+from .detector import ColumnDrift, DriftDetector, DriftReport
+from .statistical_tests import (
+    STATISTICAL_TESTS,
+    ChiSquareTest,
+    EntropyChangeTest,
+    KolmogorovSmirnovTest,
+    PopulationStabilityIndexTest,
+    StatisticalTest,
+    TestResult,
+    TopKStabilityTest,
+    ZScoreVarianceTest,
+    create_statistical_test,
+)
 from .strategies import (
-    DriftDetectionStrategy,
     AbsoluteThresholdStrategy,
-    StandardDeviationStrategy,
+    DriftDetectionStrategy,
+    DriftResult,
     MLBasedStrategy,
+    StandardDeviationStrategy,
+    StatisticalStrategy,
     create_drift_strategy,
-    DriftResult
 )
 
 __all__ = [
@@ -18,7 +31,17 @@ __all__ = [
     "AbsoluteThresholdStrategy",
     "StandardDeviationStrategy",
     "MLBasedStrategy",
+    "StatisticalStrategy",
     "create_drift_strategy",
     "DriftResult",
+    "StatisticalTest",
+    "TestResult",
+    "KolmogorovSmirnovTest",
+    "PopulationStabilityIndexTest",
+    "ZScoreVarianceTest",
+    "ChiSquareTest",
+    "EntropyChangeTest",
+    "TopKStabilityTest",
+    "create_statistical_test",
+    "STATISTICAL_TESTS",
 ]
-
