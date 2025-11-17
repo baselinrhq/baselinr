@@ -9,7 +9,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **[Installation Guide](getting-started/INSTALL.md)** - Detailed installation instructions
 
 ### 📖 [Guides](guides/)
-- **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection
+- **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection, including type-specific thresholds
 - **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
 - **[Slack Alerts](guides/SLACK_ALERTS.md)** - Set up Slack notifications for drift detection events
 - **[Partition & Sampling](guides/PARTITION_SAMPLING.md)** - Advanced profiling strategies

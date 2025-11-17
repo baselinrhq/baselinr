@@ -348,6 +348,200 @@ for drift in report.column_drifts:
 
 ---
 
+## Type-Specific Thresholds
+
+ProfileMesh supports **type-specific thresholds** that adjust drift detection sensitivity based on column data type. This feature significantly reduces false positives by applying appropriate detection rules for each data type category.
+
+### Overview
+
+Different data types have different characteristics:
+- **Numeric columns**: Mean values can vary more, but stddev changes are critical
+- **Categorical columns**: Cardinality changes are high signal, but numeric metrics (mean, stddev) don't apply
+- **Boolean columns**: Small proportion changes are significant (binomial test logic)
+- **Timestamp columns**: Focus on freshness and latency distribution
+
+Type-specific thresholds automatically:
+1. **Apply different thresholds** per data type and metric
+2. **Filter irrelevant metrics** (e.g., ignore mean/stddev for categorical columns)
+3. **Use type-appropriate sensitivity** (e.g., more sensitive to stddev changes in numeric columns)
+
+### Configuration
+
+Type-specific thresholds are **enabled by default**. You can configure them in your drift detection config:
+
+```yaml
+drift_detection:
+  strategy: absolute_threshold
+  
+  # Enable/disable type-specific thresholds (default: true)
+  enable_type_specific_thresholds: true
+  
+  type_specific_thresholds:
+    # Numeric columns: Accept larger drift in mean, but be sensitive to stddev
+    numeric:
+      mean:
+        low: 10.0      # 10% change triggers low severity (more lenient)
+        medium: 25.0   # 25% change triggers medium severity
+        high: 50.0     # 50% change triggers high severity
+      stddev:
+        low: 3.0       # 3% change triggers low severity (more sensitive)
+        medium: 8.0    # 8% change triggers medium severity
+        high: 15.0     # 15% change triggers high severity
+      default:          # Default thresholds for other numeric metrics
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+    
+    # Categorical columns: Focus on cardinality changes
+    categorical:
+      distinct_count:   # Cardinality changes are high signal
+        low: 2.0       # 2% change triggers low severity
+        medium: 5.0    # 5% change triggers medium severity
+        high: 10.0     # 10% change triggers high severity
+      distinct_percent:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
+      default:          # Default thresholds for other categorical metrics
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+      # Note: mean, stddev, min, max are automatically ignored
+    
+    # Timestamp columns: Detect freshness and latency spikes
+    timestamp:
+      default:
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+    
+    # Boolean columns: Use lower thresholds (binomial test logic)
+    boolean:
+      default:
+        low: 2.0       # 2% change triggers low severity (more sensitive)
+        medium: 5.0    # 5% change triggers medium severity
+        high: 10.0     # 10% change triggers high severity
+      # Note: mean, stddev, min, max, histogram are automatically ignored
+```
+
+### How It Works
+
+1. **Type Normalization**: Database-specific types (e.g., `INTEGER`, `VARCHAR(255)`, `TIMESTAMP`) are automatically normalized to categories:
+   - `numeric`: integer, bigint, float, decimal, etc.
+   - `categorical`: varchar, text, char, enum, etc.
+   - `timestamp`: timestamp, datetime, date, time, etc.
+   - `boolean`: boolean, bool, bit
+
+2. **Threshold Selection**: For each metric comparison:
+   - Checks if metric-specific thresholds exist for the column type
+   - Falls back to type default thresholds
+   - Falls back to base strategy thresholds if no type config exists
+
+3. **Metric Filtering**: Automatically ignores metrics that don't make sense:
+   - Categorical columns: ignores `mean`, `stddev`, `min`, `max`
+   - Boolean columns: ignores `mean`, `stddev`, `min`, `max`, `histogram`
+
+### Examples
+
+#### Example 1: Numeric Mean (More Lenient)
+
+```yaml
+# Base threshold: 5% change = low severity
+# Type-specific: 10% change = low severity for numeric mean
+
+# Scenario: price column (INTEGER)
+# Baseline mean: $100
+# Current mean: $108 (8% increase)
+# 
+# Without type-specific: Low severity drift (8% > 5%)
+# With type-specific: No drift (8% < 10%)
+# Result: Fewer false positives for mean shifts
+```
+
+#### Example 2: Numeric Stddev (More Sensitive)
+
+```yaml
+# Base threshold: 5% change = low severity
+# Type-specific: 3% change = low severity for numeric stddev
+
+# Scenario: price column (FLOAT)
+# Baseline stddev: $10.00
+# Current stddev: $10.40 (4% increase)
+# 
+# Without type-specific: No drift (4% < 5%)
+# With type-specific: Low severity drift (4% > 3%)
+# Result: Catches variance changes earlier
+```
+
+#### Example 3: Categorical Cardinality (More Sensitive)
+
+```yaml
+# Base threshold: 5% change = low severity
+# Type-specific: 2% change = low severity for categorical distinct_count
+
+# Scenario: country column (VARCHAR)
+# Baseline distinct_count: 50 countries
+# Current distinct_count: 52 countries (4% increase)
+# 
+# Without type-specific: No drift (4% < 5%)
+# With type-specific: Medium severity drift (4% > 2%)
+# Result: Detects cardinality changes earlier
+```
+
+#### Example 4: Automatic Metric Filtering
+
+```yaml
+# Scenario: status column (VARCHAR)
+# Without type-specific: Tries to calculate mean on text (meaningless)
+# With type-specific: Metric is skipped entirely
+# Result: No false positives from meaningless metrics
+```
+
+### Benefits
+
+1. **Reduced False Positives**: More lenient thresholds for metrics that naturally vary (e.g., numeric mean)
+2. **Increased Sensitivity**: Tighter thresholds for critical metrics (e.g., stddev, cardinality)
+3. **Automatic Filtering**: Ignores metrics that don't apply to certain types
+4. **Type-Appropriate Logic**: Different thresholds per data type based on their characteristics
+
+### Disabling Type-Specific Thresholds
+
+If you want to use only base thresholds:
+
+```yaml
+drift_detection:
+  enable_type_specific_thresholds: false
+  # Now all columns use base thresholds from absolute_threshold config
+```
+
+### Custom Configuration
+
+You can customize thresholds for any type and metric:
+
+```yaml
+type_specific_thresholds:
+  numeric:
+    # Custom threshold for count metric
+    count:
+      low: 3.0
+      medium: 10.0
+      high: 20.0
+    # Custom threshold for null_percent
+    null_percent:
+      low: 1.0    # Very sensitive to null changes
+      medium: 3.0
+      high: 5.0
+```
+
+### Integration with Strategies
+
+Type-specific thresholds work with all drift detection strategies:
+- **Absolute Threshold**: Thresholds are adjusted per type/metric
+- **Standard Deviation**: Type thresholds are converted to std dev equivalents
+- **Statistical**: Type information is used to select appropriate tests
+
+---
+
 ### 3. Statistical Test Strategy (Advanced)
 
 **Name**: `statistical`
@@ -720,7 +914,7 @@ Future enhancements planned:
 
 - [x] **Statistical tests**: KS test, PSI, Chi-squared, Entropy, Top-K stability ✅
 - [x] **Intelligent baseline selection**: Automatic baseline selection based on column characteristics ✅
-- [ ] **Column-specific thresholds**: Different thresholds per column or metric
+- [x] **Type-specific thresholds**: Different thresholds per data type and metric ✅
 - [ ] **ML-based detection**: Implement actual ML strategies
 - [ ] **Drift trends**: Track drift over time, not just point-in-time
 - [ ] **Auto-tuning**: Automatically suggest thresholds based on historical data

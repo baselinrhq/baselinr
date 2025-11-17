@@ -10,6 +10,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .type_thresholds import TypeSpecificThresholds
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +70,7 @@ class AbsoluteThresholdStrategy(DriftDetectionStrategy):
         low_threshold: float = 5.0,
         medium_threshold: float = 15.0,
         high_threshold: float = 30.0,
+        type_thresholds: Optional[TypeSpecificThresholds] = None,
     ):
         """
         Initialize absolute threshold strategy.
@@ -76,15 +79,25 @@ class AbsoluteThresholdStrategy(DriftDetectionStrategy):
             low_threshold: Threshold for low severity drift (% change)
             medium_threshold: Threshold for medium severity drift (% change)
             high_threshold: Threshold for high severity drift (% change)
+            type_thresholds: Optional type-specific thresholds instance
         """
         self.low_threshold = low_threshold
         self.medium_threshold = medium_threshold
         self.high_threshold = high_threshold
+        self.type_thresholds = type_thresholds
 
     def calculate_drift(
-        self, baseline_value: Any, current_value: Any, metric_name: str, column_name: str
+        self, baseline_value: Any, current_value: Any, metric_name: str, column_name: str, **kwargs
     ) -> Optional[DriftResult]:
         """Calculate drift using absolute threshold method."""
+        # Extract column_type from kwargs if available
+        column_type = kwargs.get("column_type")
+
+        # Check if metric should be ignored for this type
+        if self.type_thresholds and column_type:
+            if self.type_thresholds.should_ignore_metric_for_type(column_type, metric_name):
+                return None
+
         # Skip if either value is None
         if baseline_value is None or current_value is None:
             return None
@@ -94,6 +107,24 @@ class AbsoluteThresholdStrategy(DriftDetectionStrategy):
             current_value, (int, float)
         ):
             return None
+
+        # Get type-specific thresholds if available
+        low_threshold = self.low_threshold
+        medium_threshold = self.medium_threshold
+        high_threshold = self.high_threshold
+
+        if self.type_thresholds and column_type:
+            base_thresholds = {
+                "low_threshold": self.low_threshold,
+                "medium_threshold": self.medium_threshold,
+                "high_threshold": self.high_threshold,
+            }
+            type_thresholds = self.type_thresholds.get_thresholds_for_type(
+                column_type, metric_name, base_thresholds
+            )
+            low_threshold = type_thresholds["low_threshold"]
+            medium_threshold = type_thresholds["medium_threshold"]
+            high_threshold = type_thresholds["high_threshold"]
 
         # Calculate changes
         change_absolute = current_value - baseline_value
@@ -110,13 +141,13 @@ class AbsoluteThresholdStrategy(DriftDetectionStrategy):
         if change_percent is not None:
             abs_change_percent = abs(change_percent)
 
-            if abs_change_percent >= self.high_threshold:
+            if abs_change_percent >= high_threshold:
                 drift_detected = True
                 drift_severity = "high"
-            elif abs_change_percent >= self.medium_threshold:
+            elif abs_change_percent >= medium_threshold:
                 drift_detected = True
                 drift_severity = "medium"
-            elif abs_change_percent >= self.low_threshold:
+            elif abs_change_percent >= low_threshold:
                 drift_detected = True
                 drift_severity = "low"
 
@@ -128,10 +159,12 @@ class AbsoluteThresholdStrategy(DriftDetectionStrategy):
             metadata={
                 "method": "absolute_threshold",
                 "thresholds": {
-                    "low": self.low_threshold,
-                    "medium": self.medium_threshold,
-                    "high": self.high_threshold,
+                    "low": low_threshold,
+                    "medium": medium_threshold,
+                    "high": high_threshold,
                 },
+                "column_type": column_type,
+                "type_specific": self.type_thresholds is not None and column_type is not None,
             },
         )
 
@@ -149,7 +182,11 @@ class StandardDeviationStrategy(DriftDetectionStrategy):
     """
 
     def __init__(
-        self, low_threshold: float = 1.0, medium_threshold: float = 2.0, high_threshold: float = 3.0
+        self,
+        low_threshold: float = 1.0,
+        medium_threshold: float = 2.0,
+        high_threshold: float = 3.0,
+        type_thresholds: Optional[TypeSpecificThresholds] = None,
     ):
         """
         Initialize standard deviation strategy.
@@ -158,15 +195,25 @@ class StandardDeviationStrategy(DriftDetectionStrategy):
             low_threshold: Number of std devs for low severity
             medium_threshold: Number of std devs for medium severity
             high_threshold: Number of std devs for high severity
+            type_thresholds: Optional type-specific thresholds instance
         """
         self.low_threshold = low_threshold
         self.medium_threshold = medium_threshold
         self.high_threshold = high_threshold
+        self.type_thresholds = type_thresholds
 
     def calculate_drift(
-        self, baseline_value: Any, current_value: Any, metric_name: str, column_name: str
+        self, baseline_value: Any, current_value: Any, metric_name: str, column_name: str, **kwargs
     ) -> Optional[DriftResult]:
         """Calculate drift using standard deviation method."""
+        # Extract column_type from kwargs if available
+        column_type = kwargs.get("column_type")
+
+        # Check if metric should be ignored for this type
+        if self.type_thresholds and column_type:
+            if self.type_thresholds.should_ignore_metric_for_type(column_type, metric_name):
+                return None
+
         # Note: This is a simplified version. In production, you'd want to
         # calculate mean and stddev from historical profiling runs.
 
@@ -179,6 +226,29 @@ class StandardDeviationStrategy(DriftDetectionStrategy):
             current_value, (int, float)
         ):
             return None
+
+        # Get type-specific thresholds if available
+        low_threshold = self.low_threshold
+        medium_threshold = self.medium_threshold
+        high_threshold = self.high_threshold
+
+        if self.type_thresholds and column_type:
+            # For standard deviation strategy, we need to convert type-specific
+            # percentage thresholds to std dev equivalents
+            # Use a rough approximation: 10% change ≈ 1 std dev
+            base_thresholds = {
+                "low_threshold": self.low_threshold,
+                "medium_threshold": self.medium_threshold,
+                "high_threshold": self.high_threshold,
+            }
+            type_thresholds = self.type_thresholds.get_thresholds_for_type(
+                column_type, metric_name, base_thresholds
+            )
+            # Convert percentage thresholds to std dev approximations
+            # This is a heuristic - in production you'd use actual historical stddev
+            low_threshold = type_thresholds["low_threshold"] / 10.0
+            medium_threshold = type_thresholds["medium_threshold"] / 10.0
+            high_threshold = type_thresholds["high_threshold"] / 10.0
 
         # For now, use a simple percentage as a proxy for std devs
         # In a full implementation, you'd query historical runs to get actual stddev
@@ -195,13 +265,13 @@ class StandardDeviationStrategy(DriftDetectionStrategy):
         drift_detected = False
         drift_severity = "none"
 
-        if std_devs >= self.high_threshold:
+        if std_devs >= high_threshold:
             drift_detected = True
             drift_severity = "high"
-        elif std_devs >= self.medium_threshold:
+        elif std_devs >= medium_threshold:
             drift_detected = True
             drift_severity = "medium"
-        elif std_devs >= self.low_threshold:
+        elif std_devs >= low_threshold:
             drift_detected = True
             drift_severity = "low"
 
@@ -215,10 +285,12 @@ class StandardDeviationStrategy(DriftDetectionStrategy):
                 "method": "standard_deviation",
                 "std_devs": std_devs,
                 "thresholds": {
-                    "low": self.low_threshold,
-                    "medium": self.medium_threshold,
-                    "high": self.high_threshold,
+                    "low": low_threshold,
+                    "medium": medium_threshold,
+                    "high": high_threshold,
                 },
+                "column_type": column_type,
+                "type_specific": self.type_thresholds is not None and column_type is not None,
             },
         )
 
