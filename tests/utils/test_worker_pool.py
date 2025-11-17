@@ -234,10 +234,8 @@ class TestBackwardCompatibility:
         # Execution config should default to sequential
         assert config.execution.max_workers == 1
 
-    @patch("profilemesh.profiling.core.PostgresConnector")
-    @patch("profilemesh.profiling.core.QueryBuilder")
-    @patch("profilemesh.profiling.core.MetricCalculator")
-    def test_sequential_execution_no_worker_pool(self, mock_calc, mock_builder, mock_conn):
+    @patch("profilemesh.connectors.factory.create_connector")
+    def test_sequential_execution_no_worker_pool(self, mock_create_conn):
         """Sequential execution should not use worker pool."""
         from profilemesh.config.schema import (
             ConnectionConfig,
@@ -247,6 +245,11 @@ class TestBackwardCompatibility:
             TablePattern,
         )
         from profilemesh.profiling.core import ProfileEngine
+
+        # Setup mock connector
+        mock_connector = Mock()
+        mock_connector.engine = Mock()
+        mock_create_conn.return_value = mock_connector
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
@@ -263,10 +266,8 @@ class TestBackwardCompatibility:
         # Should NOT have worker pool
         assert engine.worker_pool is None
 
-    @patch("profilemesh.profiling.core.PostgresConnector")
-    @patch("profilemesh.profiling.core.QueryBuilder")
-    @patch("profilemesh.profiling.core.MetricCalculator")
-    def test_parallel_execution_creates_worker_pool(self, mock_calc, mock_builder, mock_conn):
+    @patch("profilemesh.connectors.factory.create_connector")
+    def test_parallel_execution_creates_worker_pool(self, mock_create_conn):
         """Parallel execution (max_workers > 1) should create worker pool."""
         from profilemesh.config.schema import (
             ConnectionConfig,
@@ -277,6 +278,11 @@ class TestBackwardCompatibility:
             TablePattern,
         )
         from profilemesh.profiling.core import ProfileEngine
+
+        # Setup mock connector
+        mock_connector = Mock()
+        mock_connector.engine = Mock()
+        mock_create_conn.return_value = mock_connector
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
@@ -299,8 +305,8 @@ class TestBackwardCompatibility:
 class TestWarehouseSpecificLimits:
     """Test warehouse-specific worker limits."""
 
-    @patch("profilemesh.profiling.core.SQLiteConnector")
-    def test_sqlite_forces_sequential(self, mock_conn):
+    @patch("profilemesh.connectors.factory.create_connector")
+    def test_sqlite_forces_sequential(self, mock_create_conn):
         """SQLite should force sequential execution even if parallel configured."""
         from profilemesh.config.schema import (
             ConnectionConfig,
@@ -310,6 +316,11 @@ class TestWarehouseSpecificLimits:
             StorageConfig,
         )
         from profilemesh.profiling.core import ProfileEngine
+
+        # Setup mock connector
+        mock_connector = Mock()
+        mock_connector.engine = Mock()
+        mock_create_conn.return_value = mock_connector
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="sqlite", database="test.db"),
@@ -322,8 +333,8 @@ class TestWarehouseSpecificLimits:
         # Should NOT create worker pool for SQLite
         assert engine.worker_pool is None
 
-    @patch("profilemesh.profiling.core.PostgresConnector")
-    def test_warehouse_limit_overrides_max_workers(self, mock_conn):
+    @patch("profilemesh.connectors.factory.create_connector")
+    def test_warehouse_limit_overrides_max_workers(self, mock_create_conn):
         """Warehouse-specific limit should override max_workers."""
         from profilemesh.config.schema import (
             ConnectionConfig,
@@ -333,6 +344,11 @@ class TestWarehouseSpecificLimits:
             StorageConfig,
         )
         from profilemesh.profiling.core import ProfileEngine
+
+        # Setup mock connector
+        mock_connector = Mock()
+        mock_connector.engine = Mock()
+        mock_create_conn.return_value = mock_connector
 
         config = ProfileMeshConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
