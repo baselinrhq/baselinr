@@ -5,7 +5,7 @@ These events are emitted during profiling and drift detection operations
 and can be handled by registered alert hooks.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, Optional
 

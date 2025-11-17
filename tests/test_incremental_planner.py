@@ -1,21 +1,21 @@
 """Tests for incremental planner and change detection decisions."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from profilemesh.config.schema import (
-    ProfileMeshConfig,
     ConnectionConfig,
-    StorageConfig,
-    ProfilingConfig,
-    TablePattern,
     IncrementalConfig,
+    ProfileMeshConfig,
+    ProfilingConfig,
+    StorageConfig,
+    TablePattern,
 )
 from profilemesh.incremental.change_detection import ChangeSummary
-from profilemesh.incremental.state import TableState
 from profilemesh.incremental.planner import IncrementalPlanner
+from profilemesh.incremental.state import TableState
 
 
 @pytest.fixture

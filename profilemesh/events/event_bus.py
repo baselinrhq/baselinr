@@ -77,9 +77,9 @@ class EventBus:
     @property
     def event_count(self) -> int:
         """Get the total number of events emitted."""
-        return self._event_count
+        return int(self._event_count)
 
     @property
     def hook_count(self) -> int:
         """Get the number of registered hooks."""
-        return len(self.hooks)
+        return len(self.hooks)  # type: ignore[no-any-return]

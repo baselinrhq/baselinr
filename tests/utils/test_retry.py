@@ -11,18 +11,20 @@ Tests verify:
 - Profiling engine continues processing remaining tables after failures
 """
 
-import pytest
 import time
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, call, patch
+
+import pytest
+
 from profilemesh.utils.retry import (
+    ConnectionLostError,
+    PermanentWarehouseError,
+    RateLimitError,
+    TimeoutError,
+    TransientWarehouseError,
+    classify_database_error,
     retry_with_backoff,
     retryable_call,
-    TransientWarehouseError,
-    PermanentWarehouseError,
-    TimeoutError,
-    ConnectionLostError,
-    RateLimitError,
-    classify_database_error,
 )
 
 
@@ -304,8 +306,8 @@ class TestConnectorIntegration:
 
     def test_connector_accepts_retry_config(self):
         """Test that connectors accept retry_config parameter."""
-        from profilemesh.connectors.base import BaseConnector
         from profilemesh.config.schema import ConnectionConfig, RetryConfig
+        from profilemesh.connectors.base import BaseConnector
 
         # Mock a concrete connector class
         class MockConnector(BaseConnector):
@@ -330,8 +332,8 @@ class TestConnectorIntegration:
 
     def test_connector_retry_on_transient_error(self):
         """Test that connector retries on transient errors."""
-        from profilemesh.connectors.base import BaseConnector
         from profilemesh.config.schema import ConnectionConfig, RetryConfig
+        from profilemesh.connectors.base import BaseConnector
 
         class MockConnector(BaseConnector):
             def _create_engine(self):
@@ -377,15 +379,15 @@ class TestProfilingEngineIntegration:
 
     def test_profiling_continues_after_table_failure(self):
         """Test that profiling continues with remaining tables after failure."""
-        from profilemesh.profiling.core import ProfileEngine
         from profilemesh.config.schema import (
-            ProfileMeshConfig,
             ConnectionConfig,
-            StorageConfig,
+            ProfileMeshConfig,
             ProfilingConfig,
-            TablePattern,
             RetryConfig,
+            StorageConfig,
+            TablePattern,
         )
+        from profilemesh.profiling.core import ProfileEngine
 
         config = ProfileMeshConfig(
             environment="test",

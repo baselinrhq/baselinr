@@ -7,7 +7,7 @@ Generates warehouse-specific SQL that combines partition filtering and sampling.
 import logging
 from typing import Optional, Tuple
 
-from sqlalchemy import Table, func, select, text
+from sqlalchemy import Table, func, select
 from sqlalchemy.sql import Select
 
 from ..config.schema import PartitionConfig, SamplingConfig
@@ -57,14 +57,14 @@ class QueryBuilder:
         # Apply partition filtering
         if partition_config and partition_config.key:
             query = self._apply_partition_filter(query, table, partition_config)
-            metadata["partition_applied"] = True
-            metadata["partition_strategy"] = partition_config.strategy
+            metadata["partition_applied"] = True  # type: ignore[assignment]
+            metadata["partition_strategy"] = partition_config.strategy  # type: ignore[assignment]
 
         # Apply sampling
         if sampling_config and sampling_config.enabled:
             query = self._apply_sampling(query, table, sampling_config)
-            metadata["sampling_applied"] = True
-            metadata["sampling_method"] = sampling_config.method
+            metadata["sampling_applied"] = True  # type: ignore[assignment]
+            metadata["sampling_method"] = sampling_config.method  # type: ignore[assignment]
 
         return query, metadata
 
@@ -85,11 +85,14 @@ class QueryBuilder:
         partition_key = partition_config.key
         strategy = partition_config.strategy
 
-        if partition_key not in table.c:
+        if partition_key is None or partition_key not in table.c:
             logger.warning(
                 f"Partition key '{partition_key}' not found in table columns. "
                 "Profiling will use full table."
             )
+            return query
+
+        if partition_key is None:
             return query
 
         partition_column = table.c[partition_key]

@@ -135,7 +135,7 @@ def _init_stdlib_logging(run_id: str, component: str, level: str) -> Any:
     logger.propagate = False
 
     # Mark it as stdlib logger so we can detect it
-    logger._is_stdlib = True
+    logger._is_stdlib = True  # type: ignore[attr-defined]
 
     return logger
 
@@ -191,7 +191,7 @@ def log_event(
         kwargs["table"] = table
 
     if metadata:
-        kwargs["metadata"] = metadata
+        kwargs["metadata"] = metadata  # type: ignore[assignment]
 
     # Check if this is a structlog logger (has bind method) or our stdlib logger
     is_structlog = hasattr(logger, "bind")

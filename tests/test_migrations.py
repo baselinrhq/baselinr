@@ -2,7 +2,8 @@
 
 import pytest
 from sqlalchemy import create_engine, text
-from profilemesh.storage.migrations import MigrationManager, Migration
+
+from profilemesh.storage.migrations import Migration, MigrationManager
 from profilemesh.storage.schema_version import CURRENT_SCHEMA_VERSION
 
 

@@ -1,7 +1,8 @@
 """Tests for profiling engine."""
 
+from unittest.mock import MagicMock, Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
 
 from profilemesh.profiling.metrics import MetricCalculator
 

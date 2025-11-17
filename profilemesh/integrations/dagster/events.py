@@ -9,7 +9,6 @@ import logging
 from typing import Any, Optional
 
 try:
-    from dagster import AssetExecutionContext
 
     DAGSTER_AVAILABLE = True
 except ImportError:

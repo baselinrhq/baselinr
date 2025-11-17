@@ -298,7 +298,7 @@ class SlackAlertHook:
 
         # Import here to avoid hard dependency
         try:
-            import requests
+            import requests  # type: ignore[import-untyped]
 
             self.requests = requests
         except ImportError:
@@ -338,7 +338,6 @@ class SlackAlertHook:
 
     def _send_drift_alert(self, event) -> None:
         """Send drift detection alert to Slack."""
-        from .events import DataDriftDetected
 
         # Determine emoji based on severity
         emoji = {"low": "⚠️", "medium": "🔶", "high": "🚨"}.get(event.drift_severity, "⚠️")
@@ -407,7 +406,6 @@ class SlackAlertHook:
 
     def _send_schema_change_alert(self, event) -> None:
         """Send schema change alert to Slack."""
-        from .events import SchemaChangeDetected
 
         # Determine emoji based on change type
         emoji = {"column_added": "➕", "column_removed": "➖", "type_changed": "🔄"}.get(
@@ -416,7 +414,9 @@ class SlackAlertHook:
 
         # Build description
         if event.change_type == "type_changed":
-            description = f"Column `{event.column}` type changed from `{event.old_type}` to `{event.new_type}`"
+            old_t = event.old_type
+            new_t = event.new_type
+            description = f"Column `{event.column}` type changed from `{old_t}` to `{new_t}`"
         elif event.change_type == "column_added":
             description = f"Column `{event.column}` was added"
         elif event.change_type == "column_removed":
@@ -457,7 +457,6 @@ class SlackAlertHook:
 
     def _send_profiling_failure_alert(self, event) -> None:
         """Send profiling failure alert to Slack."""
-        from .events import ProfilingFailed
 
         payload = {
             "username": self.username,

@@ -1,23 +1,24 @@
 """Tests for drift detection strategies."""
 
 import pytest
-from profilemesh.drift.strategies import (
-    AbsoluteThresholdStrategy,
-    StandardDeviationStrategy,
-    MLBasedStrategy,
-    StatisticalStrategy,
-    create_drift_strategy,
-    DriftResult,
-)
+
 from profilemesh.drift.statistical_tests import (
-    KolmogorovSmirnovTest,
-    PopulationStabilityIndexTest,
-    ZScoreVarianceTest,
     ChiSquareTest,
     EntropyChangeTest,
-    TopKStabilityTest,
-    create_statistical_test,
+    KolmogorovSmirnovTest,
+    PopulationStabilityIndexTest,
     TestResult,
+    TopKStabilityTest,
+    ZScoreVarianceTest,
+    create_statistical_test,
+)
+from profilemesh.drift.strategies import (
+    AbsoluteThresholdStrategy,
+    DriftResult,
+    MLBasedStrategy,
+    StandardDeviationStrategy,
+    StatisticalStrategy,
+    create_drift_strategy,
 )
 
 

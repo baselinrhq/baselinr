@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, Optional
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -18,9 +18,9 @@ class Migration:
     version: int
     description: str
     up_sql: Optional[str] = None
-    up_python: Optional[callable] = None
+    up_python: Optional[Callable] = None
     down_sql: Optional[str] = None
-    down_python: Optional[callable] = None
+    down_python: Optional[Callable] = None
 
     def validate(self):
         """Ensure migration has at least one up method."""
@@ -45,7 +45,7 @@ class MigrationManager:
         """Get current schema version from database."""
         query = text(
             """
-            SELECT version FROM profilemesh_schema_version 
+            SELECT version FROM profilemesh_schema_version
             ORDER BY version DESC LIMIT 1
         """
         )
@@ -125,7 +125,7 @@ class MigrationManager:
             # Record migration
             insert_query = text(
                 """
-                INSERT INTO profilemesh_schema_version 
+                INSERT INTO profilemesh_schema_version
                 (version, description, applied_at)
                 VALUES (:version, :description, :applied_at)
             """
@@ -148,7 +148,12 @@ class MigrationManager:
         Returns:
             Dict with validation results
         """
-        results = {"valid": True, "errors": [], "warnings": [], "version": None}
+        results: Dict[str, Any] = {
+            "valid": True,
+            "errors": [],
+            "warnings": [],
+            "version": None,
+        }
 
         try:
             # Check version table exists

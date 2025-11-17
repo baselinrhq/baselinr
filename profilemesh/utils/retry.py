@@ -9,7 +9,7 @@ import logging
 import random
 import time
 from functools import wraps
-from typing import Any, Callable, Optional, Tuple, Type
+from typing import Any, Callable, Tuple, Type
 
 try:
     from prometheus_client import Counter
@@ -214,7 +214,8 @@ def _log_retry_attempt(
         log_event(
             retry_logger,
             "retry_attempt",
-            f"Retry attempt {attempt}/{max_retries} for {func_name} after {type(error).__name__}: {error}",
+            f"Retry attempt {attempt}/{max_retries} for {func_name} after "
+            f"{type(error).__name__}: {error}",
             level="warning",
             metadata={
                 "function": func_name,
@@ -279,7 +280,7 @@ def _log_retry_exhausted(func_name: str, total_attempts: int, error: Exception):
 
 def _emit_retry_event(func_name: str, attempt: int, error: Exception):
     """Emit retry event to event bus."""
-    global event_bus
+    global event_bus  # noqa: F824
     if event_bus is None:
         return
     try:
@@ -305,7 +306,7 @@ def _emit_retry_event(func_name: str, attempt: int, error: Exception):
 
 def _emit_retry_failure(func_name: str, error: Exception):
     """Emit retry failure event to event bus."""
-    global event_bus
+    global event_bus  # noqa: F824
     if event_bus is None:
         return
     try:

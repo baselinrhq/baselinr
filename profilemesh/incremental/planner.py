@@ -219,7 +219,7 @@ class IncrementalPlanner:
             return self._cost_response(cfg, "rows_cap_exceeded")
         return None
 
-    def _cost_response(self, cfg, reason: str):
+    def _cost_response(self, cfg, reason: str) -> Dict[str, Any]:
         strategy = cfg.fallback_strategy
         if strategy == "sample":
             return {"action": "sample", "reason": reason, "should_run": True}

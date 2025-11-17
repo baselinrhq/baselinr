@@ -1,14 +1,15 @@
 """Tests for configuration module."""
 
-import pytest
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import pytest
 
 from profilemesh.config.loader import ConfigLoader
 from profilemesh.config.schema import (
-    ProfileMeshConfig,
     ConnectionConfig,
     DatabaseType,
+    ProfileMeshConfig,
     ProfilingConfig,
 )
 

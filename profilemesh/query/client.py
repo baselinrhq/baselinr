@@ -50,7 +50,7 @@ class DriftEvent:
     """Drift detection event."""
 
     event_id: str
-    event_type: str
+    event_type: str  # Required field, but we handle None in construction
     table_name: Optional[str]
     column_name: Optional[str]
     metric_name: Optional[str]
@@ -124,7 +124,7 @@ class MetadataQueryClient:
             List of RunSummary objects
         """
         conditions = []
-        params = {}
+        params: Dict[str, Any] = {}
 
         if schema:
             conditions.append("schema_name = :schema")
@@ -164,21 +164,28 @@ class MetadataQueryClient:
 
         with self.engine.connect() as conn:
             results = conn.execute(query, params).fetchall()
-            return [
-                RunSummary(
-                    run_id=row[0],
-                    dataset_name=row[1],
-                    schema_name=row[2],
-                    profiled_at=(
-                        datetime.fromisoformat(row[3]) if isinstance(row[3], str) else row[3]
-                    ),
-                    environment=row[4],
-                    status=row[5],
-                    row_count=row[6],
-                    column_count=row[7],
+            summaries = []
+            for row in results:
+                profiled_at_val: datetime
+                if isinstance(row[3], str):
+                    profiled_at_val = datetime.fromisoformat(row[3])
+                elif isinstance(row[3], datetime):
+                    profiled_at_val = row[3]
+                else:
+                    continue  # Skip invalid rows
+                summaries.append(
+                    RunSummary(
+                        run_id=str(row[0]),
+                        dataset_name=str(row[1]),
+                        schema_name=str(row[2]) if row[2] else None,
+                        profiled_at=profiled_at_val,
+                        environment=str(row[4]) if row[4] else None,
+                        status=str(row[5]) if row[5] else None,
+                        row_count=int(row[6]) if row[6] is not None else None,
+                        column_count=int(row[7]) if row[7] is not None else None,
+                    )
                 )
-                for row in results
-            ]
+            return summaries
 
     def query_run_details(
         self, run_id: str, dataset_name: Optional[str] = None
@@ -282,7 +289,7 @@ class MetadataQueryClient:
             List of DriftEvent objects
         """
         conditions = []
-        params = {}
+        params: Dict[str, Any] = {}
 
         if table:
             conditions.append("table_name = :table")
@@ -314,21 +321,30 @@ class MetadataQueryClient:
 
         with self.engine.connect() as conn:
             results = conn.execute(query, params).fetchall()
-            return [
-                DriftEvent(
-                    event_id=row[0],
-                    event_type=row[1],
-                    table_name=row[2],
-                    column_name=row[3],
-                    metric_name=row[4],
-                    baseline_value=row[5],
-                    current_value=row[6],
-                    change_percent=row[7],
-                    drift_severity=row[8],
-                    timestamp=datetime.fromisoformat(row[9]) if isinstance(row[9], str) else row[9],
+            events = []
+            for row in results:
+                timestamp_val: datetime
+                if isinstance(row[9], str):
+                    timestamp_val = datetime.fromisoformat(row[9])
+                elif isinstance(row[9], datetime):
+                    timestamp_val = row[9]
+                else:
+                    continue  # Skip invalid rows
+                events.append(
+                    DriftEvent(
+                        event_id=str(row[0]),
+                        event_type=str(row[1]) if row[1] else "drift_detected",
+                        table_name=str(row[2]) if row[2] else None,
+                        column_name=str(row[3]) if row[3] else None,
+                        metric_name=str(row[4]) if row[4] else None,
+                        baseline_value=float(row[5]) if row[5] is not None else None,
+                        current_value=float(row[6]) if row[6] is not None else None,
+                        change_percent=float(row[7]) if row[7] is not None else None,
+                        drift_severity=str(row[8]) if row[8] else None,
+                        timestamp=timestamp_val,
+                    )
                 )
-                for row in results
-            ]
+            return events
 
     def query_table_history(
         self, table_name: str, schema_name: Optional[str] = None, days: Optional[int] = 30
@@ -345,7 +361,7 @@ class MetadataQueryClient:
             Dictionary with run history and trends
         """
         conditions = ["dataset_name = :table"]
-        params = {"table": table_name}
+        params: Dict[str, Any] = {"table": table_name}
 
         if schema_name:
             conditions.append("schema_name = :schema")
@@ -378,13 +394,13 @@ class MetadataQueryClient:
                     {
                         "run_id": row[0],
                         "profiled_at": (
-                            (row[1].isoformat() if isinstance(row[1], datetime) else row[1])
+                            (row[1].isoformat() if isinstance(row[1], datetime) else str(row[1]))
                             if row[1]
                             else None
                         ),
-                        "status": row[2],
-                        "row_count": row[3],
-                        "column_count": row[4],
+                        "status": str(row[2]) if row[2] else None,
+                        "row_count": int(row[3]) if row[3] is not None else None,
+                        "column_count": int(row[4]) if row[4] is not None else None,
                     }
                     for row in runs
                 ],
