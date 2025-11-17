@@ -4,28 +4,27 @@ Command-line interface for ProfileMesh.
 Provides CLI commands for profiling tables and detecting drift.
 """
 
-import sys
 import argparse
-import logging
-import json
 import importlib
+import json
+import logging
+import sys
 from pathlib import Path
 from typing import Optional
 
 from .config.loader import ConfigLoader
-from .config.schema import ProfileMeshConfig, HookConfig, SamplingConfig, TablePattern
+from .config.schema import HookConfig, ProfileMeshConfig, SamplingConfig, TablePattern
+from .drift.detector import DriftDetector
+from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
+from .incremental import IncrementalPlan, TableRunDecision, TableState, TableStateStore
+from .planner import PlanBuilder, print_plan
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
-from .drift.detector import DriftDetector
-from .planner import PlanBuilder, print_plan
-from .incremental import IncrementalPlan, TableRunDecision, TableStateStore, TableState
-from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
-from .utils.logging import RunContext, log_event, log_and_emit
+from .utils.logging import RunContext, log_and_emit, log_event
 
 # Setup fallback logging (will be replaced by structured logging per command)
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -33,24 +32,24 @@ logger = logging.getLogger(__name__)
 def create_event_bus(config: ProfileMeshConfig) -> Optional[EventBus]:
     """
     Create and configure an event bus from configuration.
-    
+
     Args:
         config: ProfileMesh configuration
-        
+
     Returns:
         Configured EventBus or None if hooks are disabled
     """
     if not config.hooks.enabled or not config.hooks.hooks:
         logger.debug("Event hooks are disabled or no hooks configured")
         return None
-    
+
     bus = EventBus()
-    
+
     for hook_config in config.hooks.hooks:
         if not hook_config.enabled:
             logger.debug(f"Skipping disabled hook: {hook_config.type}")
             continue
-        
+
         try:
             hook = _create_hook(hook_config)
             if hook:
@@ -58,47 +57,52 @@ def create_event_bus(config: ProfileMeshConfig) -> Optional[EventBus]:
                 logger.info(f"Registered hook: {hook_config.type}")
         except Exception as e:
             logger.error(f"Failed to create hook {hook_config.type}: {e}")
-    
+
     if bus.hook_count == 0:
         logger.warning("No hooks registered - event bus will be inactive")
         return None
-    
+
     return bus
 
 
 def _create_hook(hook_config: HookConfig):
     """
     Create a hook instance from configuration.
-    
+
     Args:
         hook_config: Hook configuration
-        
+
     Returns:
         Hook instance
     """
     if hook_config.type == "logging":
         log_level = hook_config.log_level or "INFO"
         return LoggingAlertHook(log_level=log_level)
-    
+
     elif hook_config.type == "snowflake":
         if not hook_config.connection:
             raise ValueError("Snowflake hook requires connection configuration")
-        
+
         # Create engine for Snowflake connection
         from .connectors import SnowflakeConnector
+
         connector = SnowflakeConnector(hook_config.connection)
         table_name = hook_config.table_name or "profilemesh_events"
         return SnowflakeEventHook(engine=connector.engine, table_name=table_name)
-    
+
     elif hook_config.type == "sql":
         if not hook_config.connection:
             raise ValueError("SQL hook requires connection configuration")
-        
+
         # Create engine based on connection type
         from .connectors import (
-            PostgresConnector, SQLiteConnector, MySQLConnector,
-            BigQueryConnector, RedshiftConnector
+            BigQueryConnector,
+            MySQLConnector,
+            PostgresConnector,
+            RedshiftConnector,
+            SQLiteConnector,
         )
+
         if hook_config.connection.type == "postgres":
             connector = PostgresConnector(hook_config.connection)
         elif hook_config.connection.type == "sqlite":
@@ -111,121 +115,162 @@ def _create_hook(hook_config: HookConfig):
             connector = RedshiftConnector(hook_config.connection)
         else:
             raise ValueError(f"Unsupported SQL database type: {hook_config.connection.type}")
-        
+
         table_name = hook_config.table_name or "profilemesh_events"
         return SQLEventHook(engine=connector.engine, table_name=table_name)
-    
+
     elif hook_config.type == "slack":
         if not hook_config.webhook_url:
             raise ValueError("Slack hook requires webhook_url")
-        
+
         from .events import SlackAlertHook
+
         return SlackAlertHook(
             webhook_url=hook_config.webhook_url,
             channel=hook_config.channel,
             username=hook_config.username or "ProfileMesh",
             min_severity=hook_config.min_severity or "low",
-            alert_on_drift=hook_config.alert_on_drift if hook_config.alert_on_drift is not None else True,
-            alert_on_schema_change=hook_config.alert_on_schema_change if hook_config.alert_on_schema_change is not None else True,
-            alert_on_profiling_failure=hook_config.alert_on_profiling_failure if hook_config.alert_on_profiling_failure is not None else True,
-            timeout=hook_config.timeout or 10
+            alert_on_drift=(
+                hook_config.alert_on_drift if hook_config.alert_on_drift is not None else True
+            ),
+            alert_on_schema_change=(
+                hook_config.alert_on_schema_change
+                if hook_config.alert_on_schema_change is not None
+                else True
+            ),
+            alert_on_profiling_failure=(
+                hook_config.alert_on_profiling_failure
+                if hook_config.alert_on_profiling_failure is not None
+                else True
+            ),
+            timeout=hook_config.timeout or 10,
         )
-    
+
     elif hook_config.type == "custom":
         if not hook_config.module or not hook_config.class_name:
             raise ValueError("Custom hook requires module and class_name")
-        
+
         # Dynamically import and instantiate custom hook
         module = importlib.import_module(hook_config.module)
         hook_class = getattr(module, hook_config.class_name)
         return hook_class(**hook_config.params)
-    
+
     else:
         raise ValueError(f"Unknown hook type: {hook_config.type}")
 
 
 def profile_command(args):
     """Execute profiling command."""
-    log_event(logger, "command_started", f"Loading configuration from: {args.config}",
-              metadata={"config_path": args.config, "command": "profile"})
-    
+    log_event(
+        logger,
+        "command_started",
+        f"Loading configuration from: {args.config}",
+        metadata={"config_path": args.config, "command": "profile"},
+    )
+
     # Initialize ctx early for error handling
     ctx = None
-    
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        log_event(logger, "config_loaded", f"Configuration loaded for environment: {config.environment}",
-                  metadata={"environment": config.environment})
-        
+        log_event(
+            logger,
+            "config_loaded",
+            f"Configuration loaded for environment: {config.environment}",
+            metadata={"environment": config.environment},
+        )
+
         # Start metrics server if enabled
         metrics_enabled = config.monitoring.enable_metrics
         if metrics_enabled:
             try:
                 from .utils.metrics import start_metrics_server
+
                 start_metrics_server(config.monitoring.port)
             except ImportError:
-                log_event(logger, "metrics_import_failed", 
-                         "prometheus_client not installed. Install with: pip install prometheus_client",
-                         level="warning")
+                log_event(
+                    logger,
+                    "metrics_import_failed",
+                    "prometheus_client not installed. Install with: pip install prometheus_client",
+                    level="warning",
+                )
                 metrics_enabled = False
             except Exception as e:
-                log_event(logger, "metrics_server_failed", 
-                         f"Failed to start metrics server: {e}",
-                         level="warning")
+                log_event(
+                    logger,
+                    "metrics_server_failed",
+                    f"Failed to start metrics server: {e}",
+                    level="warning",
+                )
                 metrics_enabled = False
-        
+
         # Create run context with structured logging
         ctx = RunContext.create(component="cli", metrics_enabled=metrics_enabled)
-        
+
         # Create event bus and register hooks
         event_bus = create_event_bus(config)
         if event_bus:
-            log_event(ctx.logger, "event_bus_initialized", 
-                     f"Event bus initialized with {event_bus.hook_count} hooks",
-                     metadata={"hook_count": event_bus.hook_count})
-        
+            log_event(
+                ctx.logger,
+                "event_bus_initialized",
+                f"Event bus initialized with {event_bus.hook_count} hooks",
+                metadata={"hook_count": event_bus.hook_count},
+            )
+
         plan_builder = PlanBuilder(config)
         incremental_plan = plan_builder.get_tables_to_run()
         tables_to_profile = _select_tables_from_plan(incremental_plan, config)
         if not tables_to_profile:
             log_event(ctx.logger, "incremental_noop", "No tables selected for this run")
             return 0
-        
+
         # Create profiling engine with run context
         engine = ProfileEngine(config, event_bus=event_bus, run_context=ctx)
-        
+
         # Run profiling
         log_event(ctx.logger, "profiling_batch_started", "Starting profiling...")
         results = engine.profile(table_patterns=tables_to_profile)
-        
+
         if not results:
             log_event(ctx.logger, "no_results", "No profiling results generated", level="warning")
             return 1
-        
-        log_event(ctx.logger, "profiling_batch_completed", f"Profiling completed: {len(results)} tables profiled",
-                  metadata={"table_count": len(results)})
-        
+
+        log_event(
+            ctx.logger,
+            "profiling_batch_completed",
+            f"Profiling completed: {len(results)} tables profiled",
+            metadata={"table_count": len(results)},
+        )
+
         # Write results to storage
         if not args.dry_run:
             log_event(ctx.logger, "storage_write_started", "Writing results to storage...")
             writer = ResultWriter(config.storage, config.retry)
             writer.write_results(results, environment=config.environment)
-            log_event(ctx.logger, "storage_write_completed", "Results written successfully",
-                      metadata={"result_count": len(results)})
+            log_event(
+                ctx.logger,
+                "storage_write_completed",
+                "Results written successfully",
+                metadata={"result_count": len(results)},
+            )
             writer.close()
             _update_state_store_with_results(config, incremental_plan, results)
         else:
             log_event(ctx.logger, "dry_run", "Dry run - results not written to storage")
-        
+
         # Output results
         if args.output:
             output_path = Path(args.output)
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump([r.to_dict() for r in results], f, indent=2)
-            log_event(ctx.logger, "results_exported", f"Results saved to: {args.output}",
-                      metadata={"output_path": str(args.output)})
-        
+            log_event(
+                ctx.logger,
+                "results_exported",
+                f"Results saved to: {args.output}",
+                metadata={"output_path": str(args.output)},
+            )
+
         # Print summary
         for result in results:
             print(f"\n{'='*60}")
@@ -234,78 +279,86 @@ def profile_command(args):
             print(f"Profiled at: {result.profiled_at}")
             print(f"Columns profiled: {len(result.columns)}")
             print(f"Row count: {result.metadata.get('row_count', 'N/A')}")
-        
+
         # Keep metrics server alive if enabled (unless disabled in config)
         keep_alive = config.monitoring.keep_alive if config.monitoring.enable_metrics else False
         if metrics_enabled and keep_alive:
             import time
-            
-            log_event(ctx.logger, "metrics_server_keepalive", 
-                     f"Profiling completed. Metrics server running on port {config.monitoring.port}",
-                     metadata={"port": config.monitoring.port})
+
+            log_event(
+                ctx.logger,
+                "metrics_server_keepalive",
+                f"Profiling completed. Metrics server running on port {config.monitoring.port}",
+                metadata={"port": config.monitoring.port},
+            )
             print(f"\n{'='*60}")
             print("Profiling completed. Metrics server is running at:")
             print(f"  http://localhost:{config.monitoring.port}/metrics")
             print(f"\nPress Ctrl+C to stop the server and exit.")
             print(f"{'='*60}\n")
-            
+
             try:
                 while True:
                     time.sleep(1)
             except (KeyboardInterrupt, SystemExit):
-                log_event(ctx.logger, "metrics_server_stopped", 
-                         "Metrics server stopped by user")
+                log_event(ctx.logger, "metrics_server_stopped", "Metrics server stopped by user")
                 print("\nStopping metrics server...")
                 return 0
-        
+
         return 0
-    
+
     except Exception as e:
         error_logger = ctx.logger if ctx else logger
-        log_event(error_logger, "error", f"Profiling failed: {e}",
-                  level="error", metadata={"error": str(e), "error_type": type(e).__name__})
+        log_event(
+            error_logger,
+            "error",
+            f"Profiling failed: {e}",
+            level="error",
+            metadata={"error": str(e), "error_type": type(e).__name__},
+        )
         return 1
 
 
 def drift_command(args):
     """Execute drift detection command."""
     logger.info(f"Loading configuration from: {args.config}")
-    
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        
+
         # Start metrics server if enabled
         if config.monitoring.enable_metrics:
             from .utils.metrics import start_metrics_server
+
             try:
                 start_metrics_server(config.monitoring.port)
             except Exception as e:
                 logger.warning(f"Failed to start metrics server: {e}")
-        
+
         # Create event bus and register hooks
         event_bus = create_event_bus(config)
         if event_bus:
             logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
-        
+
         # Create drift detector with drift detection config and event bus
         detector = DriftDetector(
-            config.storage, 
-            config.drift_detection, 
+            config.storage,
+            config.drift_detection,
             event_bus=event_bus,
             retry_config=config.retry,
-            metrics_enabled=config.monitoring.enable_metrics
+            metrics_enabled=config.monitoring.enable_metrics,
         )
-        
+
         # Detect drift
         logger.info(f"Detecting drift for dataset: {args.dataset}")
         report = detector.detect_drift(
             dataset_name=args.dataset,
             baseline_run_id=args.baseline,
             current_run_id=args.current,
-            schema_name=args.schema
+            schema_name=args.schema,
         )
-        
+
         # Print report
         print(f"\n{'='*60}")
         print("DRIFT DETECTION REPORT")
@@ -319,36 +372,38 @@ def drift_command(args):
         print(f"  High severity: {report.summary['drift_by_severity']['high']}")
         print(f"  Medium severity: {report.summary['drift_by_severity']['medium']}")
         print(f"  Low severity: {report.summary['drift_by_severity']['low']}")
-        
+
         if report.schema_changes:
             print(f"\nSchema Changes:")
             for change in report.schema_changes:
                 print(f"  - {change}")
-        
+
         if report.column_drifts:
             print(f"\nMetric Drifts:")
             for drift in report.column_drifts:
                 if drift.drift_detected:
-                    print(f"  [{drift.drift_severity.upper()}] {drift.column_name}.{drift.metric_name}")
+                    print(
+                        f"  [{drift.drift_severity.upper()}] {drift.column_name}.{drift.metric_name}"
+                    )
                     print(f"    Baseline: {drift.baseline_value:.2f}")
                     print(f"    Current: {drift.current_value:.2f}")
                     if drift.change_percent is not None:
                         print(f"    Change: {drift.change_percent:+.2f}%")
-        
+
         # Output to file
         if args.output:
             output_path = Path(args.output)
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(report.to_dict(), f, indent=2)
             logger.info(f"Report saved to: {args.output}")
-        
+
         # Return error code if critical drift detected
-        if report.summary['has_critical_drift'] and args.fail_on_drift:
+        if report.summary["has_critical_drift"] and args.fail_on_drift:
             logger.warning("Critical drift detected - exiting with error code")
             return 1
-        
+
         return 0
-    
+
     except Exception as e:
         logger.error(f"Drift detection failed: {e}", exc_info=True)
         return 1
@@ -357,38 +412,38 @@ def drift_command(args):
 def plan_command(args):
     """Execute plan command."""
     logger.info(f"Loading configuration from: {args.config}")
-    
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
         logger.info(f"Configuration loaded for environment: {config.environment}")
-        
+
         # Build plan
         logger.info("Building profiling execution plan...")
         builder = PlanBuilder(config)
         plan = builder.build_plan()
-        
+
         # Validate plan
         warnings = builder.validate_plan(plan)
         if warnings:
             logger.warning("Plan validation warnings:")
             for warning in warnings:
                 logger.warning(f"  - {warning}")
-        
+
         # Print plan
-        output_format = args.output if hasattr(args, 'output') else 'text'
-        verbose = args.verbose if hasattr(args, 'verbose') else False
-        
+        output_format = args.output if hasattr(args, "output") else "text"
+        verbose = args.verbose if hasattr(args, "verbose") else False
+
         print_plan(plan, format=output_format, verbose=verbose)
-        
+
         return 0
-    
+
     except FileNotFoundError as e:
         logger.error(f"Configuration file not found: {args.config}")
         print(f"\nError: Configuration file not found: {args.config}")
         print("Please specify a valid configuration file with --config")
         return 1
-    
+
     except ValueError as e:
         logger.error(f"Invalid configuration: {e}")
         print(f"\nError: {e}")
@@ -397,7 +452,7 @@ def plan_command(args):
         print("  - All required fields are present")
         print("  - Table names are valid")
         return 1
-    
+
     except Exception as e:
         logger.error(f"Plan generation failed: {e}", exc_info=True)
         print(f"\nError: Plan generation failed: {e}")
@@ -409,21 +464,21 @@ def query_command(args):
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        
+
         # Create query client
         from .connectors.factory import create_connector
-        from .query import MetadataQueryClient, format_runs, format_drift, format_table_history
-        
+        from .query import MetadataQueryClient, format_drift, format_runs, format_table_history
+
         connector = create_connector(config.storage.connection, config.retry)
         client = MetadataQueryClient(
             connector.engine,
             runs_table=config.storage.runs_table,
             results_table=config.storage.results_table,
-            events_table="profilemesh_events"
+            events_table="profilemesh_events",
         )
-        
+
         # Execute subcommand
-        if args.query_command == 'runs':
+        if args.query_command == "runs":
             runs = client.query_runs(
                 schema=args.schema,
                 table=args.table,
@@ -431,42 +486,42 @@ def query_command(args):
                 environment=args.environment,
                 days=args.days,
                 limit=args.limit,
-                offset=args.offset
+                offset=args.offset,
             )
-            
+
             output = format_runs(runs, format=args.format)
             print(output)
-            
+
             if args.output:
-                with open(args.output, 'w') as f:
+                with open(args.output, "w") as f:
                     f.write(output)
                 logger.info(f"Results saved to: {args.output}")
-        
-        elif args.query_command == 'drift':
+
+        elif args.query_command == "drift":
             events = client.query_drift_events(
                 table=args.table,
                 severity=args.severity,
                 days=args.days,
                 limit=args.limit,
-                offset=args.offset
+                offset=args.offset,
             )
-            
+
             output = format_drift(events, format=args.format)
             print(output)
-            
+
             if args.output:
-                with open(args.output, 'w') as f:
+                with open(args.output, "w") as f:
                     f.write(output)
                 logger.info(f"Results saved to: {args.output}")
-        
-        elif args.query_command == 'run':
+
+        elif args.query_command == "run":
             details = client.query_run_details(args.run_id, dataset_name=args.table)
-            
+
             if not details:
                 print(f"Run {args.run_id} not found")
                 return 1
-            
-            if args.format == 'json':
+
+            if args.format == "json":
                 output = json.dumps(details, indent=2, default=str)
             else:
                 # Pretty print for table format
@@ -484,35 +539,33 @@ Column Count: {details['column_count']}
 
 COLUMN METRICS:
 """
-                for col in details['columns']:
+                for col in details["columns"]:
                     output += f"\n  {col['column_name']} ({col['column_type']}):\n"
-                    for metric, value in col['metrics'].items():
+                    for metric, value in col["metrics"].items():
                         output += f"    {metric}: {value}\n"
-            
+
             print(output)
-            
+
             if args.output:
-                with open(args.output, 'w') as f:
+                with open(args.output, "w") as f:
                     f.write(output)
                 logger.info(f"Results saved to: {args.output}")
-        
-        elif args.query_command == 'table':
+
+        elif args.query_command == "table":
             history = client.query_table_history(
-                args.table,
-                schema_name=args.schema,
-                days=args.days
+                args.table, schema_name=args.schema, days=args.days
             )
-            
+
             output = format_table_history(history, format=args.format)
             print(output)
-            
+
             if args.output:
-                with open(args.output, 'w') as f:
+                with open(args.output, "w") as f:
                     f.write(output)
                 logger.info(f"Results saved to: {args.output}")
-        
+
         return 0
-    
+
     except Exception as e:
         logger.error(f"Query command failed: {e}", exc_info=True)
         print(f"\nError: {e}")
@@ -522,34 +575,34 @@ COLUMN METRICS:
 def migrate_command(args):
     """Execute schema migration command."""
     logger.info(f"Loading configuration from: {args.config}")
-    
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
-        
+
         # Create migration manager
         from .connectors.factory import create_connector
         from .storage.migrations import MigrationManager
         from .storage.migrations.versions import ALL_MIGRATIONS
-        
+
         connector = create_connector(config.storage.connection, config.retry)
         manager = MigrationManager(connector.engine)
-        
+
         # Register all migrations
         for migration in ALL_MIGRATIONS:
             manager.register_migration(migration)
-        
+
         # Execute subcommand
-        if args.migrate_command == 'status':
+        if args.migrate_command == "status":
             current = manager.get_current_version()
             from .storage.schema_version import CURRENT_SCHEMA_VERSION
-            
+
             print(f"\n{'='*60}")
             print("SCHEMA VERSION STATUS")
             print(f"{'='*60}")
             print(f"Current database version: {current or 'not initialized'}")
             print(f"Current code version: {CURRENT_SCHEMA_VERSION}")
-            
+
             if current is None:
                 print("\n⚠️  Schema version not initialized")
                 print("Run: profilemesh migrate apply --target 1")
@@ -561,16 +614,16 @@ def migrate_command(args):
                 print("Update ProfileMesh package to match database version")
             else:
                 print("\n✅ Schema version is up to date")
-        
-        elif args.migrate_command == 'apply':
+
+        elif args.migrate_command == "apply":
             target = args.target
             dry_run = args.dry_run
-            
+
             if dry_run:
                 print("🔍 DRY RUN MODE - No changes will be applied\n")
-            
+
             success = manager.migrate_to(target, dry_run=dry_run)
-            
+
             if success:
                 if not dry_run:
                     print(f"\n✅ Successfully migrated to version {target}")
@@ -578,30 +631,30 @@ def migrate_command(args):
             else:
                 print(f"\n❌ Migration failed")
                 return 1
-        
-        elif args.migrate_command == 'validate':
+
+        elif args.migrate_command == "validate":
             print("Validating schema integrity...\n")
             results = manager.validate_schema()
-            
+
             print(f"Schema Version: {results['version']}")
             print(f"Valid: {'✅ Yes' if results['valid'] else '❌ No'}\n")
-            
-            if results['errors']:
+
+            if results["errors"]:
                 print("Errors:")
-                for error in results['errors']:
+                for error in results["errors"]:
                     print(f"  ❌ {error}")
                 print()
-            
-            if results['warnings']:
+
+            if results["warnings"]:
                 print("Warnings:")
-                for warning in results['warnings']:
+                for warning in results["warnings"]:
                     print(f"  ⚠️  {warning}")
                 print()
-            
-            return 0 if results['valid'] else 1
-        
+
+            return 0 if results["valid"] else 1
+
         return 0
-    
+
     except Exception as e:
         logger.error(f"Migration command failed: {e}", exc_info=True)
         print(f"\n❌ Error: {e}")
@@ -610,165 +663,158 @@ def migrate_command(args):
 
 def main():
     """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
-        description='ProfileMesh - Data profiling and drift detection'
-    )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Command to execute')
-    
+    parser = argparse.ArgumentParser(description="ProfileMesh - Data profiling and drift detection")
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
     # Plan command
-    plan_parser = subparsers.add_parser('plan', help='Build and display profiling execution plan')
+    plan_parser = subparsers.add_parser("plan", help="Build and display profiling execution plan")
     plan_parser.add_argument(
-        '--config', '-c',
-        required=True,
-        help='Path to configuration file (YAML or JSON)'
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
     )
     plan_parser.add_argument(
-        '--output', '-o',
-        choices=['text', 'json'],
-        default='text',
-        help='Output format (default: text)'
+        "--output",
+        "-o",
+        choices=["text", "json"],
+        default="text",
+        help="Output format (default: text)",
     )
     plan_parser.add_argument(
-        '--verbose', '-v',
-        action='store_true',
-        help='Show verbose details including metrics and configuration'
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Show verbose details including metrics and configuration",
     )
-    
+
     # Profile command
-    profile_parser = subparsers.add_parser('profile', help='Profile datasets')
+    profile_parser = subparsers.add_parser("profile", help="Profile datasets")
     profile_parser.add_argument(
-        '--config', '-c',
-        required=True,
-        help='Path to configuration file (YAML or JSON)'
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
     )
+    profile_parser.add_argument("--output", "-o", help="Output file for results (JSON)")
     profile_parser.add_argument(
-        '--output', '-o',
-        help='Output file for results (JSON)'
+        "--dry-run", action="store_true", help="Run profiling without writing to storage"
     )
-    profile_parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Run profiling without writing to storage'
-    )
-    
+
     # Drift command
-    drift_parser = subparsers.add_parser('drift', help='Detect drift between runs')
+    drift_parser = subparsers.add_parser("drift", help="Detect drift between runs")
     drift_parser.add_argument(
-        '--config', '-c',
-        required=True,
-        help='Path to configuration file (YAML or JSON)'
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
     )
     drift_parser.add_argument(
-        '--dataset', '-d',
-        required=True,
-        help='Dataset name to check for drift'
+        "--dataset", "-d", required=True, help="Dataset name to check for drift"
     )
+    drift_parser.add_argument("--baseline", "-b", help="Baseline run ID (default: second-latest)")
+    drift_parser.add_argument("--current", help="Current run ID (default: latest)")
+    drift_parser.add_argument("--schema", "-s", help="Schema name")
+    drift_parser.add_argument("--output", "-o", help="Output file for report (JSON)")
     drift_parser.add_argument(
-        '--baseline', '-b',
-        help='Baseline run ID (default: second-latest)'
+        "--fail-on-drift",
+        action="store_true",
+        help="Exit with error code if critical drift detected",
     )
-    drift_parser.add_argument(
-        '--current',
-        help='Current run ID (default: latest)'
-    )
-    drift_parser.add_argument(
-        '--schema', '-s',
-        help='Schema name'
-    )
-    drift_parser.add_argument(
-        '--output', '-o',
-        help='Output file for report (JSON)'
-    )
-    drift_parser.add_argument(
-        '--fail-on-drift',
-        action='store_true',
-        help='Exit with error code if critical drift detected'
-    )
-    
+
     # Migrate command
-    migrate_parser = subparsers.add_parser('migrate', help='Manage schema migrations')
-    migrate_subparsers = migrate_parser.add_subparsers(dest='migrate_command', help='Migration operation')
-    
+    migrate_parser = subparsers.add_parser("migrate", help="Manage schema migrations")
+    migrate_subparsers = migrate_parser.add_subparsers(
+        dest="migrate_command", help="Migration operation"
+    )
+
     # migrate status
-    status_parser = migrate_subparsers.add_parser('status', help='Show current schema version')
-    status_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
-    
+    status_parser = migrate_subparsers.add_parser("status", help="Show current schema version")
+    status_parser.add_argument("--config", "-c", required=True, help="Path to configuration file")
+
     # migrate apply
-    apply_parser = migrate_subparsers.add_parser('apply', help='Apply migrations')
-    apply_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
-    apply_parser.add_argument('--target', type=int, required=True, help='Target schema version')
-    apply_parser.add_argument('--dry-run', action='store_true', help='Preview changes without applying')
-    
+    apply_parser = migrate_subparsers.add_parser("apply", help="Apply migrations")
+    apply_parser.add_argument("--config", "-c", required=True, help="Path to configuration file")
+    apply_parser.add_argument("--target", type=int, required=True, help="Target schema version")
+    apply_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without applying"
+    )
+
     # migrate validate
-    validate_parser = migrate_subparsers.add_parser('validate', help='Validate schema integrity')
-    validate_parser.add_argument('--config', '-c', required=True, help='Path to configuration file')
-    
+    validate_parser = migrate_subparsers.add_parser("validate", help="Validate schema integrity")
+    validate_parser.add_argument("--config", "-c", required=True, help="Path to configuration file")
+
     # Query command
-    query_parser = subparsers.add_parser('query', help='Query profiling metadata')
-    query_subparsers = query_parser.add_subparsers(dest='query_command', help='Query type')
-    
+    query_parser = subparsers.add_parser("query", help="Query profiling metadata")
+    query_subparsers = query_parser.add_subparsers(dest="query_command", help="Query type")
+
     # query runs
-    runs_parser = query_subparsers.add_parser('runs', help='Query profiling runs')
-    runs_parser.add_argument('--config', '-c', required=True, help='Configuration file')
-    runs_parser.add_argument('--schema', help='Filter by schema name')
-    runs_parser.add_argument('--table', help='Filter by table name')
-    runs_parser.add_argument('--status', choices=['completed', 'failed'], help='Filter by status')
-    runs_parser.add_argument('--environment', help='Filter by environment')
-    runs_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
-    runs_parser.add_argument('--limit', type=int, default=100, help='Max results (default: 100)')
-    runs_parser.add_argument('--offset', type=int, default=0, help='Pagination offset')
-    runs_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
-    runs_parser.add_argument('--output', '-o', help='Output file')
-    
+    runs_parser = query_subparsers.add_parser("runs", help="Query profiling runs")
+    runs_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    runs_parser.add_argument("--schema", help="Filter by schema name")
+    runs_parser.add_argument("--table", help="Filter by table name")
+    runs_parser.add_argument("--status", choices=["completed", "failed"], help="Filter by status")
+    runs_parser.add_argument("--environment", help="Filter by environment")
+    runs_parser.add_argument("--days", type=int, default=30, help="Days to look back (default: 30)")
+    runs_parser.add_argument("--limit", type=int, default=100, help="Max results (default: 100)")
+    runs_parser.add_argument("--offset", type=int, default=0, help="Pagination offset")
+    runs_parser.add_argument(
+        "--format", choices=["table", "json", "csv"], default="table", help="Output format"
+    )
+    runs_parser.add_argument("--output", "-o", help="Output file")
+
     # query drift
-    drift_query_parser = query_subparsers.add_parser('drift', help='Query drift events')
-    drift_query_parser.add_argument('--config', '-c', required=True, help='Configuration file')
-    drift_query_parser.add_argument('--table', help='Filter by table name')
-    drift_query_parser.add_argument('--severity', choices=['low', 'medium', 'high'], help='Filter by severity')
-    drift_query_parser.add_argument('--days', type=int, default=30, help='Days to look back (default: 30)')
-    drift_query_parser.add_argument('--limit', type=int, default=100, help='Max results (default: 100)')
-    drift_query_parser.add_argument('--offset', type=int, default=0, help='Pagination offset')
-    drift_query_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
-    drift_query_parser.add_argument('--output', '-o', help='Output file')
-    
+    drift_query_parser = query_subparsers.add_parser("drift", help="Query drift events")
+    drift_query_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    drift_query_parser.add_argument("--table", help="Filter by table name")
+    drift_query_parser.add_argument(
+        "--severity", choices=["low", "medium", "high"], help="Filter by severity"
+    )
+    drift_query_parser.add_argument(
+        "--days", type=int, default=30, help="Days to look back (default: 30)"
+    )
+    drift_query_parser.add_argument(
+        "--limit", type=int, default=100, help="Max results (default: 100)"
+    )
+    drift_query_parser.add_argument("--offset", type=int, default=0, help="Pagination offset")
+    drift_query_parser.add_argument(
+        "--format", choices=["table", "json", "csv"], default="table", help="Output format"
+    )
+    drift_query_parser.add_argument("--output", "-o", help="Output file")
+
     # query run (specific run details)
-    run_parser = query_subparsers.add_parser('run', help='Query specific run details')
-    run_parser.add_argument('--config', '-c', required=True, help='Configuration file')
-    run_parser.add_argument('--run-id', required=True, help='Run ID to query')
-    run_parser.add_argument('--table', help='Dataset name (if run has multiple tables)')
-    run_parser.add_argument('--format', choices=['table', 'json'], default='table', help='Output format')
-    run_parser.add_argument('--output', '-o', help='Output file')
-    
+    run_parser = query_subparsers.add_parser("run", help="Query specific run details")
+    run_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    run_parser.add_argument("--run-id", required=True, help="Run ID to query")
+    run_parser.add_argument("--table", help="Dataset name (if run has multiple tables)")
+    run_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    run_parser.add_argument("--output", "-o", help="Output file")
+
     # query table (table history)
-    table_parser = query_subparsers.add_parser('table', help='Query table profiling history')
-    table_parser.add_argument('--config', '-c', required=True, help='Configuration file')
-    table_parser.add_argument('--table', required=True, help='Table name')
-    table_parser.add_argument('--schema', help='Schema name')
-    table_parser.add_argument('--days', type=int, default=30, help='Days of history (default: 30)')
-    table_parser.add_argument('--format', choices=['table', 'json', 'csv'], default='table', help='Output format')
-    table_parser.add_argument('--output', '-o', help='Output file')
-    
+    table_parser = query_subparsers.add_parser("table", help="Query table profiling history")
+    table_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    table_parser.add_argument("--table", required=True, help="Table name")
+    table_parser.add_argument("--schema", help="Schema name")
+    table_parser.add_argument("--days", type=int, default=30, help="Days of history (default: 30)")
+    table_parser.add_argument(
+        "--format", choices=["table", "json", "csv"], default="table", help="Output format"
+    )
+    table_parser.add_argument("--output", "-o", help="Output file")
+
     # Parse arguments
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return 1
-    
+
     # Execute command
-    if args.command == 'plan':
+    if args.command == "plan":
         return plan_command(args)
-    elif args.command == 'profile':
+    elif args.command == "profile":
         return profile_command(args)
-    elif args.command == 'drift':
+    elif args.command == "drift":
         return drift_command(args)
-    elif args.command == 'migrate':
+    elif args.command == "migrate":
         if not args.migrate_command:
             migrate_parser.print_help()
             return 1
         return migrate_command(args)
-    elif args.command == 'query':
+    elif args.command == "query":
         if not args.query_command:
             query_parser.print_help()
             return 1
@@ -786,17 +832,17 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: ProfileMeshConfig):
             continue
         pattern = decision.table
         table_pattern = pattern.model_copy(deep=True)
-        
+
         if decision.action == "partial" and decision.changed_partitions:
             if not table_pattern.partition or not table_pattern.partition.key:
                 logger.warning(
                     "Partial run requested for %s but no partition key configured; falling back to full scan",
-                    pattern.table
+                    pattern.table,
                 )
             else:
                 table_pattern.partition.strategy = "specific_values"
                 table_pattern.partition.values = decision.changed_partitions
-        
+
         if decision.action == "sample":
             sample_fraction = config.incremental.cost_controls.sample_fraction
             table_pattern.sampling = SamplingConfig(
@@ -804,7 +850,7 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: ProfileMeshConfig):
                 method="random",
                 fraction=sample_fraction,
             )
-        
+
         selected.append(table_pattern)
     return selected
 
@@ -851,6 +897,5 @@ def _plan_table_key_raw(schema: Optional[str], table: str) -> str:
     return f"{schema}.{table}" if schema else table
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
-

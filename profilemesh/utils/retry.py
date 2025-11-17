@@ -5,11 +5,11 @@ Provides robust retry logic with exponential backoff for transient warehouse err
 Integrates with structured logging, event bus, and Prometheus metrics.
 """
 
-import time
-import random
 import logging
+import random
+import time
 from functools import wraps
-from typing import Callable, Any, Optional, Tuple, Type
+from typing import Any, Callable, Optional, Tuple, Type
 
 try:
     from prometheus_client import Counter
@@ -19,8 +19,10 @@ except ImportError:
 try:
     from .metrics import is_metrics_enabled
 except ImportError:
+
     def is_metrics_enabled() -> bool:
         return False
+
 
 logger = logging.getLogger(__name__)
 event_bus = None  # Optional event bus injected at runtime or during tests
@@ -30,28 +32,34 @@ event_bus = None  # Optional event bus injected at runtime or during tests
 # Error Taxonomy
 # ============================================================
 
+
 class TransientWarehouseError(Exception):
     """Base class for transient warehouse errors that should be retried."""
+
     pass
 
 
 class PermanentWarehouseError(Exception):
     """Base class for permanent warehouse errors that should not be retried."""
+
     pass
 
 
 class TimeoutError(TransientWarehouseError):
     """Warehouse query timeout error."""
+
     pass
 
 
 class ConnectionLostError(TransientWarehouseError):
     """Database connection lost error."""
+
     pass
 
 
 class RateLimitError(TransientWarehouseError):
     """API rate limit exceeded error."""
+
     pass
 
 
@@ -59,85 +67,88 @@ class RateLimitError(TransientWarehouseError):
 # Retry Decorator
 # ============================================================
 
+
 def retry_with_backoff(
     retries: int = 3,
     backoff_strategy: str = "exponential",
     min_backoff: float = 0.5,
     max_backoff: float = 8.0,
-    retry_on: Tuple[Type[Exception], ...] = (TransientWarehouseError,)
+    retry_on: Tuple[Type[Exception], ...] = (TransientWarehouseError,),
 ):
     """
     Decorator that retries a function with exponential backoff on transient errors.
-    
+
     Args:
         retries: Maximum number of retry attempts
         backoff_strategy: "exponential" or "fixed" backoff strategy
         min_backoff: Minimum backoff delay in seconds
         max_backoff: Maximum backoff delay in seconds
         retry_on: Tuple of exception types to retry on
-    
+
     Returns:
         Decorated function that implements retry logic
-    
+
     Example:
         @retry_with_backoff(retries=3, backoff_strategy="exponential")
         def query_warehouse(sql):
             # This will be retried up to 3 times on TransientWarehouseError
             return execute_sql(sql)
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             last_exception = None
-            
+
             for attempt in range(retries + 1):
                 try:
                     # Attempt to execute the function
                     result = func(*args, **kwargs)
-                    
+
                     # If we retried and succeeded, log success
                     if attempt > 0:
                         _log_retry_success(func.__name__, attempt)
-                    
+
                     return result
-                    
+
                 except Exception as e:
                     # Check if this is a retryable error
                     if not isinstance(e, retry_on):
                         # Not a retryable error, re-raise immediately
                         raise
-                    
+
                     last_exception = e
-                    
+
                     # If we've exhausted retries, re-raise
                     if attempt >= retries:
                         _log_retry_exhausted(func.__name__, attempt + 1, e)
                         _emit_retry_failure(func.__name__, e)
                         raise
-                    
+
                     # Calculate backoff delay
                     if backoff_strategy == "exponential":
-                        sleep_time = min(max_backoff, min_backoff * (2 ** attempt))
+                        sleep_time = min(max_backoff, min_backoff * (2**attempt))
                         # Add jitter (up to 15% of sleep time)
                         sleep_time += random.uniform(0, sleep_time * 0.15)
                     else:  # fixed
                         sleep_time = min_backoff
-                    
+
                     # Log the retry attempt
                     _log_retry_attempt(func.__name__, attempt + 1, retries, e, sleep_time)
-                    
+
                     # Emit event and metrics
                     _emit_retry_event(func.__name__, attempt + 1, e)
                     _record_retry_metric()
-                    
+
                     # Sleep before retry
                     time.sleep(sleep_time)
-            
+
             # This should never be reached, but just in case
             if last_exception:
                 raise last_exception
-        
+
         return wrapper
+
     return decorator
 
 
@@ -149,11 +160,11 @@ def retryable_call(
     min_backoff: float = 0.5,
     max_backoff: float = 8.0,
     retry_on: Tuple[Type[Exception], ...] = (TransientWarehouseError,),
-    **kwargs
+    **kwargs,
 ) -> Any:
     """
     Function wrapper version of retry_with_backoff for dynamic invocation.
-    
+
     Args:
         fn: Function to call
         *args: Positional arguments to pass to fn
@@ -163,10 +174,10 @@ def retryable_call(
         max_backoff: Maximum backoff delay in seconds
         retry_on: Tuple of exception types to retry on
         **kwargs: Keyword arguments to pass to fn
-    
+
     Returns:
         Result of fn(*args, **kwargs)
-    
+
     Example:
         result = retryable_call(
             query_warehouse,
@@ -180,9 +191,9 @@ def retryable_call(
         backoff_strategy=backoff_strategy,
         min_backoff=min_backoff,
         max_backoff=max_backoff,
-        retry_on=retry_on
+        retry_on=retry_on,
     )(fn)
-    
+
     return decorated_fn(*args, **kwargs)
 
 
@@ -190,18 +201,16 @@ def retryable_call(
 # Helper Functions
 # ============================================================
 
+
 def _log_retry_attempt(
-    func_name: str,
-    attempt: int,
-    max_retries: int,
-    error: Exception,
-    sleep_time: float
+    func_name: str, attempt: int, max_retries: int, error: Exception, sleep_time: float
 ):
     """Log a retry attempt with structured logging."""
     try:
-        from .logging import log_event, get_logger
+        from .logging import get_logger, log_event
+
         retry_logger = get_logger(__name__)
-        
+
         log_event(
             retry_logger,
             "retry_attempt",
@@ -213,8 +222,8 @@ def _log_retry_attempt(
                 "max_retries": max_retries,
                 "error": str(error),
                 "error_type": type(error).__name__,
-                "backoff_seconds": sleep_time
-            }
+                "backoff_seconds": sleep_time,
+            },
         )
     except ImportError:
         # Fallback to standard logging if structured logging not available
@@ -227,18 +236,16 @@ def _log_retry_attempt(
 def _log_retry_success(func_name: str, attempts: int):
     """Log successful retry."""
     try:
-        from .logging import log_event, get_logger
+        from .logging import get_logger, log_event
+
         retry_logger = get_logger(__name__)
-        
+
         log_event(
             retry_logger,
             "retry_success",
             f"Function {func_name} succeeded after {attempts} retry attempts",
             level="info",
-            metadata={
-                "function": func_name,
-                "total_attempts": attempts + 1
-            }
+            metadata={"function": func_name, "total_attempts": attempts + 1},
         )
     except ImportError:
         logger.info(f"Function {func_name} succeeded after {attempts} retry attempts")
@@ -247,9 +254,10 @@ def _log_retry_success(func_name: str, attempts: int):
 def _log_retry_exhausted(func_name: str, total_attempts: int, error: Exception):
     """Log retry exhaustion."""
     try:
-        from .logging import log_event, get_logger
+        from .logging import get_logger, log_event
+
         retry_logger = get_logger(__name__)
-        
+
         log_event(
             retry_logger,
             "retry_exhausted",
@@ -259,8 +267,8 @@ def _log_retry_exhausted(func_name: str, total_attempts: int, error: Exception):
                 "function": func_name,
                 "total_attempts": total_attempts,
                 "error": str(error),
-                "error_type": type(error).__name__
-            }
+                "error_type": type(error).__name__,
+            },
         )
     except ImportError:
         logger.error(
@@ -275,9 +283,10 @@ def _emit_retry_event(func_name: str, attempt: int, error: Exception):
     if event_bus is None:
         return
     try:
-        from ..events.events import BaseEvent
         from datetime import datetime, timezone
-        
+
+        from ..events.events import BaseEvent
+
         event = BaseEvent(
             event_type="retry_attempt",
             timestamp=datetime.now(timezone.utc),
@@ -285,10 +294,10 @@ def _emit_retry_event(func_name: str, attempt: int, error: Exception):
                 "function": func_name,
                 "attempt": attempt,
                 "error": str(error),
-                "error_type": type(error).__name__
-            }
+                "error_type": type(error).__name__,
+            },
         )
-        
+
         event_bus.emit(event)
     except Exception as e:
         logger.debug(f"Could not emit retry event: {e}")
@@ -300,19 +309,20 @@ def _emit_retry_failure(func_name: str, error: Exception):
     if event_bus is None:
         return
     try:
-        from ..events.events import BaseEvent
         from datetime import datetime, timezone
-        
+
+        from ..events.events import BaseEvent
+
         event = BaseEvent(
             event_type="retry_exhausted",
             timestamp=datetime.now(timezone.utc),
             metadata={
                 "function": func_name,
                 "error": str(error),
-                "error_type": type(error).__name__
-            }
+                "error_type": type(error).__name__,
+            },
         )
-        
+
         event_bus.emit(event)
     except Exception as e:
         logger.debug(f"Could not emit retry failure event: {e}")
@@ -326,7 +336,7 @@ def _record_retry_metric():
         if is_metrics_enabled():
             transient_errors_counter = Counter(
                 "profilemesh_warehouse_transient_errors_total",
-                "Total number of transient warehouse errors encountered"
+                "Total number of transient warehouse errors encountered",
             )
             transient_errors_counter.inc()
     except (ImportError, Exception) as e:
@@ -337,18 +347,19 @@ def _record_retry_metric():
 # Exception Classifier
 # ============================================================
 
+
 def classify_database_error(exception: Exception) -> Exception:
     """
     Classify a database exception as transient or permanent.
-    
+
     Converts native database errors into standardized ProfileMesh error types.
-    
+
     Args:
         exception: The original database exception
-    
+
     Returns:
         Classified exception (TransientWarehouseError or PermanentWarehouseError)
-    
+
     Example:
         try:
             execute_query(sql)
@@ -357,7 +368,7 @@ def classify_database_error(exception: Exception) -> Exception:
     """
     error_str = str(exception).lower()
     exception_type = type(exception).__name__.lower()
-    
+
     # Common transient error patterns
     transient_patterns = [
         "timeout",
@@ -377,7 +388,7 @@ def classify_database_error(exception: Exception) -> Exception:
         "i/o error",
         "communication link failure",
     ]
-    
+
     # Check if error matches transient patterns
     for pattern in transient_patterns:
         if pattern in error_str or pattern in exception_type:
@@ -390,7 +401,6 @@ def classify_database_error(exception: Exception) -> Exception:
                 return ConnectionLostError(str(exception))
             else:
                 return TransientWarehouseError(str(exception))
-    
+
     # Default to permanent error
     return PermanentWarehouseError(str(exception))
-

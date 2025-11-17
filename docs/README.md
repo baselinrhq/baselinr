@@ -10,6 +10,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 ### 📖 [Guides](guides/)
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection
+- **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
 - **[Slack Alerts](guides/SLACK_ALERTS.md)** - Set up Slack notifications for drift detection events
 - **[Partition & Sampling](guides/PARTITION_SAMPLING.md)** - Advanced profiling strategies
 - **[Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)** - Optional parallel execution for faster profiling
@@ -42,6 +43,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 ### 🛠️ [Development](development/)
 - **[Development Guide](development/DEVELOPMENT.md)** - Contributing and development setup
+- **[Git Hooks](development/GIT_HOOKS.md)** - Pre-commit and pre-push hooks setup
 - **[Build Complete](development/BUILD_COMPLETE.md)** - Build status and completion notes
 
 ### 🐳 [Docker](docker/)
@@ -60,6 +62,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
+- **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)
 - **Troubleshooting?** → Check the relevant component's README or fix guides
 

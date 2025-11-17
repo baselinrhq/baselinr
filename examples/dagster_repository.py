@@ -21,10 +21,7 @@ from profilemesh.integrations.dagster import (
 # Determine config path
 # In Docker, this will be /app/examples/config.yml
 # In local development, adjust as needed
-CONFIG_PATH = os.getenv(
-    "PROFILEMESH_CONFIG",
-    str(Path(__file__).parent / "config.yml")
-)
+CONFIG_PATH = os.getenv("PROFILEMESH_CONFIG", str(Path(__file__).parent / "config.yml"))
 
 # Create profiling assets from configuration
 try:
@@ -50,7 +47,7 @@ try:
         name="daily_profiling",
         job=profiling_job,
         cron_schedule="0 0 * * *",  # Daily at midnight
-        description="Run ProfileMesh profiling daily"
+        description="Run ProfileMesh profiling daily",
     )
 
     defs = Definitions(
@@ -64,11 +61,6 @@ try:
 except Exception as e:
     print(f"Warning: Failed to create ProfileMesh Dagster assets: {e}")
     print(f"Config path: {CONFIG_PATH}")
-    
-    # Create empty definitions as fallback
-    defs = Definitions(
-        assets=[],
-        jobs=[],
-        schedules=[]
-    )
 
+    # Create empty definitions as fallback
+    defs = Definitions(assets=[], jobs=[], schedules=[])

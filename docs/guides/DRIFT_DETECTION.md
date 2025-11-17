@@ -101,7 +101,52 @@ drift_detection:
 
 ---
 
-### 3. ML-Based Strategy (Placeholder)
+### 3. Statistical Test Strategy (Advanced)
+
+**Name**: `statistical`
+
+**Description**: Uses multiple statistical tests (KS test, PSI, chi-square, etc.) to detect drift based on column type and metric characteristics. Automatically selects appropriate tests for numeric vs categorical columns.
+
+**Status**: ✅ **Available**
+
+**Features**:
+- Multiple statistical tests that can be combined
+- Automatic test selection based on column type
+- Works with histograms, distributions, and summary statistics
+- Configurable sensitivity levels
+
+**Example Configuration**:
+```yaml
+drift_detection:
+  strategy: statistical
+  statistical:
+    tests:
+      - ks_test          # Kolmogorov-Smirnov test
+      - psi              # Population Stability Index
+      - z_score          # Z-score test
+      - chi_square       # Chi-square test (categorical)
+      - entropy          # Entropy change (categorical)
+      - top_k            # Top-K stability (categorical)
+    sensitivity: medium  # low, medium, or high
+    test_params:
+      ks_test:
+        alpha: 0.05
+      psi:
+        buckets: 10
+        threshold: 0.2
+```
+
+**Best for**:
+- Advanced drift detection with statistical rigor
+- Detecting distribution changes, not just mean shifts
+- Categorical data with category distribution changes
+- When you have histogram data available
+
+**See Also**: [Statistical Drift Detection Guide](STATISTICAL_DRIFT_DETECTION.md) for detailed documentation.
+
+---
+
+### 4. ML-Based Strategy (Placeholder)
 
 **Name**: `ml_based`
 
@@ -112,7 +157,6 @@ drift_detection:
 **Planned Features**:
 - Anomaly detection using Isolation Forest
 - Time-series drift detection with LSTM
-- Distribution shift detection (KS test, Chi-squared)
 - Autoencoder-based detection
 - Custom model support
 
@@ -422,10 +466,10 @@ if report.summary['has_critical_drift']:
 
 Future enhancements planned:
 
+- [x] **Statistical tests**: KS test, PSI, Chi-squared, Entropy, Top-K stability ✅
 - [ ] **Historical baseline**: Use rolling window of past runs instead of single baseline
 - [ ] **Column-specific thresholds**: Different thresholds per column or metric
 - [ ] **ML-based detection**: Implement actual ML strategies
-- [ ] **Statistical tests**: KS test, Chi-squared for distribution shifts
 - [ ] **Drift trends**: Track drift over time, not just point-in-time
 - [ ] **Auto-tuning**: Automatically suggest thresholds based on historical data
 - [ ] **Drift explanations**: AI-powered explanations of why drift occurred

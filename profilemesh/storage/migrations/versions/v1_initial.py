@@ -15,5 +15,5 @@ migration = Migration(
         -- Tables already exist from schema.sql
         SELECT 1
     """,
-    down_sql=None  # Cannot downgrade from baseline
+    down_sql=None,  # Cannot downgrade from baseline
 )

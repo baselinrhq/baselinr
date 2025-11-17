@@ -2,15 +2,15 @@
 
 from .loader import ConfigLoader
 from .schema import (
-    ProfileMeshConfig,
     ConnectionConfig,
-    ProfilingConfig,
     DriftDetectionConfig,
+    HookConfig,
+    HooksConfig,
     PartitionConfig,
+    ProfileMeshConfig,
+    ProfilingConfig,
     SamplingConfig,
     TablePattern,
-    HookConfig,
-    HooksConfig
 )
 
 __all__ = [
@@ -25,4 +25,3 @@ __all__ = [
     "HookConfig",
     "HooksConfig",
 ]
-

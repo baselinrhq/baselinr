@@ -1,7 +1,7 @@
 # ProfileMesh Makefile
 # Common development and deployment commands
 
-.PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs venv activate
+.PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs venv activate install-hooks
 
 help:
 	@echo "ProfileMesh - Available Commands"
@@ -22,6 +22,7 @@ help:
 	@echo "  make lint           Run linters"
 	@echo "  make format         Format code"
 	@echo "  make clean          Clean build artifacts"
+	@echo "  make install-hooks  Install git hooks (pre-commit & pre-push)"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up           Start Docker environment (includes Prometheus & Grafana)"
@@ -93,6 +94,27 @@ lint:
 format:
 	black profilemesh/ examples/
 	isort profilemesh/ examples/
+
+install-hooks:
+	@echo "Installing git hooks..."
+	@if [ -f ".git/hooks/pre-commit" ]; then \
+		chmod +x .git/hooks/pre-commit; \
+	fi
+	@if [ -f ".git/hooks/pre-push" ]; then \
+		chmod +x .git/hooks/pre-push; \
+	fi
+	@if [ -f ".git/hooks/pre-commit.ps1" ]; then \
+		echo "PowerShell hooks available (Windows)"; \
+	fi
+	@if [ -f ".git/hooks/pre-push.ps1" ]; then \
+		echo "PowerShell hooks available (Windows)"; \
+	fi
+	@echo "Git hooks installed!"
+	@echo ""
+	@echo "Pre-commit: Runs fast checks (formatting, linting)"
+	@echo "Pre-push: Runs full test suite"
+	@echo ""
+	@echo "To skip hooks: git commit --no-verify or git push --no-verify"
 
 clean:
 	rm -rf build/

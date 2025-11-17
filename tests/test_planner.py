@@ -12,7 +12,7 @@ from profilemesh.config.schema import (
     StorageConfig,
     ProfilingConfig,
     TablePattern,
-    DriftDetectionConfig
+    DriftDetectionConfig,
 )
 
 
@@ -27,7 +27,7 @@ def mock_config():
             port=5432,
             database="testdb",
             username="user",
-            password="pass"
+            password="pass",
         ),
         storage=StorageConfig(
             connection=ConnectionConfig(
@@ -36,32 +36,30 @@ def mock_config():
                 port=5432,
                 database="testdb",
                 username="user",
-                password="pass"
+                password="pass",
             ),
             results_table="profilemesh_results",
-            runs_table="profilemesh_runs"
+            runs_table="profilemesh_runs",
         ),
         profiling=ProfilingConfig(
             tables=[
                 TablePattern(table="customers", schema_="public"),
                 TablePattern(table="orders", schema_="public"),
             ],
-            metrics=["count", "null_count", "mean", "stddev"]
+            metrics=["count", "null_count", "mean", "stddev"],
         ),
-        drift_detection=DriftDetectionConfig(
-            strategy="absolute_threshold"
-        )
+        drift_detection=DriftDetectionConfig(strategy="absolute_threshold"),
     )
 
 
 class TestTablePlan:
     """Tests for TablePlan dataclass."""
-    
+
     def test_full_name_with_schema(self):
         """Test full_name property with schema."""
         table = TablePlan(name="customers", schema="public")
         assert table.full_name == "public.customers"
-    
+
     def test_full_name_without_schema(self):
         """Test full_name property without schema."""
         table = TablePlan(name="customers")
@@ -70,7 +68,7 @@ class TestTablePlan:
 
 class TestProfilingPlan:
     """Tests for ProfilingPlan dataclass."""
-    
+
     def test_to_dict(self):
         """Test converting plan to dictionary."""
         plan = ProfilingPlan(
@@ -79,17 +77,15 @@ class TestProfilingPlan:
             environment="test",
             source_type="postgres",
             source_database="testdb",
-            drift_strategy="absolute_threshold"
+            drift_strategy="absolute_threshold",
         )
-        
-        plan.tables = [
-            TablePlan(name="customers", schema="public", metrics=["count", "mean"])
-        ]
+
+        plan.tables = [TablePlan(name="customers", schema="public", metrics=["count", "mean"])]
         plan.total_tables = 1
         plan.estimated_metrics = 20
-        
+
         result = plan.to_dict()
-        
+
         assert result["run_id"] == "test-123"
         assert result["environment"] == "test"
         assert result["source"]["type"] == "postgres"
@@ -103,12 +99,12 @@ class TestProfilingPlan:
 
 class TestPlanBuilder:
     """Tests for PlanBuilder class."""
-    
+
     def test_build_plan_success(self, mock_config):
         """Test building a plan successfully."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         assert isinstance(plan, ProfilingPlan)
         assert plan.environment == "development"
         assert plan.source_type == "postgres"
@@ -117,84 +113,82 @@ class TestPlanBuilder:
         assert len(plan.tables) == 2
         assert plan.total_tables == 2
         assert plan.estimated_metrics > 0
-    
+
     def test_build_plan_no_tables(self, mock_config):
         """Test building plan with no tables configured."""
         mock_config.profiling.tables = []
         builder = PlanBuilder(mock_config)
-        
+
         with pytest.raises(ValueError) as exc_info:
             builder.build_plan()
-        
+
         assert "No tables configured" in str(exc_info.value)
-    
+
     def test_build_table_plan(self, mock_config):
         """Test building plan for a single table."""
         builder = PlanBuilder(mock_config)
         pattern = mock_config.profiling.tables[0]
-        
+
         table_plan = builder._build_table_plan(pattern, None)
-        
+
         assert table_plan.name == "customers"
         assert table_plan.schema == "public"
         assert table_plan.status == "ready"
         assert "count" in table_plan.metrics
         assert "mean" in table_plan.metrics
-    
+
     def test_build_table_plan_with_partition(self, mock_config):
         """Test building plan with partition configuration."""
         from profilemesh.config.schema import PartitionConfig
-        
+
         # Create pattern with partition config
         pattern = TablePattern(
             table="test_table",
             schema_="public",
-            partition=PartitionConfig(key="date", strategy="latest")
+            partition=PartitionConfig(key="date", strategy="latest"),
         )
-        
+
         builder = PlanBuilder(mock_config)
         table_plan = builder._build_table_plan(pattern, None)
-        
+
         assert table_plan.partition_config is not None
-        assert table_plan.partition_config['key'] == "date"
-        assert table_plan.partition_config['strategy'] == "latest"
-    
+        assert table_plan.partition_config["key"] == "date"
+        assert table_plan.partition_config["strategy"] == "latest"
+
     def test_estimate_total_metrics(self, mock_config):
         """Test metric estimation."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         # With 2 tables, ~10 columns each, 4 metrics each = ~80 total metrics
         assert plan.estimated_metrics > 0
         assert plan.estimated_metrics == 2 * 10 * 4  # tables * avg_cols * metrics
-    
+
     def test_validate_plan_success(self, mock_config):
         """Test validating a valid plan."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         warnings = builder.validate_plan(plan)
-        
+
         assert len(warnings) == 0
-    
+
     def test_validate_plan_duplicate_tables(self, mock_config):
         """Test validation catches duplicate tables."""
         # Add duplicate table
-        mock_config.profiling.tables.append(
-            TablePattern(table="customers", schema_="public")
-        )
-        
+        mock_config.profiling.tables.append(TablePattern(table="customers", schema_="public"))
+
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
         warnings = builder.validate_plan(plan)
-        
+
         assert len(warnings) > 0
         assert any("Duplicate" in w for w in warnings)
-    
+
     def test_validate_plan_invalid_sampling_fraction(self):
         """Test validation catches invalid sampling fractions."""
         from profilemesh.config.schema import SamplingConfig
-        
+
         with pytest.raises(ValidationError):
             ProfileMeshConfig(
                 environment="test",
@@ -203,50 +197,51 @@ class TestPlanBuilder:
                     connection=ConnectionConfig(type="postgres", database="test")
                 ),
                 profiling=ProfilingConfig(
-                    tables=[TablePattern(
-                        table="test",
-                        sampling=SamplingConfig(enabled=True, fraction=1.5)  # Invalid!
-                    )]
-                )
+                    tables=[
+                        TablePattern(
+                            table="test",
+                            sampling=SamplingConfig(enabled=True, fraction=1.5),  # Invalid!
+                        )
+                    ]
+                ),
             )
 
 
 class TestPrintPlan:
     """Tests for print_plan function."""
-    
+
     def test_print_text_format(self, mock_config, capsys):
         """Test printing plan in text format."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         print_plan(plan, format="text", verbose=False)
-        
+
         captured = capsys.readouterr()
         assert "PROFILING EXECUTION PLAN" in captured.out
         assert "customers" in captured.out
         assert "orders" in captured.out
         assert str(plan.total_tables) in captured.out
-    
+
     def test_print_json_format(self, mock_config, capsys):
         """Test printing plan in JSON format."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         print_plan(plan, format="json", verbose=False)
-        
+
         captured = capsys.readouterr()
         assert '"run_id"' in captured.out
         assert '"tables"' in captured.out
         assert '"customers"' in captured.out
-    
+
     def test_print_verbose(self, mock_config, capsys):
         """Test printing plan with verbose output."""
         builder = PlanBuilder(mock_config)
         plan = builder.build_plan()
-        
+
         print_plan(plan, format="text", verbose=True)
-        
+
         captured = capsys.readouterr()
         assert "Metrics" in captured.out
         assert "Configuration Details" in captured.out
-

@@ -1,12 +1,12 @@
 """Database connectors for ProfileMesh."""
 
 from .base import BaseConnector
+from .bigquery import BigQueryConnector
+from .mysql import MySQLConnector
 from .postgres import PostgresConnector
+from .redshift import RedshiftConnector
 from .snowflake import SnowflakeConnector
 from .sqlite import SQLiteConnector
-from .mysql import MySQLConnector
-from .bigquery import BigQueryConnector
-from .redshift import RedshiftConnector
 
 __all__ = [
     "BaseConnector",
@@ -17,4 +17,3 @@ __all__ = [
     "BigQueryConnector",
     "RedshiftConnector",
 ]
-

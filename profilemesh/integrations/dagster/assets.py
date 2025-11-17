@@ -25,6 +25,8 @@ try:
     DAGSTER_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised when Dagster missing
     DAGSTER_AVAILABLE = False
+    # Type stub for when Dagster is not available
+    MetadataValue = Any  # type: ignore
 
 from ...config.loader import ConfigLoader
 from ...config.schema import ProfileMeshConfig, TablePattern
@@ -56,8 +58,11 @@ def _plan_lookup(plan: ProfilingPlan) -> Dict[str, TablePlan]:
     return lookup
 
 
-def _metadata_value(value: Any) -> MetadataValue:
+def _metadata_value(value: Any) -> Any:  # Returns MetadataValue when Dagster available
     """Coerce arbitrary python objects into Dagster MetadataValue instances."""
+    if not DAGSTER_AVAILABLE:
+        return value  # Return as-is if Dagster not available
+
     if isinstance(value, MetadataValue):
         return value
     if isinstance(value, bool):
@@ -74,7 +79,7 @@ def _metadata_value(value: Any) -> MetadataValue:
 def _table_metadata_entries(
     table_plan: Optional[TablePlan],
     plan: ProfilingPlan,
-) -> Dict[str, MetadataValue]:
+) -> Dict[str, Any]:  # Returns Dict[str, MetadataValue] when Dagster available
     """Build metadata entries describing the requested profiling plan."""
     if not table_plan:
         return {
@@ -90,7 +95,9 @@ def _table_metadata_entries(
     }
 
 
-def _result_metadata_entries(result: Any) -> Dict[str, MetadataValue]:
+def _result_metadata_entries(
+    result: Any,
+) -> Dict[str, Any]:  # Returns Dict[str, MetadataValue] when Dagster available
     """Convert profiling results into Dagster metadata entries."""
     row_count = result.metadata.get("row_count")
     metadata = {
@@ -119,7 +126,6 @@ if DAGSTER_AVAILABLE:
         def get_config(self) -> ProfileMeshConfig:
             """Return the cached ProfileMesh config."""
             return self.config
-
 
     def create_profiling_assets(
         config_path: str,
@@ -175,7 +181,6 @@ if DAGSTER_AVAILABLE:
         logger.info("Created %s Dagster assets for ProfileMesh", len(assets))
         return assets
 
-
     def _create_table_asset(
         *,
         config_path: str,
@@ -226,7 +231,10 @@ if DAGSTER_AVAILABLE:
 
             plan_metadata = _table_metadata_entries(table_plan, plan)
             runtime_metadata = _result_metadata_entries(result)
-            merged_metadata: Dict[str, MetadataValue] = {**plan_metadata, **runtime_metadata}
+            merged_metadata: Dict[str, Any] = {
+                **plan_metadata,
+                **runtime_metadata,
+            }  # Dict[str, MetadataValue] when Dagster available
             if default_metadata:
                 merged_metadata.update({k: _metadata_value(v) for k, v in default_metadata.items()})
 
@@ -260,7 +268,6 @@ if DAGSTER_AVAILABLE:
 
         return table_profiling_asset
 
-
     def _create_summary_asset(
         *,
         plan: ProfilingPlan,
@@ -289,7 +296,7 @@ if DAGSTER_AVAILABLE:
                 "tables": [table.full_name for table in plan.tables],
             }
 
-            metadata: Dict[str, MetadataValue] = {
+            metadata: Dict[str, Any] = {  # Dict[str, MetadataValue] when Dagster available
                 "environment": MetadataValue.text(config.environment),
                 "tables_profiled": MetadataValue.int(plan.total_tables),
                 "estimated_metrics": MetadataValue.int(plan.estimated_metrics),
@@ -304,7 +311,6 @@ if DAGSTER_AVAILABLE:
             yield Output(value=summary, metadata=metadata)
 
         return profiling_summary_asset
-
 
     def create_profiling_job(
         *,
@@ -329,7 +335,6 @@ if DAGSTER_AVAILABLE:
             selection=selection,
         )
 
-
 else:  # pragma: no cover - exercised when Dagster missing
 
     class ProfileMeshResource:
@@ -341,10 +346,14 @@ else:  # pragma: no cover - exercised when Dagster missing
             )
 
     def create_profiling_assets(*args, **kwargs):
-        raise ImportError("Dagster is not installed. Install with `pip install profilemesh[dagster]`.")
+        raise ImportError(
+            "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
+        )
 
     def create_profiling_job(*args, **kwargs):
-        raise ImportError("Dagster is not installed. Install with `pip install profilemesh[dagster]`.")
+        raise ImportError(
+            "Dagster is not installed. Install with `pip install profilemesh[dagster]`."
+        )
 
 
 __all__ = [

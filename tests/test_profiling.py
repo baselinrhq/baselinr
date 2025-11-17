@@ -28,42 +28,35 @@ def test_is_string_type():
 def test_metric_filtering():
     """Test that enabled_metrics filters which metrics are computed."""
     engine = Mock()
-    
+
     # Test with specific metrics enabled
-    calculator = MetricCalculator(
-        engine=engine,
-        enabled_metrics=['count', 'null_count', 'mean']
-    )
-    
-    assert calculator._should_compute_metric('count')
-    assert calculator._should_compute_metric('mean')
-    assert not calculator._should_compute_metric('stddev')
-    assert not calculator._should_compute_metric('histogram')
-    
+    calculator = MetricCalculator(engine=engine, enabled_metrics=["count", "null_count", "mean"])
+
+    assert calculator._should_compute_metric("count")
+    assert calculator._should_compute_metric("mean")
+    assert not calculator._should_compute_metric("stddev")
+    assert not calculator._should_compute_metric("histogram")
+
     # Test with None (all metrics enabled)
     calculator_all = MetricCalculator(engine=engine, enabled_metrics=None)
-    assert calculator_all._should_compute_metric('count')
-    assert calculator_all._should_compute_metric('stddev')
-    assert calculator_all._should_compute_metric('histogram')
+    assert calculator_all._should_compute_metric("count")
+    assert calculator_all._should_compute_metric("stddev")
+    assert calculator_all._should_compute_metric("histogram")
 
 
 def test_metric_group_filtering():
     """Test metric group filtering."""
     engine = Mock()
-    
+
     # Only count metrics
-    calculator = MetricCalculator(
-        engine=engine,
-        enabled_metrics=['count', 'null_count']
-    )
-    
+    calculator = MetricCalculator(engine=engine, enabled_metrics=["count", "null_count"])
+
     # Should compute counts group (has count and null_count)
-    assert calculator._should_compute_metric_group(['count', 'null_count', 'distinct_count'])
-    
+    assert calculator._should_compute_metric_group(["count", "null_count", "distinct_count"])
+
     # Should not compute numeric group
-    assert not calculator._should_compute_metric_group(['min', 'max', 'mean', 'stddev'])
+    assert not calculator._should_compute_metric_group(["min", "max", "mean", "stddev"])
 
 
 # Note: Full integration tests would require a test database
 # These are just basic unit tests for utility functions
-

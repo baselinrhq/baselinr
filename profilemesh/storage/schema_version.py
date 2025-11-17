@@ -7,7 +7,7 @@ VERSION_HISTORY = {
     1: {
         "description": "Initial schema with runs, results, events, and table_state tables",
         "applied": "2024-01-01",
-        "breaking_changes": False
+        "breaking_changes": False,
     }
 }
 
@@ -15,10 +15,10 @@ VERSION_HISTORY = {
 def get_version_table_ddl(dialect: str = "generic") -> str:
     """
     Get DDL for schema version tracking table.
-    
+
     Args:
         dialect: Database dialect (generic, snowflake)
-        
+
     Returns:
         DDL string for creating version table
     """
