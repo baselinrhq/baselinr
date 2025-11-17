@@ -10,16 +10,18 @@
 - **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
-- **Multi-Database Support**: Works with PostgreSQL, Snowflake, and SQLite
+- **Multi-Database Support**: Works with PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, and Redshift
+- **Schema Versioning & Migrations**: Built-in schema version management with migration system for safe database schema evolution
+- **Metadata Querying**: Powerful CLI and API for querying profiling runs, drift events, and table history
 - **Dagster Integration**: Built-in orchestration support with Dagster assets and schedules
 - **Configuration-Driven**: Simple YAML/JSON configuration for defining profiling targets
 - **Historical Tracking**: Store profiling results over time for trend analysis
-- **CLI Interface**: Easy-to-use command-line interface for manual profiling
+- **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, and schema management
 
 ## 📋 Requirements
 
 - Python 3.10+
-- PostgreSQL, Snowflake, or SQLite database
+- One of the supported databases: PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, or Redshift
 
 ## 🔧 Installation
 
@@ -123,6 +125,39 @@ After running profiling multiple times:
 profilemesh drift --config config.yml --dataset customers
 ```
 
+### 5. Query Profiling Metadata
+
+Query your profiling history and drift events:
+
+```bash
+# List recent profiling runs
+profilemesh query runs --config config.yml --limit 10
+
+# Query drift events
+profilemesh query drift --config config.yml --table customers --days 7
+
+# Get detailed run information
+profilemesh query run --config config.yml --run-id <run-id>
+
+# View table profiling history
+profilemesh query table --config config.yml --table customers --days 30
+```
+
+### 6. Manage Schema Migrations
+
+Check and apply schema migrations:
+
+```bash
+# Check schema version status
+profilemesh migrate status --config config.yml
+
+# Apply migrations to latest version
+profilemesh migrate apply --config config.yml --target 1
+
+# Validate schema integrity
+profilemesh migrate validate --config config.yml
+```
+
 ## 🐳 Docker Development Environment
 
 ProfileMesh includes a complete Docker environment for local development and testing.
@@ -208,6 +243,11 @@ profilemesh/
 ├── examples/             # Example configurations
 │   ├── config.yml        # PostgreSQL example
 │   ├── config_sqlite.yml # SQLite example
+│   ├── config_mysql.yml  # MySQL example
+│   ├── config_bigquery.yml # BigQuery example
+│   ├── config_redshift.yml # Redshift example
+│   ├── config_with_metrics.yml # Metrics example
+│   ├── config_slack_alerts.yml # Slack alerts example
 │   ├── dagster_repository.py
 │   └── quickstart.py
 ├── docker/               # Docker environment
@@ -385,13 +425,83 @@ hooks:
 
 See [docs/architecture/EVENTS_AND_HOOKS.md](docs/architecture/EVENTS_AND_HOOKS.md) for comprehensive documentation and examples.
 
+## 🔄 Schema Versioning & Migrations
+
+ProfileMesh includes a built-in schema versioning system to manage database schema evolution safely.
+
+### Migration Commands
+
+```bash
+# Check current schema version status
+profilemesh migrate status --config config.yml
+
+# Apply migrations to a specific version
+profilemesh migrate apply --config config.yml --target 1
+
+# Preview migrations (dry run)
+profilemesh migrate apply --config config.yml --target 1 --dry-run
+
+# Validate schema integrity
+profilemesh migrate validate --config config.yml
+```
+
+### How It Works
+
+- Schema versions are tracked in the `profilemesh_schema_version` table
+- Migrations are applied incrementally and can be rolled back
+- The system automatically detects when your database schema is out of date
+- Migrations are idempotent and safe to run multiple times
+
+## 🔍 Metadata Querying
+
+ProfileMesh provides powerful querying capabilities to explore your profiling history and drift events.
+
+### Query Commands
+
+```bash
+# Query profiling runs with filters
+profilemesh query runs --config config.yml \
+  --table customers \
+  --status completed \
+  --days 30 \
+  --limit 20 \
+  --format table
+
+# Query drift events
+profilemesh query drift --config config.yml \
+  --table customers \
+  --severity high \
+  --days 7 \
+  --format json
+
+# Get detailed information about a specific run
+profilemesh query run --config config.yml \
+  --run-id abc123-def456 \
+  --format json
+
+# View table profiling history over time
+profilemesh query table --config config.yml \
+  --table customers \
+  --schema public \
+  --days 90 \
+  --format csv \
+  --output history.csv
+```
+
+### Output Formats
+
+All query commands support multiple output formats:
+- **table**: Human-readable table format (default)
+- **json**: JSON format for programmatic use
+- **csv**: CSV format for spreadsheet analysis
+
 ## 🛠️ Configuration Options
 
 ### Source Configuration
 
 ```yaml
 source:
-  type: postgres | snowflake | sqlite
+  type: postgres | snowflake | sqlite | mysql | bigquery | redshift
   host: hostname
   port: 5432
   database: database_name
@@ -406,6 +516,18 @@ source:
   
   # SQLite-specific
   filepath: /path/to/database.db
+  
+  # BigQuery-specific (credentials via extra_params)
+  extra_params:
+    credentials_path: /path/to/service-account-key.json
+    # Or use GOOGLE_APPLICATION_CREDENTIALS environment variable
+  
+  # MySQL-specific
+  # Uses standard host/port/database/username/password
+  
+  # Redshift-specific
+  # Uses standard host/port/database/username/password
+  # Default port: 5439
 ```
 
 ### Profiling Configuration
