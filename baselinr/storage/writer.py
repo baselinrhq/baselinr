@@ -113,7 +113,7 @@ class ResultWriter:
 
                 # Calculate and write enrichment metrics if enabled
                 if enable_enrichment:
-                    self._calculate_and_write_enrichment_metrics(conn, result)
+                    self._calculate_and_write_enrichment_metrics(result)
 
             conn.commit()
 
@@ -300,30 +300,41 @@ class ResultWriter:
             logger.debug(f"Could not read schema version: {e}")
             return None
 
-    def _calculate_and_write_enrichment_metrics(self, conn, result: ProfilingResult):
+    def _calculate_and_write_enrichment_metrics(self, result: ProfilingResult):
         """Calculate and write enrichment metrics (row count stability, schema freshness, etc.)."""
+        # Use a separate connection for enrichment metrics to avoid transaction conflicts
+        # This ensures that if there are any errors, they don't affect the main write transaction
         try:
-            dataset_name = result.dataset_name
-            schema_name = result.schema_name
-            current_row_count = result.metadata.get("row_count")
-            current_columns = {col["column_name"]: col["column_type"] for col in result.columns}
+            if self.engine is None:
+                return
+            with self.engine.connect() as enrichment_conn:
+                dataset_name = result.dataset_name
+                schema_name = result.schema_name
+                current_row_count = result.metadata.get("row_count")
+                current_columns = {col["column_name"]: col["column_type"] for col in result.columns}
 
-            # Calculate row count stability
-            if current_row_count is not None:
-                stability_metrics = self._calculate_row_count_stability(
-                    conn, dataset_name, schema_name, current_row_count, result.profiled_at
+                # Calculate row count stability
+                if current_row_count is not None:
+                    stability_metrics = self._calculate_row_count_stability(
+                        enrichment_conn,
+                        dataset_name,
+                        schema_name,
+                        current_row_count,
+                        result.profiled_at,
+                    )
+                    result.metadata.update(stability_metrics)
+
+                # Calculate schema freshness and column stability
+                schema_metrics = self._calculate_schema_metrics(
+                    enrichment_conn, dataset_name, schema_name, current_columns, result.profiled_at
                 )
-                result.metadata.update(stability_metrics)
+                result.metadata.update(schema_metrics)
 
-            # Calculate schema freshness and column stability
-            schema_metrics = self._calculate_schema_metrics(
-                conn, dataset_name, schema_name, current_columns, result.profiled_at
-            )
-            result.metadata.update(schema_metrics)
-
-            # Calculate column-level stability metrics
-            if result.columns:
-                self._calculate_column_stability_metrics(conn, result, dataset_name, schema_name)
+                # Calculate column-level stability metrics
+                if result.columns:
+                    self._calculate_column_stability_metrics(
+                        enrichment_conn, result, dataset_name, schema_name
+                    )
 
         except Exception as e:
             logger.warning(f"Failed to calculate enrichment metrics: {e}")

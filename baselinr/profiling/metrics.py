@@ -637,6 +637,13 @@ class MetricCalculator:
         sampling_config: Optional[SamplingConfig],
     ) -> Dict[str, Any]:
         """Calculate min/max for any comparable type (strings, dates, booleans, etc.)."""
+        # Check if column is boolean - PostgreSQL doesn't support min/max on booleans
+        col_type = str(col.type).lower()
+        boolean_keywords = ["boolean", "bool", "bit"]
+        if any(keyword in col_type for keyword in boolean_keywords):
+            # Booleans don't have meaningful min/max values
+            return {"min": None, "max": None}
+
         try:
             with self.engine.connect() as conn:
                 # Build base query with partition filtering
@@ -673,7 +680,6 @@ class MetricCalculator:
 
                 # Convert to string for non-numeric types to ensure consistency
                 # Numeric types are already handled in _calculate_numeric_metrics
-                col_type = str(col.type)
                 if not self._is_numeric_type(col_type):
                     min_val = str(min_val) if min_val is not None else None
                     max_val = str(max_val) if max_val is not None else None
