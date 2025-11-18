@@ -225,7 +225,11 @@ if DAGSTER_AVAILABLE:
             result = results[0]
             writer = ResultWriter(config.storage)
             try:
-                writer.write_results([result], environment=config.environment)
+                writer.write_results(
+                    [result],
+                    environment=config.environment,
+                    enable_enrichment=config.profiling.enable_enrichment,
+                )
             finally:
                 writer.close()
 

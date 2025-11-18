@@ -106,7 +106,10 @@ def test_default_profiling_config():
     assert config.max_distinct_values == 1000
     assert config.compute_histograms is True
     assert "count" in config.metrics
-    assert "null_percent" in config.metrics
+    assert "null_ratio" in config.metrics
+    assert "unique_ratio" in config.metrics
+    assert "null_percent" not in config.metrics  # Old metric removed
+    assert "distinct_percent" not in config.metrics  # Old metric removed
 
 
 def test_baseline_config_default():

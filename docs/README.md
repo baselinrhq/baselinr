@@ -9,6 +9,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **[Installation Guide](getting-started/INSTALL.md)** - Detailed installation instructions
 
 ### 📖 [Guides](guides/)
+- **[Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)** - Enhanced profiling metrics: null ratios, uniqueness, schema tracking, and data quality metrics
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection, including type-specific thresholds
 - **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
 - **[Slack Alerts](guides/SLACK_ALERTS.md)** - Set up Slack notifications for drift detection events
@@ -52,6 +53,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 ## 📝 Quick Links
 
 - **Main README**: [../README.md](../README.md) - Project overview and quick start
+- **Roadmap**: [../ROADMAP.md](../ROADMAP.md) - Planned features and future enhancements
 - **Examples**: [../examples/](../examples/) - Configuration examples
 - **Makefile**: [../Makefile](../Makefile) - Common commands
 
@@ -61,6 +63,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
+- **Using enrichment metrics?** → See [Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)

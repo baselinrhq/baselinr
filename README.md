@@ -60,6 +60,7 @@ All documentation has been organized into the [`docs/`](docs/) directory:
 - **Architecture**: [docs/architecture/](docs/architecture/) - System design and implementation
 - **Dashboard**: [docs/dashboard/](docs/dashboard/) - Dashboard setup and development
 - **Development**: [docs/development/](docs/development/) - Contributing and development
+- **Roadmap**: [ROADMAP.md](ROADMAP.md) - Planned features and future enhancements
 
 See [docs/README.md](docs/README.md) for the complete documentation index.
 
@@ -190,9 +191,14 @@ ProfileMesh computes the following metrics:
 ### All Column Types
 - **count**: Total number of rows
 - **null_count**: Number of null values
-- **null_percent**: Percentage of null values
+- **null_ratio**: Ratio of null values (0.0 to 1.0)
 - **distinct_count**: Number of distinct values
-- **distinct_percent**: Percentage of distinct values
+- **unique_ratio**: Ratio of distinct values to total (0.0 to 1.0)
+- **approx_distinct_count**: Approximate distinct count (database-specific)
+- **data_type_inferred**: Inferred data type from values (email, url, date, etc.)
+- **column_stability_score**: Column presence stability (0.0 to 1.0)
+- **column_age_days**: Days since column first appeared
+- **type_consistency_score**: Type consistency across runs (0.0 to 1.0)
 
 ### Numeric Columns
 - **min**: Minimum value
@@ -202,9 +208,22 @@ ProfileMesh computes the following metrics:
 - **histogram**: Distribution histogram (optional)
 
 ### String Columns
+- **min**: Lexicographic minimum
+- **max**: Lexicographic maximum
 - **min_length**: Minimum string length
 - **max_length**: Maximum string length
 - **avg_length**: Average string length
+
+### Table-Level Metrics
+- **row_count_change**: Change in row count from previous run
+- **row_count_change_percent**: Percentage change in row count
+- **row_count_stability_score**: Row count stability (0.0 to 1.0)
+- **row_count_trend**: Trend direction (increasing/stable/decreasing)
+- **schema_freshness**: Timestamp of last schema modification
+- **schema_version**: Incrementing schema version number
+- **column_count_change**: Net change in column count
+
+See [docs/guides/PROFILING_ENRICHMENT.md](docs/guides/PROFILING_ENRICHMENT.md) for detailed documentation on enrichment features.
 
 ## 🔄 Dagster Integration
 
@@ -562,14 +581,16 @@ profiling:
   metrics:
     - count
     - null_count
-    - null_percent
+    - null_ratio
     - distinct_count
-    - distinct_percent
+    - unique_ratio
+    - approx_distinct_count
     - min
     - max
     - mean
     - stddev
     - histogram
+    - data_type_inferred
 ```
 
 ### Drift Detection Configuration

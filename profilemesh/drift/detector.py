@@ -89,8 +89,8 @@ class DriftDetector:
     # Metrics that should be compared for drift
     NUMERIC_DRIFT_METRICS = [
         "count",
-        "null_percent",
-        "distinct_percent",
+        "null_ratio",
+        "unique_ratio",
         "mean",
         "stddev",
         "min",
