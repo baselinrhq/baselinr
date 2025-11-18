@@ -3,7 +3,7 @@ name: Dagster Integration
 on:
   push:
     paths:
-      - 'profilemesh/**'
+      - 'baselinr/**'
       - 'examples/**'
       - 'docker/**'
       - 'tests/**'
@@ -12,7 +12,7 @@ on:
       - '.github/workflows/dagster-integration.yml'
   pull_request:
     paths:
-      - 'profilemesh/**'
+      - 'baselinr/**'
       - 'examples/**'
       - 'docker/**'
       - 'tests/**'
@@ -50,7 +50,7 @@ jobs:
       - name: Wait for PostgreSQL
         run: |
           for i in {1..20}; do
-            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U profilemesh; then
+            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U baselinr; then
               ready=1
               break
             fi

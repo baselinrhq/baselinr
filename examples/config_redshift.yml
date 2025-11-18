@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example for Amazon Redshift
+# Baselinr Configuration Example for Amazon Redshift
 # This is a sample configuration for profiling Redshift tables
 
 environment: development
@@ -19,11 +19,11 @@ storage:
     type: redshift  # Can use same Redshift cluster or different database
     host: my-cluster.xxxxx.us-east-1.redshift.amazonaws.com
     port: 5439
-    database: profilemesh_storage
+    database: baselinr_storage
     username: myuser
     password: mypassword
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration

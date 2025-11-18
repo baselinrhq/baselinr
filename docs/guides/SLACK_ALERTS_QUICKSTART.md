@@ -18,7 +18,7 @@ Get Slack alerts for data drift in 5 minutes.
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
 ```
 
-### 3. Configure ProfileMesh
+### 3. Configure Baselinr
 
 Add to your `config.yml`:
 
@@ -35,7 +35,7 @@ hooks:
 ### 4. Run Profiling
 
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 Drift alerts will automatically be sent to your Slack channel! 🎉
@@ -103,7 +103,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_DEV}
       channel: "#dev-alerts"
-      username: "ProfileMesh [DEV]"
+      username: "Baselinr [DEV]"
 ```
 
 ## Need More Details?

@@ -17,8 +17,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from profilemesh.config.schema import ExecutionConfig, TablePattern
-from profilemesh.utils.worker_pool import WorkerPool, profile_table_task
+from baselinr.config.schema import ExecutionConfig, TablePattern
+from baselinr.utils.worker_pool import WorkerPool, profile_table_task
 
 
 class TestExecutionConfig:
@@ -224,9 +224,9 @@ class TestBackwardCompatibility:
 
     def test_default_execution_config_no_worker_pool(self):
         """Default config (max_workers=1) should not create worker pool."""
-        from profilemesh.config.schema import ConnectionConfig, ProfileMeshConfig, StorageConfig
+        from baselinr.config.schema import BaselinrConfig, ConnectionConfig, StorageConfig
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             source=ConnectionConfig(type="sqlite", database="test.db"),
             storage=StorageConfig(connection=ConnectionConfig(type="sqlite", database="test.db")),
         )
@@ -234,24 +234,24 @@ class TestBackwardCompatibility:
         # Execution config should default to sequential
         assert config.execution.max_workers == 1
 
-    @patch("profilemesh.connectors.factory.create_connector")
+    @patch("baselinr.connectors.factory.create_connector")
     def test_sequential_execution_no_worker_pool(self, mock_create_conn):
         """Sequential execution should not use worker pool."""
-        from profilemesh.config.schema import (
+        from baselinr.config.schema import (
+            BaselinrConfig,
             ConnectionConfig,
-            ProfileMeshConfig,
             ProfilingConfig,
             StorageConfig,
             TablePattern,
         )
-        from profilemesh.profiling.core import ProfileEngine
+        from baselinr.profiling.core import ProfileEngine
 
         # Setup mock connector
         mock_connector = Mock()
         mock_connector.engine = Mock()
         mock_create_conn.return_value = mock_connector
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
             storage=StorageConfig(
                 connection=ConnectionConfig(type="postgres", database="test", host="localhost")
@@ -266,25 +266,25 @@ class TestBackwardCompatibility:
         # Should NOT have worker pool
         assert engine.worker_pool is None
 
-    @patch("profilemesh.connectors.factory.create_connector")
+    @patch("baselinr.connectors.factory.create_connector")
     def test_parallel_execution_creates_worker_pool(self, mock_create_conn):
         """Parallel execution (max_workers > 1) should create worker pool."""
-        from profilemesh.config.schema import (
+        from baselinr.config.schema import (
+            BaselinrConfig,
             ConnectionConfig,
             ExecutionConfig,
-            ProfileMeshConfig,
             ProfilingConfig,
             StorageConfig,
             TablePattern,
         )
-        from profilemesh.profiling.core import ProfileEngine
+        from baselinr.profiling.core import ProfileEngine
 
         # Setup mock connector
         mock_connector = Mock()
         mock_connector.engine = Mock()
         mock_create_conn.return_value = mock_connector
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
             storage=StorageConfig(
                 connection=ConnectionConfig(type="postgres", database="test", host="localhost")
@@ -305,24 +305,24 @@ class TestBackwardCompatibility:
 class TestWarehouseSpecificLimits:
     """Test warehouse-specific worker limits."""
 
-    @patch("profilemesh.connectors.factory.create_connector")
+    @patch("baselinr.connectors.factory.create_connector")
     def test_sqlite_forces_sequential(self, mock_create_conn):
         """SQLite should force sequential execution even if parallel configured."""
-        from profilemesh.config.schema import (
+        from baselinr.config.schema import (
+            BaselinrConfig,
             ConnectionConfig,
             ExecutionConfig,
-            ProfileMeshConfig,
             ProfilingConfig,
             StorageConfig,
         )
-        from profilemesh.profiling.core import ProfileEngine
+        from baselinr.profiling.core import ProfileEngine
 
         # Setup mock connector
         mock_connector = Mock()
         mock_connector.engine = Mock()
         mock_create_conn.return_value = mock_connector
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             source=ConnectionConfig(type="sqlite", database="test.db"),
             storage=StorageConfig(connection=ConnectionConfig(type="sqlite", database="test.db")),
             execution=ExecutionConfig(max_workers=8),  # Request parallelism
@@ -333,24 +333,24 @@ class TestWarehouseSpecificLimits:
         # Should NOT create worker pool for SQLite
         assert engine.worker_pool is None
 
-    @patch("profilemesh.connectors.factory.create_connector")
+    @patch("baselinr.connectors.factory.create_connector")
     def test_warehouse_limit_overrides_max_workers(self, mock_create_conn):
         """Warehouse-specific limit should override max_workers."""
-        from profilemesh.config.schema import (
+        from baselinr.config.schema import (
+            BaselinrConfig,
             ConnectionConfig,
             ExecutionConfig,
-            ProfileMeshConfig,
             ProfilingConfig,
             StorageConfig,
         )
-        from profilemesh.profiling.core import ProfileEngine
+        from baselinr.profiling.core import ProfileEngine
 
         # Setup mock connector
         mock_connector = Mock()
         mock_connector.engine = Mock()
         mock_create_conn.return_value = mock_connector
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             source=ConnectionConfig(type="postgres", database="test", host="localhost"),
             storage=StorageConfig(
                 connection=ConnectionConfig(type="postgres", database="test", host="localhost")
@@ -372,8 +372,8 @@ class TestConnectionPooling:
 
     def test_sequential_execution_default_pool(self):
         """Sequential execution should use default pool size."""
-        from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
-        from profilemesh.connectors.base import BaseConnector
+        from baselinr.config.schema import ConnectionConfig, ExecutionConfig
+        from baselinr.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):
@@ -394,8 +394,8 @@ class TestConnectionPooling:
 
     def test_parallel_execution_larger_pool(self):
         """Parallel execution should use larger pool size."""
-        from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
-        from profilemesh.connectors.base import BaseConnector
+        from baselinr.config.schema import ConnectionConfig, ExecutionConfig
+        from baselinr.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):
@@ -417,8 +417,8 @@ class TestConnectionPooling:
 
     def test_pool_size_capped_at_20(self):
         """Pool size should be capped at 20."""
-        from profilemesh.config.schema import ConnectionConfig, ExecutionConfig
-        from profilemesh.connectors.base import BaseConnector
+        from baselinr.config.schema import ConnectionConfig, ExecutionConfig
+        from baselinr.connectors.base import BaseConnector
 
         class TestConnector(BaseConnector):
             def _create_engine(self):
@@ -427,7 +427,7 @@ class TestConnectionPooling:
             def get_connection_string(self):
                 return "test://"
 
-        with patch("profilemesh.config.schema.os.cpu_count", return_value=32):
+        with patch("baselinr.config.schema.os.cpu_count", return_value=32):
             connector = TestConnector(
                 ConnectionConfig(type="postgres", database="test"),
                 execution_config=ExecutionConfig(max_workers=30),

@@ -1,6 +1,6 @@
 # Retry and Recovery System
 
-ProfileMesh includes a robust retry and recovery system that automatically handles transient warehouse failures, protecting your profiling operations from temporary network issues, connection timeouts, and rate limits.
+Baselinr includes a robust retry and recovery system that automatically handles transient warehouse failures, protecting your profiling operations from temporary network issues, connection timeouts, and rate limits.
 
 ## Overview
 
@@ -70,7 +70,7 @@ retry:
 
 ## Error Classification
 
-ProfileMesh automatically classifies database errors as **transient** (retryable) or **permanent** (not retryable).
+Baselinr automatically classifies database errors as **transient** (retryable) or **permanent** (not retryable).
 
 ### Transient Errors (Retried)
 
@@ -235,12 +235,12 @@ Retry events are published to the event bus for custom handling:
 
 Monitor retry behavior with Prometheus metrics:
 
-**Metric: `profilemesh_warehouse_transient_errors_total`**
+**Metric: `baselinr_warehouse_transient_errors_total`**
 - Type: Counter
 - Description: Total number of transient warehouse errors encountered
 - Use: Track frequency of retryable errors
 
-**Metric: `profilemesh_errors_total{error_type="TimeoutError"}`**
+**Metric: `baselinr_errors_total{error_type="TimeoutError"}`**
 - Type: Counter
 - Description: Total errors by type
 - Use: Identify most common error types
@@ -249,14 +249,14 @@ Monitor retry behavior with Prometheus metrics:
 
 ```promql
 # Rate of transient errors
-rate(profilemesh_warehouse_transient_errors_total[5m])
+rate(baselinr_warehouse_transient_errors_total[5m])
 
 # Most common error types
-topk(5, sum by (error_type) (profilemesh_errors_total))
+topk(5, sum by (error_type) (baselinr_errors_total))
 
 # Success rate after retries
-(profilemesh_profile_runs_total{status="completed"} /
- profilemesh_profile_runs_total) * 100
+(baselinr_profile_runs_total{status="completed"} /
+ baselinr_profile_runs_total) * 100
 ```
 
 ## Best Practices
@@ -306,7 +306,7 @@ Create Grafana alerts for excessive retries:
 
 ```promql
 # Alert if retry rate exceeds 10/minute
-rate(profilemesh_warehouse_transient_errors_total[1m]) > 10
+rate(baselinr_warehouse_transient_errors_total[1m]) > 10
 ```
 
 ### 5. **Handle Retry Events**
@@ -314,7 +314,7 @@ rate(profilemesh_warehouse_transient_errors_total[1m]) > 10
 Create a custom hook to alert on retry exhaustion:
 
 ```python
-from profilemesh.events import BaseEvent, Hook
+from baselinr.events import BaseEvent, Hook
 
 class RetryAlertHook(Hook):
     def can_handle(self, event: BaseEvent) -> bool:
@@ -333,7 +333,7 @@ class RetryAlertHook(Hook):
 ### Using the Decorator
 
 ```python
-from profilemesh.utils.retry import retry_with_backoff, TimeoutError
+from baselinr.utils.retry import retry_with_backoff, TimeoutError
 
 @retry_with_backoff(
     retries=3,
@@ -352,7 +352,7 @@ result = query_warehouse("SELECT * FROM table")
 ### Using the Wrapper Function
 
 ```python
-from profilemesh.utils.retry import retryable_call, TimeoutError
+from baselinr.utils.retry import retryable_call, TimeoutError
 
 def query_warehouse(sql: str):
     return warehouse.execute(sql)
@@ -370,7 +370,7 @@ result = retryable_call(
 ### Custom Error Classification
 
 ```python
-from profilemesh.utils.retry import classify_database_error
+from baselinr.utils.retry import classify_database_error
 
 try:
     warehouse.execute(sql)

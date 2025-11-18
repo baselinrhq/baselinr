@@ -1,7 +1,7 @@
 """
-Database client for ProfileMesh Dashboard.
+Database client for Baselinr Dashboard.
 
-Connects to ProfileMesh storage database and retrieves profiling results.
+Connects to Baselinr storage database and retrieves profiling results.
 """
 
 from sqlalchemy import create_engine, text
@@ -27,14 +27,14 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseClient:
-    """Client for accessing ProfileMesh storage database."""
+    """Client for accessing Baselinr storage database."""
     
     def __init__(self):
         """Initialize database connection."""
         # Get connection string from environment or use default
         self.connection_string = os.getenv(
-            "PROFILEMESH_DB_URL",
-            "postgresql://profilemesh:profilemesh@localhost:5433/profilemesh"
+            "BASELINR_DB_URL",
+            "postgresql://baselinr:baselinr@localhost:5433/baselinr"
         )
         self.engine: Optional[Engine] = None
         self._connect()
@@ -70,8 +70,8 @@ class DatabaseClient:
     ) -> List[RunHistoryResponse]:
         """Get profiling run history with filters."""
         
-        # Check if profilemesh_events table exists
-        events_table_exists = self._table_exists('profilemesh_events')
+        # Check if baselinr_events table exists
+        events_table_exists = self._table_exists('baselinr_events')
         
         if events_table_exists:
             query = """
@@ -85,10 +85,10 @@ class DatabaseClient:
                     r.row_count,
                     r.column_count,
                     CASE WHEN d.drift_count > 0 THEN true ELSE false END as has_drift
-                FROM profilemesh_runs r
+                FROM baselinr_runs r
                 LEFT JOIN (
                     SELECT run_id, COUNT(*) as drift_count
-                    FROM profilemesh_events
+                    FROM baselinr_events
                     WHERE event_type = 'DataDriftDetected'
                     GROUP BY run_id
                 ) d ON r.run_id = d.run_id
@@ -107,7 +107,7 @@ class DatabaseClient:
                     r.row_count,
                     r.column_count,
                     false as has_drift
-                FROM profilemesh_runs r
+                FROM baselinr_runs r
                 WHERE 1=1
             """
         
@@ -161,7 +161,7 @@ class DatabaseClient:
             SELECT 
                 run_id, dataset_name, schema_name, profiled_at,
                 environment, row_count, column_count
-            FROM profilemesh_runs
+            FROM baselinr_runs
             WHERE run_id = :run_id
         """
         
@@ -169,7 +169,7 @@ class DatabaseClient:
         metrics_query = """
             SELECT 
                 column_name, column_type, metric_name, metric_value
-            FROM profilemesh_results
+            FROM baselinr_results
             WHERE run_id = :run_id
             ORDER BY column_name
         """
@@ -268,8 +268,8 @@ class DatabaseClient:
         """Get drift detection alerts."""
         
         # Check if events table exists
-        if not self._table_exists('profilemesh_events'):
-            logger.warning("profilemesh_events table does not exist, returning empty drift alerts")
+        if not self._table_exists('baselinr_events'):
+            logger.warning("baselinr_events table does not exist, returning empty drift alerts")
             return []
         
         query = """
@@ -277,7 +277,7 @@ class DatabaseClient:
                 event_id, e.run_id, table_name, column_name, metric_name,
                 baseline_value, current_value, change_percent, drift_severity,
                 timestamp, 'postgres' as warehouse_type
-            FROM profilemesh_events e
+            FROM baselinr_events e
             WHERE event_type = 'DataDriftDetected'
         """
         
@@ -331,7 +331,7 @@ class DatabaseClient:
         # Get latest run for this table
         latest_run_query = """
             SELECT run_id, profiled_at, row_count, column_count
-            FROM profilemesh_runs
+            FROM baselinr_runs
             WHERE dataset_name = :table
         """
         
@@ -343,7 +343,7 @@ class DatabaseClient:
         # Get historical trends
         trend_query = """
             SELECT profiled_at, row_count
-            FROM profilemesh_runs
+            FROM baselinr_runs
             WHERE dataset_name = :table
             ORDER BY profiled_at DESC
             LIMIT 30
@@ -371,11 +371,11 @@ class DatabaseClient:
             
             # Count drift events (only if events table exists)
             drift_count = 0
-            if self._table_exists('profilemesh_events'):
+            if self._table_exists('baselinr_events'):
                 drift_query = """
                     SELECT COUNT(*)
-                    FROM profilemesh_events e
-                    JOIN profilemesh_runs r ON e.run_id = r.run_id
+                    FROM baselinr_events e
+                    JOIN baselinr_runs r ON e.run_id = r.run_id
                     WHERE r.dataset_name = :table
                     AND e.event_type = 'DataDriftDetected'
                 """
@@ -417,7 +417,7 @@ class DatabaseClient:
                 COUNT(DISTINCT run_id) as total_runs,
                 COUNT(DISTINCT dataset_name) as total_tables,
                 AVG(row_count) as avg_row_count
-            FROM profilemesh_runs
+            FROM baselinr_runs
             WHERE 1=1
         """
         
@@ -429,7 +429,7 @@ class DatabaseClient:
         # Drift count
         drift_query = """
             SELECT COUNT(*)
-            FROM profilemesh_events
+            FROM baselinr_events
             WHERE event_type = 'DataDriftDetected'
         """
         
@@ -439,7 +439,7 @@ class DatabaseClient:
         with self.engine.connect() as conn:
             stats = conn.execute(text(stats_query), params).fetchone()
             
-            # Handle case where profilemesh_events table doesn't exist yet
+            # Handle case where baselinr_events table doesn't exist yet
             try:
                 drift_result = conn.execute(text(drift_query), params).fetchone()
                 drift_count = drift_result[0] if drift_result else 0

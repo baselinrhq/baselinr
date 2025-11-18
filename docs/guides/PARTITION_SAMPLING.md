@@ -1,10 +1,10 @@
 # Partition-Aware Profiling and Sampling
 
-ProfileMesh now supports advanced partition-aware profiling and flexible sampling strategies to efficiently profile large datasets.
+Baselinr now supports advanced partition-aware profiling and flexible sampling strategies to efficiently profile large datasets.
 
 ## 🎯 Overview
 
-Instead of the simple `sample_ratio` field, ProfileMesh now provides:
+Instead of the simple `sample_ratio` field, Baselinr now provides:
 1. **Partition-aware profiling** - Profile specific partitions only
 2. **Adaptive sampling** - Multiple sampling methods with configurable parameters
 3. **Combined strategies** - Use both partition filtering and sampling together
@@ -123,7 +123,7 @@ This example:
 
 ### Automatic Partition Key Inference
 
-If you enable `metadata_fallback`, ProfileMesh will try to infer the partition key:
+If you enable `metadata_fallback`, Baselinr will try to infer the partition key:
 
 ```yaml
 partition:
@@ -139,7 +139,7 @@ Common patterns it looks for:
 
 ### Warehouse-Specific SQL
 
-ProfileMesh generates warehouse-appropriate SQL:
+Baselinr generates warehouse-appropriate SQL:
 
 **PostgreSQL:**
 ```sql
@@ -229,7 +229,7 @@ tables:
 See how partitioning and sampling will be applied:
 
 ```bash
-profilemesh plan --config config.yml
+baselinr plan --config config.yml
 ```
 
 Output will show:
@@ -243,7 +243,7 @@ Output will show:
 ### Run Profiling
 
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 Results metadata will include:
@@ -419,5 +419,5 @@ Planned features:
 - [README.md](README.md) - Main documentation
 - [examples/config_advanced.yml](examples/config_advanced.yml) - All features demonstrated
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Architecture details
-- [profilemesh/profiling/query_builder.py](profilemesh/profiling/query_builder.py) - Implementation
+- [baselinr/profiling/query_builder.py](baselinr/profiling/query_builder.py) - Implementation
 

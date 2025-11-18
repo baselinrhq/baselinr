@@ -1,11 +1,11 @@
-# ProfileMesh Project Overview
+# Baselinr Project Overview
 
 ## 📁 Complete Project Structure
 
 ```
 profile_mesh/
 │
-├── profilemesh/                 # Main Python package
+├── baselinr/                 # Main Python package
 │   ├── __init__.py
 │   ├── cli.py                  # Command-line interface
 │   │
@@ -111,7 +111,7 @@ All Phase 1 requirements from the specification have been implemented:
 - ✅ Automatic table creation
 
 #### 4. Execution Layer ✓
-- ✅ CLI command: `profilemesh profile --config config.yml`
+- ✅ CLI command: `baselinr profile --config config.yml`
 - ✅ Dagster integration:
   - Dynamic asset factory
   - Configurable jobs
@@ -151,10 +151,10 @@ All Phase 1 requirements from the specification have been implemented:
 ### CLI Commands
 ```bash
 # Profile tables
-profilemesh profile --config config.yml [--output results.json] [--dry-run]
+baselinr profile --config config.yml [--output results.json] [--dry-run]
 
 # Detect drift
-profilemesh drift --config config.yml --dataset <name> \
+baselinr drift --config config.yml --dataset <name> \
   [--baseline <run-id>] [--current <run-id>] \
   [--output report.json] [--fail-on-drift]
 ```
@@ -162,7 +162,7 @@ profilemesh drift --config config.yml --dataset <name> \
 ### Makefile Commands
 ```bash
 make help           # Show all commands
-make install        # Install ProfileMesh
+make install        # Install Baselinr
 make docker-up      # Start Docker environment
 make docker-down    # Stop Docker environment
 make quickstart     # Run quickstart example
@@ -173,10 +173,10 @@ make lint           # Run linters
 
 ### Python API
 ```python
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.profiling.core import ProfileEngine
-from profilemesh.storage.writer import ResultWriter
-from profilemesh.drift.detector import DriftDetector
+from baselinr.config.loader import ConfigLoader
+from baselinr.profiling.core import ProfileEngine
+from baselinr.storage.writer import ResultWriter
+from baselinr.drift.detector import DriftDetector
 
 # Load config
 config = ConfigLoader.load_from_file("config.yml")
@@ -212,14 +212,14 @@ cd profile_mesh
 make install-all
 make docker-up
 # Wait 30 seconds
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 ```
 
 ### 3. Your Database
 - Copy `examples/config.yml`
 - Update connection details
 - Add your tables
-- Run: `profilemesh profile --config your_config.yml`
+- Run: `baselinr profile --config your_config.yml`
 
 ## 📚 Documentation Files
 
@@ -240,7 +240,7 @@ make test
 pytest tests/test_config.py -v
 
 # Run with coverage
-pytest --cov=profilemesh tests/
+pytest --cov=baselinr tests/
 ```
 
 ## 🐳 Docker Environment
@@ -248,32 +248,32 @@ pytest --cov=profilemesh tests/
 The Docker environment includes:
 
 - **PostgreSQL** (port 5432)
-  - Database: `profilemesh`
-  - User: `profilemesh`
-  - Password: `profilemesh`
+  - Database: `baselinr`
+  - User: `baselinr`
+  - Password: `baselinr`
   - Sample tables pre-loaded
 
 - **Dagster UI** (port 3000)
   - http://localhost:3000
-  - Pre-configured with ProfileMesh assets
+  - Pre-configured with Baselinr assets
   - Daily schedule for profiling
 
 ## 📦 Package Distribution
 
-ProfileMesh can be installed as:
+Baselinr can be installed as:
 
 ```bash
 # Basic installation
-pip install profilemesh
+pip install baselinr
 
 # With Snowflake support
-pip install profilemesh[snowflake]
+pip install baselinr[snowflake]
 
 # With Dagster orchestration
-pip install profilemesh[dagster]
+pip install baselinr[dagster]
 
 # Full installation
-pip install profilemesh[all]
+pip install baselinr[all]
 
 # Development mode
 pip install -e ".[dev,all]"
@@ -283,7 +283,7 @@ pip install -e ".[dev,all]"
 
 All criteria from the specification are met:
 
-✅ **CLI works**: `profilemesh profile --config config.yml` produces results  
+✅ **CLI works**: `baselinr profile --config config.yml` produces results  
 ✅ **Dagster integration**: Assets discoverable and runnable  
 ✅ **Storage**: Results written to structured tables  
 ✅ **Drift detection**: Can compare two profile runs  
@@ -314,5 +314,5 @@ Contributions welcome! See DEVELOPMENT.md for guidelines.
 
 ---
 
-**ProfileMesh v0.1.0** - MVP Complete ✅
+**Baselinr v0.1.0** - MVP Complete ✅
 

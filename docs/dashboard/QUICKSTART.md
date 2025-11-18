@@ -1,13 +1,13 @@
-# ProfileMesh Dashboard - Quick Start Guide
+# Baselinr Dashboard - Quick Start Guide
 
-Get the ProfileMesh Dashboard running in 5 minutes!
+Get the Baselinr Dashboard running in 5 minutes!
 
 ## Prerequisites Check
 
 ✅ Node.js 18+ installed (`node --version`)  
 ✅ Python 3.10+ installed (`python --version`)  
-✅ PostgreSQL running with ProfileMesh database  
-✅ ProfileMesh Phase 1 installed and configured
+✅ PostgreSQL running with Baselinr database  
+✅ Baselinr Phase 1 installed and configured
 
 ## Step-by-Step Setup
 
@@ -81,11 +81,11 @@ python sample_data_generator.py
 - Check PostgreSQL is running
 - Verify connection string:
   ```bash
-  export PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+  export BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
   ```
 - Test connection:
   ```bash
-  psql "postgresql://profilemesh:profilemesh@localhost:5433/profilemesh"
+  psql "postgresql://baselinr:baselinr@localhost:5433/baselinr"
   ```
 
 ## Configuration
@@ -94,7 +94,7 @@ python sample_data_generator.py
 
 Create `dashboard/backend/.env`:
 ```env
-PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
 API_HOST=0.0.0.0
 API_PORT=8000
 ```
@@ -108,9 +108,9 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Next Steps
 
-1. **Run actual profiling**: Use ProfileMesh CLI to profile your data
+1. **Run actual profiling**: Use Baselinr CLI to profile your data
    ```bash
-   profilemesh profile --config examples/config.yml
+   baselinr profile --config examples/config.yml
    ```
 
 2. **Explore features**:
@@ -143,7 +143,7 @@ npm start
 
 - Check the main [README.md](./README.md) for detailed docs
 - Review API documentation at http://localhost:8000/docs
-- Ensure ProfileMesh Phase 1 is properly configured
+- Ensure Baselinr Phase 1 is properly configured
 
 ---
 

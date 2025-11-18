@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example for Google BigQuery
+# Baselinr Configuration Example for Google BigQuery
 # This is a sample configuration for profiling BigQuery tables
 
 environment: development
@@ -21,11 +21,11 @@ storage:
     type: postgres  # Recommended: use PostgreSQL for storage
     host: localhost
     port: 5432
-    database: profilemesh_storage
-    username: profilemesh
-    password: profilemesh
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+    database: baselinr_storage
+    username: baselinr
+    password: baselinr
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration

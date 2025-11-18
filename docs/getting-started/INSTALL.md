@@ -1,8 +1,8 @@
-# ProfileMesh Installation Guide
+# Baselinr Installation Guide
 
 ## Prerequisites
 
-Before installing ProfileMesh, ensure you have:
+Before installing Baselinr, ensure you have:
 
 - **Python 3.10 or higher**
   ```bash
@@ -32,7 +32,7 @@ pip install -e .
 ```
 
 This installs:
-- Core ProfileMesh
+- Core Baselinr
 - PostgreSQL support
 - SQLite support
 - Configuration management
@@ -80,19 +80,19 @@ Includes:
 
 ## Verify Installation
 
-After installation, verify ProfileMesh is working:
+After installation, verify Baselinr is working:
 
 ```bash
 # Check CLI is available
-profilemesh --help
+baselinr --help
 
 # Check Python import
-python -c "from profilemesh import __version__; print(__version__)"
+python -c "from baselinr import __version__; print(__version__)"
 ```
 
 You should see:
 ```
-ProfileMesh - Data profiling and drift detection
+Baselinr - Data profiling and drift detection
 ...
 ```
 
@@ -111,7 +111,7 @@ Wait about 30 seconds for initialization, then verify:
 
 ```bash
 # Check PostgreSQL
-docker exec -it profilemesh_postgres psql -U profilemesh -d profilemesh -c "\dt"
+docker exec -it baselinr_postgres psql -U baselinr -d baselinr -c "\dt"
 
 # Check Dagster UI
 # Open http://localhost:3000 in your browser
@@ -140,12 +140,12 @@ source:
 ### 3. Run First Profile
 
 ```bash
-profilemesh profile --config my_config.yml
+baselinr profile --config my_config.yml
 ```
 
 ## Troubleshooting
 
-### "Command not found: profilemesh"
+### "Command not found: baselinr"
 
 The CLI wasn't installed correctly. Try:
 
@@ -156,10 +156,10 @@ pip install --force-reinstall -e .
 Or use the Python module directly:
 
 ```bash
-python -m profilemesh.cli profile --config config.yml
+python -m baselinr.cli profile --config config.yml
 ```
 
-### "ModuleNotFoundError: No module named 'profilemesh'"
+### "ModuleNotFoundError: No module named 'baselinr'"
 
 The package isn't in your Python path. Make sure you're in the `profile_mesh` directory and run:
 
@@ -196,7 +196,7 @@ Run with debug logging:
 python -c "
 import logging
 logging.basicConfig(level=logging.DEBUG)
-from profilemesh.config.loader import ConfigLoader
+from baselinr.config.loader import ConfigLoader
 ConfigLoader.load_from_file('my_config.yml')
 "
 ```
@@ -225,16 +225,16 @@ pip install --user -e .
 
 ## Environment Variables
 
-ProfileMesh supports environment variable overrides:
+Baselinr supports environment variable overrides:
 
 ```bash
 # Set environment-specific values
-export PROFILEMESH_SOURCE__HOST=prod-server.example.com
-export PROFILEMESH_SOURCE__PASSWORD=secret_password
-export PROFILEMESH_ENVIRONMENT=production
+export BASELINR_SOURCE__HOST=prod-server.example.com
+export BASELINR_SOURCE__PASSWORD=secret_password
+export BASELINR_ENVIRONMENT=production
 
 # Run with overrides
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 ## Upgrading
@@ -249,10 +249,10 @@ pip install --upgrade -e ".[all]"
 
 ## Uninstalling
 
-To remove ProfileMesh:
+To remove Baselinr:
 
 ```bash
-pip uninstall profilemesh
+pip uninstall baselinr
 
 # Also remove Docker environment if you set it up
 cd docker
@@ -293,7 +293,7 @@ If you encounter issues:
 
 ## Platform Support
 
-ProfileMesh is tested on:
+Baselinr is tested on:
 - ✅ Linux (Ubuntu 20.04+)
 - ✅ macOS (11+)
 - ✅ Windows 10/11 (with WSL2 recommended for Docker)

@@ -1,6 +1,6 @@
 # Parallelism and Batching Guide
 
-This guide explains how to use ProfileMesh's optional parallelism and batching features to speed up profiling operations.
+This guide explains how to use Baselinr's optional parallelism and batching features to speed up profiling operations.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ This guide explains how to use ProfileMesh's optional parallelism and batching f
 
 ## Overview
 
-ProfileMesh supports **optional** parallel execution of profiling tasks. This feature is:
+Baselinr supports **optional** parallel execution of profiling tasks. This feature is:
 
 - **Opt-in**: Defaults to sequential execution (max_workers=1)
 - **CLI-focused**: Primary benefit is for CLI users profiling many tables
@@ -102,7 +102,7 @@ execution:
 
 ### Sequential Execution (Default)
 
-When `max_workers=1` (default), ProfileMesh profiles tables one at a time:
+When `max_workers=1` (default), Baselinr profiles tables one at a time:
 
 ```
 Table 1 → Table 2 → Table 3 → ... → Table N
@@ -116,7 +116,7 @@ Table 1 → Table 2 → Table 3 → ... → Table N
 
 ### Parallel Execution
 
-When `max_workers > 1`, ProfileMesh uses a thread pool to profile multiple tables concurrently:
+When `max_workers > 1`, Baselinr uses a thread pool to profile multiple tables concurrently:
 
 ```
 Worker 1: Table 1 → Table 5 → Table 9
@@ -133,7 +133,7 @@ Worker 4: Table 4 → Table 8 → Table 12
 
 ### Connection Pool Sizing
 
-ProfileMesh automatically adjusts the database connection pool based on `max_workers`:
+Baselinr automatically adjusts the database connection pool based on `max_workers`:
 
 - **Sequential** (max_workers=1): pool_size=5, max_overflow=10
 - **Parallel** (max_workers=8): pool_size=10 (8+2), max_overflow=8
@@ -212,7 +212,7 @@ execution:
 
 - **Recommended max_workers**: 1 (forced)
 - **Notes**: Single writer limitation
-- **Behavior**: ProfileMesh automatically forces sequential execution for SQLite
+- **Behavior**: Baselinr automatically forces sequential execution for SQLite
 
 ```yaml
 execution:
@@ -369,7 +369,7 @@ INFO: Parallel profiling completed: 49 succeeded, 1 failed
 
 ### Issue: Metrics show no active workers
 
-**Symptoms**: `profilemesh_active_workers` metric is 0
+**Symptoms**: `baselinr_active_workers` metric is 0
 
 **Possible causes**:
 1. Metrics not enabled
@@ -420,7 +420,7 @@ profiling:
 
 **Run**:
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 **Expected**: ~7x faster than sequential
@@ -429,8 +429,8 @@ profilemesh profile --config config.yml
 
 ```python
 # examples/dagster_repository.py
-from profilemesh.profiling.core import ProfileEngine
-from profilemesh.config.loader import load_config
+from baselinr.profiling.core import ProfileEngine
+from baselinr.config.loader import load_config
 
 @asset
 def profile_dimension_tables():

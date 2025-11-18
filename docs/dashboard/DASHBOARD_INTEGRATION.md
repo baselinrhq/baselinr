@@ -1,17 +1,17 @@
-# ProfileMesh Dashboard Integration Guide
+# Baselinr Dashboard Integration Guide
 
-This document explains how the Phase 2 Dashboard integrates with ProfileMesh Phase 1.
+This document explains how the Phase 2 Dashboard integrates with Baselinr Phase 1.
 
 ## Overview
 
-The ProfileMesh Dashboard is a web-based visualization layer that reads profiling data from the ProfileMesh storage database and presents it through an interactive UI.
+The Baselinr Dashboard is a web-based visualization layer that reads profiling data from the Baselinr storage database and presents it through an interactive UI.
 
 ```
-ProfileMesh Phase 1              ProfileMesh Phase 2
+Baselinr Phase 1              Baselinr Phase 2
 (Data Collection)                (Visualization)
 ─────────────────                ─────────────────
 
-ProfileMesh CLI                  Dashboard Backend (FastAPI)
+Baselinr CLI                  Dashboard Backend (FastAPI)
     ↓                                    ↓
 Profiling Engine    →  PostgreSQL  ←  Dashboard Frontend (Next.js)
     ↓                     Storage              ↓
@@ -24,15 +24,15 @@ Storage Writer                           User Browser
 Both Phase 1 and Phase 2 use the same PostgreSQL database:
 
 ```
-postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+postgresql://baselinr:baselinr@localhost:5433/baselinr
 ```
 
 ### Tables Used
 
 **Phase 1 writes to:**
-- `profilemesh_runs` - Run metadata
-- `profilemesh_results` - Column metrics
-- `profilemesh_events` - Drift events
+- `baselinr_runs` - Run metadata
+- `baselinr_results` - Column metrics
+- `baselinr_events` - Drift events
 
 **Phase 2 reads from:**
 - All the above tables ✅
@@ -42,7 +42,7 @@ postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
 ### 1. Profile Data (Phase 1)
 ```bash
 cd profile_mesh
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 ```
 
 This creates entries in the database that the dashboard will visualize.
@@ -69,15 +69,15 @@ storage:
   connection:
     host: localhost
     port: 5433
-    database: profilemesh
-    user: profilemesh
-    password: profilemesh
+    database: baselinr
+    user: baselinr
+    password: baselinr
 ```
 
 ### Phase 2 Dashboard Config
 In `dashboard/backend/.env`:
 ```env
-PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
 ```
 
 **Important**: Both must point to the same database!
@@ -104,7 +104,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
+      - BASELINR_DB_URL=postgresql://baselinr:baselinr@postgres:5432/baselinr
     depends_on:
       - postgres
   
@@ -123,8 +123,8 @@ services:
 The dashboard currently polls the database for data. Future enhancement:
 
 ```python
-# In ProfileMesh Phase 1
-from profilemesh.events import EventBus
+# In Baselinr Phase 1
+from baselinr.events import EventBus
 
 event_bus = EventBus()
 # Emit events that dashboard can listen to
@@ -138,7 +138,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 ## Metrics Integration (Phase 1)
 
-ProfileMesh Phase 1 already has Prometheus metrics. The dashboard complements this:
+Baselinr Phase 1 already has Prometheus metrics. The dashboard complements this:
 
 - **Prometheus**: Low-level profiling metrics (rows profiled, duration, etc.)
 - **Dashboard**: High-level business metrics (drift events, table health, trends)
@@ -151,7 +151,7 @@ Both can coexist and provide different views of the system.
 
 1. **Run profiling**:
    ```bash
-   profilemesh profile --config config.yml
+   baselinr profile --config config.yml
    ```
 
 2. **View in dashboard**:
@@ -173,7 +173,7 @@ Both can coexist and provide different views of the system.
 ### Local Development
 ```bash
 # Phase 1
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 
 # Phase 2
 cd dashboard
@@ -183,11 +183,11 @@ cd dashboard
 ### Staging
 ```bash
 # Phase 1
-export PROFILEMESH_STORAGE__HOST=staging-db.example.com
-profilemesh profile --config config.yml
+export BASELINR_STORAGE__HOST=staging-db.example.com
+baselinr profile --config config.yml
 
 # Phase 2
-export PROFILEMESH_DB_URL=postgresql://user:pass@staging-db.example.com/profilemesh
+export BASELINR_DB_URL=postgresql://user:pass@staging-db.example.com/baselinr
 python main.py
 ```
 
@@ -214,12 +214,12 @@ python main.py
 ### Dashboard shows no data
 **Problem**: Empty dashboard after fresh install  
 **Solutions**:
-1. Run ProfileMesh profiling first: `profilemesh profile --config config.yml`
+1. Run Baselinr profiling first: `baselinr profile --config config.yml`
 2. Or generate sample data: `python dashboard/backend/sample_data_generator.py`
 
 ### Database connection mismatch
 **Problem**: Phase 1 writes to one DB, Phase 2 reads from another  
-**Solution**: Verify both use same `PROFILEMESH_DB_URL`
+**Solution**: Verify both use same `BASELINR_DB_URL`
 
 ### Port conflicts
 **Problem**: Port 3000 already in use (Dagster also uses 3000)  
@@ -231,7 +231,7 @@ PORT=3001 npm run dev
 
 ## API Access from Phase 1
 
-You can programmatically query dashboard data from ProfileMesh:
+You can programmatically query dashboard data from Baselinr:
 
 ```python
 import requests
@@ -250,11 +250,11 @@ alerts = response.json()
 Complete monitoring setup:
 
 ```
-ProfileMesh Phase 1:
+Baselinr Phase 1:
 - Prometheus metrics (port 9753)
 - Structured JSON logs
 
-ProfileMesh Phase 2:
+Baselinr Phase 2:
 - Dashboard UI (port 3000)
 - Backend API (port 8000)
 
@@ -265,7 +265,7 @@ Docker Stack:
 
 ## Summary
 
-The dashboard seamlessly integrates with ProfileMesh Phase 1 by:
+The dashboard seamlessly integrates with Baselinr Phase 1 by:
 1. ✅ Reading from the same PostgreSQL database
 2. ✅ Using the same table schema
 3. ✅ Supporting all warehouse types
@@ -283,7 +283,7 @@ docker compose up -d postgres
 
 # 2. Run profiling (Phase 1)
 cd profile_mesh
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # 3. Start dashboard (Phase 2)
 cd dashboard/backend

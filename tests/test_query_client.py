@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import pytest
 from sqlalchemy import create_engine, text
 
-from profilemesh.query import MetadataQueryClient
+from baselinr.query import MetadataQueryClient
 
 
 @pytest.fixture
@@ -18,7 +18,7 @@ def temp_db_engine():
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_runs (
+            CREATE TABLE baselinr_runs (
                 run_id VARCHAR(36),
                 dataset_name VARCHAR(255),
                 schema_name VARCHAR(255),
@@ -36,7 +36,7 @@ def temp_db_engine():
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_results (
+            CREATE TABLE baselinr_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 run_id VARCHAR(36),
                 dataset_name VARCHAR(255),
@@ -54,7 +54,7 @@ def temp_db_engine():
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_events (
+            CREATE TABLE baselinr_events (
                 event_id VARCHAR(36) PRIMARY KEY,
                 event_type VARCHAR(100),
                 table_name VARCHAR(255),
@@ -136,7 +136,7 @@ def sample_runs(temp_db_engine):
             conn.execute(
                 text(
                     """
-                INSERT INTO profilemesh_runs 
+                INSERT INTO baselinr_runs 
                 (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                 VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
             """
@@ -174,7 +174,7 @@ def sample_results(temp_db_engine):
             conn.execute(
                 text(
                     """
-                INSERT INTO profilemesh_results
+                INSERT INTO baselinr_results
                 (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                 VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
             """
@@ -243,7 +243,7 @@ def sample_drift(temp_db_engine):
             conn.execute(
                 text(
                     """
-                INSERT INTO profilemesh_events
+                INSERT INTO baselinr_events
                 (event_id, event_type, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp)
                 VALUES (:event_id, :event_type, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp)
             """

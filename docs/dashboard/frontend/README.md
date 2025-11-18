@@ -1,6 +1,6 @@
-# ProfileMesh Dashboard Frontend
+# Baselinr Dashboard Frontend
 
-Next.js 14 frontend application for the ProfileMesh internal dashboard.
+Next.js 14 frontend application for the Baselinr internal dashboard.
 
 ## Features
 
@@ -178,7 +178,7 @@ const blob = new Blob([JSON.stringify(data, null, 2)])
 
 ### No Data Showing
 - Run sample data generator in backend
-- Or perform actual ProfileMesh profiling
+- Or perform actual Baselinr profiling
 
 ### Build Errors
 ```bash

@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example - SQLite
+# Baselinr Configuration Example - SQLite
 # This configuration uses SQLite for local development/testing
 
 environment: development
@@ -15,8 +15,8 @@ storage:
     type: sqlite
     database: example.db
     filepath: ./example.db
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration

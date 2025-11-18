@@ -1,10 +1,10 @@
--- Initialize PostgreSQL for ProfileMesh development
+-- Initialize PostgreSQL for Baselinr development
 
 -- Create dagster database for Dagster storage
 CREATE DATABASE dagster;
 
--- Switch to profilemesh database (created by POSTGRES_DB env var)
-\c profilemesh;
+-- Switch to baselinr database (created by POSTGRES_DB env var)
+\c baselinr;
 
 -- Create sample schema and tables for profiling
 
@@ -93,17 +93,17 @@ CREATE INDEX idx_orders_date ON orders(order_date);
 CREATE INDEX idx_products_category ON products(category);
 
 -- Grant permissions
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO profilemesh;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO profilemesh;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO baselinr;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO baselinr;
 
 -- ============================================================================
--- ProfileMesh Storage Schema
+-- Baselinr Storage Schema
 -- ============================================================================
--- Create ProfileMesh storage tables for profiling results and events
+-- Create Baselinr storage tables for profiling results and events
 -- Schema Version: 1
 
 -- Schema version tracking table
-CREATE TABLE IF NOT EXISTS profilemesh_schema_version (
+CREATE TABLE IF NOT EXISTS baselinr_schema_version (
     version INTEGER PRIMARY KEY,
     applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     description VARCHAR(500),
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS profilemesh_schema_version (
 
 -- Runs table - tracks profiling runs
 -- Note: Primary key is composite (run_id, dataset_name) to allow multiple tables per run
-CREATE TABLE IF NOT EXISTS profilemesh_runs (
+CREATE TABLE IF NOT EXISTS baselinr_runs (
     run_id VARCHAR(36) NOT NULL,
     dataset_name VARCHAR(255) NOT NULL,
     schema_name VARCHAR(255),
@@ -127,10 +127,10 @@ CREATE TABLE IF NOT EXISTS profilemesh_runs (
 
 -- Create index for runs table
 CREATE INDEX IF NOT EXISTS idx_runs_dataset_profiled 
-ON profilemesh_runs (dataset_name, profiled_at DESC);
+ON baselinr_runs (dataset_name, profiled_at DESC);
 
 -- Results table - stores individual column metrics
-CREATE TABLE IF NOT EXISTS profilemesh_results (
+CREATE TABLE IF NOT EXISTS baselinr_results (
     id SERIAL PRIMARY KEY,
     run_id VARCHAR(36) NOT NULL,
     dataset_name VARCHAR(255) NOT NULL,
@@ -140,22 +140,22 @@ CREATE TABLE IF NOT EXISTS profilemesh_results (
     metric_name VARCHAR(100) NOT NULL,
     metric_value TEXT,
     profiled_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (run_id, dataset_name) REFERENCES profilemesh_runs(run_id, dataset_name)
+    FOREIGN KEY (run_id, dataset_name) REFERENCES baselinr_runs(run_id, dataset_name)
 );
 
 -- Create indexes for results table
 CREATE INDEX IF NOT EXISTS idx_results_run_id 
-ON profilemesh_results (run_id);
+ON baselinr_results (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_results_dataset_column 
-ON profilemesh_results (dataset_name, column_name);
+ON baselinr_results (dataset_name, column_name);
 
 CREATE INDEX IF NOT EXISTS idx_results_metric 
-ON profilemesh_results (dataset_name, column_name, metric_name);
+ON baselinr_results (dataset_name, column_name, metric_name);
 
 -- Events table - stores alert events and drift notifications
 -- Used by SQL and Snowflake event hooks for historical tracking
-CREATE TABLE IF NOT EXISTS profilemesh_events (
+CREATE TABLE IF NOT EXISTS baselinr_events (
     event_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
     run_id VARCHAR(36),
@@ -173,21 +173,21 @@ CREATE TABLE IF NOT EXISTS profilemesh_events (
 
 -- Create indexes for events table
 CREATE INDEX IF NOT EXISTS idx_events_event_type 
-ON profilemesh_events (event_type);
+ON baselinr_events (event_type);
 
 CREATE INDEX IF NOT EXISTS idx_events_run_id 
-ON profilemesh_events (run_id);
+ON baselinr_events (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_events_table_name 
-ON profilemesh_events (table_name);
+ON baselinr_events (table_name);
 
 CREATE INDEX IF NOT EXISTS idx_events_timestamp 
-ON profilemesh_events (timestamp DESC);
+ON baselinr_events (timestamp DESC);
 
 CREATE INDEX IF NOT EXISTS idx_events_drift_severity 
-ON profilemesh_events (drift_severity);
+ON baselinr_events (drift_severity);
 
--- Grant permissions on ProfileMesh tables
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO profilemesh;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO profilemesh;
+-- Grant permissions on Baselinr tables
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO baselinr;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO baselinr;
 

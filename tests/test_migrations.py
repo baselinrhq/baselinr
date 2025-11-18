@@ -3,8 +3,8 @@
 import pytest
 from sqlalchemy import create_engine, text
 
-from profilemesh.storage.migrations import Migration, MigrationManager
-from profilemesh.storage.schema_version import CURRENT_SCHEMA_VERSION
+from baselinr.storage.migrations import Migration, MigrationManager
+from baselinr.storage.schema_version import CURRENT_SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def migration_manager(temp_db_engine):
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_schema_version (
+            CREATE TABLE baselinr_schema_version (
                 version INTEGER PRIMARY KEY,
                 applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 description VARCHAR(500),
@@ -70,7 +70,7 @@ def test_get_current_version_with_data(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (1, 'Initial version')
         """
             )
@@ -97,7 +97,7 @@ def test_migrate_to_same_version(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (1, 'Current version')
         """
             )
@@ -119,7 +119,7 @@ def test_migrate_downgrade_not_supported(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (2, 'Current version')
         """
             )
@@ -167,7 +167,7 @@ def test_migrate_apply_sql(migration_manager, temp_db_engine):
         assert "name" in columns
 
         # Verify version recorded
-        result = conn.execute(text("SELECT version, description FROM profilemesh_schema_version"))
+        result = conn.execute(text("SELECT version, description FROM baselinr_schema_version"))
         row = result.fetchone()
         assert row[0] == 1
         assert row[1] == "Add column"
@@ -238,7 +238,7 @@ def test_validate_schema_version_mismatch(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (0, 'Old version')
         """
             )
@@ -258,7 +258,7 @@ def test_validate_schema_missing_tables(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (1, 'Current')
         """
             )
@@ -268,7 +268,7 @@ def test_validate_schema_missing_tables(migration_manager, temp_db_engine):
     results = migration_manager.validate_schema()
 
     assert results["valid"] is False
-    assert any("profilemesh_runs" in err for err in results["errors"])
+    assert any("baselinr_runs" in err for err in results["errors"])
 
 
 def test_validate_schema_valid(migration_manager, temp_db_engine):
@@ -278,7 +278,7 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            INSERT INTO profilemesh_schema_version (version, description)
+            INSERT INTO baselinr_schema_version (version, description)
             VALUES (:version, 'Current')
         """
             ),
@@ -288,7 +288,7 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_runs (
+            CREATE TABLE baselinr_runs (
                 run_id VARCHAR(36) PRIMARY KEY,
                 dataset_name VARCHAR(255)
             )
@@ -299,7 +299,7 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_results (
+            CREATE TABLE baselinr_results (
                 id INTEGER PRIMARY KEY
             )
         """
@@ -309,7 +309,7 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_events (
+            CREATE TABLE baselinr_events (
                 event_id VARCHAR(36) PRIMARY KEY
             )
         """
@@ -319,7 +319,7 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
         conn.execute(
             text(
                 """
-            CREATE TABLE profilemesh_table_state (
+            CREATE TABLE baselinr_table_state (
                 table_name VARCHAR(255) PRIMARY KEY
             )
         """
@@ -377,7 +377,7 @@ def test_multiple_migrations_sequence(migration_manager, temp_db_engine):
         result = conn.execute(
             text(
                 """
-            SELECT COUNT(*) FROM profilemesh_schema_version
+            SELECT COUNT(*) FROM baselinr_schema_version
         """
             )
         )

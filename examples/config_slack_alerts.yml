@@ -1,4 +1,4 @@
-# ProfileMesh Configuration with Slack Alerts for Drift Detection
+# Baselinr Configuration with Slack Alerts for Drift Detection
 #
 # This example demonstrates how to configure Slack alerts when drift
 # is detected during profiling runs.
@@ -17,7 +17,7 @@ source:
   host: localhost
   port: 5432
   database: analytics
-  username: profilemesh_user
+  username: baselinr_user
   password: ${DB_PASSWORD}  # Use environment variable for security
 
 # Storage for profiling results
@@ -26,11 +26,11 @@ storage:
     type: postgres
     host: localhost
     port: 5432
-    database: profilemesh
-    username: profilemesh_user
+    database: baselinr
+    username: baselinr_user
     password: ${DB_PASSWORD}
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Tables to profile
@@ -60,7 +60,7 @@ hooks:
       enabled: true
       webhook_url: ${SLACK_WEBHOOK_URL}  # Required: Your Slack webhook URL
       channel: "#data-alerts"             # Optional: Override default channel
-      username: "ProfileMesh Bot"         # Optional: Bot display name
+      username: "Baselinr Bot"         # Optional: Bot display name
       min_severity: medium                # Only alert on medium+ severity drift
       alert_on_drift: true                # Send alerts for drift events
       alert_on_schema_change: true        # Send alerts for schema changes
@@ -79,10 +79,10 @@ hooks:
         type: postgres
         host: localhost
         port: 5432
-        database: profilemesh
-        username: profilemesh_user
+        database: baselinr
+        username: baselinr_user
         password: ${DB_PASSWORD}
-      table_name: profilemesh_events
+      table_name: baselinr_events
 
 # Monitoring (optional)
 monitoring:

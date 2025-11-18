@@ -1,12 +1,12 @@
-# 🎉 ProfileMesh Dashboard - Setup Complete!
+# 🎉 Baselinr Dashboard - Setup Complete!
 
-The ProfileMesh Phase 2 Internal Dashboard MVP has been successfully created!
+The Baselinr Phase 2 Internal Dashboard MVP has been successfully created!
 
 ## ✅ What's Been Built
 
 ### Backend (FastAPI)
 - ✅ RESTful API with 10+ endpoints
-- ✅ Database client connecting to ProfileMesh storage
+- ✅ Database client connecting to Baselinr storage
 - ✅ Pydantic models for type safety
 - ✅ CORS configuration for frontend
 - ✅ Sample data generator
@@ -121,7 +121,7 @@ npm run dev
 ### Backend (.env)
 Create `dashboard/backend/.env`:
 ```env
-PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
 API_HOST=0.0.0.0
 API_PORT=8000
 CORS_ORIGINS=http://localhost:3000
@@ -184,17 +184,17 @@ colors: {
 2. Add to model in `backend/models.py`
 3. Display in frontend component
 
-## 🔍 Integration with ProfileMesh Phase 1
+## 🔍 Integration with Baselinr Phase 1
 
-The dashboard automatically reads from ProfileMesh storage:
-- **profilemesh_runs**: Run metadata
-- **profilemesh_results**: Column metrics
-- **profilemesh_events**: Drift events
+The dashboard automatically reads from Baselinr storage:
+- **baselinr_runs**: Run metadata
+- **baselinr_results**: Column metrics
+- **baselinr_events**: Drift events
 
 To populate with real data:
 ```bash
-# From your ProfileMesh Phase 1 installation
-profilemesh profile --config examples/config.yml
+# From your Baselinr Phase 1 installation
+baselinr profile --config examples/config.yml
 ```
 
 ## 📈 Dashboard Pages
@@ -240,12 +240,12 @@ profilemesh profile --config examples/config.yml
 
 ### "No data showing"
 - Run sample data generator: `python sample_data_generator.py`
-- Or run ProfileMesh profiling: `profilemesh profile --config config.yml`
+- Or run Baselinr profiling: `baselinr profile --config config.yml`
 
 ### "Database connection error"
 - Check PostgreSQL is running
-- Verify `PROFILEMESH_DB_URL` in `.env`
-- Test connection: `psql "postgresql://profilemesh:profilemesh@localhost:5433/profilemesh"`
+- Verify `BASELINR_DB_URL` in `.env`
+- Test connection: `psql "postgresql://baselinr:baselinr@localhost:5433/baselinr"`
 
 ### Frontend build errors
 ```bash
@@ -291,7 +291,7 @@ docker-compose up
 3. **Generate sample data** if database is empty
 4. **Explore** all dashboard features
 5. **Customize** colors and branding
-6. **Integrate** with real ProfileMesh profiling runs
+6. **Integrate** with real Baselinr profiling runs
 
 ## 🔮 Future Enhancements (TODOs)
 
@@ -346,7 +346,7 @@ For issues or questions:
 
 ## 🎊 Congratulations!
 
-You now have a fully functional ProfileMesh Dashboard MVP!
+You now have a fully functional Baselinr Dashboard MVP!
 
 **Start exploring your data profiling results with a beautiful, modern interface.**
 

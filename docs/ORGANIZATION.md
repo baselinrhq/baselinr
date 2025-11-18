@@ -1,6 +1,6 @@
 # Documentation Organization
 
-This document explains how the ProfileMesh documentation is organized.
+This document explains how the Baselinr documentation is organized.
 
 ## Structure
 
@@ -61,7 +61,7 @@ The root directory now only contains:
 
 ## Finding Documentation
 
-- **New to ProfileMesh?** → Start with `docs/getting-started/QUICKSTART.md`
+- **New to Baselinr?** → Start with `docs/getting-started/QUICKSTART.md`
 - **Setting up dashboard?** → See `docs/dashboard/QUICKSTART.md`
 - **Understanding architecture?** → Check `docs/architecture/PROJECT_OVERVIEW.md`
 - **Need a specific guide?** → Browse `docs/guides/`

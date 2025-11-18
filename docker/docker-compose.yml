@@ -2,18 +2,18 @@ services:
   # PostgreSQL for sample data and results storage
   postgres:
     image: postgres:15
-    container_name: profilemesh_postgres
+    container_name: baselinr_postgres
     environment:
-      POSTGRES_USER: profilemesh
-      POSTGRES_PASSWORD: profilemesh
-      POSTGRES_DB: profilemesh
+      POSTGRES_USER: baselinr
+      POSTGRES_PASSWORD: baselinr
+      POSTGRES_DB: baselinr
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U profilemesh"]
+      test: ["CMD-SHELL", "pg_isready -U baselinr"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,15 +23,15 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: profilemesh_dagster_daemon
+    container_name: baselinr_dagster_daemon
     environment:
       - DAGSTER_HOME=/opt/dagster/dagster_home
-      - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
-      # ProfileMesh config overrides for Docker
-      - PROFILEMESH_SOURCE__HOST=postgres
-      - PROFILEMESH_SOURCE__PORT=5432
-      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
-      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
+      - DAGSTER_POSTGRES_URL=postgresql://baselinr:baselinr@postgres:5432/baselinr
+      # Baselinr config overrides for Docker
+      - BASELINR_SOURCE__HOST=postgres
+      - BASELINR_SOURCE__PORT=5432
+      - BASELINR_STORAGE__CONNECTION__HOST=postgres
+      - BASELINR_STORAGE__CONNECTION__PORT=5432
     volumes:
       - ../:/app
       - dagster_home:/opt/dagster/dagster_home
@@ -45,15 +45,15 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: profilemesh_dagster_webserver
+    container_name: baselinr_dagster_webserver
     environment:
       - DAGSTER_HOME=/opt/dagster/dagster_home
-      - DAGSTER_POSTGRES_URL=postgresql://profilemesh:profilemesh@postgres:5432/profilemesh
-      # ProfileMesh config overrides for Docker
-      - PROFILEMESH_SOURCE__HOST=postgres
-      - PROFILEMESH_SOURCE__PORT=5432
-      - PROFILEMESH_STORAGE__CONNECTION__HOST=postgres
-      - PROFILEMESH_STORAGE__CONNECTION__PORT=5432
+      - DAGSTER_POSTGRES_URL=postgresql://baselinr:baselinr@postgres:5432/baselinr
+      # Baselinr config overrides for Docker
+      - BASELINR_SOURCE__HOST=postgres
+      - BASELINR_SOURCE__PORT=5432
+      - BASELINR_STORAGE__CONNECTION__HOST=postgres
+      - BASELINR_STORAGE__CONNECTION__PORT=5432
     ports:
       - "3000:3000"
     volumes:
@@ -67,7 +67,7 @@ services:
   # Prometheus for metrics collection
   prometheus:
     image: prom/prometheus:latest
-    container_name: profilemesh_prometheus
+    container_name: baselinr_prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -89,7 +89,7 @@ services:
   # Grafana for metrics visualization
   grafana:
     image: grafana/grafana:latest
-    container_name: profilemesh_grafana
+    container_name: baselinr_grafana
     ports:
       - "3001:3000"  # Changed from 3000 to avoid conflict with Dagster
     environment:

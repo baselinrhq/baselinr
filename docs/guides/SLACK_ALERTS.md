@@ -1,6 +1,6 @@
 # Slack Alerts for Drift Detection
 
-This guide explains how to set up Slack alerts for ProfileMesh drift detection and profiling events.
+This guide explains how to set up Slack alerts for Baselinr drift detection and profiling events.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ This guide explains how to set up Slack alerts for ProfileMesh drift detection a
 
 ## Overview
 
-ProfileMesh can send real-time alerts to Slack channels when:
+Baselinr can send real-time alerts to Slack channels when:
 - **Data drift is detected** - Statistical changes in your data
 - **Schema changes occur** - Columns added, removed, or type changes
 - **Profiling failures happen** - Errors during profiling runs
@@ -33,7 +33,7 @@ Alerts are sent via Slack Incoming Webhooks and include rich formatting with:
 1. Go to https://api.slack.com/apps
 2. Click **"Create New App"**
 3. Choose **"From scratch"**
-4. Name your app (e.g., "ProfileMesh Alerts")
+4. Name your app (e.g., "Baselinr Alerts")
 5. Select your workspace
 
 ### 2. Enable Incoming Webhooks
@@ -50,7 +50,7 @@ Alerts are sent via Slack Incoming Webhooks and include rich formatting with:
    ```
    https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX
    ```
-2. Copy this URL - you'll use it in your ProfileMesh configuration
+2. Copy this URL - you'll use it in your Baselinr configuration
 
 ### 4. Set Environment Variable (Recommended)
 
@@ -91,7 +91,7 @@ hooks:
       enabled: true                        # Enable/disable this hook
       webhook_url: ${SLACK_WEBHOOK_URL}    # Required: Slack webhook URL
       channel: "#data-alerts"              # Optional: Override default channel
-      username: "ProfileMesh Bot"          # Optional: Bot display name
+      username: "Baselinr Bot"          # Optional: Bot display name
       min_severity: medium                 # Optional: Minimum severity (low, medium, high)
       alert_on_drift: true                 # Optional: Alert on drift events
       alert_on_schema_change: true         # Optional: Alert on schema changes
@@ -105,7 +105,7 @@ hooks:
 |--------|------|---------|-------------|
 | `webhook_url` | string | *required* | Slack webhook URL from app setup |
 | `channel` | string | *from webhook* | Override channel (e.g., "#alerts", "@username") |
-| `username` | string | "ProfileMesh" | Display name for the bot |
+| `username` | string | "Baselinr" | Display name for the bot |
 | `min_severity` | string | "low" | Minimum drift severity to alert: "low", "medium", "high" |
 | `alert_on_drift` | boolean | true | Send alerts for data drift events |
 | `alert_on_schema_change` | boolean | true | Send alerts for schema changes |
@@ -283,7 +283,7 @@ hooks:
 4. **Check logs** - Look for Slack-related errors
 
 ```bash
-profilemesh profile --config config.yml --verbose
+baselinr profile --config config.yml --verbose
 ```
 
 ### "requests library is required" Error
@@ -294,9 +294,9 @@ Install the requests library:
 pip install requests
 ```
 
-Or with ProfileMesh:
+Or with Baselinr:
 ```bash
-pip install "profilemesh[slack]"  # If package includes extras
+pip install "baselinr[slack]"  # If package includes extras
 ```
 
 ### Timeouts
@@ -338,7 +338,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_INCIDENTS}
       channel: "#incidents"
-      username: "ProfileMesh [PROD]"
+      username: "Baselinr [PROD]"
       min_severity: high
       alert_on_drift: true
       alert_on_schema_change: false
@@ -348,7 +348,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_MONITORING}
       channel: "#data-monitoring"
-      username: "ProfileMesh [PROD]"
+      username: "Baselinr [PROD]"
       min_severity: low
       alert_on_drift: true
       alert_on_schema_change: true
@@ -366,7 +366,7 @@ hooks:
         database: monitoring
         username: ${DB_USER}
         password: ${DB_PASSWORD}
-      table_name: profilemesh_events
+      table_name: baselinr_events
 ```
 
 ### Example 2: Development Setup
@@ -382,7 +382,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_DEV}
       channel: "#dev-data-alerts"
-      username: "ProfileMesh [DEV]"
+      username: "Baselinr [DEV]"
       min_severity: low
       alert_on_drift: true
       alert_on_schema_change: true
@@ -413,13 +413,13 @@ Test your Slack alerts with a simple drift detection:
 export SLACK_WEBHOOK_URL="your-webhook-url"
 
 # 2. Run profiling twice to generate baseline
-profilemesh profile --config config_slack_alerts.yml
+baselinr profile --config config_slack_alerts.yml
 
 # Wait a moment, then run again
-profilemesh profile --config config_slack_alerts.yml
+baselinr profile --config config_slack_alerts.yml
 
 # 3. Run drift detection
-profilemesh detect-drift --config config_slack_alerts.yml --dataset orders
+baselinr detect-drift --config config_slack_alerts.yml --dataset orders
 ```
 
 ## Integration with Orchestration
@@ -427,8 +427,8 @@ profilemesh detect-drift --config config_slack_alerts.yml --dataset orders
 ### Dagster
 
 ```python
-from profilemesh.events import EventBus, SlackAlertHook
-from profilemesh.drift import DriftDetector
+from baselinr.events import EventBus, SlackAlertHook
+from baselinr.drift import DriftDetector
 
 @asset
 def detect_drift():
@@ -456,7 +456,7 @@ def detect_drift():
 ```python
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from profilemesh.events import EventBus, SlackAlertHook
+from baselinr.events import EventBus, SlackAlertHook
 
 def detect_drift_with_alerts():
     bus = EventBus()
@@ -483,7 +483,7 @@ with DAG('drift_detection', schedule_interval='@daily') as dag:
 
 - [Event and Hooks System](../architecture/EVENTS_AND_HOOKS.md)
 - [Drift Detection Guide](DRIFT_DETECTION.md)
-- [Configuration Schema](../../profilemesh/config/schema.py)
+- [Configuration Schema](../../baselinr/config/schema.py)
 - [Example Configuration](../../examples/config_slack_alerts.yml)
 
 ## Support
@@ -492,4 +492,4 @@ For issues or questions:
 - Check logs for error messages
 - Verify webhook URL is valid
 - Test with Slack's webhook tester
-- Review ProfileMesh logs with `--verbose` flag
+- Review Baselinr logs with `--verbose` flag

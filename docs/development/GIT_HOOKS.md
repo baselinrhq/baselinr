@@ -1,6 +1,6 @@
 # Git Hooks
 
-ProfileMesh uses git hooks to ensure code quality before commits and pushes.
+Baselinr uses git hooks to ensure code quality before commits and pushes.
 
 ## Available Hooks
 
@@ -124,7 +124,7 @@ Edit the hook files directly:
 Add to pre-commit hook:
 ```bash
 # Example: Add mypy type checking
-$PYTHON -m mypy profilemesh/ || {
+$PYTHON -m mypy baselinr/ || {
     echo "❌ Type checking failed!"
     exit 1
 }

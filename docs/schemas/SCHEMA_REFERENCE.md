@@ -1,4 +1,4 @@
-# ProfileMesh Storage Schema Reference
+# Baselinr Storage Schema Reference
 
 **Version:** 1.0  
 **Last Updated:** 2024-11-16  
@@ -6,7 +6,7 @@
 
 ## Overview
 
-ProfileMesh stores profiling results, run metadata, drift events, and incremental state in five core tables. All tables use a consistent naming convention (`profilemesh_*`) and are designed for multi-tenant, multi-warehouse deployments.
+Baselinr stores profiling results, run metadata, drift events, and incremental state in five core tables. All tables use a consistent naming convention (`baselinr_*`) and are designed for multi-tenant, multi-warehouse deployments.
 
 ### Schema Philosophy
 
@@ -19,7 +19,7 @@ ProfileMesh stores profiling results, run metadata, drift events, and incrementa
 
 ## Core Tables
 
-### 1. profilemesh_schema_version
+### 1. baselinr_schema_version
 
 **Purpose:** Tracks schema version for migration management and compatibility checking.
 
@@ -45,18 +45,18 @@ ProfileMesh stores profiling results, run metadata, drift events, and incrementa
 ```sql
 -- Get current schema version
 SELECT version, description, applied_at 
-FROM profilemesh_schema_version 
+FROM baselinr_schema_version 
 ORDER BY version DESC 
 LIMIT 1;
 
 -- View migration history
-SELECT * FROM profilemesh_schema_version 
+SELECT * FROM baselinr_schema_version 
 ORDER BY version;
 ```
 
 ---
 
-### 2. profilemesh_runs
+### 2. baselinr_runs
 
 **Purpose:** Tracks metadata for each profiling run, including execution time, row counts, and status.
 
@@ -91,26 +91,26 @@ ORDER BY version;
 ```sql
 -- Get last 10 runs for a table
 SELECT run_id, profiled_at, status, row_count 
-FROM profilemesh_runs 
+FROM baselinr_runs 
 WHERE dataset_name = 'customers' 
 ORDER BY profiled_at DESC 
 LIMIT 10;
 
 -- Find failed runs in last 7 days
-SELECT * FROM profilemesh_runs 
+SELECT * FROM baselinr_runs 
 WHERE status = 'failed' 
   AND profiled_at > CURRENT_TIMESTAMP - INTERVAL '7 days';
 
 -- Count runs by environment
 SELECT environment, COUNT(*) as run_count
-FROM profilemesh_runs
+FROM baselinr_runs
 WHERE profiled_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY environment;
 ```
 
 ---
 
-### 3. profilemesh_results
+### 3. baselinr_results
 
 **Purpose:** Stores individual column-level metrics for each profiling run.
 
@@ -119,7 +119,7 @@ GROUP BY environment;
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | id | INTEGER | PRIMARY KEY, AUTO_INCREMENT | Unique metric record ID |
-| run_id | VARCHAR(36) | NOT NULL | References profilemesh_runs |
+| run_id | VARCHAR(36) | NOT NULL | References baselinr_runs |
 | dataset_name | VARCHAR(255) | NOT NULL | Table name |
 | schema_name | VARCHAR(255) | NULL | Schema name |
 | column_name | VARCHAR(255) | NOT NULL | Column that was profiled |
@@ -128,7 +128,7 @@ GROUP BY environment;
 | metric_value | TEXT | NULL | Metric value as string |
 | profiled_at | TIMESTAMP | NOT NULL | When metric was captured |
 
-**Foreign Key:** (run_id, dataset_name) → profilemesh_runs(run_id, dataset_name)
+**Foreign Key:** (run_id, dataset_name) → baselinr_runs(run_id, dataset_name)
 
 **Indexes:**
 - `idx_run_id` on (run_id) - Fast lookup by run
@@ -154,13 +154,13 @@ GROUP BY environment;
 ```sql
 -- Get all metrics for a run
 SELECT column_name, metric_name, metric_value 
-FROM profilemesh_results 
+FROM baselinr_results 
 WHERE run_id = 'abc-123-def-456'
 ORDER BY column_name, metric_name;
 
 -- Track null_percent trend for a column
 SELECT profiled_at, metric_value::FLOAT as null_percent
-FROM profilemesh_results
+FROM baselinr_results
 WHERE dataset_name = 'customers'
   AND column_name = 'email'
   AND metric_name = 'null_percent'
@@ -169,7 +169,7 @@ LIMIT 30;
 
 -- Find columns with high null rates
 SELECT DISTINCT column_name, metric_value::FLOAT as null_percent
-FROM profilemesh_results
+FROM baselinr_results
 WHERE dataset_name = 'orders'
   AND metric_name = 'null_percent'
   AND metric_value::FLOAT > 10
@@ -178,7 +178,7 @@ ORDER BY null_percent DESC;
 
 ---
 
-### 4. profilemesh_events
+### 4. baselinr_events
 
 **Purpose:** Stores drift detection alerts and other profiling events for historical tracking and analysis.
 
@@ -223,14 +223,14 @@ ORDER BY null_percent DESC;
 -- Recent high-severity drift events
 SELECT table_name, column_name, metric_name, 
        change_percent, timestamp
-FROM profilemesh_events
+FROM baselinr_events
 WHERE drift_severity = 'high'
   AND timestamp > CURRENT_TIMESTAMP - INTERVAL '7 days'
 ORDER BY timestamp DESC;
 
 -- Drift frequency by table
 SELECT table_name, COUNT(*) as drift_count
-FROM profilemesh_events
+FROM baselinr_events
 WHERE event_type = 'drift_detected'
   AND timestamp > CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY table_name
@@ -238,7 +238,7 @@ ORDER BY drift_count DESC;
 
 -- All events for a specific column
 SELECT event_type, drift_severity, change_percent, timestamp
-FROM profilemesh_events
+FROM baselinr_events
 WHERE table_name = 'orders'
   AND column_name = 'total_amount'
 ORDER BY timestamp DESC;
@@ -246,7 +246,7 @@ ORDER BY timestamp DESC;
 
 ---
 
-### 5. profilemesh_table_state
+### 5. baselinr_table_state
 
 **Purpose:** Tracks incremental profiling state per table for change detection and cost optimization.
 
@@ -283,18 +283,18 @@ ORDER BY timestamp DESC;
 -- Find stale tables (not profiled in 7+ days)
 SELECT table_name, last_profiled_at, 
        CURRENT_TIMESTAMP - last_profiled_at as staleness
-FROM profilemesh_table_state
+FROM baselinr_table_state
 WHERE last_profiled_at < CURRENT_TIMESTAMP - INTERVAL '7 days'
 ORDER BY staleness DESC;
 
 -- Total bytes scanned by schema
 SELECT schema_name, SUM(bytes_scanned) as total_bytes
-FROM profilemesh_table_state
+FROM baselinr_table_state
 GROUP BY schema_name;
 
 -- Tables profiled today
 SELECT table_name, decision, decision_reason
-FROM profilemesh_table_state
+FROM baselinr_table_state
 WHERE last_profiled_at > CURRENT_DATE;
 ```
 
@@ -304,7 +304,7 @@ WHERE last_profiled_at > CURRENT_DATE;
 
 ### Current Version: 1
 
-ProfileMesh uses integer versioning starting at 1. The `profilemesh_schema_version` table tracks all applied migrations.
+Baselinr uses integer versioning starting at 1. The `baselinr_schema_version` table tracks all applied migrations.
 
 ### Versioning Policy
 
@@ -324,7 +324,7 @@ ProfileMesh uses integer versioning starting at 1. The `profilemesh_schema_versi
 
 ### Compatibility
 
-ProfileMesh supports **N-1 compatibility** (code can read one version behind):
+Baselinr supports **N-1 compatibility** (code can read one version behind):
 - **Current Version:** Code reads and writes v1
 - **Supported Reading:** Code can read v1 (no previous versions yet)
 - **Migration Required:** Warning shown if DB version ≠ code version
@@ -374,17 +374,17 @@ ProfileMesh supports **N-1 compatibility** (code can read one version behind):
 
 ```sql
 -- ✅ GOOD: Uses index
-SELECT * FROM profilemesh_runs 
+SELECT * FROM baselinr_runs 
 WHERE dataset_name = 'customers' 
 ORDER BY profiled_at DESC 
 LIMIT 10;
 
 -- ❌ BAD: No index on status alone
-SELECT * FROM profilemesh_runs 
+SELECT * FROM baselinr_runs 
 WHERE status = 'completed';
 
 -- ✅ BETTER: Combine with indexed column
-SELECT * FROM profilemesh_runs 
+SELECT * FROM baselinr_runs 
 WHERE dataset_name = 'customers' 
   AND status = 'completed'
 ORDER BY profiled_at DESC;
@@ -404,10 +404,10 @@ See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for:
 
 ## Security Considerations
 
-1. **Access Control**: Restrict write access to ProfileMesh service account only
+1. **Access Control**: Restrict write access to Baselinr service account only
 2. **Read Access**: Grant read-only access to dashboard/query users
 3. **Sensitive Data**: Metric values stored as strings—avoid storing PII
-4. **Audit Trail**: All events logged in `profilemesh_events`
+4. **Audit Trail**: All events logged in `baselinr_events`
 
 ---
 
@@ -424,14 +424,14 @@ See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md) for:
 
 ```sql
 -- Archive old runs (example)
-DELETE FROM profilemesh_results 
+DELETE FROM baselinr_results 
 WHERE profiled_at < CURRENT_TIMESTAMP - INTERVAL '90 days';
 
-DELETE FROM profilemesh_runs 
+DELETE FROM baselinr_runs 
 WHERE profiled_at < CURRENT_TIMESTAMP - INTERVAL '90 days';
 
 -- Archive old events
-DELETE FROM profilemesh_events 
+DELETE FROM baselinr_events 
 WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '365 days';
 ```
 
@@ -445,5 +445,5 @@ WHERE timestamp < CURRENT_TIMESTAMP - INTERVAL '365 days';
 
 ---
 
-**Maintained by:** ProfileMesh Team  
+**Maintained by:** Baselinr Team  
 **Questions?** Open an issue on GitHub

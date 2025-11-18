@@ -1,5 +1,5 @@
 """
-Sample data generator for ProfileMesh Dashboard.
+Sample data generator for Baselinr Dashboard.
 
 Creates realistic sample profiling runs, metrics, and drift events
 for all supported warehouse types.
@@ -13,8 +13,8 @@ import os
 
 # Database connection
 DB_URL = os.getenv(
-    "PROFILEMESH_DB_URL",
-    "postgresql://profilemesh:profilemesh@localhost:5433/profilemesh"
+    "BASELINR_DB_URL",
+    "postgresql://baselinr:baselinr@localhost:5433/baselinr"
 )
 
 # Sample data configuration
@@ -81,7 +81,7 @@ def generate_runs(engine, num_runs=50):
     with engine.connect() as conn:
         for run in runs:
             insert_query = text("""
-                INSERT INTO profilemesh_runs 
+                INSERT INTO baselinr_runs 
                 (run_id, dataset_name, schema_name, profiled_at, environment, 
                  row_count, column_count, status)
                 VALUES 
@@ -146,7 +146,7 @@ def generate_metrics(engine, runs):
                         value = "0"
                     
                     insert_query = text("""
-                        INSERT INTO profilemesh_results
+                        INSERT INTO baselinr_results
                         (run_id, column_name, column_type, metric_name, metric_value)
                         VALUES
                         (:run_id, :column_name, :column_type, :metric_name, :metric_value)
@@ -197,7 +197,7 @@ def generate_drift_events(engine, runs):
                 current_value = baseline_value * (1 + change_percent / 100)
                 
                 insert_query = text("""
-                    INSERT INTO profilemesh_events
+                    INSERT INTO baselinr_events
                     (event_id, run_id, event_type, table_name, column_name,
                      metric_name, baseline_value, current_value, change_percent,
                      drift_severity, timestamp)
@@ -231,7 +231,7 @@ def generate_drift_events(engine, runs):
 def main():
     """Generate all sample data."""
     print("=" * 60)
-    print("ProfileMesh Sample Data Generator")
+    print("Baselinr Sample Data Generator")
     print("=" * 60)
     
     # Connect to database

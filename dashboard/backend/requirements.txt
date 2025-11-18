@@ -1,4 +1,4 @@
-# ProfileMesh Dashboard Backend Dependencies
+# Baselinr Dashboard Backend Dependencies
 
 # FastAPI
 fastapi>=0.104.0

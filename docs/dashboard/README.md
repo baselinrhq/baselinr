@@ -1,6 +1,6 @@
-# ProfileMesh Dashboard v2.0
+# Baselinr Dashboard v2.0
 
-Internal dashboard MVP for ProfileMesh data profiling and drift detection. This dashboard visualizes profiling results, drift alerts, run history, and metrics across multi-warehouse environments.
+Internal dashboard MVP for Baselinr data profiling and drift detection. This dashboard visualizes profiling results, drift alerts, run history, and metrics across multi-warehouse environments.
 
 ## 🎯 Features
 
@@ -63,8 +63,8 @@ dashboard/
 
 - Node.js 18+ and npm/yarn
 - Python 3.10+
-- PostgreSQL database (ProfileMesh storage)
-- Existing ProfileMesh installation (Phase 1)
+- PostgreSQL database (Baselinr storage)
+- Existing Baselinr installation (Phase 1)
 
 ### 1. Backend Setup
 
@@ -75,7 +75,7 @@ cd dashboard/backend
 pip install -r requirements.txt
 
 # Set environment variables (create .env file)
-export PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+export BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
 export API_HOST=0.0.0.0
 export API_PORT=8000
 
@@ -168,15 +168,15 @@ colors: {
 2. Add navigation link in `components/Sidebar.tsx`
 3. Create API endpoint in `backend/main.py` if needed
 
-## 🔗 Integration with ProfileMesh Phase 1
+## 🔗 Integration with Baselinr Phase 1
 
-The dashboard connects to the ProfileMesh storage database to read:
-- **profilemesh_runs**: Run history and metadata
-- **profilemesh_results**: Column-level metrics
-- **profilemesh_events**: Drift detection events
-- **profilemesh_table_state**: Incremental profiling metadata (snapshot IDs, last decisions)
+The dashboard connects to the Baselinr storage database to read:
+- **baselinr_runs**: Run history and metadata
+- **baselinr_results**: Column-level metrics
+- **baselinr_events**: Drift detection events
+- **baselinr_table_state**: Incremental profiling metadata (snapshot IDs, last decisions)
 
-Ensure your ProfileMesh Phase 1 installation has created these tables.
+Ensure your Baselinr Phase 1 installation has created these tables.
 
 ## 🐳 Docker Setup (Optional)
 
@@ -196,13 +196,13 @@ TODO: Add Docker Compose configuration for easy deployment
 
 ## 🤝 Contributing
 
-This is an internal MVP. For feature requests or bug reports, please contact the ProfileMesh team.
+This is an internal MVP. For feature requests or bug reports, please contact the Baselinr team.
 
 ## 📝 Environment Variables
 
 ### Backend (.env)
 ```
-PROFILEMESH_DB_URL=postgresql://user:password@host:port/database
+BASELINR_DB_URL=postgresql://user:password@host:port/database
 API_HOST=0.0.0.0
 API_PORT=8000
 CORS_ORIGINS=http://localhost:3000
@@ -251,13 +251,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ## 🐛 Troubleshooting
 
 ### Connection Errors
-- Ensure ProfileMesh database is running
-- Check `PROFILEMESH_DB_URL` environment variable
-- Verify database tables exist (profilemesh_runs, profilemesh_results, profilemesh_events)
+- Ensure Baselinr database is running
+- Check `BASELINR_DB_URL` environment variable
+- Verify database tables exist (baselinr_runs, baselinr_results, baselinr_events)
 
 ### No Data Showing
 - Run the sample data generator: `python sample_data_generator.py`
-- Or run ProfileMesh profiling: `profilemesh profile --config config.yml`
+- Or run Baselinr profiling: `baselinr profile --config config.yml`
 
 ### CORS Errors
 - Check `CORS_ORIGINS` in backend includes frontend URL
@@ -265,5 +265,5 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ## 📄 License
 
-Internal use only - ProfileMesh Project
+Internal use only - Baselinr Project
 

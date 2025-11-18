@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example with Metrics Enabled
+# Baselinr Configuration Example with Metrics Enabled
 # This config demonstrates Prometheus metrics integration
 
 environment: development
@@ -8,9 +8,9 @@ source:
   type: postgres
   host: localhost
   port: 5433
-  database: profilemesh
-  username: profilemesh
-  password: profilemesh
+  database: baselinr
+  username: baselinr
+  password: baselinr
   schema: public
 
 # Storage configuration
@@ -19,12 +19,12 @@ storage:
     type: postgres
     host: localhost
     port: 5433
-    database: profilemesh
-    username: profilemesh
-    password: profilemesh
+    database: baselinr
+    username: baselinr
+    password: baselinr
     schema: public
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration

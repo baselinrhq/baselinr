@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      COMPOSE_PROJECT_NAME: profilemesh-ci
-      DOCKER_NETWORK_NAME: profilemesh-ci_default
-      DOCKER_IMAGE_NAME: profilemesh-cli-tests
-      PROFILEMESH_CONFIG_PATH: examples/config.yml
-      PROFILEMESH_DB_HOST: profilemesh_postgres
+      COMPOSE_PROJECT_NAME: baselinr-ci
+      DOCKER_NETWORK_NAME: baselinr-ci_default
+      DOCKER_IMAGE_NAME: baselinr-cli-tests
+      BASELINR_CONFIG_PATH: examples/config.yml
+      BASELINR_DB_HOST: baselinr_postgres
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,7 +32,7 @@ jobs:
       - name: Wait for PostgreSQL to become healthy
         run: |
           for i in {1..30}; do
-            if docker exec profilemesh_postgres pg_isready -U profilemesh >/dev/null 2>&1; then
+            if docker exec baselinr_postgres pg_isready -U baselinr >/dev/null 2>&1; then
               echo "PostgreSQL is ready"
               exit 0
             fi
@@ -50,12 +50,12 @@ jobs:
         run: |
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_SOURCE__PORT=5432 \
-              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+              -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+              -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            profilemesh plan --config $PROFILEMESH_CONFIG_PATH
+            baselinr plan --config $BASELINR_CONFIG_PATH
 
       - name: Run profile command twice to seed drift history
         run: |
@@ -63,50 +63,50 @@ jobs:
             echo "Starting profiling run #${run_number}"
             docker run --rm \
               --network $DOCKER_NETWORK_NAME \
-              -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-              -e PROFILEMESH_SOURCE__PORT=5432 \
-              -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-              -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+              -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+              -e BASELINR_SOURCE__PORT=5432 \
+              -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+              -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
               $DOCKER_IMAGE_NAME \
-              profilemesh profile --config $PROFILEMESH_CONFIG_PATH
+              baselinr profile --config $BASELINR_CONFIG_PATH
           done
 
       - name: Run drift detection command
         run: |
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            profilemesh drift --config $PROFILEMESH_CONFIG_PATH --dataset customers
+            baselinr drift --config $BASELINR_CONFIG_PATH --dataset customers
 
       - name: Run query CLI commands
         run: |
           # Query recent profiling runs
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            profilemesh query runs \
-              --config $PROFILEMESH_CONFIG_PATH \
+            baselinr query runs \
+              --config $BASELINR_CONFIG_PATH \
               --limit 5 \
               --format table
 
           # Query drift events
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            profilemesh query drift \
-              --config $PROFILEMESH_CONFIG_PATH \
+            baselinr query drift \
+              --config $BASELINR_CONFIG_PATH \
               --table customers \
               --days 7 \
               --format table
@@ -114,20 +114,20 @@ jobs:
           # Query table history
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
-            -e PROFILEMESH_SOURCE__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_SOURCE__PORT=5432 \
-            -e PROFILEMESH_STORAGE__CONNECTION__HOST=$PROFILEMESH_DB_HOST \
-            -e PROFILEMESH_STORAGE__CONNECTION__PORT=5432 \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            profilemesh query table \
-              --config $PROFILEMESH_CONFIG_PATH \
+            baselinr query table \
+              --config $BASELINR_CONFIG_PATH \
               --table customers \
               --days 7 \
               --format json
 
       - name: Dump PostgreSQL logs on failure
         if: failure()
-        run: docker logs profilemesh_postgres || true
+        run: docker logs baselinr_postgres || true
 
       - name: Shutdown Docker services
         if: always()

@@ -1,6 +1,6 @@
-# ProfileMesh Documentation
+# Baselinr Documentation
 
-Welcome to the ProfileMesh documentation! This directory contains all documentation organized by topic.
+Welcome to the Baselinr documentation! This directory contains all documentation organized by topic.
 
 ## 📚 Documentation Structure
 
@@ -31,7 +31,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 - **[Dashboard README](dashboard/README.md)** - Dashboard overview and features
 - **[Dashboard Architecture](dashboard/ARCHITECTURE.md)** - Dashboard technical architecture
 - **[Setup Complete](dashboard/SETUP_COMPLETE.md)** - Post-setup verification
-- **[Dashboard Integration](dashboard/DASHBOARD_INTEGRATION.md)** - Integrating with ProfileMesh
+- **[Dashboard Integration](dashboard/DASHBOARD_INTEGRATION.md)** - Integrating with Baselinr
 
 #### Backend
 - **[Backend README](dashboard/backend/README.md)** - Backend API documentation
@@ -59,7 +59,7 @@ Welcome to the ProfileMesh documentation! This directory contains all documentat
 
 ## 🔍 Finding What You Need
 
-- **New to ProfileMesh?** → Start with [Getting Started](getting-started/QUICKSTART.md)
+- **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)

@@ -1,8 +1,8 @@
-# Dagster workspace configuration for ProfileMesh
+# Dagster workspace configuration for Baselinr
 
 load_from:
   - python_file:
       relative_path: /app/examples/dagster_repository.py
       working_directory: /app
-      location_name: profilemesh
+      location_name: baselinr
 
