@@ -69,7 +69,11 @@ def main():
     # 3. Write results to storage
     print("\n[3/4] Writing results to storage...")
     writer = ResultWriter(config.storage)
-    writer.write_results(results, environment=config.environment)
+    writer.write_results(
+        results,
+        environment=config.environment,
+        enable_enrichment=config.profiling.enable_enrichment,
+    )
     print(f"✓ Results written to storage")
     writer.close()
 

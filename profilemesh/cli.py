@@ -249,7 +249,11 @@ def profile_command(args):
         if not args.dry_run:
             log_event(ctx.logger, "storage_write_started", "Writing results to storage...")
             writer = ResultWriter(config.storage, config.retry)
-            writer.write_results(results, environment=config.environment)
+            writer.write_results(
+                results,
+                environment=config.environment,
+                enable_enrichment=config.profiling.enable_enrichment,
+            )
             log_event(
                 ctx.logger,
                 "storage_write_completed",

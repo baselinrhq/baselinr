@@ -172,7 +172,7 @@ def create_type_thresholds(
             },
             "categorical": {
                 "distinct_count": {"low": 2.0, "medium": 5.0, "high": 10.0},
-                "distinct_percent": {"low": 2.0, "medium": 5.0, "high": 10.0},
+                "unique_ratio": {"low": 0.02, "medium": 0.05, "high": 0.10},
                 "default": {"low": 5.0, "medium": 15.0, "high": 30.0},
             },
             "timestamp": {

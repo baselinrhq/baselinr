@@ -178,6 +178,10 @@ class ProfileEngine:
             histogram_bins=self.config.profiling.histogram_bins,
             enabled_metrics=self.config.profiling.metrics,
             query_builder=self.query_builder,
+            enable_enrichment=self.config.profiling.enable_enrichment,
+            enable_approx_distinct=self.config.profiling.enable_approx_distinct,
+            enable_type_inference=self.config.profiling.enable_type_inference,
+            type_inference_sample_size=self.config.profiling.type_inference_sample_size,
         )
 
         # Route to parallel or sequential execution
@@ -393,9 +397,8 @@ class ProfileEngine:
                     logger.info(f"Using inferred partition key: {inferred_key}")
 
             # Add table metadata
-            result.metadata["row_count"] = self._get_row_count(
-                table, partition_config, pattern.sampling
-            )
+            current_row_count = self._get_row_count(table, partition_config, pattern.sampling)
+            result.metadata["row_count"] = current_row_count
             result.metadata["column_count"] = len(table.columns)
             result.metadata["partition_config"] = (
                 partition_config.model_dump() if partition_config else None
@@ -403,6 +406,11 @@ class ProfileEngine:
             result.metadata["sampling_config"] = (
                 pattern.sampling.model_dump() if pattern.sampling else None
             )
+
+            # Store schema snapshot for enrichment metrics (calculated during storage write)
+            if self.config.profiling.enable_enrichment:
+                current_columns = {col["column_name"]: col["column_type"] for col in result.columns}
+                result.metadata["column_schema"] = current_columns
 
             # Profile each column
             for column in table.columns:

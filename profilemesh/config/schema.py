@@ -131,17 +131,30 @@ class ProfilingConfig(BaseModel):
         default_factory=lambda: [
             "count",
             "null_count",
-            "null_percent",
+            "null_ratio",
             "distinct_count",
-            "distinct_percent",
+            "unique_ratio",
+            "approx_distinct_count",
             "min",
             "max",
             "mean",
             "stddev",
             "histogram",
+            "data_type_inferred",
         ]
     )
     default_sample_ratio: float = Field(1.0, gt=0.0, le=1.0)
+
+    # Enrichment options
+    enable_enrichment: bool = Field(True, description="Enable profiling enrichment features")
+    enable_approx_distinct: bool = Field(True, description="Enable approximate distinct count")
+    enable_schema_tracking: bool = Field(True, description="Enable schema change tracking")
+    enable_type_inference: bool = Field(True, description="Enable data type inference")
+    enable_column_stability: bool = Field(True, description="Enable column stability tracking")
+
+    # Stability calculation config
+    stability_window: int = Field(7, description="Number of runs to use for stability calculations")
+    type_inference_sample_size: int = Field(1000, description="Sample size for type inference")
 
 
 class StorageConfig(BaseModel):
@@ -258,7 +271,7 @@ class DriftDetectionConfig(BaseModel):
             },
             "categorical": {
                 "distinct_count": {"low": 2.0, "medium": 5.0, "high": 10.0},
-                "distinct_percent": {"low": 2.0, "medium": 5.0, "high": 10.0},
+                "unique_ratio": {"low": 0.02, "medium": 0.05, "high": 0.10},
                 "default": {"low": 5.0, "medium": 15.0, "high": 30.0},
             },
             "timestamp": {
@@ -414,7 +427,7 @@ class PartialProfilingConfig(BaseModel):
         default_factory=lambda: [
             "count",
             "null_count",
-            "null_percent",
+            "null_ratio",
             "min",
             "max",
             "mean",
