@@ -1,6 +1,6 @@
 # Incremental Profiling Guide
 
-Incremental profiling keeps ProfileMesh fast and cost‑efficient by skipping tables that have not changed and focusing work on the partitions that actually moved. This guide explains how it works, how to configure it, and how to monitor and troubleshoot runs.
+Incremental profiling keeps Baselinr fast and cost‑efficient by skipping tables that have not changed and focusing work on the partitions that actually moved. This guide explains how it works, how to configure it, and how to monitor and troubleshoot runs.
 
 ---
 
@@ -18,11 +18,11 @@ The implementation spans several new components:
 
 | Component | Description | Key Files |
 | --- | --- | --- |
-| **Change detectors** | Connector‑specific metadata readers that return snapshot IDs, partition manifests, or CDC tokens. | `profilemesh/incremental/change_detection.py`, `profilemesh/connectors/*` |
-| **State store** | Persists `snapshot_id`, last decision, row/byte estimates per table in `profilemesh_table_state`. | `profilemesh/incremental/state.py`, `profilemesh/storage/schema*.sql` |
-| **Incremental planner** | Compares current metadata vs. stored state, applies staleness and cost rules, and returns skip/partial/full/sample decisions. | `profilemesh/incremental/planner.py`, `profilemesh/planner.py` |
-| **CLI/Dagster integration** | CLI now asks the planner for the tables to run; Dagster sensors can call the same API. | `profilemesh/cli.py`, `profilemesh/dagster_integration/*` |
-| **Observability** | New `ProfilingSkipped` events, dashboard wiring, and warm‑cache surface area for skipped tables. | `profilemesh/events/events.py`, `docs/dashboard/backend/README.md` |
+| **Change detectors** | Connector‑specific metadata readers that return snapshot IDs, partition manifests, or CDC tokens. | `baselinr/incremental/change_detection.py`, `baselinr/connectors/*` |
+| **State store** | Persists `snapshot_id`, last decision, row/byte estimates per table in `baselinr_table_state`. | `baselinr/incremental/state.py`, `baselinr/storage/schema*.sql` |
+| **Incremental planner** | Compares current metadata vs. stored state, applies staleness and cost rules, and returns skip/partial/full/sample decisions. | `baselinr/incremental/planner.py`, `baselinr/planner.py` |
+| **CLI/Dagster integration** | CLI now asks the planner for the tables to run; Dagster sensors can call the same API. | `baselinr/cli.py`, `baselinr/dagster_integration/*` |
+| **Observability** | New `ProfilingSkipped` events, dashboard wiring, and warm‑cache surface area for skipped tables. | `baselinr/events/events.py`, `docs/dashboard/backend/README.md` |
 
 ---
 
@@ -35,7 +35,7 @@ incremental:
   enabled: true
 
   change_detection:
-    metadata_table: profilemesh_table_state   # created automatically if storage.create_tables is true
+    metadata_table: baselinr_table_state   # created automatically if storage.create_tables is true
     snapshot_ttl_minutes: 1440
 
   partial_profiling:
@@ -77,7 +77,7 @@ incremental:
    - **Changed partitions only:** Run in partial mode; partition filters are injected via the `specific_values` strategy.
    - **Cost exceeds budget:** Sample or defer per `cost_controls.fallback_strategy`.
    - **Otherwise:** Run a full profile.
-5. **State write‑back:** After profiles complete, the CLI updates `profilemesh_table_state` with the new `snapshot_id`, decision, row counts, bytes, and run ID so the next tick has the latest metadata.
+5. **State write‑back:** After profiles complete, the CLI updates `baselinr_table_state` with the new `snapshot_id`, decision, row counts, bytes, and run ID so the next tick has the latest metadata.
 
 ---
 
@@ -124,13 +124,13 @@ Events (`profile_deferred_cost_cap`, `profile_sampled_cost_cap`) are emitted so 
 2. Inside the sensor call `PlanBuilder.get_tables_to_run()`; only materialize the tables whose decision is `full`, `partial`, or `sample`.
 3. Forward `incremental_plan.to_summary()` to logging/metrics so you can observe skip/partial ratios over time.
 
-This keeps the Dagster schedule simple while letting ProfileMesh decide how much work to do each tick.
+This keeps the Dagster schedule simple while letting Baselinr decide how much work to do each tick.
 
 ---
 
 ## Observability & Dashboard
 
-- `profilemesh_table_state` is visible to the dashboard backend so the UI can explain why a table was skipped or partially profiled.
+- `baselinr_table_state` is visible to the dashboard backend so the UI can explain why a table was skipped or partially profiled.
 - New `ProfilingSkipped` events include `action`, `reason`, and `snapshot_id` for hook consumers.
 - When a table is skipped, downstream consumers (Grafana, APIs) receive the cached metrics plus the timestamp of the last successful run.
 
@@ -142,10 +142,10 @@ See `docs/dashboard/backend/README.md` for the updated schema and sample queries
 
 | Symptom | What to check |
 | --- | --- |
-| Tables never run | Ensure `incremental.enabled` is true and snapshots differ. Check `profilemesh_table_state` for `decision=skip`. |
+| Tables never run | Ensure `incremental.enabled` is true and snapshots differ. Check `baselinr_table_state` for `decision=skip`. |
 | Partial profiling ignored | Make sure `partition.key` is set (either explicitly or via metadata inference) so the planner can apply `specific_values`. |
 | Cost deferrals too aggressive | Increase `max_rows_scanned` or switch fallback to `sample`. |
-| Planner errors about missing metadata table | Set `storage.create_tables: true` or manually apply `profilemesh/storage/schema*.sql`. |
+| Planner errors about missing metadata table | Set `storage.create_tables: true` or manually apply `baselinr/storage/schema*.sql`. |
 | Dagster still running every table | Update your sensor/op to call `PlanBuilder.get_tables_to_run()` instead of iterating static table lists. |
 
 ---
@@ -153,6 +153,6 @@ See `docs/dashboard/backend/README.md` for the updated schema and sample queries
 ## Testing & Validation
 
 - Unit tests in `tests/test_incremental_planner.py` cover skip/partial/cost scenarios.
-- End‑to‑end test plans: run the CLI twice against a warehouse, insert fresh rows in between, and verify state transitions in `profilemesh_table_state`.
+- End‑to‑end test plans: run the CLI twice against a warehouse, insert fresh rows in between, and verify state transitions in `baselinr_table_state`.
 
 For additional context, review the implementation files linked above or open an issue with the metadata and planner logs from your deployment. Incremental profiling is designed to be opt‑in, so you can roll it out gradually by enabling it per environment or workspace. Happy profiling!

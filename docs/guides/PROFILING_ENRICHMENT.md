@@ -1,6 +1,6 @@
 # Profiling Enrichment
 
-ProfileMesh includes enhanced profiling capabilities that track richer data quality metrics and provide deeper insights into your data over time. These enrichment features enable better anomaly learning and drift detection.
+Baselinr includes enhanced profiling capabilities that track richer data quality metrics and provide deeper insights into your data over time. These enrichment features enable better anomaly learning and drift detection.
 
 ## Overview
 

@@ -1,18 +1,18 @@
-# ProfileMesh Query Examples
+# Baselinr Query Examples
 
-Common query patterns and CLI usage examples for ProfileMesh metadata.
+Common query patterns and CLI usage examples for Baselinr metadata.
 
 ## CLI Query Commands
 
-ProfileMesh provides powerful CLI commands for querying profiling metadata without writing SQL.
+Baselinr provides powerful CLI commands for querying profiling metadata without writing SQL.
 
 ### Available Commands
 
 ```bash
-profilemesh query runs      # Query profiling run history
-profilemesh query drift     # Query drift detection events
-profilemesh query run       # Get details for specific run
-profilemesh query table     # Query table profiling history
+baselinr query runs      # Query profiling run history
+baselinr query drift     # Query drift detection events
+baselinr query run       # Get details for specific run
+baselinr query table     # Query table profiling history
 ```
 
 ---
@@ -23,87 +23,87 @@ profilemesh query table     # Query table profiling history
 
 ```bash
 # Get last 10 runs
-profilemesh query runs --config config.yml
+baselinr query runs --config config.yml
 ```
 
 ### Filter by Table
 
 ```bash
 # Runs for specific table
-profilemesh query runs --config config.yml --table customers
+baselinr query runs --config config.yml --table customers
 
 # With schema
-profilemesh query runs --config config.yml --schema public --table orders
+baselinr query runs --config config.yml --schema public --table orders
 ```
 
 ### Filter by Time Range
 
 ```bash
 # Last 7 days
-profilemesh query runs --config config.yml --days 7
+baselinr query runs --config config.yml --days 7
 
 # Last 24 hours
-profilemesh query runs --config config.yml --days 1
+baselinr query runs --config config.yml --days 1
 ```
 
 ### Filter by Status
 
 ```bash
 # Only successful runs
-profilemesh query runs --config config.yml --status completed
+baselinr query runs --config config.yml --status completed
 
 # Only failed runs
-profilemesh query runs --config config.yml --status failed --days 7
+baselinr query runs --config config.yml --status failed --days 7
 ```
 
 ### Filter by Environment
 
 ```bash
 # Production runs only
-profilemesh query runs --config config.yml --environment production
+baselinr query runs --config config.yml --environment production
 
 # Staging runs
-profilemesh query runs --config config.yml --environment staging --days 30
+baselinr query runs --config config.yml --environment staging --days 30
 ```
 
 ### Pagination
 
 ```bash
 # First 50 results
-profilemesh query runs --config config.yml --limit 50
+baselinr query runs --config config.yml --limit 50
 
 # Next 50 results (pagination)
-profilemesh query runs --config config.yml --limit 50 --offset 50
+baselinr query runs --config config.yml --limit 50 --offset 50
 ```
 
 ### Output Formats
 
 ```bash
 # Table format (default)
-profilemesh query runs --config config.yml --format table
+baselinr query runs --config config.yml --format table
 
 # JSON format
-profilemesh query runs --config config.yml --format json
+baselinr query runs --config config.yml --format json
 
 # CSV format
-profilemesh query runs --config config.yml --format csv
+baselinr query runs --config config.yml --format csv
 ```
 
 ### Save to File
 
 ```bash
 # Save JSON output
-profilemesh query runs --config config.yml --format json --output runs.json
+baselinr query runs --config config.yml --format json --output runs.json
 
 # Save CSV for Excel
-profilemesh query runs --config config.yml --format csv --output runs.csv
+baselinr query runs --config config.yml --format csv --output runs.csv
 ```
 
 ### Complex Example
 
 ```bash
 # Production runs for specific table in last 7 days, save as JSON
-profilemesh query runs \
+baselinr query runs \
   --config config.yml \
   --table customers \
   --schema public \
@@ -122,41 +122,41 @@ profilemesh query runs \
 
 ```bash
 # Recent drift events
-profilemesh query drift --config config.yml
+baselinr query drift --config config.yml
 ```
 
 ### Filter by Table
 
 ```bash
 # Drift for specific table
-profilemesh query drift --config config.yml --table orders
+baselinr query drift --config config.yml --table orders
 ```
 
 ### Filter by Severity
 
 ```bash
 # Only high-severity drift
-profilemesh query drift --config config.yml --severity high
+baselinr query drift --config config.yml --severity high
 
 # Medium and high
-profilemesh query drift --config config.yml --severity medium --days 7
+baselinr query drift --config config.yml --severity medium --days 7
 ```
 
 ### Time-Based Queries
 
 ```bash
 # Drift in last 24 hours
-profilemesh query drift --config config.yml --days 1
+baselinr query drift --config config.yml --days 1
 
 # Last week's drift
-profilemesh query drift --config config.yml --days 7
+baselinr query drift --config config.yml --days 7
 ```
 
 ### Multiple Filters
 
 ```bash
 # High-severity drift for specific table in last 3 days
-profilemesh query drift \
+baselinr query drift \
   --config config.yml \
   --table customers \
   --severity high \
@@ -168,7 +168,7 @@ profilemesh query drift \
 
 ```bash
 # Export all drift events as CSV
-profilemesh query drift \
+baselinr query drift \
   --config config.yml \
   --days 90 \
   --format csv \
@@ -183,18 +183,18 @@ profilemesh query drift \
 
 ```bash
 # Full run details
-profilemesh query run \
+baselinr query run \
   --config config.yml \
   --run-id abc-123-def-456
 
 # JSON output
-profilemesh query run \
+baselinr query run \
   --config config.yml \
   --run-id abc-123-def-456 \
   --format json
 
 # Save details
-profilemesh query run \
+baselinr query run \
   --config config.yml \
   --run-id abc-123-def-456 \
   --format json \
@@ -205,7 +205,7 @@ profilemesh query run \
 
 ```bash
 # Specify table if run profiled multiple tables
-profilemesh query run \
+baselinr query run \
   --config config.yml \
   --run-id abc-123-def-456 \
   --table customers
@@ -249,10 +249,10 @@ COLUMN METRICS:
 
 ```bash
 # Last 30 days (default)
-profilemesh query table --config config.yml --table customers
+baselinr query table --config config.yml --table customers
 
 # Last 90 days
-profilemesh query table \
+baselinr query table \
   --config config.yml \
   --table customers \
   --days 90
@@ -262,7 +262,7 @@ profilemesh query table \
 
 ```bash
 # Specific schema
-profilemesh query table \
+baselinr query table \
   --config config.yml \
   --table orders \
   --schema public
@@ -272,14 +272,14 @@ profilemesh query table \
 
 ```bash
 # JSON export
-profilemesh query table \
+baselinr query table \
   --config config.yml \
   --table customers \
   --format json \
   --output customers_history.json
 
 # CSV for charting
-profilemesh query table \
+baselinr query table \
   --config config.yml \
   --table customers \
   --days 90 \
@@ -298,7 +298,7 @@ If you prefer SQL over CLI, here are common patterns.
 ```sql
 -- Last 10 runs across all tables
 SELECT run_id, dataset_name, profiled_at, status, row_count
-FROM profilemesh_runs
+FROM baselinr_runs
 ORDER BY profiled_at DESC
 LIMIT 10;
 ```
@@ -313,7 +313,7 @@ SELECT
     MAX(profiled_at) as last_profiled,
     MIN(profiled_at) as first_profiled,
     AVG(row_count) as avg_row_count
-FROM profilemesh_runs
+FROM baselinr_runs
 WHERE profiled_at > CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY dataset_name
 ORDER BY run_count DESC;
@@ -329,7 +329,7 @@ SELECT
     schema_name,
     profiled_at,
     environment
-FROM profilemesh_runs
+FROM baselinr_runs
 WHERE status = 'failed'
 ORDER BY profiled_at DESC;
 ```
@@ -343,7 +343,7 @@ SELECT
     AVG(row_count) as avg_rows,
     MIN(row_count) as min_rows,
     MAX(row_count) as max_rows
-FROM profilemesh_runs
+FROM baselinr_runs
 WHERE dataset_name = 'customers'
   AND profiled_at > CURRENT_TIMESTAMP - INTERVAL '90 days'
 GROUP BY profiled_at::DATE
@@ -357,7 +357,7 @@ ORDER BY date;
 SELECT 
     profiled_at,
     metric_value::FLOAT as null_percent
-FROM profilemesh_results
+FROM baselinr_results
 WHERE dataset_name = 'customers'
   AND column_name = 'email'
   AND metric_name = 'null_percent'
@@ -377,7 +377,7 @@ SELECT
     current_value,
     change_percent,
     timestamp
-FROM profilemesh_events
+FROM baselinr_events
 WHERE event_type = 'drift_detected'
   AND drift_severity = 'high'
   AND timestamp > CURRENT_TIMESTAMP - INTERVAL '7 days'
@@ -394,7 +394,7 @@ SELECT
     COUNT(CASE WHEN drift_severity = 'high' THEN 1 END) as high_severity_count,
     COUNT(CASE WHEN drift_severity = 'medium' THEN 1 END) as medium_severity_count,
     COUNT(CASE WHEN drift_severity = 'low' THEN 1 END) as low_severity_count
-FROM profilemesh_events
+FROM baselinr_events
 WHERE event_type = 'drift_detected'
   AND timestamp > CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY table_name
@@ -411,8 +411,8 @@ SELECT
     res.column_name,
     res.metric_name,
     res.metric_value
-FROM profilemesh_runs r
-JOIN profilemesh_results res 
+FROM baselinr_runs r
+JOIN baselinr_results res 
     ON r.run_id = res.run_id 
     AND r.dataset_name = res.dataset_name
 WHERE r.dataset_name = 'customers'
@@ -430,15 +430,15 @@ SELECT
     res.column_name,
     res.metric_value::FLOAT as null_percent,
     r.profiled_at
-FROM profilemesh_runs r
-JOIN profilemesh_results res 
+FROM baselinr_runs r
+JOIN baselinr_results res 
     ON r.run_id = res.run_id 
     AND r.dataset_name = res.dataset_name
 WHERE res.metric_name = 'null_percent'
   AND res.metric_value::FLOAT > 10
   AND r.profiled_at = (
       SELECT MAX(profiled_at) 
-      FROM profilemesh_runs 
+      FROM baselinr_runs 
       WHERE dataset_name = r.dataset_name
   )
 ORDER BY null_percent DESC;
@@ -454,15 +454,15 @@ SELECT
     res.metric_value::INTEGER as distinct_count,
     r.row_count,
     (res.metric_value::FLOAT / r.row_count * 100) as distinct_percent
-FROM profilemesh_runs r
-JOIN profilemesh_results res 
+FROM baselinr_runs r
+JOIN baselinr_results res 
     ON r.run_id = res.run_id 
     AND r.dataset_name = res.dataset_name
 WHERE res.metric_name = 'distinct_count'
   AND res.metric_value::INTEGER < 100
   AND r.profiled_at = (
       SELECT MAX(profiled_at) 
-      FROM profilemesh_runs 
+      FROM baselinr_runs 
       WHERE dataset_name = r.dataset_name
   )
 ORDER BY distinct_count;
@@ -472,12 +472,12 @@ ORDER BY distinct_count;
 
 ## Programmatic Access (Python)
 
-Use the ProfileMesh SDK for programmatic queries:
+Use the Baselinr SDK for programmatic queries:
 
 ```python
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.query import MetadataQueryClient
-from profilemesh.connectors.factory import create_connector
+from baselinr.config.loader import ConfigLoader
+from baselinr.query import MetadataQueryClient
+from baselinr.connectors.factory import create_connector
 
 # Load config
 config = ConfigLoader.load_from_file("config.yml")
@@ -546,27 +546,27 @@ See [Dashboard API Documentation](../dashboard/README.md) for full API reference
 
 ```bash
 # Get just run IDs
-profilemesh query runs --config config.yml --format json | jq -r '.[].run_id'
+baselinr query runs --config config.yml --format json | jq -r '.[].run_id'
 
 # Count runs by status
-profilemesh query runs --config config.yml --format json | jq 'group_by(.status) | map({status: .[0].status, count: length})'
+baselinr query runs --config config.yml --format json | jq 'group_by(.status) | map({status: .[0].status, count: length})'
 
 # Extract drift for specific column
-profilemesh query drift --config config.yml --format json | jq '.[] | select(.column_name == "email")'
+baselinr query drift --config config.yml --format json | jq '.[] | select(.column_name == "email")'
 ```
 
 ### Create Reports
 
 ```bash
 # Weekly drift report
-profilemesh query drift \
+baselinr query drift \
   --config config.yml \
   --days 7 \
   --format csv \
   --output drift_weekly_$(date +%Y%m%d).csv
 
 # Monthly run summary
-profilemesh query runs \
+baselinr query runs \
   --config config.yml \
   --days 30 \
   --format json \
@@ -579,7 +579,7 @@ profilemesh query runs \
 #!/bin/bash
 # Check for high-severity drift
 
-DRIFT_COUNT=$(profilemesh query drift \
+DRIFT_COUNT=$(baselinr query drift \
   --config config.yml \
   --severity high \
   --days 1 \
@@ -587,7 +587,7 @@ DRIFT_COUNT=$(profilemesh query drift \
 
 if [ "$DRIFT_COUNT" -gt 0 ]; then
     echo "⚠️  $DRIFT_COUNT high-severity drift events in last 24 hours!"
-    profilemesh query drift --config config.yml --severity high --days 1
+    baselinr query drift --config config.yml --severity high --days 1
     exit 1
 fi
 

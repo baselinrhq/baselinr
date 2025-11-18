@@ -28,7 +28,7 @@ export default function DriftPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `profilemesh-drift-${Date.now()}.json`
+      a.download = `baselinr-drift-${Date.now()}.json`
       a.click()
     } catch (error) {
       console.error('Export failed:', error)

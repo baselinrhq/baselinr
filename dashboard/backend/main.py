@@ -1,5 +1,5 @@
 """
-ProfileMesh Dashboard Backend API
+Baselinr Dashboard Backend API
 
 FastAPI server that provides endpoints for:
 - Run history
@@ -25,8 +25,8 @@ from database import DatabaseClient
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="ProfileMesh Dashboard API",
-    description="Backend API for ProfileMesh internal dashboard",
+    title="Baselinr Dashboard API",
+    description="Backend API for Baselinr internal dashboard",
     version="2.0.0"
 )
 
@@ -48,7 +48,7 @@ async def root():
     """Health check endpoint."""
     return {
         "status": "healthy",
-        "service": "ProfileMesh Dashboard API",
+        "service": "Baselinr Dashboard API",
         "version": "2.0.0"
     }
 

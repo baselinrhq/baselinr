@@ -1,4 +1,4 @@
-"""Setup script for ProfileMesh."""
+"""Setup script for Baselinr."""
 
 from setuptools import setup, find_packages
 from pathlib import Path
@@ -11,14 +11,14 @@ long_description = readme_path.read_text(encoding="utf-8") if readme_path.exists
 version = "0.1.0"
 
 setup(
-    name="profilemesh",
+    name="baselinr",
     version=version,
-    author="ProfileMesh Contributors",
-    author_email="profilemesh@example.com",
+    author="Baselinr Contributors",
+    author_email="baselinr@example.com",
     description="Modern data profiling and drift detection framework",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/profilemesh",
+    url="https://github.com/yourusername/baselinr",
     packages=find_packages(exclude=["tests", "tests.*", "examples", "docker"]),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -67,7 +67,7 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "profilemesh=profilemesh.cli:main",
+            "baselinr=baselinr.cli:main",
         ],
     },
     include_package_data=True,

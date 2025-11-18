@@ -2,18 +2,18 @@
 
 ## Overview
 
-A comprehensive event emission and alert hook system has been successfully implemented for ProfileMesh, following the specifications in `implement_event_hooks.md`. This system enables runtime events to be emitted during profiling and drift detection, processed by multiple registered hooks, and optionally persisted or alerted.
+A comprehensive event emission and alert hook system has been successfully implemented for Baselinr, following the specifications in `implement_event_hooks.md`. This system enables runtime events to be emitted during profiling and drift detection, processed by multiple registered hooks, and optionally persisted or alerted.
 
 ## What Was Implemented
 
 ### 1. Core Event System (✅ Completed)
 
 **New Modules:**
-- `profilemesh/events/__init__.py` - Package exports
-- `profilemesh/events/events.py` - Event dataclasses
-- `profilemesh/events/hooks.py` - AlertHook protocol
-- `profilemesh/events/event_bus.py` - EventBus implementation
-- `profilemesh/events/builtin_hooks.py` - Built-in hook implementations
+- `baselinr/events/__init__.py` - Package exports
+- `baselinr/events/events.py` - Event dataclasses
+- `baselinr/events/hooks.py` - AlertHook protocol
+- `baselinr/events/event_bus.py` - EventBus implementation
+- `baselinr/events/builtin_hooks.py` - Built-in hook implementations
 
 **Event Types:**
 - `BaseEvent` - Base class for all events
@@ -30,13 +30,13 @@ A comprehensive event emission and alert hook system has been successfully imple
 
 ### 2. Integration with Core Components (✅ Completed)
 
-**Drift Detector (`profilemesh/drift/detector.py`):**
+**Drift Detector (`baselinr/drift/detector.py`):**
 - Accepts optional `EventBus` in constructor
 - Emits `DataDriftDetected` events when drift is found
 - Emits `SchemaChangeDetected` events for schema changes
 - Events include table, column, metric, baseline/current values, and severity
 
-**Profiling Core (`profilemesh/profiling/core.py`):**
+**Profiling Core (`baselinr/profiling/core.py`):**
 - Accepts optional `EventBus` in constructor
 - Emits `ProfilingStarted` events when profiling begins
 - Emits `ProfilingCompleted` events on successful completion (with duration, row/column counts)
@@ -44,10 +44,10 @@ A comprehensive event emission and alert hook system has been successfully imple
 
 ### 3. Configuration System (✅ Completed)
 
-**Schema Updates (`profilemesh/config/schema.py`):**
+**Schema Updates (`baselinr/config/schema.py`):**
 - Added `HookConfig` - Configuration for individual hooks
 - Added `HooksConfig` - Master configuration for all hooks
-- Integrated into `ProfileMeshConfig` with `hooks` field
+- Integrated into `BaselinrConfig` with `hooks` field
 - Support for `logging`, `sql`, `snowflake`, and `custom` hook types
 
 **Configuration Features:**
@@ -58,7 +58,7 @@ A comprehensive event emission and alert hook system has been successfully imple
 
 ### 4. CLI Integration (✅ Completed)
 
-**Updates to `profilemesh/cli.py`:**
+**Updates to `baselinr/cli.py`:**
 - Added `create_event_bus()` function to initialize EventBus from config
 - Added `_create_hook()` factory function for hook instantiation
 - Updated `profile_command` to create and pass EventBus to ProfileEngine
@@ -67,12 +67,12 @@ A comprehensive event emission and alert hook system has been successfully imple
 
 ### 5. Database Schema (✅ Completed)
 
-**SQL Schema (`profilemesh/storage/schema.sql`):**
-- Added `profilemesh_events` table for event persistence
+**SQL Schema (`baselinr/storage/schema.sql`):**
+- Added `baselinr_events` table for event persistence
 - Fields: event_id, event_type, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp, metadata, created_at
 - Indexes on event_type, table_name, timestamp, drift_severity
 
-**Snowflake Schema (`profilemesh/storage/schema_snowflake.sql`):**
+**Snowflake Schema (`baselinr/storage/schema_snowflake.sql`):**
 - Snowflake-specific version with VARIANT type for metadata
 - TIMESTAMP_NTZ for Snowflake timestamp handling
 - Separate CREATE INDEX statements for Snowflake syntax
@@ -180,7 +180,7 @@ hooks:
     
     # Persist for historical analysis
     - type: snowflake
-      table_name: prod.monitoring.profilemesh_events
+      table_name: prod.monitoring.baselinr_events
       connection:
         type: snowflake
         account: ${SNOWFLAKE_ACCOUNT}
@@ -195,7 +195,7 @@ hooks:
 ```python
 # my_hooks.py
 import requests
-from profilemesh.events import BaseEvent, DataDriftDetected
+from baselinr.events import BaseEvent, DataDriftDetected
 
 class SlackAlertHook:
     def __init__(self, webhook_url: str, min_severity: str = "high"):
@@ -230,7 +230,7 @@ hooks:
 ## Architecture
 
 ```
-ProfileMesh Core
+Baselinr Core
     │
     ├─→ ProfileEngine
     │   ├─→ emit(ProfilingStarted)
@@ -259,7 +259,7 @@ Run the comprehensive test suite:
 pytest tests/test_events.py -v
 
 # Run with coverage
-pytest tests/test_events.py --cov=profilemesh.events --cov-report=html
+pytest tests/test_events.py --cov=baselinr.events --cov-report=html
 ```
 
 Example test output:
@@ -278,7 +278,7 @@ tests/test_events.py::TestEventBus::test_hook_failure_does_not_stop_other_hooks 
 
 ```bash
 # With logging hook (from config.yml)
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # Output:
 # [ALERT] ProfilingStarted: {'table': 'customers', 'run_id': '...'}
@@ -288,7 +288,7 @@ profilemesh profile --config examples/config.yml
 ### Run Drift Detection with Hooks
 
 ```bash
-profilemesh drift --config examples/config.yml --dataset customers
+baselinr drift --config examples/config.yml --dataset customers
 
 # Events emitted:
 # - DataDriftDetected (for each drifted metric)
@@ -312,24 +312,24 @@ python examples/example_hooks.py
 ## Files Created/Modified
 
 ### New Files
-1. `profilemesh/events/__init__.py`
-2. `profilemesh/events/events.py`
-3. `profilemesh/events/hooks.py`
-4. `profilemesh/events/event_bus.py`
-5. `profilemesh/events/builtin_hooks.py`
-6. `profilemesh/storage/schema_snowflake.sql`
+1. `baselinr/events/__init__.py`
+2. `baselinr/events/events.py`
+3. `baselinr/events/hooks.py`
+4. `baselinr/events/event_bus.py`
+5. `baselinr/events/builtin_hooks.py`
+6. `baselinr/storage/schema_snowflake.sql`
 7. `tests/test_events.py`
 8. `EVENTS_AND_HOOKS.md`
 9. `examples/example_hooks.py`
 10. `EVENTS_IMPLEMENTATION_SUMMARY.md` (this file)
 
 ### Modified Files
-1. `profilemesh/config/schema.py` - Added HookConfig, HooksConfig
-2. `profilemesh/config/__init__.py` - Added exports
-3. `profilemesh/cli.py` - Added EventBus initialization
-4. `profilemesh/drift/detector.py` - Added event emission
-5. `profilemesh/profiling/core.py` - Added event emission
-6. `profilemesh/storage/schema.sql` - Added profilemesh_events table
+1. `baselinr/config/schema.py` - Added HookConfig, HooksConfig
+2. `baselinr/config/__init__.py` - Added exports
+3. `baselinr/cli.py` - Added EventBus initialization
+4. `baselinr/drift/detector.py` - Added event emission
+5. `baselinr/profiling/core.py` - Added event emission
+6. `baselinr/storage/schema.sql` - Added baselinr_events table
 7. `examples/config.yml` - Added hooks configuration
 8. `examples/quickstart.py` - Added EventBus usage
 9. `README.md` - Added event system documentation
@@ -368,7 +368,7 @@ Potential future improvements:
 
 ## Conclusion
 
-The event and alert hook system is now fully implemented and integrated into ProfileMesh. It provides a powerful, flexible, and extensible way to react to profiling and drift detection events, enabling real-time alerts, historical tracking, and custom integrations.
+The event and alert hook system is now fully implemented and integrated into Baselinr. It provides a powerful, flexible, and extensible way to react to profiling and drift detection events, enabling real-time alerts, historical tracking, and custom integrations.
 
 The system is:
 - ✅ Production-ready

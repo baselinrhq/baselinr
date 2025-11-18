@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ProfileMesh Dashboard Frontend - Start Script
+# Baselinr Dashboard Frontend - Start Script
 
 echo "=========================================="
-echo "ProfileMesh Dashboard Frontend"
+echo "Baselinr Dashboard Frontend"
 echo "=========================================="
 
 # Check if node_modules exists

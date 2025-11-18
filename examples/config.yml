@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example
+# Baselinr Configuration Example
 # This is a sample configuration for profiling PostgreSQL tables
 
 environment: development
@@ -8,9 +8,9 @@ source:
   type: postgres
   host: localhost
   port: 5433
-  database: profilemesh
-  username: profilemesh
-  password: profilemesh
+  database: baselinr
+  username: baselinr
+  password: baselinr
   schema: public
 
 # Storage configuration (where to save profiling results)
@@ -19,12 +19,12 @@ storage:
     type: postgres
     host: localhost
     port: 5433
-    database: profilemesh
-    username: profilemesh
-    password: profilemesh
+    database: baselinr
+    username: baselinr
+    password: baselinr
     schema: public
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration
@@ -228,19 +228,19 @@ hooks:
     # Example 2: SQL event persistence (commented out)
     # - type: sql
     #   enabled: true
-    #   table_name: profilemesh_events
+    #   table_name: baselinr_events
     #   connection:
     #     type: postgres
     #     host: localhost
     #     port: 5432
-    #     database: profilemesh
-    #     username: profilemesh
-    #     password: profilemesh
+    #     database: baselinr
+    #     username: baselinr
+    #     password: baselinr
     
     # Example 3: Snowflake event persistence (commented out)
     # - type: snowflake
     #   enabled: true
-    #   table_name: profilemesh_events
+    #   table_name: baselinr_events
     #   connection:
     #     type: snowflake
     #     account: myaccount

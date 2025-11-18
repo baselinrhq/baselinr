@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from sqlalchemy import create_engine, text
 
-from profilemesh.config.schema import (
+from baselinr.config.schema import (
     ConnectionConfig,
     DatabaseType,
     DriftDetectionConfig,
     StorageConfig,
 )
-from profilemesh.drift.baseline_selector import BaselineResult, BaselineSelector
+from baselinr.drift.baseline_selector import BaselineResult, BaselineSelector
 
 
 @pytest.fixture
@@ -28,8 +28,8 @@ def test_storage_config():
     """Create a test storage configuration."""
     return StorageConfig(
         connection=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),
-        results_table="profilemesh_results",
-        runs_table="profilemesh_runs",
+        results_table="baselinr_results",
+        runs_table="baselinr_runs",
         create_tables=False,
     )
 
@@ -58,7 +58,7 @@ def setup_test_tables(test_db_engine):
         conn.execute(
             text(
                 """
-                CREATE TABLE profilemesh_runs (
+                CREATE TABLE baselinr_runs (
                     run_id VARCHAR(36) NOT NULL,
                     dataset_name VARCHAR(255) NOT NULL,
                     schema_name VARCHAR(255),
@@ -77,7 +77,7 @@ def setup_test_tables(test_db_engine):
         conn.execute(
             text(
                 """
-                CREATE TABLE profilemesh_results (
+                CREATE TABLE baselinr_results (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     run_id VARCHAR(36) NOT NULL,
                     dataset_name VARCHAR(255) NOT NULL,
@@ -97,7 +97,7 @@ def setup_test_tables(test_db_engine):
             text(
                 """
                 CREATE INDEX idx_runs_dataset_profiled 
-                ON profilemesh_runs (dataset_name, profiled_at DESC)
+                ON baselinr_runs (dataset_name, profiled_at DESC)
             """
             )
         )
@@ -105,7 +105,7 @@ def setup_test_tables(test_db_engine):
             text(
                 """
                 CREATE INDEX idx_results_run_id 
-                ON profilemesh_results (run_id)
+                ON baselinr_results (run_id)
             """
             )
         )
@@ -132,7 +132,7 @@ def seed_historical_runs(setup_test_tables):
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_runs 
+                    INSERT INTO baselinr_runs 
                     (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                     VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
                 """
@@ -156,7 +156,7 @@ def seed_historical_runs(setup_test_tables):
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_results 
+                    INSERT INTO baselinr_results 
                     (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                     VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                 """
@@ -179,7 +179,7 @@ def seed_historical_runs(setup_test_tables):
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_results 
+                    INSERT INTO baselinr_results 
                     (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                     VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                 """
@@ -201,7 +201,7 @@ def seed_historical_runs(setup_test_tables):
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_results 
+                    INSERT INTO baselinr_results 
                     (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                     VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                 """
@@ -541,7 +541,7 @@ class TestBaselineSelectorEdgeCases:
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_runs 
+                    INSERT INTO baselinr_runs 
                     (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                     VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
                 """
@@ -561,7 +561,7 @@ class TestBaselineSelectorEdgeCases:
             conn.execute(
                 text(
                     """
-                    INSERT INTO profilemesh_results 
+                    INSERT INTO baselinr_results 
                     (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                     VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                 """
@@ -629,7 +629,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_runs 
+                        INSERT INTO baselinr_runs 
                         (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                         VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
                     """
@@ -649,7 +649,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_results 
+                        INSERT INTO baselinr_results 
                         (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                         VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                     """
@@ -698,7 +698,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_runs 
+                        INSERT INTO baselinr_runs 
                         (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                         VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
                     """
@@ -718,7 +718,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_results 
+                        INSERT INTO baselinr_results 
                         (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                         VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                     """
@@ -767,7 +767,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_runs 
+                        INSERT INTO baselinr_runs 
                         (run_id, dataset_name, schema_name, profiled_at, environment, status, row_count, column_count)
                         VALUES (:run_id, :dataset_name, :schema_name, :profiled_at, :environment, :status, :row_count, :column_count)
                     """
@@ -787,7 +787,7 @@ class TestBaselineSelectorEdgeCases:
                 conn.execute(
                     text(
                         """
-                        INSERT INTO profilemesh_results 
+                        INSERT INTO baselinr_results 
                         (run_id, dataset_name, schema_name, column_name, column_type, metric_name, metric_value, profiled_at)
                         VALUES (:run_id, :dataset_name, :schema_name, :column_name, :column_type, :metric_name, :metric_value, :profiled_at)
                     """

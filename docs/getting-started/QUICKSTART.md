@@ -1,6 +1,6 @@
-# ProfileMesh Quick Start Guide
+# Baselinr Quick Start Guide
 
-Get ProfileMesh up and running in 5 minutes!
+Get Baselinr up and running in 5 minutes!
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ Get ProfileMesh up and running in 5 minutes!
 
 ## Option 1: Docker Environment (Recommended)
 
-This is the easiest way to get started with ProfileMesh.
+This is the easiest way to get started with Baselinr.
 
 ### Step 1: Start the Docker Environment
 
@@ -26,7 +26,7 @@ This will start:
 
 Wait about 30 seconds for everything to initialize.
 
-### Step 2: Install ProfileMesh
+### Step 2: Install Baselinr
 
 ```bash
 # From the profile_mesh directory
@@ -36,7 +36,7 @@ pip install -e ".[dagster]"
 ### Step 3: Run Your First Profile
 
 ```bash
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 ```
 
 You should see output like:
@@ -62,10 +62,10 @@ You should see output like:
 
 ```bash
 # Run profiling again
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # Now detect drift
-profilemesh drift --config examples/config.yml --dataset customers
+baselinr drift --config examples/config.yml --dataset customers
 ```
 
 ### Step 5: Explore Dagster UI
@@ -77,7 +77,7 @@ Open http://localhost:3000 in your browser to see:
 
 ## Option 2: Your Own PostgreSQL Database
 
-### Step 1: Install ProfileMesh
+### Step 1: Install Baselinr
 
 ```bash
 pip install -e .
@@ -107,8 +107,8 @@ storage:
     database: your-database
     username: your-username
     password: your-password
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 profiling:
@@ -120,7 +120,7 @@ profiling:
 ### Step 3: Run Profiling
 
 ```bash
-profilemesh profile --config my_config.yml
+baselinr profile --config my_config.yml
 ```
 
 ## Option 3: SQLite (Minimal Setup)
@@ -174,8 +174,8 @@ storage:
   connection:
     type: sqlite
     filepath: ./sample.db
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 profiling:
@@ -188,7 +188,7 @@ profiling:
 
 ```bash
 pip install -e .
-profilemesh profile --config config_sqlite.yml
+baselinr profile --config config_sqlite.yml
 ```
 
 ## Next Steps
@@ -199,11 +199,11 @@ Query the results in your database:
 
 ```sql
 -- View all profiling runs
-SELECT * FROM profilemesh_runs ORDER BY profiled_at DESC;
+SELECT * FROM baselinr_runs ORDER BY profiled_at DESC;
 
 -- View metrics for a specific table
 SELECT column_name, metric_name, metric_value
-FROM profilemesh_results
+FROM baselinr_results
 WHERE dataset_name = 'customers'
   AND run_id = '<latest-run-id>'
 ORDER BY column_name, metric_name;
@@ -215,15 +215,15 @@ Run profiling multiple times and compare:
 
 ```bash
 # Profile now
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # Make some changes to your data...
 
 # Profile again
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # Detect drift
-profilemesh drift --config examples/config.yml --dataset customers
+baselinr drift --config examples/config.yml --dataset customers
 ```
 
 ### 3. Integrate with Dagster
@@ -252,7 +252,7 @@ If you get a connection error with Docker:
 
 ### "Module not found" Error
 
-Make sure you've installed ProfileMesh:
+Make sure you've installed Baselinr:
 ```bash
 pip install -e .
 ```
@@ -265,7 +265,7 @@ Use Option 2 (your own PostgreSQL) or Option 3 (SQLite).
 
 - Check the full README.md
 - Look at examples in the `examples/` directory
-- Review the configuration schema in `profilemesh/config/schema.py`
+- Review the configuration schema in `baselinr/config/schema.py`
 
 Happy profiling! 🧩
 

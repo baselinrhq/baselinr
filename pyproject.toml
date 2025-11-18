@@ -3,14 +3,14 @@ requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "profilemesh"
+name = "baselinr"
 version = "0.1.0"
 description = "Modern data profiling and drift detection framework"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    {name = "ProfileMesh Contributors", email = "profilemesh@example.com"}
+    {name = "Baselinr Contributors", email = "baselinr@example.com"}
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -59,7 +59,7 @@ all = [
 ]
 
 [project.scripts]
-profilemesh = "profilemesh.cli:main"
+baselinr = "baselinr.cli:main"
 
 [tool.black]
 line-length = 100

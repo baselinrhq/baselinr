@@ -1,4 +1,4 @@
-# ProfileMesh Core Dependencies
+# Baselinr Core Dependencies
 
 # Configuration and validation
 pydantic>=2.0.0

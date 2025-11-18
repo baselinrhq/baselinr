@@ -7,8 +7,8 @@ import Sidebar from '@/components/Sidebar'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'ProfileMesh Dashboard',
-  description: 'Internal dashboard for ProfileMesh data profiling and drift detection',
+  title: 'Baselinr Dashboard',
+  description: 'Internal dashboard for Baselinr data profiling and drift detection',
 }
 
 export default function RootLayout({

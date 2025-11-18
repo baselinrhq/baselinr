@@ -1,6 +1,6 @@
-# 🧩 ProfileMesh
+# 🧩 Baselinr
 
-**ProfileMesh** is a modern, open-source data profiling and drift detection framework for SQL-based data warehouses. It automatically profiles datasets, stores metadata and statistics, and detects drift over time.
+**Baselinr** is a modern, open-source data profiling and drift detection framework for SQL-based data warehouses. It automatically profiles datasets, stores metadata and statistics, and detects drift over time.
 
 ## 🚀 Features
 
@@ -90,8 +90,8 @@ storage:
     database: mydb
     username: user
     password: password
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 profiling:
@@ -109,7 +109,7 @@ profiling:
 ### 2. Preview What Will Be Profiled
 
 ```bash
-profilemesh plan --config config.yml
+baselinr plan --config config.yml
 ```
 
 This shows you what tables will be profiled without actually running the profiler.
@@ -117,7 +117,7 @@ This shows you what tables will be profiled without actually running the profile
 ### 3. Run Profiling
 
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 ### 4. Detect Drift
@@ -125,7 +125,7 @@ profilemesh profile --config config.yml
 After running profiling multiple times:
 
 ```bash
-profilemesh drift --config config.yml --dataset customers
+baselinr drift --config config.yml --dataset customers
 ```
 
 ### 5. Query Profiling Metadata
@@ -134,16 +134,16 @@ Query your profiling history and drift events:
 
 ```bash
 # List recent profiling runs
-profilemesh query runs --config config.yml --limit 10
+baselinr query runs --config config.yml --limit 10
 
 # Query drift events
-profilemesh query drift --config config.yml --table customers --days 7
+baselinr query drift --config config.yml --table customers --days 7
 
 # Get detailed run information
-profilemesh query run --config config.yml --run-id <run-id>
+baselinr query run --config config.yml --run-id <run-id>
 
 # View table profiling history
-profilemesh query table --config config.yml --table customers --days 30
+baselinr query table --config config.yml --table customers --days 30
 ```
 
 ### 6. Manage Schema Migrations
@@ -152,18 +152,18 @@ Check and apply schema migrations:
 
 ```bash
 # Check schema version status
-profilemesh migrate status --config config.yml
+baselinr migrate status --config config.yml
 
 # Apply migrations to latest version
-profilemesh migrate apply --config config.yml --target 1
+baselinr migrate apply --config config.yml --target 1
 
 # Validate schema integrity
-profilemesh migrate validate --config config.yml
+baselinr migrate validate --config config.yml
 ```
 
 ## 🐳 Docker Development Environment
 
-ProfileMesh includes a complete Docker environment for local development and testing.
+Baselinr includes a complete Docker environment for local development and testing.
 
 ### Start the Environment
 
@@ -186,7 +186,7 @@ docker-compose down
 
 ## 📊 Profiling Metrics
 
-ProfileMesh computes the following metrics:
+Baselinr computes the following metrics:
 
 ### All Column Types
 - **count**: Total number of rows
@@ -227,15 +227,15 @@ See [docs/guides/PROFILING_ENRICHMENT.md](docs/guides/PROFILING_ENRICHMENT.md) f
 
 ## 🔄 Dagster Integration
 
-ProfileMesh can create Dagster assets dynamically from your configuration:
+Baselinr can create Dagster assets dynamically from your configuration:
 
 ```python
-from profilemesh.integrations.dagster import build_profilemesh_definitions
+from baselinr.integrations.dagster import build_baselinr_definitions
 
-defs = build_profilemesh_definitions(
+defs = build_baselinr_definitions(
     config_path="config.yml",
-    asset_prefix="profilemesh",
-    job_name="profilemesh_profile_all",
+    asset_prefix="baselinr",
+    job_name="baselinr_profile_all",
     enable_sensor=True,  # optional
 )
 ```
@@ -251,8 +251,8 @@ defs = build_profilemesh_definitions(
 ## 📁 Project Structure
 
 ```
-profilemesh/
-├── profilemesh/           # Main package
+baselinr/
+├── baselinr/           # Main package
 │   ├── config/           # Configuration management
 │   ├── connectors/       # Database connectors
 │   ├── profiling/        # Profiling engine
@@ -294,34 +294,34 @@ python examples/quickstart.py
 
 ```bash
 # View profiling plan (dry-run)
-profilemesh plan --config examples/config.yml
+baselinr plan --config examples/config.yml
 
 # View plan in JSON format
-profilemesh plan --config examples/config.yml --output json
+baselinr plan --config examples/config.yml --output json
 
 # View plan with verbose details
-profilemesh plan --config examples/config.yml --verbose
+baselinr plan --config examples/config.yml --verbose
 
 # Profile all tables in config
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 
 # Profile with output to JSON
-profilemesh profile --config examples/config.yml --output results.json
+baselinr profile --config examples/config.yml --output results.json
 
 # Dry run (don't write to storage)
-profilemesh profile --config examples/config.yml --dry-run
+baselinr profile --config examples/config.yml --dry-run
 
 # Detect drift
-profilemesh drift --config examples/config.yml --dataset customers
+baselinr drift --config examples/config.yml --dataset customers
 
 # Detect drift with specific runs
-profilemesh drift --config examples/config.yml \
+baselinr drift --config examples/config.yml \
   --dataset customers \
   --baseline <run-id-1> \
   --current <run-id-2>
 
 # Fail on critical drift (useful for CI/CD)
-profilemesh drift --config examples/config.yml \
+baselinr drift --config examples/config.yml \
   --dataset customers \
   --fail-on-drift
 
@@ -329,39 +329,39 @@ profilemesh drift --config examples/config.yml \
 # (configure in config.yml: strategy: statistical)
 
 # Query profiling runs
-profilemesh query runs --config examples/config.yml --limit 10
+baselinr query runs --config examples/config.yml --limit 10
 
 # Query drift events for a table
-profilemesh query drift --config examples/config.yml \
+baselinr query drift --config examples/config.yml \
   --table customers \
   --severity high \
   --days 7
 
 # Get detailed run information
-profilemesh query run --config examples/config.yml \
+baselinr query run --config examples/config.yml \
   --run-id <run-id> \
   --format json
 
 # View table profiling history
-profilemesh query table --config examples/config.yml \
+baselinr query table --config examples/config.yml \
   --table customers \
   --days 30 \
   --format csv \
   --output history.csv
 
 # Check schema migration status
-profilemesh migrate status --config examples/config.yml
+baselinr migrate status --config examples/config.yml
 
 # Apply schema migrations
-profilemesh migrate apply --config examples/config.yml --target 1
+baselinr migrate apply --config examples/config.yml --target 1
 
 # Validate schema integrity
-profilemesh migrate validate --config examples/config.yml
+baselinr migrate validate --config examples/config.yml
 ```
 
 ## 🔍 Drift Detection
 
-ProfileMesh provides multiple drift detection strategies and intelligent baseline selection:
+Baselinr provides multiple drift detection strategies and intelligent baseline selection:
 
 ### Available Strategies
 
@@ -379,7 +379,7 @@ ProfileMesh provides multiple drift detection strategies and intelligent baselin
 
 ### Intelligent Baseline Selection
 
-ProfileMesh automatically selects the optimal baseline for drift detection based on column characteristics:
+Baselinr automatically selects the optimal baseline for drift detection based on column characteristics:
 
 - **Auto Selection**: Automatically chooses the best baseline method per column
   - High variance columns → Moving average (smooths noise)
@@ -394,7 +394,7 @@ Thresholds and baseline selection are fully configurable via the `drift_detectio
 
 ## 🔔 Event & Alert Hooks
 
-ProfileMesh includes a pluggable event system that emits events for drift detection, schema changes, and profiling lifecycle events. You can register hooks to process these events for logging, persistence, or alerting.
+Baselinr includes a pluggable event system that emits events for drift detection, schema changes, and profiling lifecycle events. You can register hooks to process these events for logging, persistence, or alerting.
 
 ### Built-in Hooks
 
@@ -414,7 +414,7 @@ hooks:
     
     # Persist to database
     - type: sql
-      table_name: profilemesh_events
+      table_name: baselinr_events
       connection:
         type: postgres
         host: localhost
@@ -436,7 +436,7 @@ hooks:
 Create custom hooks by implementing the `AlertHook` protocol:
 
 ```python
-from profilemesh.events import BaseEvent
+from baselinr.events import BaseEvent
 
 class MyCustomHook:
     def handle_event(self, event: BaseEvent) -> None:
@@ -461,40 +461,40 @@ See [docs/architecture/EVENTS_AND_HOOKS.md](docs/architecture/EVENTS_AND_HOOKS.m
 
 ## 🔄 Schema Versioning & Migrations
 
-ProfileMesh includes a built-in schema versioning system to manage database schema evolution safely.
+Baselinr includes a built-in schema versioning system to manage database schema evolution safely.
 
 ### Migration Commands
 
 ```bash
 # Check current schema version status
-profilemesh migrate status --config config.yml
+baselinr migrate status --config config.yml
 
 # Apply migrations to a specific version
-profilemesh migrate apply --config config.yml --target 1
+baselinr migrate apply --config config.yml --target 1
 
 # Preview migrations (dry run)
-profilemesh migrate apply --config config.yml --target 1 --dry-run
+baselinr migrate apply --config config.yml --target 1 --dry-run
 
 # Validate schema integrity
-profilemesh migrate validate --config config.yml
+baselinr migrate validate --config config.yml
 ```
 
 ### How It Works
 
-- Schema versions are tracked in the `profilemesh_schema_version` table
+- Schema versions are tracked in the `baselinr_schema_version` table
 - Migrations are applied incrementally and can be rolled back
 - The system automatically detects when your database schema is out of date
 - Migrations are idempotent and safe to run multiple times
 
 ## 🔍 Metadata Querying
 
-ProfileMesh provides powerful querying capabilities to explore your profiling history and drift events.
+Baselinr provides powerful querying capabilities to explore your profiling history and drift events.
 
 ### Query Commands
 
 ```bash
 # Query profiling runs with filters
-profilemesh query runs --config config.yml \
+baselinr query runs --config config.yml \
   --table customers \
   --status completed \
   --days 30 \
@@ -502,19 +502,19 @@ profilemesh query runs --config config.yml \
   --format table
 
 # Query drift events
-profilemesh query drift --config config.yml \
+baselinr query drift --config config.yml \
   --table customers \
   --severity high \
   --days 7 \
   --format json
 
 # Get detailed information about a specific run
-profilemesh query run --config config.yml \
+baselinr query run --config config.yml \
   --run-id abc123-def456 \
   --format json
 
 # View table profiling history over time
-profilemesh query table --config config.yml \
+baselinr query table --config config.yml \
   --table customers \
   --schema public \
   --days 90 \
@@ -634,18 +634,18 @@ drift_detection:
 
 ## 🔐 Environment Variables
 
-ProfileMesh supports environment variable overrides:
+Baselinr supports environment variable overrides:
 
 ```bash
 # Override source connection
-export PROFILEMESH_SOURCE__HOST=prod-db.example.com
-export PROFILEMESH_SOURCE__PASSWORD=secret
+export BASELINR_SOURCE__HOST=prod-db.example.com
+export BASELINR_SOURCE__PASSWORD=secret
 
 # Override environment
-export PROFILEMESH_ENVIRONMENT=production
+export BASELINR_ENVIRONMENT=production
 
 # Run profiling
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 ## 🧪 Development
@@ -659,14 +659,14 @@ pytest
 ### Code Formatting
 
 ```bash
-black profilemesh/
-isort profilemesh/
+black baselinr/
+isort baselinr/
 ```
 
 ### Type Checking
 
 ```bash
-mypy profilemesh/
+mypy baselinr/
 ```
 
 ## 📝 License
@@ -683,5 +683,5 @@ For questions and support, please open an issue on GitHub.
 
 ---
 
-**ProfileMesh** - Modern data profiling made simple 🧩
+**Baselinr** - Modern data profiling made simple 🧩
 

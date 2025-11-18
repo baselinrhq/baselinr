@@ -1,6 +1,6 @@
 # Prometheus Metrics Integration
 
-ProfileMesh now includes Prometheus metrics exporting for comprehensive monitoring and observability.
+Baselinr now includes Prometheus metrics exporting for comprehensive monitoring and observability.
 
 ## Features
 
@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 ## Configuration
 
-Add the monitoring section to your ProfileMesh config file:
+Add the monitoring section to your Baselinr config file:
 
 ```yaml
 monitoring:
@@ -44,49 +44,49 @@ Example: `examples/config_with_metrics.yml`
 
 ### Profiling Metrics
 
-**`profilemesh_profile_runs_total`** (Counter)
+**`baselinr_profile_runs_total`** (Counter)
 - Total number of profiling runs
 - Labels: `warehouse`, `table`, `status` (success/failed)
 
-**`profilemesh_profile_duration_seconds`** (Histogram)
+**`baselinr_profile_duration_seconds`** (Histogram)
 - Histogram of profile execution times in seconds
 - Labels: `warehouse`, `table`
 - Buckets: 0.1s, 0.5s, 1s, 2.5s, 5s, 10s, 30s, 60s, 120s, 300s
 
-**`profilemesh_rows_profiled_total`** (Counter)
+**`baselinr_rows_profiled_total`** (Counter)
 - Total number of rows profiled
 - Labels: `warehouse`, `table`
 
-**`profilemesh_columns_profiled_total`** (Counter)
+**`baselinr_columns_profiled_total`** (Counter)
 - Total number of columns profiled
 - Labels: `warehouse`, `table`
 
-**`profilemesh_active_workers`** (Gauge)
+**`baselinr_active_workers`** (Gauge)
 - Number of currently running worker threads
 
 ### Drift Detection Metrics
 
-**`profilemesh_drift_events_total`** (Counter)
+**`baselinr_drift_events_total`** (Counter)
 - Total number of drift detection events
 - Labels: `warehouse`, `table`, `metric`, `severity` (low/medium/high)
 
-**`profilemesh_drift_detection_duration_seconds`** (Histogram)
+**`baselinr_drift_detection_duration_seconds`** (Histogram)
 - Histogram of drift detection execution times in seconds
 - Labels: `warehouse`, `table`
 - Buckets: 0.1s, 0.5s, 1s, 2.5s, 5s, 10s, 30s
 
-**`profilemesh_schema_changes_total`** (Counter)
+**`baselinr_schema_changes_total`** (Counter)
 - Total number of schema change events
 - Labels: `warehouse`, `table`, `change_type` (column_added/column_removed/type_changed)
 
 ### Query and Error Metrics
 
-**`profilemesh_query_duration_seconds`** (Histogram)
+**`baselinr_query_duration_seconds`** (Histogram)
 - Histogram of warehouse query execution times in seconds
 - Labels: `warehouse`
 - Buckets: 0.01s, 0.05s, 0.1s, 0.5s, 1s, 2.5s, 5s, 10s
 
-**`profilemesh_errors_total`** (Counter)
+**`baselinr_errors_total`** (Counter)
 - Total number of errors
 - Labels: `warehouse`, `error_type`, `component` (profiler/drift_detector/connector)
 
@@ -97,7 +97,7 @@ Example: `examples/config_with_metrics.yml`
 Run profiling with metrics enabled:
 
 ```bash
-profilemesh profile --config config_with_metrics.yml
+baselinr profile --config config_with_metrics.yml
 ```
 
 The metrics server will start automatically and remain running after profiling completes (by default). Metrics will be available at:
@@ -131,34 +131,34 @@ curl http://localhost:9753/metrics
 Example output:
 
 ```prometheus
-# HELP profilemesh_profile_runs_total Total number of profiling runs
-# TYPE profilemesh_profile_runs_total counter
-profilemesh_profile_runs_total{warehouse="postgres",table="public.customers",status="success"} 3.0
+# HELP baselinr_profile_runs_total Total number of profiling runs
+# TYPE baselinr_profile_runs_total counter
+baselinr_profile_runs_total{warehouse="postgres",table="public.customers",status="success"} 3.0
 
-# HELP profilemesh_profile_duration_seconds Histogram of profile execution times in seconds
-# TYPE profilemesh_profile_duration_seconds histogram
-profilemesh_profile_duration_seconds_bucket{le="0.5",warehouse="postgres",table="public.customers"} 3.0
-profilemesh_profile_duration_seconds_sum{warehouse="postgres",table="public.customers"} 0.42
-profilemesh_profile_duration_seconds_count{warehouse="postgres",table="public.customers"} 3.0
+# HELP baselinr_profile_duration_seconds Histogram of profile execution times in seconds
+# TYPE baselinr_profile_duration_seconds histogram
+baselinr_profile_duration_seconds_bucket{le="0.5",warehouse="postgres",table="public.customers"} 3.0
+baselinr_profile_duration_seconds_sum{warehouse="postgres",table="public.customers"} 0.42
+baselinr_profile_duration_seconds_count{warehouse="postgres",table="public.customers"} 3.0
 
-# HELP profilemesh_drift_events_total Total number of drift detection events
-# TYPE profilemesh_drift_events_total counter
-profilemesh_drift_events_total{warehouse="postgres",table="customers",metric="row_count",severity="high"} 2.0
+# HELP baselinr_drift_events_total Total number of drift detection events
+# TYPE baselinr_drift_events_total counter
+baselinr_drift_events_total{warehouse="postgres",table="customers",metric="row_count",severity="high"} 2.0
 
-# HELP profilemesh_active_workers Number of currently running worker threads
-# TYPE profilemesh_active_workers gauge
-profilemesh_active_workers 0.0
+# HELP baselinr_active_workers Number of currently running worker threads
+# TYPE baselinr_active_workers gauge
+baselinr_active_workers 0.0
 ```
 
 ## Integration with Prometheus
 
 ### Prometheus Configuration
 
-Add ProfileMesh as a scrape target in your `prometheus.yml`:
+Add Baselinr as a scrape target in your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: 'profilemesh'
+  - job_name: 'baselinr'
     static_configs:
       - targets: ['localhost:9753']
     scrape_interval: 15s
@@ -220,7 +220,7 @@ pip install prometheus_client>=0.19.0
 1. **Enable in Production**: Metrics are lightweight and provide valuable observability
 2. **Use Appropriate Port**: Ensure port 9753 (or your custom port) is accessible
 3. **Monitor Latency**: Watch `profile_duration_seconds` histograms for performance issues
-4. **Alert on Errors**: Set up alerts on `profilemesh_errors_total`
+4. **Alert on Errors**: Set up alerts on `baselinr_errors_total`
 5. **Track Drift Trends**: Use drift metrics to identify data quality issues early
 
 ## Performance Impact
@@ -246,9 +246,9 @@ Planned improvements:
 
 - [Prometheus Documentation](https://prometheus.io/docs/)
 - [Grafana Dashboards](https://grafana.com/docs/)
-- [ProfileMesh Configuration](./docs/configuration.md)
+- [Baselinr Configuration](./docs/configuration.md)
 
 ---
 
-For questions or issues, please file a GitHub issue or contact the ProfileMesh team.
+For questions or issues, please file a GitHub issue or contact the Baselinr team.
 

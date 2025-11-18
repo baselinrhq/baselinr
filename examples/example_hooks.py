@@ -1,5 +1,5 @@
 """
-Example demonstrating the event and hooks system in ProfileMesh.
+Example demonstrating the event and hooks system in Baselinr.
 
 This example shows how to:
 1. Create an event bus
@@ -10,7 +10,7 @@ This example shows how to:
 
 from datetime import datetime
 
-from profilemesh.events import (
+from baselinr.events import (
     BaseEvent,
     DataDriftDetected,
     EventBus,
@@ -339,7 +339,7 @@ def example_hook_error_handling():
 def main():
     """Run all examples."""
     print("\n" + "=" * 60)
-    print("ProfileMesh Event and Hooks System Examples")
+    print("Baselinr Event and Hooks System Examples")
     print("=" * 60 + "\n")
 
     example_basic_event_bus()

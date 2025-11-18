@@ -6,21 +6,21 @@ from unittest.mock import Mock
 import pytest
 from pydantic import ValidationError
 
-from profilemesh.config.schema import (
+from baselinr.config.schema import (
+    BaselinrConfig,
     ConnectionConfig,
     DriftDetectionConfig,
-    ProfileMeshConfig,
     ProfilingConfig,
     StorageConfig,
     TablePattern,
 )
-from profilemesh.planner import PlanBuilder, ProfilingPlan, TablePlan, print_plan
+from baselinr.planner import PlanBuilder, ProfilingPlan, TablePlan, print_plan
 
 
 @pytest.fixture
 def mock_config():
     """Create a mock configuration for testing."""
-    return ProfileMeshConfig(
+    return BaselinrConfig(
         environment="development",
         source=ConnectionConfig(
             type="postgres",
@@ -39,8 +39,8 @@ def mock_config():
                 username="user",
                 password="pass",
             ),
-            results_table="profilemesh_results",
-            runs_table="profilemesh_runs",
+            results_table="baselinr_results",
+            runs_table="baselinr_runs",
         ),
         profiling=ProfilingConfig(
             tables=[
@@ -140,7 +140,7 @@ class TestPlanBuilder:
 
     def test_build_table_plan_with_partition(self, mock_config):
         """Test building plan with partition configuration."""
-        from profilemesh.config.schema import PartitionConfig
+        from baselinr.config.schema import PartitionConfig
 
         # Create pattern with partition config
         pattern = TablePattern(
@@ -188,10 +188,10 @@ class TestPlanBuilder:
 
     def test_validate_plan_invalid_sampling_fraction(self):
         """Test validation catches invalid sampling fractions."""
-        from profilemesh.config.schema import SamplingConfig
+        from baselinr.config.schema import SamplingConfig
 
         with pytest.raises(ValidationError):
-            ProfileMeshConfig(
+            BaselinrConfig(
                 environment="test",
                 source=ConnectionConfig(type="postgres", database="test"),
                 storage=StorageConfig(

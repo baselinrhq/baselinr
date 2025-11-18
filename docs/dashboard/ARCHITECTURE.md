@@ -1,8 +1,8 @@
-# ProfileMesh Dashboard Architecture
+# Baselinr Dashboard Architecture
 
 ## Overview
 
-The ProfileMesh Dashboard is a full-stack web application that provides visualization and monitoring capabilities for the ProfileMesh data profiling system.
+The Baselinr Dashboard is a full-stack web application that provides visualization and monitoring capabilities for the Baselinr data profiling system.
 
 ## Architecture Diagram
 
@@ -36,17 +36,17 @@ The ProfileMesh Dashboard is a full-stack web application that provides visualiz
 ┌────────────────────────▼────────────────────────────────────┐
 │              PostgreSQL Database (Port 5433)                │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │  ProfileMesh Storage                                 │   │
-│  │  • profilemesh_runs                                  │   │
-│  │  • profilemesh_results                               │   │
-│  │  • profilemesh_events                                │   │
+│  │  Baselinr Storage                                 │   │
+│  │  • baselinr_runs                                  │   │
+│  │  • baselinr_results                               │   │
+│  │  • baselinr_events                                │   │
 │  └──────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
                          ▲
                          │ Writes
                          │
 ┌────────────────────────┴────────────────────────────────────┐
-│              ProfileMesh Core (Phase 1)                     │
+│              Baselinr Core (Phase 1)                     │
 │  • Profiling Engine                                         │
 │  • Drift Detector                                           │
 │  • Storage Writer                                           │
@@ -111,7 +111,7 @@ backend/
 
 ### 1. Profiling Run Flow
 ```
-ProfileMesh CLI
+Baselinr CLI
     ↓ (profiles data)
 Profiling Engine
     ↓ (writes results)
@@ -147,7 +147,7 @@ User Browser
 
 ## Database Schema
 
-### profilemesh_runs
+### baselinr_runs
 Stores metadata about each profiling run.
 
 ```sql
@@ -161,7 +161,7 @@ Stores metadata about each profiling run.
 - status
 ```
 
-### profilemesh_results
+### baselinr_results
 Stores column-level metrics.
 
 ```sql
@@ -172,7 +172,7 @@ Stores column-level metrics.
 - metric_value
 ```
 
-### profilemesh_events
+### baselinr_events
 Stores drift detection events.
 
 ```sql
@@ -247,9 +247,9 @@ const { data, isLoading, error } = useQuery({
 
 ### Database
 - Indexes on frequently queried columns
-  - `profilemesh_runs.dataset_name`
-  - `profilemesh_runs.profiled_at`
-  - `profilemesh_events.run_id`
+  - `baselinr_runs.dataset_name`
+  - `baselinr_runs.profiled_at`
+  - `baselinr_events.run_id`
 
 ## Security
 

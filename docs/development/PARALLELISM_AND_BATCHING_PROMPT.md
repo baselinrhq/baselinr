@@ -1,7 +1,7 @@
-# Cursor Prompt: Implement Parallelism & Batching for ProfileMesh
+# Cursor Prompt: Implement Parallelism & Batching for Baselinr
 
 ## Goal
-Add **optional** parallel execution and batching capabilities to ProfileMesh so that multiple tables can be profiled concurrently when enabled. This feature is **opt-in** and defaults to sequential execution (current behavior) for backward compatibility. The primary use case is CLI execution where users want to profile many tables faster. Dagster users already benefit from asset-level parallelism, but this feature can still be useful for batching within a single asset or for fine-grained control.
+Add **optional** parallel execution and batching capabilities to Baselinr so that multiple tables can be profiled concurrently when enabled. This feature is **opt-in** and defaults to sequential execution (current behavior) for backward compatibility. The primary use case is CLI execution where users want to profile many tables faster. Dagster users already benefit from asset-level parallelism, but this feature can still be useful for batching within a single asset or for fine-grained control.
 
 **Key Design Decision:**
 - **Default**: `max_workers=1` (sequential execution, maintains current behavior)
@@ -13,13 +13,13 @@ Add **optional** parallel execution and batching capabilities to ProfileMesh so 
 
 # System-Facing Instructions (for Cursor)
 
-You are modifying the **ProfileMesh** codebase. Implement the following exactly:
+You are modifying the **Baselinr** codebase. Implement the following exactly:
 
 ---
 
 # 1. Create Execution Configuration Schema
 
-Update `profilemesh/config/schema.py`:
+Update `baselinr/config/schema.py`:
 
 Add a new `ExecutionConfig` class:
 
@@ -61,7 +61,7 @@ class ExecutionConfig(BaseModel):
 
 **Important**: The default `max_workers=1` ensures sequential execution unless explicitly enabled.
 
-Add to `ProfileMeshConfig`:
+Add to `BaselinrConfig`:
 ```python
 execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
 ```
@@ -72,7 +72,7 @@ execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
 
 Create file:
 ```
-profilemesh/utils/worker_pool.py
+baselinr/utils/worker_pool.py
 ```
 
 Implement:
@@ -224,14 +224,14 @@ def profile_table_task(
 
 # 3. Integrate Worker Pool into ProfileEngine
 
-Modify `profilemesh/profiling/core.py`:
+Modify `baselinr/profiling/core.py`:
 
 ## A. Update `ProfileEngine.__init__`
 
 ```python
 def __init__(
     self,
-    config: ProfileMeshConfig,
+    config: BaselinrConfig,
     event_bus: Optional[EventBus] = None,
     run_context: Optional[RunContext] = None
 ):
@@ -337,7 +337,7 @@ def _profile_sequential(self, patterns: List[TablePattern]) -> List[ProfilingRes
 
 ## A. Connection Pool Management
 
-Update `profilemesh/connectors/base.py`:
+Update `baselinr/connectors/base.py`:
 
 ```python
 def _create_engine(self) -> Engine:
@@ -477,30 +477,30 @@ event_bus.emit(event)
 
 # 7. Prometheus Metrics Integration
 
-Add metrics to `profilemesh/utils/metrics.py`:
+Add metrics to `baselinr/utils/metrics.py`:
 
 ```python
 # Worker pool metrics
 active_workers_gauge = Gauge(
-    "profilemesh_active_workers",
+    "baselinr_active_workers",
     "Number of currently active worker threads",
     ["warehouse"]
 )
 
 worker_tasks_total = Counter(
-    "profilemesh_worker_tasks_total",
+    "baselinr_worker_tasks_total",
     "Total number of worker tasks",
     ["warehouse", "status"]  # status: started, completed, failed
 )
 
 worker_queue_size = Gauge(
-    "profilemesh_worker_queue_size",
+    "baselinr_worker_queue_size",
     "Current size of worker task queue",
     ["warehouse"]
 )
 
 batch_duration_seconds = Histogram(
-    "profilemesh_batch_duration_seconds",
+    "baselinr_batch_duration_seconds",
     "Histogram of batch execution times",
     ["warehouse", "batch_size"],
     buckets=(1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0)
@@ -614,11 +614,11 @@ Mock scenarios:
 
 This prompt should result in creation/modification of:
 
-- `profilemesh/config/schema.py` - Added `ExecutionConfig` (defaults to sequential)
-- `profilemesh/utils/worker_pool.py` - New worker pool module (only used when enabled)
-- `profilemesh/profiling/core.py` - Updated to conditionally use worker pool
-- `profilemesh/connectors/base.py` - Connection pool configuration (only when parallelism enabled)
-- `profilemesh/utils/metrics.py` - New worker pool metrics
+- `baselinr/config/schema.py` - Added `ExecutionConfig` (defaults to sequential)
+- `baselinr/utils/worker_pool.py` - New worker pool module (only used when enabled)
+- `baselinr/profiling/core.py` - Updated to conditionally use worker pool
+- `baselinr/connectors/base.py` - Connection pool configuration (only when parallelism enabled)
+- `baselinr/utils/metrics.py` - New worker pool metrics
 - `examples/config.yml` - Added execution configuration (commented, showing defaults)
 - `tests/utils/test_worker_pool.py` - Comprehensive test suite
 - Documentation updates with Dagster note
@@ -688,7 +688,7 @@ a specific need for batching within a single asset.
 
 ## Primary Use Case: CLI Execution
 
-**Scenario**: User runs `profilemesh profile --config config.yml` with 50 tables
+**Scenario**: User runs `baselinr profile --config config.yml` with 50 tables
 - **Without parallelism (default)**: ~50 minutes (1 min/table)
 - **With parallelism (max_workers=8)**: ~7 minutes
 - **Speedup**: ~7x faster (when enabled)
@@ -716,7 +716,7 @@ a specific need for batching within a single asset.
 - **Backward compatible**: Existing configs must work unchanged
 - **CLI-focused**: Primary benefit is for CLI users
 - **Dagster-aware**: Document that Dagster already provides parallelism
-- Ensure imports are relative: `from profilemesh...`
+- Ensure imports are relative: `from baselinr...`
 - Do not create circular imports
 - Use `concurrent.futures.ThreadPoolExecutor` for worker pool
 - Use `queue.Queue(maxsize=...)` for bounded queue

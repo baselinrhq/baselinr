@@ -1,6 +1,6 @@
-# Drift Detection in ProfileMesh
+# Drift Detection in Baselinr
 
-ProfileMesh provides a flexible, configurable drift detection system to identify changes in your data over time.
+Baselinr provides a flexible, configurable drift detection system to identify changes in your data over time.
 
 ## Overview
 
@@ -103,7 +103,7 @@ drift_detection:
 
 ## Baseline Selection
 
-ProfileMesh supports intelligent baseline selection for drift detection. Instead of always comparing to the previous run, you can configure the system to automatically select the best baseline based on column characteristics.
+Baselinr supports intelligent baseline selection for drift detection. Instead of always comparing to the previous run, you can configure the system to automatically select the best baseline based on column characteristics.
 
 ### Baseline Selection Strategies
 
@@ -247,7 +247,7 @@ drift_detection:
 
 ### How Auto Selection Works
 
-When `strategy: auto` is enabled, ProfileMesh analyzes each column's historical metrics:
+When `strategy: auto` is enabled, Baselinr analyzes each column's historical metrics:
 
 1. **Variance Analysis**: Calculates coefficient of variation (CV = std/mean)
    - CV > 0.2 → High variance → Use moving average
@@ -317,9 +317,9 @@ Perfect for daily business metrics that follow weekly patterns.
 #### Example 4: Python API with Baseline Selection
 
 ```python
-from profilemesh.drift.detector import DriftDetector
-from profilemesh.drift.baseline_selector import BaselineSelector
-from profilemesh.config.schema import DriftDetectionConfig, StorageConfig
+from baselinr.drift.detector import DriftDetector
+from baselinr.drift.baseline_selector import BaselineSelector
+from baselinr.config.schema import DriftDetectionConfig, StorageConfig
 
 # Configure with auto-selection
 drift_config = DriftDetectionConfig(
@@ -350,7 +350,7 @@ for drift in report.column_drifts:
 
 ## Type-Specific Thresholds
 
-ProfileMesh supports **type-specific thresholds** that adjust drift detection sensitivity based on column data type. This feature significantly reduces false positives by applying appropriate detection rules for each data type category.
+Baselinr supports **type-specific thresholds** that adjust drift detection sensitivity based on column data type. This feature significantly reduces false positives by applying appropriate detection rules for each data type category.
 
 ### Overview
 
@@ -622,16 +622,16 @@ drift_detection:
 
 ```bash
 # Basic drift detection (uses config)
-profilemesh drift --config config.yml --dataset customers
+baselinr drift --config config.yml --dataset customers
 
 # Specify specific runs to compare
-profilemesh drift --config config.yml \
+baselinr drift --config config.yml \
   --dataset customers \
   --baseline <run-id-1> \
   --current <run-id-2>
 
 # Fail on critical drift (for CI/CD)
-profilemesh drift --config config.yml \
+baselinr drift --config config.yml \
   --dataset customers \
   --fail-on-drift
 ```
@@ -639,8 +639,8 @@ profilemesh drift --config config.yml \
 ### Python API Usage
 
 ```python
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.drift.detector import DriftDetector
+from baselinr.config.loader import ConfigLoader
+from baselinr.drift.detector import DriftDetector
 
 # Load config
 config = ConfigLoader.load_from_file("config.yml")
@@ -672,8 +672,8 @@ for drift in report.column_drifts:
 ### Using Different Strategies
 
 ```python
-from profilemesh.drift.detector import DriftDetector
-from profilemesh.config.schema import DriftDetectionConfig, StorageConfig
+from baselinr.drift.detector import DriftDetector
+from baselinr.config.schema import DriftDetectionConfig, StorageConfig
 
 # Configure standard deviation strategy
 drift_config = DriftDetectionConfig(
@@ -701,7 +701,7 @@ You can create custom drift detection strategies by extending the `DriftDetectio
 ### Step 1: Create Your Strategy
 
 ```python
-from profilemesh.drift.strategies import DriftDetectionStrategy, DriftResult
+from baselinr.drift.strategies import DriftDetectionStrategy, DriftResult
 from typing import Any, Optional
 
 class MyCustomStrategy(DriftDetectionStrategy):
@@ -757,7 +757,7 @@ class MyCustomStrategy(DriftDetectionStrategy):
 ### Step 2: Register Your Strategy
 
 ```python
-from profilemesh.drift.strategies import DRIFT_STRATEGIES
+from baselinr.drift.strategies import DRIFT_STRATEGIES
 
 # Register your strategy
 DRIFT_STRATEGIES['my_custom_strategy'] = MyCustomStrategy
@@ -930,10 +930,10 @@ Future enhancements planned:
 
 **Solution**: Run profiling twice:
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 # ... wait or make changes ...
-profilemesh profile --config config.yml
-profilemesh drift --config config.yml --dataset customers
+baselinr profile --config config.yml
+baselinr drift --config config.yml --dataset customers
 ```
 
 ### "All drifts are high severity"

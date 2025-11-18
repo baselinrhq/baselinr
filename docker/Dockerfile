@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Install ProfileMesh in development mode
+# Install Baselinr in development mode
 RUN pip install -e .
 
 # Set up Dagster home

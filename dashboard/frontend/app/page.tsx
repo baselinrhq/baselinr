@@ -30,7 +30,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">ProfileMesh Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Baselinr Dashboard</h1>
         <p className="text-gray-600 mt-1">Monitor data profiling, drift detection, and warehouse health</p>
       </div>
 

@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.config.schema import (
+from baselinr.config.loader import ConfigLoader
+from baselinr.config.schema import (
+    BaselinrConfig,
     ConnectionConfig,
     DatabaseType,
-    ProfileMeshConfig,
     ProfilingConfig,
 )
 
@@ -60,8 +60,8 @@ storage:
     database: testdb
     username: user
     password: pass
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
 
 profiling:
   tables:
@@ -90,7 +90,7 @@ def test_config_validation():
     """Test configuration validation."""
     with pytest.raises(ValueError):
         # Invalid environment
-        ProfileMeshConfig(
+        BaselinrConfig(
             environment="invalid",
             source=ConnectionConfig(type=DatabaseType.POSTGRES, database="test"),
             storage={"connection": {"type": "postgres", "database": "test"}},
@@ -114,7 +114,7 @@ def test_default_profiling_config():
 
 def test_baseline_config_default():
     """Test default baseline configuration."""
-    from profilemesh.config.schema import DriftDetectionConfig
+    from baselinr.config.schema import DriftDetectionConfig
 
     config = DriftDetectionConfig()
 
@@ -126,7 +126,7 @@ def test_baseline_config_default():
 
 def test_baseline_config_validation():
     """Test baseline configuration validation."""
-    from profilemesh.config.schema import DriftDetectionConfig
+    from baselinr.config.schema import DriftDetectionConfig
 
     # Valid strategies
     config = DriftDetectionConfig(baselines={"strategy": "auto"})
@@ -159,7 +159,7 @@ def test_baseline_config_validation():
 
 def test_baseline_config_custom_windows():
     """Test custom baseline window configuration."""
-    from profilemesh.config.schema import DriftDetectionConfig
+    from baselinr.config.schema import DriftDetectionConfig
 
     config = DriftDetectionConfig(
         baselines={

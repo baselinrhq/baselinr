@@ -2,17 +2,17 @@
 
 import pytest
 
-from profilemesh.drift.statistical_tests import (
+from baselinr.drift.statistical_tests import (
     ChiSquareTest,
     EntropyChangeTest,
     KolmogorovSmirnovTest,
     PopulationStabilityIndexTest,
-    TestResult,
+    StatisticalTestResult,
     TopKStabilityTest,
     ZScoreVarianceTest,
     create_statistical_test,
 )
-from profilemesh.drift.strategies import (
+from baselinr.drift.strategies import (
     AbsoluteThresholdStrategy,
     DriftResult,
     MLBasedStrategy,
@@ -20,11 +20,11 @@ from profilemesh.drift.strategies import (
     StatisticalStrategy,
     create_drift_strategy,
 )
-from profilemesh.drift.type_normalizer import (
+from baselinr.drift.type_normalizer import (
     get_type_category,
     normalize_column_type,
 )
-from profilemesh.drift.type_thresholds import (
+from baselinr.drift.type_thresholds import (
     TypeSpecificThresholds,
     create_type_thresholds,
 )

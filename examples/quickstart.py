@@ -1,7 +1,7 @@
 """
-ProfileMesh Quick Start Example
+Baselinr Quick Start Example
 
-This script demonstrates basic usage of ProfileMesh:
+This script demonstrates basic usage of Baselinr:
 1. Load configuration
 2. Profile tables
 3. Write results to storage
@@ -11,21 +11,21 @@ This script demonstrates basic usage of ProfileMesh:
 import sys
 from pathlib import Path
 
-# Add parent directory to path to import profilemesh
+# Add parent directory to path to import baselinr
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.drift.detector import DriftDetector
-from profilemesh.events import EventBus, LoggingAlertHook
-from profilemesh.profiling.core import ProfileEngine
-from profilemesh.storage.writer import ResultWriter
+from baselinr.config.loader import ConfigLoader
+from baselinr.drift.detector import DriftDetector
+from baselinr.events import EventBus, LoggingAlertHook
+from baselinr.profiling.core import ProfileEngine
+from baselinr.storage.writer import ResultWriter
 
 
 def main():
     """Run a quick profiling example."""
 
     print("=" * 60)
-    print("ProfileMesh Quick Start Example")
+    print("Baselinr Quick Start Example")
     print("=" * 60)
 
     # 1. Load configuration

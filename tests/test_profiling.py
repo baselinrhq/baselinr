@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
-from profilemesh.profiling.metrics import MetricCalculator
+from baselinr.profiling.metrics import MetricCalculator
 
 
 def test_is_numeric_type():

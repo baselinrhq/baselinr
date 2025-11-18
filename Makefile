@@ -1,10 +1,10 @@
-# ProfileMesh Makefile
+# Baselinr Makefile
 # Common development and deployment commands
 
 .PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs venv activate install-hooks
 
 help:
-	@echo "ProfileMesh - Available Commands"
+	@echo "Baselinr - Available Commands"
 	@echo "================================="
 	@echo ""
 	@echo "Setup:"
@@ -13,7 +13,7 @@ help:
 	@echo "  make activate       Show how to activate the virtual environment"
 	@echo ""
 	@echo "Installation (run after activating venv):"
-	@echo "  make install        Install ProfileMesh"
+	@echo "  make install        Install Baselinr"
 	@echo "  make install-dev    Install with development dependencies"
 	@echo "  make install-all    Install with all optional dependencies"
 	@echo ""
@@ -88,12 +88,12 @@ test:
 	pytest tests/ -v
 
 lint:
-	flake8 profilemesh/ --config=.flake8
-	mypy profilemesh/
+	flake8 baselinr/ --config=.flake8
+	mypy baselinr/
 
 format:
-	black profilemesh/ examples/
-	isort profilemesh/ examples/
+	black baselinr/ examples/
+	isort baselinr/ examples/
 
 install-hooks:
 	@echo "Installing git hooks..."
@@ -134,7 +134,7 @@ docker-up:
 	@echo "Dagster UI: http://localhost:3000"
 	@echo "Grafana: http://localhost:3001 (admin/admin)"
 	@echo "Prometheus: http://localhost:9090"
-	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
+	@echo "PostgreSQL: localhost:5433 (user: baselinr, password: baselinr)"
 
 docker-down:
 	cd docker && docker compose down
@@ -158,7 +158,7 @@ docker-rebuild:
 	@echo "Dagster UI: http://localhost:3000"
 	@echo "Grafana: http://localhost:3001 (admin/admin)"
 	@echo "Prometheus: http://localhost:9090"
-	@echo "PostgreSQL: localhost:5433 (user: profilemesh, password: profilemesh)"
+	@echo "PostgreSQL: localhost:5433 (user: baselinr, password: baselinr)"
 
 docker-logs:
 	cd docker && docker compose logs -f
@@ -170,24 +170,24 @@ docker-metrics:
 	@echo "Grafana: http://localhost:3001 (admin/admin)"
 	@echo "Prometheus: http://localhost:9090"
 	@echo ""
-	@echo "Note: Make sure ProfileMesh is running with metrics enabled:"
-	@echo "  profilemesh profile --config examples/config.yml"
+	@echo "Note: Make sure Baselinr is running with metrics enabled:"
+	@echo "  baselinr profile --config examples/config.yml"
 
 quickstart:
 	python examples/quickstart.py
 
 plan:
-	profilemesh plan --config examples/config.yml
+	baselinr plan --config examples/config.yml
 
 profile:
-	profilemesh profile --config examples/config.yml
+	baselinr profile --config examples/config.yml
 
 drift:
-	profilemesh drift --config examples/config.yml --dataset customers
+	baselinr drift --config examples/config.yml --dataset customers
 
 # Full development environment (install + docker)
 dev-env: install-dev docker-up
 	@echo ""
 	@echo "Development environment ready!"
-	@echo "Run 'make quickstart' to test ProfileMesh"
+	@echo "Run 'make quickstart' to test Baselinr"
 

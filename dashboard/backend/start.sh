@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# ProfileMesh Dashboard Backend - Start Script
+# Baselinr Dashboard Backend - Start Script
 
 echo "=========================================="
-echo "ProfileMesh Dashboard Backend"
+echo "Baselinr Dashboard Backend"
 echo "=========================================="
 
 # Check if virtual environment exists
@@ -25,7 +25,7 @@ if [ ! -f ".env" ]; then
     echo "Warning: .env file not found!"
     echo "Creating .env from example..."
     cat > .env << EOL
-PROFILEMESH_DB_URL=postgresql://profilemesh:profilemesh@localhost:5433/profilemesh
+BASELINR_DB_URL=postgresql://baselinr:baselinr@localhost:5433/baselinr
 API_HOST=0.0.0.0
 API_PORT=8000
 CORS_ORIGINS=http://localhost:3000

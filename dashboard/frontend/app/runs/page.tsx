@@ -29,7 +29,7 @@ export default function RunsPage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `profilemesh-runs-${Date.now()}.json`
+      a.download = `baselinr-runs-${Date.now()}.json`
       a.click()
     } catch (error) {
       console.error('Export failed:', error)

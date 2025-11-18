@@ -1,4 +1,4 @@
-# ProfileMesh Configuration Example for MySQL
+# Baselinr Configuration Example for MySQL
 # This is a sample configuration for profiling MySQL tables
 
 environment: development
@@ -19,11 +19,11 @@ storage:
     type: mysql
     host: localhost
     port: 3306
-    database: profilemesh_storage
+    database: baselinr_storage
     username: myuser
     password: mypassword
-  results_table: profilemesh_results
-  runs_table: profilemesh_runs
+  results_table: baselinr_results
+  runs_table: baselinr_runs
   create_tables: true
 
 # Profiling configuration

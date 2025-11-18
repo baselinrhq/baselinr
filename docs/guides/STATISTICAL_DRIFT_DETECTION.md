@@ -1,6 +1,6 @@
 # Statistical Drift Detection
 
-ProfileMesh provides advanced statistical drift detection using multiple statistical tests that can be selected and combined based on column type and metric characteristics.
+Baselinr provides advanced statistical drift detection using multiple statistical tests that can be selected and combined based on column type and metric characteristics.
 
 ## Overview
 

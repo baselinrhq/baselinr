@@ -23,7 +23,7 @@ export default function Sidebar() {
           <div className="flex items-center gap-3">
             <Database className="w-8 h-8 text-primary-600" />
             <div>
-              <h1 className="text-xl font-bold text-gray-900">ProfileMesh</h1>
+              <h1 className="text-xl font-bold text-gray-900">Baselinr</h1>
               <p className="text-xs text-gray-500">Dashboard v2.0</p>
             </div>
           </div>
@@ -56,7 +56,7 @@ export default function Sidebar() {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200">
           <p className="text-xs text-gray-500">
-            © 2024 ProfileMesh
+            © 2024 Baselinr
           </p>
         </div>
       </div>

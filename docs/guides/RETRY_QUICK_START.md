@@ -2,7 +2,7 @@
 
 ## What's Been Added
 
-ProfileMesh now automatically retries transient warehouse failures with exponential backoff, structured logging, event emission, and Prometheus metrics.
+Baselinr now automatically retries transient warehouse failures with exponential backoff, structured logging, event emission, and Prometheus metrics.
 
 ## 🚀 Quick Start
 
@@ -23,7 +23,7 @@ retry:
 
 ```bash
 # Retry automatically handles transient errors
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 ```
 
 ### 3. Check Logs
@@ -62,13 +62,13 @@ Watch for retry attempts in logs:
 ### Structured Logs
 ```bash
 # Watch retry activity
-tail -f profilemesh.log | grep retry_attempt
+tail -f baselinr.log | grep retry_attempt
 ```
 
 ### Prometheus Metrics
 ```promql
 # Rate of retries
-rate(profilemesh_warehouse_transient_errors_total[5m])
+rate(baselinr_warehouse_transient_errors_total[5m])
 ```
 
 ### Event Bus
@@ -131,7 +131,7 @@ retry:
 pytest tests/utils/test_retry.py -v
 
 # Test with your config
-profilemesh profile --config examples/config.yml
+baselinr profile --config examples/config.yml
 ```
 
 ## 💡 Key Features
@@ -152,7 +152,7 @@ A: Only if errors occur. Successful operations have ~0.1ms overhead (negligible)
 A: Retry applies to all warehouse operations. Use `enabled: false` to disable globally.
 
 **Q: How do I know if retry is working?**  
-A: Check logs for `retry_attempt` events or monitor the `profilemesh_warehouse_transient_errors_total` metric.
+A: Check logs for `retry_attempt` events or monitor the `baselinr_warehouse_transient_errors_total` metric.
 
 **Q: What if I want different retry config per table?**  
 A: Currently retry config is global. Per-table config is a future enhancement.

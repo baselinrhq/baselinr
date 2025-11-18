@@ -1,16 +1,16 @@
-# ProfileMesh Schema Migration Guide
+# Baselinr Schema Migration Guide
 
-This guide explains how to create, test, and apply schema migrations for ProfileMesh storage layer.
+This guide explains how to create, test, and apply schema migrations for Baselinr storage layer.
 
 ## Overview
 
-ProfileMesh uses a simple integer-based versioning system for schema migrations. Each migration represents a transition from version N to version N+1.
+Baselinr uses a simple integer-based versioning system for schema migrations. Each migration represents a transition from version N to version N+1.
 
 ### Migration System Components
 
-- **Migration Manager** (`profilemesh/storage/migrations/manager.py`) - Orchestrates migrations
-- **Migration Versions** (`profilemesh/storage/migrations/versions/`) - Individual migration files
-- **Schema Version Table** (`profilemesh_schema_version`) - Tracks applied migrations
+- **Migration Manager** (`baselinr/storage/migrations/manager.py`) - Orchestrates migrations
+- **Migration Versions** (`baselinr/storage/migrations/versions/`) - Individual migration files
+- **Schema Version Table** (`baselinr_schema_version`) - Tracks applied migrations
 
 ---
 
@@ -20,7 +20,7 @@ ProfileMesh uses a simple integer-based versioning system for schema migrations.
 
 ```bash
 # Check current schema version
-profilemesh migrate status --config config.yml
+baselinr migrate status --config config.yml
 ```
 
 **Output:**
@@ -38,7 +38,7 @@ Current code version: 1
 
 ```bash
 # Validate schema integrity
-profilemesh migrate validate --config config.yml
+baselinr migrate validate --config config.yml
 ```
 
 **Output:**
@@ -59,12 +59,12 @@ Migrations must be sequential. If current version is 1, your new migration is ve
 
 ```bash
 # Check current version first
-profilemesh migrate status --config config.yml
+baselinr migrate status --config config.yml
 ```
 
 ### Step 2: Create Migration File
 
-Create a new file: `profilemesh/storage/migrations/versions/v{N}_{description}.py`
+Create a new file: `baselinr/storage/migrations/versions/v{N}_{description}.py`
 
 **Example:** `v2_add_cost_tracking.py`
 
@@ -72,7 +72,7 @@ Create a new file: `profilemesh/storage/migrations/versions/v{N}_{description}.p
 """
 Migration v2: Add cost tracking fields
 
-Adds cost-related columns to profilemesh_runs table for
+Adds cost-related columns to baselinr_runs table for
 tracking profiling costs and resource usage.
 """
 
@@ -83,27 +83,27 @@ migration = Migration(
     version=2,
     description="Add cost tracking fields to runs table",
     up_sql="""
-        ALTER TABLE profilemesh_runs 
+        ALTER TABLE baselinr_runs 
         ADD COLUMN cost_dollars DECIMAL(10, 4);
         
-        ALTER TABLE profilemesh_runs 
+        ALTER TABLE baselinr_runs 
         ADD COLUMN bytes_scanned BIGINT;
         
         CREATE INDEX idx_runs_cost 
-        ON profilemesh_runs (cost_dollars);
+        ON baselinr_runs (cost_dollars);
     """,
     down_sql="""
         -- Rollback (optional - not currently supported)
         DROP INDEX IF EXISTS idx_runs_cost;
-        ALTER TABLE profilemesh_runs DROP COLUMN bytes_scanned;
-        ALTER TABLE profilemesh_runs DROP COLUMN cost_dollars;
+        ALTER TABLE baselinr_runs DROP COLUMN bytes_scanned;
+        ALTER TABLE baselinr_runs DROP COLUMN cost_dollars;
     """
 )
 ```
 
 ### Step 3: Register Migration
 
-Edit `profilemesh/storage/migrations/versions/__init__.py`:
+Edit `baselinr/storage/migrations/versions/__init__.py`:
 
 ```python
 """Migration versions."""
@@ -119,7 +119,7 @@ ALL_MIGRATIONS = [
 
 ### Step 4: Update Schema Version Constant
 
-Edit `profilemesh/storage/schema_version.py`:
+Edit `baselinr/storage/schema_version.py`:
 
 ```python
 CURRENT_SCHEMA_VERSION = 2  # Update this
@@ -152,7 +152,7 @@ migration = Migration(
     version=2,
     description="Add new column",
     up_sql="""
-        ALTER TABLE profilemesh_runs 
+        ALTER TABLE baselinr_runs 
         ADD COLUMN new_field VARCHAR(100);
     """,
     down_sql=None  # Rollback not required
@@ -168,7 +168,7 @@ def migrate_up(conn):
     """Custom Python migration logic."""
     # Example: Populate new column from existing data
     query = text("""
-        UPDATE profilemesh_runs 
+        UPDATE baselinr_runs 
         SET new_field = CONCAT(dataset_name, '_v1')
         WHERE new_field IS NULL
     """)
@@ -190,7 +190,7 @@ Combine SQL and Python:
 migration = Migration(
     version=2,
     description="Add and populate field",
-    up_sql="ALTER TABLE profilemesh_runs ADD COLUMN new_field VARCHAR(100);",
+    up_sql="ALTER TABLE baselinr_runs ADD COLUMN new_field VARCHAR(100);",
     up_python=migrate_up,
     down_sql=None
 )
@@ -205,7 +205,7 @@ migration = Migration(
 Preview changes without applying:
 
 ```bash
-profilemesh migrate apply --config config.yml --target 2 --dry-run
+baselinr migrate apply --config config.yml --target 2 --dry-run
 ```
 
 **Output:**
@@ -227,10 +227,10 @@ psql test_db < backup.sql
 
 # 2. Update config to point to test_db
 # 3. Apply migration
-profilemesh migrate apply --config test_config.yml --target 2
+baselinr migrate apply --config test_config.yml --target 2
 
 # 4. Validate
-profilemesh migrate validate --config test_config.yml
+baselinr migrate validate --config test_config.yml
 ```
 
 ### 3. Rollback Plan
@@ -243,11 +243,11 @@ Document rollback procedure (even if not automated):
 DROP INDEX IF EXISTS idx_runs_cost;
 
 -- 2. Remove new columns
-ALTER TABLE profilemesh_runs DROP COLUMN bytes_scanned;
-ALTER TABLE profilemesh_runs DROP COLUMN cost_dollars;
+ALTER TABLE baselinr_runs DROP COLUMN bytes_scanned;
+ALTER TABLE baselinr_runs DROP COLUMN cost_dollars;
 
 -- 3. Remove migration record
-DELETE FROM profilemesh_schema_version WHERE version = 2;
+DELETE FROM baselinr_schema_version WHERE version = 2;
 ```
 
 ---
@@ -270,15 +270,15 @@ DELETE FROM profilemesh_schema_version WHERE version = 2;
 pg_dump prod_db > backup_$(date +%Y%m%d).sql
 
 # 2. Apply migration
-profilemesh migrate apply --config config.yml --target 2
+baselinr migrate apply --config config.yml --target 2
 
 # Output:
 # Applying migration v2: Add cost tracking fields
 # ✅ Successfully migrated to version 2
 
 # 3. Verify
-profilemesh migrate status --config config.yml
-profilemesh migrate validate --config config.yml
+baselinr migrate status --config config.yml
+baselinr migrate validate --config config.yml
 ```
 
 ### Multi-Version Migration
@@ -287,7 +287,7 @@ Skip intermediate versions (applies all):
 
 ```bash
 # Migrate from v1 → v3 (applies v2 and v3)
-profilemesh migrate apply --config config.yml --target 3
+baselinr migrate apply --config config.yml --target 3
 ```
 
 ---
@@ -299,7 +299,7 @@ profilemesh migrate apply --config config.yml --target 3
 ```python
 # Use IF NOT EXISTS for safety
 up_sql="""
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN IF NOT EXISTS new_field VARCHAR(100);
 """
 ```
@@ -309,11 +309,11 @@ up_sql="""
 ```python
 # Snowflake syntax differences
 up_sql="""
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN new_field VARCHAR(100);
     
     -- Snowflake uses VARIANT for JSON
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN metadata VARIANT;
 """
 ```
@@ -323,7 +323,7 @@ up_sql="""
 ```python
 # MySQL-specific syntax
 up_sql="""
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN new_field VARCHAR(100),
     ADD INDEX idx_new_field (new_field);
 """
@@ -336,19 +336,19 @@ up_sql="""
 # Must recreate table
 up_sql="""
     -- Create new table with new schema
-    CREATE TABLE profilemesh_runs_new (
+    CREATE TABLE baselinr_runs_new (
         run_id VARCHAR(36) PRIMARY KEY,
         -- ... all columns including new one
     );
     
     -- Copy data
-    INSERT INTO profilemesh_runs_new 
+    INSERT INTO baselinr_runs_new 
     SELECT *, NULL as new_field 
-    FROM profilemesh_runs;
+    FROM baselinr_runs;
     
     -- Swap tables
-    DROP TABLE profilemesh_runs;
-    ALTER TABLE profilemesh_runs_new RENAME TO profilemesh_runs;
+    DROP TABLE baselinr_runs;
+    ALTER TABLE baselinr_runs_new RENAME TO baselinr_runs;
 """
 ```
 
@@ -360,7 +360,7 @@ up_sql="""
 
 ```python
 up_sql="""
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN new_field VARCHAR(100) DEFAULT 'default_value';
 """
 ```
@@ -370,7 +370,7 @@ up_sql="""
 ```python
 up_sql="""
     CREATE INDEX idx_new_field 
-    ON profilemesh_runs (new_field);
+    ON baselinr_runs (new_field);
 """
 ```
 
@@ -378,14 +378,14 @@ up_sql="""
 
 ```python
 up_sql="""
-    CREATE TABLE profilemesh_new_feature (
+    CREATE TABLE baselinr_new_feature (
         id INTEGER PRIMARY KEY AUTO_INCREMENT,
         feature_name VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     
     CREATE INDEX idx_feature_name 
-    ON profilemesh_new_feature (feature_name);
+    ON baselinr_new_feature (feature_name);
 """
 ```
 
@@ -396,19 +396,19 @@ up_sql="""
 # Increment version and test thoroughly
 up_sql="""
     -- 1. Add new column
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     ADD COLUMN row_count_new BIGINT;
     
     -- 2. Copy data
-    UPDATE profilemesh_runs 
+    UPDATE baselinr_runs 
     SET row_count_new = row_count;
     
     -- 3. Drop old column
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     DROP COLUMN row_count;
     
     -- 4. Rename new column
-    ALTER TABLE profilemesh_runs 
+    ALTER TABLE baselinr_runs 
     RENAME COLUMN row_count_new TO row_count;
 """
 ```
@@ -429,7 +429,7 @@ up_sql="""
 
 ```
 ⚠️  Database schema is behind (v1 < v2)
-Run: profilemesh migrate apply --target 2
+Run: baselinr migrate apply --target 2
 ```
 
 **Solution:** Apply migrations to bring DB up to date

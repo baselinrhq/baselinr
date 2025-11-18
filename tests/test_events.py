@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from sqlalchemy import create_engine
 
-from profilemesh.events import (
+from baselinr.events import (
     BaseEvent,
     DataDriftDetected,
     EventBus,
@@ -296,7 +296,7 @@ class TestLoggingAlertHook:
         hook = LoggingAlertHook(log_level="INFO")
         assert hook.log_level == 20  # INFO level
 
-    @patch("profilemesh.events.builtin_hooks.logging.getLogger")
+    @patch("baselinr.events.builtin_hooks.logging.getLogger")
     def test_logging_hook_handles_event(self, mock_get_logger):
         """Test that logging hook logs the event."""
         mock_logger = Mock()
@@ -518,7 +518,7 @@ class TestEventBusIntegration:
         mock_requests.post.return_value = mock_response
 
         with patch.dict("sys.modules", {"requests": mock_requests}):
-            from profilemesh.events import SlackAlertHook
+            from baselinr.events import SlackAlertHook
 
             # Create hook
             hook = SlackAlertHook(
@@ -567,7 +567,7 @@ class TestEventBusIntegration:
         mock_requests.post.return_value = mock_response
 
         with patch.dict("sys.modules", {"requests": mock_requests}):
-            from profilemesh.events import SlackAlertHook
+            from baselinr.events import SlackAlertHook
 
             # Create hook with high severity threshold
             hook = SlackAlertHook(
@@ -605,7 +605,7 @@ class TestEventBusIntegration:
         mock_requests.post.return_value = mock_response
 
         with patch.dict("sys.modules", {"requests": mock_requests}):
-            from profilemesh.events import SlackAlertHook
+            from baselinr.events import SlackAlertHook
 
             # Create hook
             hook = SlackAlertHook(webhook_url="https://hooks.slack.com/test", username="TestBot")

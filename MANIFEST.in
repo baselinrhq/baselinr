@@ -3,8 +3,8 @@ include LICENSE
 include requirements.txt
 include pyproject.toml
 
-recursive-include profilemesh *.py
-recursive-include profilemesh/storage *.sql
+recursive-include baselinr *.py
+recursive-include baselinr/storage *.sql
 recursive-include examples *.py *.yml *.yaml *.sql
 
 recursive-exclude * __pycache__

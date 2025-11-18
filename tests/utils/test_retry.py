@@ -16,7 +16,7 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
-from profilemesh.utils.retry import (
+from baselinr.utils.retry import (
     ConnectionLostError,
     PermanentWarehouseError,
     RateLimitError,
@@ -235,7 +235,7 @@ class TestErrorClassification:
 class TestEventBusIntegration:
     """Tests for EventBus integration."""
 
-    @patch("profilemesh.utils.retry.event_bus")
+    @patch("baselinr.utils.retry.event_bus")
     def test_retry_event_emission(self, mock_event_bus):
         """Test that retry events are emitted to EventBus."""
         call_count = 0
@@ -255,7 +255,7 @@ class TestEventBusIntegration:
         emitted_event = mock_event_bus.emit.call_args[0][0]
         assert emitted_event.event_type == "retry_attempt"
 
-    @patch("profilemesh.utils.retry.event_bus")
+    @patch("baselinr.utils.retry.event_bus")
     def test_retry_exhausted_event(self, mock_event_bus):
         """Test that retry_exhausted event is emitted."""
 
@@ -277,8 +277,8 @@ class TestEventBusIntegration:
 class TestMetricsIntegration:
     """Tests for Prometheus metrics integration."""
 
-    @patch("profilemesh.utils.retry.is_metrics_enabled")
-    @patch("profilemesh.utils.retry.Counter")
+    @patch("baselinr.utils.retry.is_metrics_enabled")
+    @patch("baselinr.utils.retry.Counter")
     def test_metrics_increment(self, mock_counter, mock_is_enabled):
         """Test that metrics are incremented on retry."""
         mock_is_enabled.return_value = True
@@ -306,8 +306,8 @@ class TestConnectorIntegration:
 
     def test_connector_accepts_retry_config(self):
         """Test that connectors accept retry_config parameter."""
-        from profilemesh.config.schema import ConnectionConfig, RetryConfig
-        from profilemesh.connectors.base import BaseConnector
+        from baselinr.config.schema import ConnectionConfig, RetryConfig
+        from baselinr.connectors.base import BaseConnector
 
         # Mock a concrete connector class
         class MockConnector(BaseConnector):
@@ -332,8 +332,8 @@ class TestConnectorIntegration:
 
     def test_connector_retry_on_transient_error(self):
         """Test that connector retries on transient errors."""
-        from profilemesh.config.schema import ConnectionConfig, RetryConfig
-        from profilemesh.connectors.base import BaseConnector
+        from baselinr.config.schema import ConnectionConfig, RetryConfig
+        from baselinr.connectors.base import BaseConnector
 
         class MockConnector(BaseConnector):
             def _create_engine(self):
@@ -379,17 +379,17 @@ class TestProfilingEngineIntegration:
 
     def test_profiling_continues_after_table_failure(self):
         """Test that profiling continues with remaining tables after failure."""
-        from profilemesh.config.schema import (
+        from baselinr.config.schema import (
+            BaselinrConfig,
             ConnectionConfig,
-            ProfileMeshConfig,
             ProfilingConfig,
             RetryConfig,
             StorageConfig,
             TablePattern,
         )
-        from profilemesh.profiling.core import ProfileEngine
+        from baselinr.profiling.core import ProfileEngine
 
-        config = ProfileMeshConfig(
+        config = BaselinrConfig(
             environment="test",
             source=ConnectionConfig(type="sqlite", database=":memory:"),
             storage=StorageConfig(connection=ConnectionConfig(type="sqlite", database=":memory:")),

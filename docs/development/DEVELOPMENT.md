@@ -1,10 +1,10 @@
-# ProfileMesh Development Guide
+# Baselinr Development Guide
 
-This guide is for developers who want to contribute to ProfileMesh or understand its internals.
+This guide is for developers who want to contribute to Baselinr or understand its internals.
 
 ## Architecture Overview
 
-ProfileMesh is built with a modular architecture:
+Baselinr is built with a modular architecture:
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -77,8 +77,8 @@ The profiling flow:
 - **`schema.sql`**: SQL schema for results tables
 
 Storage schema:
-- `profilemesh_runs`: Metadata about profiling runs
-- `profilemesh_results`: Individual column metrics (EAV pattern)
+- `baselinr_runs`: Metadata about profiling runs
+- `baselinr_results`: Individual column metrics (EAV pattern)
 
 ### `drift/`
 - **`detector.py`**: Compares profiling runs to detect drift
@@ -93,7 +93,7 @@ Drift detection:
 - **`assets.py`**: Factory for creating Dagster assets from config
 - **`events.py`**: Structured event emission for Dagster
 - **`sensors.py`**: Plan-aware sensor helpers
-- **`__init__.py`**: `build_profilemesh_definitions` entrypoint for Dagster repos
+- **`__init__.py`**: `build_baselinr_definitions` entrypoint for Dagster repos
 
 ## Development Setup
 
@@ -243,8 +243,8 @@ logging.basicConfig(level=logging.DEBUG)
 ### Inspect Profiling Results
 
 ```python
-from profilemesh.config.loader import ConfigLoader
-from profilemesh.profiling.core import ProfileEngine
+from baselinr.config.loader import ConfigLoader
+from baselinr.profiling.core import ProfileEngine
 
 config = ConfigLoader.load_from_file("config.yml")
 engine = ProfileEngine(config)
@@ -262,11 +262,11 @@ for result in results:
 
 ```sql
 -- View all runs
-SELECT * FROM profilemesh_runs ORDER BY profiled_at DESC LIMIT 10;
+SELECT * FROM baselinr_runs ORDER BY profiled_at DESC LIMIT 10;
 
 -- View metrics for a column
 SELECT metric_name, metric_value
-FROM profilemesh_results
+FROM baselinr_results
 WHERE dataset_name = 'customers'
   AND column_name = 'age'
   AND run_id = '<run-id>'

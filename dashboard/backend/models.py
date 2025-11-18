@@ -1,5 +1,5 @@
 """
-Pydantic models for ProfileMesh Dashboard API responses.
+Pydantic models for Baselinr Dashboard API responses.
 """
 
 from pydantic import BaseModel, Field

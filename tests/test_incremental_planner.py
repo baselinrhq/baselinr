@@ -5,24 +5,24 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from profilemesh.config.schema import (
+from baselinr.config.schema import (
+    BaselinrConfig,
     ConnectionConfig,
     IncrementalConfig,
-    ProfileMeshConfig,
     ProfilingConfig,
     StorageConfig,
     TablePattern,
 )
-from profilemesh.incremental.change_detection import ChangeSummary
-from profilemesh.incremental.planner import IncrementalPlanner
-from profilemesh.incremental.state import TableState
+from baselinr.incremental.change_detection import ChangeSummary
+from baselinr.incremental.planner import IncrementalPlanner
+from baselinr.incremental.state import TableState
 
 
 @pytest.fixture
 def incremental_config(tmp_path):
     """Base configuration with incremental profiling enabled."""
     storage_path = tmp_path / "state.db"
-    return ProfileMeshConfig(
+    return BaselinrConfig(
         environment="test",
         source=ConnectionConfig(type="postgres", host="localhost", port=5432, database="warehouse"),
         storage=StorageConfig(
@@ -31,8 +31,8 @@ def incremental_config(tmp_path):
                 database=str(storage_path),
                 filepath=str(storage_path),
             ),
-            results_table="profilemesh_results",
-            runs_table="profilemesh_runs",
+            results_table="baselinr_results",
+            runs_table="baselinr_runs",
         ),
         profiling=ProfilingConfig(tables=[TablePattern(table="events", schema_="public")]),
         incremental=IncrementalConfig(enabled=True),
@@ -51,10 +51,8 @@ def _mock_planner(incremental_config, state: TableState, summary: ChangeSummary)
     connector.config.database = "warehouse"
 
     with (
-        patch("profilemesh.incremental.planner.create_connector", return_value=connector),
-        patch(
-            "profilemesh.incremental.planner.build_change_detector", return_value=change_detector
-        ),
+        patch("baselinr.incremental.planner.create_connector", return_value=connector),
+        patch("baselinr.incremental.planner.build_change_detector", return_value=change_detector),
     ):
         planner = IncrementalPlanner(incremental_config, state_store=state_store)
     return planner, state_store

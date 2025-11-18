@@ -1,6 +1,6 @@
 # Event and Alert Hook System
 
-ProfileMesh includes a lightweight, pluggable event emission and alert hook system that allows you to react to runtime events such as data drift detection, schema changes, and profiling lifecycle events.
+Baselinr includes a lightweight, pluggable event emission and alert hook system that allows you to react to runtime events such as data drift detection, schema changes, and profiling lifecycle events.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@ ProfileMesh includes a lightweight, pluggable event emission and alert hook syst
 
 ## Overview
 
-The event system enables ProfileMesh to:
+The event system enables Baselinr to:
 
 - **Emit events** during profiling and drift detection operations
 - **Process events** through multiple registered hooks
@@ -31,7 +31,7 @@ Events are emitted in-memory and dispatched synchronously to all registered hook
 The `EventBus` is the central component that manages hook registration and event emission:
 
 ```python
-from profilemesh.events import EventBus, LoggingAlertHook
+from baselinr.events import EventBus, LoggingAlertHook
 
 # Create event bus
 bus = EventBus()
@@ -48,7 +48,7 @@ bus.emit(event)
 Events are dataclasses that represent specific occurrences in the profiling lifecycle:
 
 ```python
-from profilemesh.events import DataDriftDetected
+from baselinr.events import DataDriftDetected
 from datetime import datetime
 
 event = DataDriftDetected(
@@ -70,7 +70,7 @@ event = DataDriftDetected(
 Hooks are objects that implement the `AlertHook` protocol:
 
 ```python
-from profilemesh.events import AlertHook, BaseEvent
+from baselinr.events import AlertHook, BaseEvent
 
 class MyCustomHook:
     def handle_event(self, event: BaseEvent) -> None:
@@ -185,7 +185,7 @@ hooks:
   enabled: true
   hooks:
     - type: sql
-      table_name: profilemesh_events
+      table_name: baselinr_events
       connection:
         type: postgres
         host: localhost
@@ -206,7 +206,7 @@ hooks:
   enabled: true
   hooks:
     - type: snowflake
-      table_name: profilemesh_events
+      table_name: baselinr_events
       connection:
         type: snowflake
         account: myaccount
@@ -229,7 +229,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_URL}
       channel: "#data-alerts"
-      username: "ProfileMesh Bot"
+      username: "Baselinr Bot"
       min_severity: medium
       alert_on_drift: true
       alert_on_schema_change: true
@@ -273,7 +273,7 @@ hooks:
     
     # Persist critical events to database
     - type: sql
-      table_name: profilemesh_events
+      table_name: baselinr_events
       connection:
         type: postgres
         host: localhost
@@ -314,7 +314,7 @@ Create custom hooks by implementing the `AlertHook` protocol:
 
 ```python
 # my_hooks.py
-from profilemesh.events import BaseEvent
+from baselinr.events import BaseEvent
 import requests
 
 class WebhookAlertHook:
@@ -367,7 +367,7 @@ hooks:
 
 ```python
 # my_hooks.py
-from profilemesh.events import BaseEvent, DataDriftDetected
+from baselinr.events import BaseEvent, DataDriftDetected
 import smtplib
 from email.mime.text import MIMEText
 
@@ -435,7 +435,7 @@ hooks:
 ```
 
 ```bash
-profilemesh profile --config config.yml
+baselinr profile --config config.yml
 ```
 
 Output:
@@ -452,17 +452,17 @@ hooks:
   enabled: true
   hooks:
     - type: sql
-      table_name: profilemesh_events
+      table_name: baselinr_events
       connection:
         type: sqlite
         database: monitoring
         filepath: ./monitoring.db
 ```
 
-Events are automatically stored in the `profilemesh_events` table:
+Events are automatically stored in the `baselinr_events` table:
 
 ```sql
-SELECT * FROM profilemesh_events 
+SELECT * FROM baselinr_events 
 WHERE event_type = 'DataDriftDetected'
 ORDER BY timestamp DESC;
 ```
@@ -485,7 +485,7 @@ hooks:
       log_level: WARNING
     
     - type: snowflake  # Persist in production
-      table_name: prod.monitoring.profilemesh_events
+      table_name: prod.monitoring.baselinr_events
       connection:
         type: snowflake
         account: ${SNOWFLAKE_ACCOUNT}
@@ -507,7 +507,7 @@ hooks:
     - type: slack
       webhook_url: ${SLACK_WEBHOOK_URL}
       channel: "#data-alerts"
-      username: "ProfileMesh Bot"
+      username: "Baselinr Bot"
       min_severity: medium
       alert_on_drift: true
       alert_on_schema_change: true
@@ -517,8 +517,8 @@ hooks:
 Or use it programmatically:
 
 ```python
-from profilemesh.events import EventBus, SlackAlertHook
-from profilemesh.drift import DriftDetector
+from baselinr.events import EventBus, SlackAlertHook
+from baselinr.drift import DriftDetector
 import os
 
 # Create event bus with Slack hook
@@ -623,7 +623,7 @@ When using SQL/Snowflake hooks, create the events table first:
 
 ```sql
 -- Run this before enabling SQL hooks
-CREATE TABLE profilemesh_events (
+CREATE TABLE baselinr_events (
     event_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
     table_name VARCHAR(255),
@@ -639,7 +639,7 @@ CREATE TABLE profilemesh_events (
 );
 ```
 
-See `profilemesh/storage/schema.sql` and `profilemesh/storage/schema_snowflake.sql` for full schemas.
+See `baselinr/storage/schema.sql` and `baselinr/storage/schema_snowflake.sql` for full schemas.
 
 ## Integration with Orchestrators
 
@@ -647,8 +647,8 @@ See `profilemesh/storage/schema.sql` and `profilemesh/storage/schema_snowflake.s
 
 ```python
 # dagster_repository.py
-from profilemesh.events import EventBus, LoggingAlertHook
-from profilemesh.profiling import ProfileEngine
+from baselinr.events import EventBus, LoggingAlertHook
+from baselinr.profiling import ProfileEngine
 
 @asset
 def profile_users():
@@ -671,8 +671,8 @@ def profile_users():
 # dags/profiling_dag.py
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from profilemesh.events import EventBus, SQLEventHook
-from profilemesh.profiling import ProfileEngine
+from baselinr.events import EventBus, SQLEventHook
+from baselinr.profiling import ProfileEngine
 
 def profile_with_alerts():
     config = load_config()
@@ -702,7 +702,7 @@ task = PythonOperator(
 
 ### Event Persistence Failing
 
-1. Ensure the `profilemesh_events` table exists
+1. Ensure the `baselinr_events` table exists
 2. Verify database connection configuration
 3. Check database user has INSERT permissions
 4. Review hook error logs
@@ -729,5 +729,5 @@ Planned improvements to the event system:
 
 - [Configuration Guide](README.md#configuration)
 - [Drift Detection](../guides/DRIFT_DETECTION.md)
-- [Storage Schema](profilemesh/storage/schema.sql)
+- [Storage Schema](baselinr/storage/schema.sql)
 
