@@ -59,6 +59,7 @@ logs/
 .env
 .env.local
 .env.*.local
+.pypirc
 
 # Dagster
 dagster_home/
