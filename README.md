@@ -671,7 +671,9 @@ mypy baselinr/
 
 ## 📝 License
 
-MIT License - see LICENSE file for details
+Business Source License 1.1 - see LICENSE file for details.
+
+This software is available under the Business Source License (BSL) 1.1, which allows free use for non-commercial purposes. Commercial use requires a license. The license will convert to Apache License 2.0 on January 1, 2028. For commercial licensing inquiries, please contact the project maintainers.
 
 ## 🤝 Contributing
 

@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Modern data profiling and drift detection framework"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = {text = "Business Source License 1.1"}
 authors = [
     {name = "Baselinr Contributors", email = "baselinr@example.com"}
 ]
