@@ -223,7 +223,18 @@ if DAGSTER_AVAILABLE:
                 raise ValueError(f"No profiling results returned for {table_pattern.table}")
 
             result = results[0]
-            writer = ResultWriter(config.storage)
+            # Create event bus for schema change detection
+            from ..events import EventBus
+            from ..events.builtin_hooks import create_hooks_from_config
+
+            event_bus = None
+            if config.hooks.enabled:
+                event_bus = EventBus()
+                hooks = create_hooks_from_config(config)
+                for hook in hooks:
+                    event_bus.register_hook(hook)
+
+            writer = ResultWriter(config.storage, baselinr_config=config, event_bus=event_bus)
             try:
                 writer.write_results(
                     [result],

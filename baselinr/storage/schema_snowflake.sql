@@ -99,3 +99,30 @@ CREATE TABLE IF NOT EXISTS baselinr_table_state (
     metadata VARIANT,
     PRIMARY KEY (schema_name, table_name)
 );
+
+-- Schema registry table - tracks column schemas for change detection
+CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
+    id INTEGER AUTOINCREMENT PRIMARY KEY,
+    table_name VARCHAR(255) NOT NULL,
+    schema_name VARCHAR(255),
+    column_name VARCHAR(255) NOT NULL,
+    column_type VARCHAR(100) NOT NULL,
+    column_hash VARCHAR(64) NOT NULL,
+    nullable BOOLEAN DEFAULT TRUE,
+    first_seen_at TIMESTAMP_NTZ NOT NULL,
+    last_seen_at TIMESTAMP_NTZ NOT NULL,
+    run_id VARCHAR(36) NOT NULL
+);
+
+-- Create indexes for schema registry
+CREATE INDEX IF NOT EXISTS idx_schema_registry_table_schema 
+ON baselinr_schema_registry (table_name, schema_name, run_id);
+
+CREATE INDEX IF NOT EXISTS idx_schema_registry_table_column 
+ON baselinr_schema_registry (table_name, schema_name, column_name);
+
+CREATE INDEX IF NOT EXISTS idx_schema_registry_run_id 
+ON baselinr_schema_registry (run_id);
+
+CREATE INDEX IF NOT EXISTS idx_schema_registry_last_seen 
+ON baselinr_schema_registry (last_seen_at DESC);

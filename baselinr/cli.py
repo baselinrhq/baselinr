@@ -248,7 +248,9 @@ def profile_command(args):
         # Write results to storage
         if not args.dry_run:
             log_event(ctx.logger, "storage_write_started", "Writing results to storage...")
-            writer = ResultWriter(config.storage, config.retry)
+            writer = ResultWriter(
+                config.storage, config.retry, baselinr_config=config, event_bus=event_bus
+            )
             writer.write_results(
                 results,
                 environment=config.environment,

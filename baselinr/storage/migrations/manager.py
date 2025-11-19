@@ -171,6 +171,7 @@ class MigrationManager:
                 "baselinr_results",
                 "baselinr_events",
                 "baselinr_table_state",
+                "baselinr_schema_registry",  # Added in v2
             ]
 
             with self.engine.connect() as conn:

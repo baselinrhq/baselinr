@@ -1,6 +1,6 @@
 -- Baselinr Storage Schema
 -- SQL schema for profiling results storage
--- Schema Version: 1
+-- Schema Version: 2
 
 -- Schema version tracking table
 CREATE TABLE IF NOT EXISTS baselinr_schema_version (
@@ -78,4 +78,22 @@ CREATE TABLE IF NOT EXISTS baselinr_table_state (
     bytes_scanned BIGINT,
     metadata TEXT,
     PRIMARY KEY (schema_name, table_name)
+);
+
+-- Schema registry table - tracks column schemas for change detection
+CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    table_name VARCHAR(255) NOT NULL,
+    schema_name VARCHAR(255),
+    column_name VARCHAR(255) NOT NULL,
+    column_type VARCHAR(100) NOT NULL,
+    column_hash VARCHAR(64) NOT NULL,
+    nullable BOOLEAN DEFAULT TRUE,
+    first_seen_at TIMESTAMP NOT NULL,
+    last_seen_at TIMESTAMP NOT NULL,
+    run_id VARCHAR(36) NOT NULL,
+    INDEX idx_table_schema (table_name, schema_name, run_id),
+    INDEX idx_table_column (table_name, schema_name, column_name),
+    INDEX idx_run_id (run_id),
+    INDEX idx_last_seen (last_seen_at DESC)
 );
