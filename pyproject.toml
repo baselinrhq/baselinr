@@ -10,7 +10,18 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "Business Source License 1.1"}
 authors = [
-    {name = "Baselinr Contributors", email = "baselinr@example.com"}
+    {name = "Baselinr Contributors", email = "hello@baselinr.io"}
+]
+keywords = [
+    "data-profiling",
+    "data-quality",
+    "drift-detection",
+    "data-observability",
+    "data-warehouse",
+    "snowflake",
+    "postgresql",
+    "sql",
+    "dagster",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -23,7 +34,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0.0",
@@ -31,6 +41,12 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "prometheus_client>=0.19.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/baselinrhq/baselinr"
+Documentation = "https://github.com/baselinrhq/baselinr/tree/main/docs"
+Repository = "https://github.com/baselinrhq/baselinr"
+Issues = "https://github.com/baselinrhq/baselinr/issues"
 
 [project.optional-dependencies]
 snowflake = [

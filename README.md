@@ -1,5 +1,6 @@
 # 🧩 Baselinr
 
+[![PyPI version](https://badge.fury.io/py/baselinr.svg)](https://badge.fury.io/py/baselinr)
 [![CI](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml/badge.svg)](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml)
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](https://github.com/baselinrhq/baselinr/blob/main/LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -31,28 +32,41 @@
 
 ## 🔧 Installation
 
-### Basic Installation
+### Install from PyPI
+
+Install Baselinr directly from PyPI:
 
 ```bash
-pip install -e .
+pip install baselinr
 ```
 
-### With Snowflake Support
+### Install with Optional Dependencies
 
+Baselinr supports optional dependencies for enhanced functionality:
+
+**Snowflake Support:**
 ```bash
-pip install -e ".[snowflake]"
+pip install baselinr[snowflake]
 ```
 
-### With Dagster Integration
-
+**Dagster Integration:**
 ```bash
-pip install -e ".[dagster]"
+pip install baselinr[dagster]
 ```
 
-### Full Installation (All Features)
+**All Features:**
+```bash
+pip install baselinr[all]
+```
+
+### Development Installation
+
+For local development, clone the repository and install in editable mode:
 
 ```bash
-pip install -e ".[all]"
+git clone https://github.com/baselinrhq/baselinr.git
+cd baselinr
+pip install -e ".[dev]"
 ```
 
 ## 📚 Documentation
