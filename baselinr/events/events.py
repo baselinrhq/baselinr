@@ -61,10 +61,15 @@ class SchemaChangeDetected(BaseEvent):
     """Event emitted when a schema change is detected."""
 
     table: str
-    change_type: str  # 'column_added', 'column_removed', 'type_changed'
+    # Change types: 'column_added', 'column_removed', 'column_renamed',
+    # 'type_changed', 'partition_changed'
+    change_type: str
     column: Optional[str] = None
+    old_column_name: Optional[str] = None  # For renames
     old_type: Optional[str] = None
     new_type: Optional[str] = None
+    partition_info: Optional[Dict[str, Any]] = None  # For partition changes
+    change_severity: str = "medium"  # 'low', 'medium', 'high', 'breaking'
 
     def __post_init__(self):
         """Populate metadata from fields."""
@@ -75,8 +80,11 @@ class SchemaChangeDetected(BaseEvent):
                 "table": self.table,
                 "change_type": self.change_type,
                 "column": self.column,
+                "old_column_name": self.old_column_name,
                 "old_type": self.old_type,
                 "new_type": self.new_type,
+                "partition_info": self.partition_info,
+                "change_severity": self.change_severity,
             }
         )
 

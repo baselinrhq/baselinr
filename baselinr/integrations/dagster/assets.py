@@ -223,7 +223,12 @@ if DAGSTER_AVAILABLE:
                 raise ValueError(f"No profiling results returned for {table_pattern.table}")
 
             result = results[0]
-            writer = ResultWriter(config.storage)
+            # Create event bus for schema change detection
+            from ...cli import create_event_bus
+
+            event_bus = create_event_bus(config)
+
+            writer = ResultWriter(config.storage, baselinr_config=config, event_bus=event_bus)
             try:
                 writer.write_results(
                     [result],

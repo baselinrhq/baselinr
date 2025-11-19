@@ -407,11 +407,6 @@ class ProfileEngine:
                 pattern.sampling.model_dump() if pattern.sampling else None
             )
 
-            # Store schema snapshot for enrichment metrics (calculated during storage write)
-            if self.config.profiling.enable_enrichment:
-                current_columns = {col["column_name"]: col["column_type"] for col in result.columns}
-                result.metadata["column_schema"] = current_columns
-
             # Profile each column
             for column in table.columns:
                 logger.debug(f"Profiling column: {column.name}")
@@ -437,6 +432,14 @@ class ProfileEngine:
                         column_type=str(column.type),
                         metrics={"error": str(e)},
                     )
+
+            # Store schema snapshot for enrichment metrics (calculated during storage write)
+            if self.config.profiling.enable_enrichment:
+                current_columns = {col["column_name"]: col["column_type"] for col in result.columns}
+                result.metadata["column_schema"] = current_columns
+
+            # Schema change detection happens in storage writer
+            # where we have access to storage engine
 
             # Calculate duration
             duration = time.time() - start_time

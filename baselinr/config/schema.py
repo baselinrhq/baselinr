@@ -483,6 +483,42 @@ class IncrementalConfig(BaseModel):
     )
 
 
+class SchemaChangeSuppressionRule(BaseModel):
+    """Rule for suppressing schema change events."""
+
+    table: Optional[str] = None  # Table name (None = all tables)
+    schema_: Optional[str] = Field(None, alias="schema")  # Schema name (None = all schemas)
+    change_type: Optional[str] = None  # Change type (None = all change types)
+
+    model_config = {"populate_by_name": True}
+    # Valid change types: column_added, column_removed, column_renamed,
+    # type_changed, partition_changed
+
+    @field_validator("change_type")
+    @classmethod
+    def validate_change_type(cls, v: Optional[str]) -> Optional[str]:
+        """Validate change type."""
+        if v is not None:
+            valid_types = [
+                "column_added",
+                "column_removed",
+                "column_renamed",
+                "type_changed",
+                "partition_changed",
+            ]
+            if v not in valid_types:
+                raise ValueError(f"change_type must be one of {valid_types}")
+        return v
+
+
+class SchemaChangeConfig(BaseModel):
+    """Configuration for schema change detection."""
+
+    enabled: bool = Field(True)
+    similarity_threshold: float = Field(0.7, ge=0.0, le=1.0)  # For rename detection
+    suppression: List[SchemaChangeSuppressionRule] = Field(default_factory=list)
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -505,6 +541,9 @@ class BaselinrConfig(BaseModel):
     )
     incremental: IncrementalConfig = Field(
         default_factory=lambda: IncrementalConfig()  # type: ignore[call-arg]
+    )
+    schema_change: SchemaChangeConfig = Field(
+        default_factory=lambda: SchemaChangeConfig()  # type: ignore[call-arg]
     )
 
     @field_validator("environment")

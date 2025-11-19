@@ -326,6 +326,25 @@ def test_validate_schema_valid(migration_manager, temp_db_engine):
             )
         )
 
+        conn.execute(
+            text(
+                """
+            CREATE TABLE baselinr_schema_registry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                table_name VARCHAR(255) NOT NULL,
+                schema_name VARCHAR(255),
+                column_name VARCHAR(255) NOT NULL,
+                column_type VARCHAR(100) NOT NULL,
+                column_hash VARCHAR(64) NOT NULL,
+                nullable BOOLEAN DEFAULT TRUE,
+                first_seen_at TIMESTAMP NOT NULL,
+                last_seen_at TIMESTAMP NOT NULL,
+                run_id VARCHAR(36) NOT NULL
+            )
+        """
+            )
+        )
+
         conn.commit()
 
     results = migration_manager.validate_schema()
