@@ -2,23 +2,9 @@ name: Dagster Integration
 
 on:
   push:
-    paths:
-      - 'baselinr/**'
-      - 'examples/**'
-      - 'docker/**'
-      - 'tests/**'
-      - 'docs/**'
-      - 'requirements.txt'
-      - '.github/workflows/dagster-integration.yml'
+    branches:
+      - main
   pull_request:
-    paths:
-      - 'baselinr/**'
-      - 'examples/**'
-      - 'docker/**'
-      - 'tests/**'
-      - 'docs/**'
-      - 'requirements.txt'
-      - '.github/workflows/dagster-integration.yml'
 
 jobs:
   dagster-integration:
