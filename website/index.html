@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Baselinr - Modern data profiling and drift detection framework for SQL databases">
+    <title>Baselinr - Modern Data Profiling & Drift Detection</title>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 2rem;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 700px;
+            width: 100%;
+        }
+        
+        .logo {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .logo svg {
+            max-width: 100%;
+            height: auto;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tagline {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+        
+        .description {
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            opacity: 0.9;
+            line-height: 1.7;
+        }
+        
+        .github-link {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 1rem 2.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .github-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .tagline {
+                font-size: 1.2rem;
+            }
+            
+            .description {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="max-width: 400px;">
+                <!-- Background removed for transparent logo on gradient -->
+                <!-- Wordmark -->
+                <text x="300" y="100" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#ffffff" text-anchor="middle">
+                    Baselinr
+                </text>
+                
+                <!-- Logo Icon - Baseline Wave -->
+                <g transform="translate(200, 140)">
+                    <!-- The waveform path starting flat (baseline) then undulating -->
+                    <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
+                          fill="none" 
+                          stroke="#ffffff" 
+                          stroke-width="8" 
+                          stroke-linecap="round"
+                          stroke-linejoin="round"/>
+                    
+                    <!-- Baseline emphasis dot -->
+                    <circle cx="0" cy="0" r="6" fill="#ffffff"/>
+                </g>
+            </svg>
+        </div>
+        
+        <h1>Baselinr</h1>
+        <p class="tagline">Modern data profiling and drift detection framework for SQL databases</p>
+        <p class="description">
+            Automatically profile datasets, track metadata, and detect schema/statistical drift over time.
+        </p>
+        <a href="https://github.com/baselinrhq/baselinr" class="github-link">
+            View on GitHub →
+        </a>
+    </div>
+</body>
+</html>
+
