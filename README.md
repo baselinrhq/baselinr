@@ -14,6 +14,7 @@
 - **Type-Specific Thresholds**: Adjust drift sensitivity based on column data type (numeric, categorical, timestamp, boolean) to reduce false positives
 - **Intelligent Baseline Selection**: Automatically selects optimal baseline method (last run, moving average, prior period, stable window) based on column characteristics
 - **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
+- **Expectation Learning**: Automatically learns expected metric ranges from historical profiling data, including control limits, distributions, and categorical frequencies for proactive anomaly detection
 - **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
@@ -111,6 +112,9 @@ storage:
   results_table: baselinr_results
   runs_table: baselinr_runs
   create_tables: true
+  enable_expectation_learning: true  # Learn expected ranges automatically
+  learning_window_days: 30           # Use last 30 days of data
+  min_samples: 5                     # Require at least 5 historical runs
 
 profiling:
   tables:
@@ -243,6 +247,49 @@ Baselinr computes the following metrics:
 
 See [docs/guides/PROFILING_ENRICHMENT.md](docs/guides/PROFILING_ENRICHMENT.md) for detailed documentation on enrichment features.
 
+## 🧠 Expectation Learning
+
+Baselinr can automatically learn expected metric ranges from historical profiling data, creating statistical models that help identify outliers without explicit thresholds.
+
+### Key Features
+
+- **Automatic Learning**: Continuously learns expected values for metrics like mean, stddev, null_ratio, count, and unique_ratio
+- **Control Limits**: Calculates lower and upper control limits using Shewhart (3-sigma) method or EWMA (Exponentially Weighted Moving Average)
+- **Distribution Detection**: Automatically detects if metrics follow normal or empirical distributions
+- **Categorical Frequencies**: Tracks expected frequency distributions for categorical columns
+- **Separate from Baselines**: Learned expectations are stored separately from drift detection baselines, enabling proactive anomaly detection
+
+### How It Works
+
+Expectation learning analyzes historical profiling data over a configurable window (default: 30 days) to compute:
+- Expected mean, variance, and standard deviation
+- Control limits for outlier detection (3-sigma or EWMA-based)
+- Distribution parameters (normal vs empirical)
+- Expected categorical value frequencies
+
+These learned expectations are automatically updated after each profiling run, providing an evolving model of what "normal" looks like for your data.
+
+### Configuration
+
+Enable expectation learning in your `config.yml`:
+
+```yaml
+storage:
+  enable_expectation_learning: true
+  learning_window_days: 30      # Historical window in days
+  min_samples: 5                 # Minimum runs required for learning
+  ewma_lambda: 0.2              # EWMA smoothing parameter (0 < lambda <= 1)
+```
+
+### Use Cases
+
+- **Proactive Monitoring**: Identify anomalies before they cause drift
+- **Automated Alerting**: Flag unexpected metric values automatically
+- **Trend Analysis**: Understand normal ranges for your data over time
+- **Quality Assurance**: Ensure metrics stay within expected operational ranges
+
+See [docs/guides/EXPECTATION_LEARNING.md](docs/guides/EXPECTATION_LEARNING.md) for comprehensive documentation on expectation learning.
+
 ## 🔄 Dagster Integration
 
 Baselinr can create Dagster assets dynamically from your configuration:
@@ -276,6 +323,7 @@ baselinr/
 │   ├── profiling/        # Profiling engine
 │   ├── storage/          # Results storage
 │   ├── drift/            # Drift detection
+│   ├── learning/         # Expectation learning
 │   ├── integrations/
 │   │   └── dagster/      # Dagster assets & sensors
 │   └── cli.py            # CLI interface
@@ -648,6 +696,24 @@ drift_detection:
   #     psi:
   #       buckets: 10
   #       threshold: 0.2
+```
+
+### Expectation Learning Configuration
+
+```yaml
+storage:
+  # Enable automatic learning of expected metric ranges
+  enable_expectation_learning: true
+  
+  # Historical window in days for learning expectations
+  learning_window_days: 30
+  
+  # Minimum number of historical runs required for learning
+  min_samples: 5
+  
+  # EWMA smoothing parameter for control limits (0 < lambda <= 1)
+  # Lower values = more smoothing (0.1-0.3 recommended)
+  ewma_lambda: 0.2
 ```
 
 ## 🔐 Environment Variables

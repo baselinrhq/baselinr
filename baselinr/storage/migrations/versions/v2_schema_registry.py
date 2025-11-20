@@ -17,6 +17,7 @@ def create_schema_registry_table(conn):
     engine = conn.bind if hasattr(conn, "bind") else conn.engine
     engine_url = str(engine.url)
     is_snowflake = "snowflake" in engine_url.lower()
+    is_sqlite = "sqlite" in engine_url.lower()
 
     if is_snowflake:
         # Snowflake-specific DDL
@@ -71,8 +72,61 @@ def create_schema_registry_table(conn):
             """
             )
         )
+    elif is_sqlite:
+        # SQLite-specific DDL
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    table_name VARCHAR(255) NOT NULL,
+                    schema_name VARCHAR(255),
+                    column_name VARCHAR(255) NOT NULL,
+                    column_type VARCHAR(100) NOT NULL,
+                    column_hash VARCHAR(64) NOT NULL,
+                    nullable BOOLEAN DEFAULT TRUE,
+                    first_seen_at TIMESTAMP NOT NULL,
+                    last_seen_at TIMESTAMP NOT NULL,
+                    run_id VARCHAR(36) NOT NULL
+                )
+            """
+            )
+        )
+        # Create indexes separately for SQLite
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_schema_registry_table_schema
+                ON baselinr_schema_registry (table_name, schema_name, run_id)
+            """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_schema_registry_table_column
+                ON baselinr_schema_registry (table_name, schema_name, column_name)
+            """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_schema_registry_run_id
+                ON baselinr_schema_registry (run_id)
+            """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS idx_schema_registry_last_seen
+                ON baselinr_schema_registry (last_seen_at DESC)
+            """
+            )
+        )
     else:
-        # Generic SQL (PostgreSQL, MySQL, SQLite, etc.)
+        # Generic SQL (PostgreSQL, MySQL, etc.)
         conn.execute(
             text(
                 """

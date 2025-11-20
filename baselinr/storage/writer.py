@@ -130,6 +130,10 @@ class ResultWriter:
                 if enable_enrichment:
                     self._calculate_and_write_enrichment_metrics(result)
 
+                # Learn expectations if enabled
+                if self.baselinr_config and self.config.enable_expectation_learning:
+                    self._learn_expectations(result)
+
             conn.commit()
 
         logger.info(f"Wrote {len(results)} profiling results to storage")
@@ -667,6 +671,59 @@ class ResultWriter:
 
         except Exception as e:
             logger.warning(f"Failed to calculate column stability metrics: {e}")
+
+    def _learn_expectations(self, result: ProfilingResult):
+        """Learn expectations from historical profiling data if enabled."""
+        try:
+            if self.engine is None:
+                return
+
+            from ..learning import ExpectationLearner, ExpectationStorage
+
+            # Initialize learner and storage
+            learner = ExpectationLearner(
+                storage_config=self.config,
+                engine=self.engine,
+                default_window_days=self.config.learning_window_days,
+                min_samples=self.config.min_samples,
+                ewma_lambda=self.config.ewma_lambda,
+            )
+            storage = ExpectationStorage(storage_config=self.config, engine=self.engine)
+
+            # Numeric metrics to learn expectations for
+            numeric_metrics = ["mean", "stddev", "null_ratio", "count", "unique_ratio"]
+
+            # Learn expectations for each column and metric
+            for column_data in result.columns:
+                column_name = column_data["column_name"]
+                metrics = column_data.get("metrics", {})
+
+                for metric_name in numeric_metrics:
+                    # Only learn if this metric exists for the column
+                    if metric_name not in metrics:
+                        continue
+
+                    try:
+                        expectation = learner.learn_expectations(
+                            table_name=result.dataset_name,
+                            column_name=column_name,
+                            metric_name=metric_name,
+                            schema_name=result.schema_name,
+                            window_days=self.config.learning_window_days,
+                        )
+
+                        if expectation:
+                            storage.save_expectation(expectation)
+                            logger.debug(
+                                f"Learned expectations for "
+                                f"{result.dataset_name}.{column_name}.{metric_name}"
+                            )
+                    except Exception as e:
+                        table_metric = f"{result.dataset_name}.{column_name}.{metric_name}"
+                        logger.warning(f"Failed to learn expectations for {table_metric}: {e}")
+
+        except Exception as e:
+            logger.warning(f"Failed to learn expectations: {e}")
 
     def _register_schema_and_detect_changes(self, result: ProfilingResult):
         """
