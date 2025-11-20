@@ -165,6 +165,20 @@ class StorageConfig(BaseModel):
     runs_table: str = Field("baselinr_runs")
     create_tables: bool = Field(True)
 
+    # Expectation learning configuration
+    enable_expectation_learning: bool = Field(
+        False, description="Enable automatic learning of expected metric ranges"
+    )
+    learning_window_days: int = Field(
+        30, description="Historical window in days for learning expectations"
+    )
+    min_samples: int = Field(
+        5, description="Minimum number of historical runs required for learning"
+    )
+    ewma_lambda: float = Field(
+        0.2, description="EWMA smoothing parameter (0 < lambda <= 1)", gt=0.0, le=1.0
+    )
+
 
 class DriftDetectionConfig(BaseModel):
     """Drift detection configuration."""

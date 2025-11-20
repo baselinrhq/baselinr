@@ -1,6 +1,6 @@
 """Schema version management for Baselinr storage layer."""
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 # Version history
 VERSION_HISTORY = {
@@ -12,6 +12,11 @@ VERSION_HISTORY = {
     2: {
         "description": "Add schema registry table for schema change detection",
         "applied": "2025-11-18",
+        "breaking_changes": False,
+    },
+    3: {
+        "description": "Add expectations table for learned metric ranges and control limits",
+        "applied": "2025-01-20",
         "breaking_changes": False,
     },
 }

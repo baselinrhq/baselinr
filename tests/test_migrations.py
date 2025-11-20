@@ -402,3 +402,60 @@ def test_multiple_migrations_sequence(migration_manager, temp_db_engine):
         )
         count = result.fetchone()[0]
         assert count == 2
+
+
+def test_migrate_v3_expectations_table(migration_manager, temp_db_engine):
+    """Test v3 migration creates expectations table."""
+    from baselinr.storage.migrations.versions import ALL_MIGRATIONS
+
+    # Register all migrations
+    for migration in ALL_MIGRATIONS:
+        migration_manager.register_migration(migration)
+
+    # Migrate to version 3
+    result = migration_manager.migrate_to(3)
+    assert result is True
+
+    # Verify expectations table exists
+    with temp_db_engine.connect() as conn:
+        result = conn.execute(
+            text(
+                """
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='baselinr_expectations'
+        """
+            )
+        )
+        table_exists = result.fetchone() is not None
+        assert table_exists
+
+        # Verify table structure
+        result = conn.execute(text("PRAGMA table_info(baselinr_expectations)"))
+        columns = {row[1] for row in result.fetchall()}
+
+        # Check key columns exist
+        assert "table_name" in columns
+        assert "column_name" in columns
+        assert "metric_name" in columns
+        assert "expected_mean" in columns
+        assert "expected_stddev" in columns
+        assert "lower_control_limit" in columns
+        assert "upper_control_limit" in columns
+        assert "distribution_type" in columns
+        assert "distribution_params" in columns
+        assert "sample_size" in columns
+        assert "expectation_version" in columns
+
+        # Verify version recorded
+        result = conn.execute(
+            text(
+                """
+            SELECT version, description FROM baselinr_schema_version
+            WHERE version = 3
+        """
+            )
+        )
+        row = result.fetchone()
+        assert row is not None
+        assert row[0] == 3
+        assert "expectations" in row[1].lower()
