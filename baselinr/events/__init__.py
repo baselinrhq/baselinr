@@ -9,6 +9,7 @@ processed by multiple registered hooks, and optionally persisted or alerted.
 from .builtin_hooks import LoggingAlertHook, SlackAlertHook, SnowflakeEventHook, SQLEventHook
 from .event_bus import EventBus
 from .events import (
+    AnomalyDetected,
     BaseEvent,
     DataDriftDetected,
     ProfilingCompleted,
@@ -21,6 +22,7 @@ from .hooks import AlertHook
 
 __all__ = [
     "BaseEvent",
+    "AnomalyDetected",
     "DataDriftDetected",
     "SchemaChangeDetected",
     "ProfilingStarted",

@@ -179,6 +179,41 @@ class StorageConfig(BaseModel):
         0.2, description="EWMA smoothing parameter (0 < lambda <= 1)", gt=0.0, le=1.0
     )
 
+    # Anomaly detection configuration
+    enable_anomaly_detection: bool = Field(
+        False, description="Enable automatic anomaly detection using learned expectations"
+    )
+    anomaly_enabled_methods: List[str] = Field(
+        default_factory=lambda: [
+            "control_limits",
+            "iqr",
+            "mad",
+            "ewma",
+            "seasonality",
+            "regime_shift",
+        ],
+        description="List of enabled anomaly detection methods",
+    )
+    anomaly_iqr_threshold: float = Field(
+        1.5, description="IQR multiplier threshold for outlier detection", gt=0.0
+    )
+    anomaly_mad_threshold: float = Field(
+        3.0, description="MAD threshold (modified z-score) for outlier detection", gt=0.0
+    )
+    anomaly_ewma_deviation_threshold: float = Field(
+        2.0, description="EWMA deviation threshold (number of stddevs)", gt=0.0
+    )
+    anomaly_seasonality_enabled: bool = Field(
+        True, description="Enable trend and seasonality detection"
+    )
+    anomaly_regime_shift_enabled: bool = Field(True, description="Enable regime shift detection")
+    anomaly_regime_shift_window: int = Field(
+        3, description="Number of recent runs for regime shift comparison", ge=2
+    )
+    anomaly_regime_shift_sensitivity: float = Field(
+        0.05, description="P-value threshold for regime shift detection", gt=0.0, le=1.0
+    )
+
 
 class DriftDetectionConfig(BaseModel):
     """Drift detection configuration."""
