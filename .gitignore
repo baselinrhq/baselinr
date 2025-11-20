@@ -75,3 +75,6 @@ tmp/
 temp/
 *.tmp
 
+# Auto-generated version file
+baselinr/baselinr/_version.py
+

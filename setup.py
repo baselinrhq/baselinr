@@ -7,8 +7,14 @@ from pathlib import Path
 readme_path = Path(__file__).parent / "README.md"
 long_description = readme_path.read_text(encoding="utf-8") if readme_path.exists() else ""
 
-# Read version from package
-version = "0.1.0"
+# Read version using setuptools-scm (falls back to 0.1.0.dev0 if no git tags found)
+try:
+    from setuptools_scm import get_version
+    # setup.py is at the git root, so use current directory
+    version = get_version(root=".", relative_to=__file__)
+except (LookupError, FileNotFoundError, ImportError):
+    # Fallback for development installs without git or setuptools-scm
+    version = "0.1.0.dev0"
 
 setup(
     name="baselinr",

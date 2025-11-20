@@ -5,5 +5,10 @@ Baselinr automatically profiles datasets, stores metadata and statistics,
 and prepares for drift detection across SQL-based data warehouses.
 """
 
-__version__ = "0.1.0"
+try:
+    from ._version import version as __version__
+except ImportError:
+    # Fallback for development installs without setuptools-scm or before first build
+    __version__ = "0.1.0.dev0"
+
 __author__ = "Baselinr Contributors"

@@ -1,0 +1,55 @@
+name: Version Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write  # Required to comment on PRs
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install setuptools-scm
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools-scm[toml]
+
+      - name: Check version can be determined
+        run: |
+          cd baselinr
+          python -c "from setuptools_scm import get_version; print(f'Version: {get_version()}')"
+        continue-on-error: true
+
+      - name: Get current version
+        id: current
+        run: |
+          cd baselinr
+          VERSION=$(python -c "from setuptools_scm import get_version; print(get_version())" 2>/dev/null || echo "0.1.0.dev0")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Comment version info
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const version = '${{ steps.current.outputs.version }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📦 **Version Check**: Current version would be \`${version}\`\n\nThis is determined from git tags using setuptools-scm. When this PR is merged and a release tag is created, the version will be set automatically.`
+            });

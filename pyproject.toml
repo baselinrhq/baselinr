@@ -2,9 +2,15 @@
 requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools_scm]
+write_to = "baselinr/baselinr/_version.py"
+version_scheme = "release-branch-semver"
+local_scheme = "node-and-date"
+fallback_version = "0.1.0.dev0"
+
 [project]
 name = "baselinr"
-version = "0.1.0"
+version = "0.1.0"  # Fallback version for PEP 621 compliance (overridden by setuptools-scm when git tags are available)
 description = "Modern data profiling and drift detection framework"
 readme = "README.md"
 requires-python = ">=3.10"

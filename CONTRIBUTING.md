@@ -204,6 +204,117 @@ Use conventional commit prefixes:
 - `style:` - Code style changes (formatting)
 - `chore:` - Maintenance tasks
 
+## Release Process
+
+Baselinr uses [Semantic Versioning](https://semver.org/) (SemVer) with automated releases via GitHub Actions and PyPI.
+
+### Version Numbering
+
+Versions follow the format `MAJOR.MINOR.PATCH`:
+
+- **PATCH** (`0.1.0` → `0.1.1`): Bug fixes, patches, minor improvements
+- **MINOR** (`0.1.0` → `0.2.0`): New features, enhancements (non-breaking)
+- **MAJOR** (`0.1.0` → `1.0.0`): Breaking changes, major API changes
+
+While in `0.x.y`, breaking changes may bump MINOR instead of MAJOR.
+
+### Automated Versioning
+
+Version numbers are automatically generated from git tags using `setuptools-scm`. The version is:
+- Read from the latest git tag (e.g., `v0.1.0` → version `0.1.0`)
+- Auto-generated for development installs (e.g., `0.1.0.dev5+gabc123`)
+- Stored in `baselinr/baselinr/_version.py` (auto-generated, do not edit)
+
+### Creating a Release
+
+1. **Prepare your release**:
+   - Ensure all tests pass: `make test`
+   - Update CHANGELOG.md (if maintained) or review recent commits
+   - Determine the appropriate version bump (patch/minor/major)
+
+2. **Create and push a git tag**:
+   ```bash
+   # Patch release (bug fixes)
+   git tag v0.1.1
+   git push origin v0.1.1
+
+   # Minor release (new features)
+   git tag v0.2.0
+   git push origin v0.2.0
+
+   # Major release (breaking changes)
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+3. **Automated release process**:
+   - GitHub Actions automatically:
+     - Builds the package using the tag
+     - Runs package verification checks
+     - Publishes to PyPI (if trusted publishing is configured)
+     - Creates a GitHub Release with release notes
+
+4. **Verify the release**:
+   - Check PyPI: https://pypi.org/project/baselinr/
+   - Check GitHub Releases: https://github.com/baselinrhq/baselinr/releases
+   - Test installation: `pip install baselinr==<version>`
+
+### Release Workflow
+
+The release process is fully automated via `.github/workflows/release.yml`:
+
+- **Trigger**: Pushing a tag matching `v*.*.*` (e.g., `v0.1.1`)
+- **Build**: Creates source distribution and wheel
+- **Publish**: Uploads to PyPI using trusted publishing
+- **Release**: Creates a GitHub Release with changelog
+
+### PyPI Trusted Publishing Setup
+
+To enable automated PyPI publishing:
+
+1. Go to PyPI → Your project → Settings → Manage API tokens
+2. Enable "Trusted publishing" for your GitHub repository
+3. Add the repository: `baselinrhq/baselinr`
+4. Save the configuration
+
+Once enabled, releases will automatically publish to PyPI without requiring API tokens.
+
+### Development Releases
+
+For development/testing before a full release:
+
+1. Create a pre-release tag: `v0.1.1-rc1` or `v0.2.0-alpha1`
+2. These will be published to PyPI with the full tag as the version
+3. Users can install with: `pip install baselinr==0.1.1rc1`
+
+### Rapid Release Workflow
+
+When pushing PRs rapidly:
+
+- **Daily releases**: Use patch versions (`0.1.1`, `0.1.2`, `0.1.3`, ...)
+- **Weekly feature releases**: Use minor versions (`0.2.0`, `0.3.0`, ...)
+- **Major milestones**: Use major versions (`1.0.0`, `2.0.0`, ...)
+
+You can release as frequently as needed - each tag triggers a new release automatically.
+
+### Manual Release (if needed)
+
+If you need to manually build and publish:
+
+```bash
+# Install build tools
+pip install build twine setuptools-scm
+
+# Build package
+python -m build
+
+# Verify package
+python -m twine check dist/*
+
+# Publish to PyPI (requires PyPI credentials)
+python -m twine upload dist/*
+```
+
 ## Questions?
 
 - Check existing [issues](https://github.com/baselinrhq/baselinr/issues)
