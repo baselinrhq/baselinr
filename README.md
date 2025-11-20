@@ -15,7 +15,8 @@
 - **Intelligent Baseline Selection**: Automatically selects optimal baseline method (last run, moving average, prior period, stable window) based on column characteristics
 - **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
 - **Expectation Learning**: Automatically learns expected metric ranges from historical profiling data, including control limits, distributions, and categorical frequencies for proactive anomaly detection
-- **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, and profiling lifecycle events
+- **Anomaly Detection**: Automatically detects outliers and seasonal anomalies using learned expectations with multiple detection methods (IQR, MAD, EWMA, trend/seasonality, regime shift)
+- **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, anomalies, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
 - **Multi-Database Support**: Works with PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, and Redshift
@@ -115,6 +116,7 @@ storage:
   enable_expectation_learning: true  # Learn expected ranges automatically
   learning_window_days: 30           # Use last 30 days of data
   min_samples: 5                     # Require at least 5 historical runs
+  enable_anomaly_detection: true     # Detect anomalies using learned expectations
 
 profiling:
   tables:
@@ -324,6 +326,7 @@ baselinr/
 │   ├── storage/          # Results storage
 │   ├── drift/            # Drift detection
 │   ├── learning/         # Expectation learning
+│   ├── anomaly/          # Anomaly detection
 │   ├── integrations/
 │   │   └── dagster/      # Dagster assets & sensors
 │   └── cli.py            # CLI interface
@@ -714,6 +717,44 @@ storage:
   # EWMA smoothing parameter for control limits (0 < lambda <= 1)
   # Lower values = more smoothing (0.1-0.3 recommended)
   ewma_lambda: 0.2
+```
+
+### Anomaly Detection Configuration
+
+```yaml
+storage:
+  # Enable automatic anomaly detection using learned expectations
+  enable_anomaly_detection: true
+  
+  # List of enabled detection methods (default: all methods)
+  anomaly_enabled_methods:
+    - control_limits
+    - iqr
+    - mad
+    - ewma
+    - seasonality
+    - regime_shift
+  
+  # IQR multiplier threshold for outlier detection
+  anomaly_iqr_threshold: 1.5
+  
+  # MAD threshold (modified z-score) for outlier detection
+  anomaly_mad_threshold: 3.0
+  
+  # EWMA deviation threshold (number of stddevs)
+  anomaly_ewma_deviation_threshold: 2.0
+  
+  # Enable trend and seasonality detection
+  anomaly_seasonality_enabled: true
+  
+  # Enable regime shift detection
+  anomaly_regime_shift_enabled: true
+  
+  # Number of recent runs for regime shift comparison
+  anomaly_regime_shift_window: 3
+  
+  # P-value threshold for regime shift detection
+  anomaly_regime_shift_sensitivity: 0.05
 ```
 
 ## 🔐 Environment Variables

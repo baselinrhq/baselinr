@@ -134,6 +134,10 @@ class ResultWriter:
                 if self.baselinr_config and self.config.enable_expectation_learning:
                     self._learn_expectations(result)
 
+                # Detect anomalies if enabled
+                if self.config.enable_anomaly_detection:
+                    self._detect_anomalies(result)
+
             conn.commit()
 
         logger.info(f"Wrote {len(results)} profiling results to storage")
@@ -724,6 +728,71 @@ class ResultWriter:
 
         except Exception as e:
             logger.warning(f"Failed to learn expectations: {e}")
+
+    def _detect_anomalies(self, result: ProfilingResult):
+        """Detect anomalies using learned expectations if enabled."""
+        try:
+            if self.engine is None:
+                return
+
+            from ..anomaly import AnomalyDetector
+
+            # Initialize anomaly detector
+            detector = AnomalyDetector(
+                storage_config=self.config,
+                engine=self.engine,
+                event_bus=self.event_bus,
+                enabled_methods=self.config.anomaly_enabled_methods,
+                iqr_threshold=self.config.anomaly_iqr_threshold,
+                mad_threshold=self.config.anomaly_mad_threshold,
+                ewma_deviation_threshold=self.config.anomaly_ewma_deviation_threshold,
+                seasonality_enabled=self.config.anomaly_seasonality_enabled,
+                regime_shift_enabled=self.config.anomaly_regime_shift_enabled,
+                regime_shift_window=self.config.anomaly_regime_shift_window,
+                regime_shift_sensitivity=self.config.anomaly_regime_shift_sensitivity,
+            )
+
+            # Numeric metrics to check for anomalies
+            numeric_metrics = ["mean", "stddev", "null_ratio", "count", "unique_ratio"]
+
+            # Detect anomalies for each column and metric
+            for column_data in result.columns:
+                column_name = column_data["column_name"]
+                metrics = column_data.get("metrics", {})
+
+                for metric_name in numeric_metrics:
+                    # Only check if this metric exists for the column
+                    if metric_name not in metrics:
+                        continue
+
+                    try:
+                        current_value = metrics[metric_name]
+                        if not isinstance(current_value, (int, float)):
+                            continue
+
+                        anomalies = detector.detect_anomalies(
+                            table_name=result.dataset_name,
+                            column_name=column_name,
+                            metric_name=metric_name,
+                            current_value=float(current_value),
+                            schema_name=result.schema_name,
+                            current_timestamp=result.profiled_at,
+                        )
+
+                        if anomalies:
+                            # Emit events for detected anomalies
+                            detector.emit_anomaly_events(anomalies)
+                            logger.info(
+                                f"Detected {len(anomalies)} anomalies for "
+                                f"{result.dataset_name}.{column_name}.{metric_name}"
+                            )
+
+                    except Exception as e:
+                        table_metric = f"{result.dataset_name}.{column_name}.{metric_name}"
+                        logger.warning(f"Failed to detect anomalies for {table_metric}: {e}")
+
+        except Exception as e:
+            logger.warning(f"Error during anomaly detection for {result.dataset_name}: {e}")
 
     def _register_schema_and_detect_changes(self, result: ProfilingResult):
         """

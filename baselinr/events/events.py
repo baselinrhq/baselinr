@@ -242,3 +242,34 @@ class RetryExhausted(BaseEvent):
                 "error_type": self.error_type,
             }
         )
+
+
+@dataclass
+class AnomalyDetected(BaseEvent):
+    """Event emitted when an anomaly is detected."""
+
+    table: str
+    column: str
+    metric: str
+    anomaly_type: str
+    expected_value: Optional[float]
+    actual_value: float
+    severity: str  # 'low', 'medium', 'high'
+    detection_method: str
+
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update(
+            {
+                "table": self.table,
+                "column": self.column,
+                "metric": self.metric,
+                "anomaly_type": self.anomaly_type,
+                "expected_value": self.expected_value,
+                "actual_value": self.actual_value,
+                "severity": self.severity,
+                "detection_method": self.detection_method,
+            }
+        )
