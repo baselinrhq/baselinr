@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write  # Required to comment on PRs
 
 jobs:
   check-version:
@@ -52,4 +53,3 @@ jobs:
               repo: context.repo.repo,
               body: `📦 **Version Check**: Current version would be \`${version}\`\n\nThis is determined from git tags using setuptools-scm. When this PR is merged and a release tag is created, the version will be set automatically.`
             });
-
