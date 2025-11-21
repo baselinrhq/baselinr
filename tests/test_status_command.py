@@ -310,6 +310,7 @@ def test_status_command_basic(temp_db_engine, sample_status_data, mock_config, t
             args.config = str(config_file)
             args.drift_only = False
             args.limit = 20
+            args.days = 7
             args.json = False
             args.watch = None
 
@@ -333,6 +334,7 @@ def test_status_command_json_output(temp_db_engine, sample_status_data, mock_con
             args.config = str(config_file)
             args.drift_only = False
             args.limit = 20
+            args.days = 7
             args.json = True
             args.watch = None
 
@@ -362,6 +364,7 @@ def test_status_command_drift_only(temp_db_engine, sample_status_data, mock_conf
             args.config = str(config_file)
             args.drift_only = True
             args.limit = 20
+            args.days = 7
             args.json = True
             args.watch = None
 
@@ -390,6 +393,7 @@ def test_status_command_limit(temp_db_engine, sample_status_data, mock_config, t
             args.config = str(config_file)
             args.drift_only = False
             args.limit = 1
+            args.days = 7
             args.json = True
             args.watch = None
 
@@ -417,6 +421,7 @@ def test_status_command_empty_database(temp_db_engine, mock_config, tmp_path):
             args.config = str(config_file)
             args.drift_only = False
             args.limit = 20
+            args.days = 7
             args.json = True
             args.watch = None
 
@@ -434,6 +439,7 @@ def test_status_command_error_handling(tmp_path):
         args.config = str(config_file)
         args.drift_only = False
         args.limit = 20
+        args.days = 7
         args.json = False
         args.watch = None
 
@@ -456,6 +462,7 @@ def test_status_command_watch_mode_skipped(temp_db_engine, sample_status_data, m
             args.config = str(config_file)
             args.drift_only = False
             args.limit = 20
+            args.days = 7
             args.json = False
             args.watch = None  # No watch mode
 
