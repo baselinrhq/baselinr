@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Baselinr - Powerful features for data profiling and drift detection">
+    <title>Features - Baselinr</title>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        :root {
+            --primary-blue: #2563eb;
+            --primary-blue-hover: #1d4ed8;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --bg-white: #ffffff;
+            --bg-blue-50: #eff6ff;
+            --bg-slate-50: #f8fafc;
+            --border-slate: #e2e8f0;
+            --code-bg: #1e293b;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-white);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-slate);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        
+        .logo-link svg {
+            max-width: 120px;
+            height: auto;
+        }
+        
+        nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav a:hover, nav a.active {
+            color: var(--primary-blue);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-secondary);
+        }
+        
+        .mobile-nav {
+            display: none;
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--border-slate);
+        }
+        
+        .mobile-nav a {
+            display: block;
+            padding: 0.75rem 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(to bottom, var(--bg-blue-50), var(--bg-white));
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto 2rem;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-blue-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-white);
+            color: var(--text-primary);
+            border: 1px solid var(--border-slate);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Section */
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        
+        .section-header h2 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .section-header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Feature Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-slate);
+            transition: all 0.2s;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 24px;
+        }
+        
+        .feature-icon.blue {
+            background: #dbeafe;
+            color: var(--primary-blue);
+        }
+        
+        .feature-icon.green {
+            background: #d1fae5;
+            color: #059669;
+        }
+        
+        .feature-icon.purple {
+            background: #e9d5ff;
+            color: #7c3aed;
+        }
+        
+        .feature-icon.orange {
+            background: #fed7aa;
+            color: #ea580c;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .feature-card:hover h3 {
+            color: var(--primary-blue);
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+        
+        /* Use Cases */
+        .use-cases-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+        
+        .use-case-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-slate);
+            transition: all 0.2s;
+        }
+        
+        .use-case-card:hover {
+            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .use-case-card h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .use-case-card p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+        
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .tag {
+            background: var(--bg-blue-50);
+            color: var(--primary-blue);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: var(--primary-blue);
+            color: white;
+            text-align: center;
+            padding: 5rem 2rem;
+        }
+        
+        .cta-section h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .cta-section p {
+            font-size: 1.125rem;
+            color: #bfdbfe;
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn-white {
+            background: var(--bg-white);
+            color: var(--primary-blue);
+        }
+        
+        .btn-white:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn-outline-white {
+            background: transparent;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-outline-white:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: white;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-slate-50);
+            border-top: 1px solid var(--border-slate);
+            padding: 3rem 2rem;
+        }
+        
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+        }
+        
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--primary-blue);
+        }
+        
+        .footer-copyright {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-slate);
+            width: 100%;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-container {
+                padding: 1rem;
+            }
+            
+            nav {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .mobile-nav.open {
+                display: block;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .section {
+                padding: 3rem 1rem;
+            }
+            
+            .features-grid,
+            .use-cases-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="logo-link">
+                <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="max-width: 120px;">
+                    <text x="300" y="100" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#1e293b" text-anchor="middle">Baselinr</text>
+                    <g transform="translate(200, 140)">
+                        <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
+                              fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="0" cy="0" r="6" fill="#2563eb"/>
+                    </g>
+                </svg>
+            </a>
+            <nav>
+                <a href="features.html" class="active">Features</a>
+                <a href="quickstart.html">Quick Start</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </nav>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </div>
+        <div class="mobile-nav" id="mobileNav">
+            <a href="features.html">Features</a>
+            <a href="quickstart.html">Quick Start</a>
+            <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Powerful Features for Data Quality</h1>
+        <p>Everything you need to profile, monitor, and detect drift in your SQL databases. From automated profiling to advanced statistical tests, Baselinr has you covered.</p>
+        <div class="hero-buttons">
+            <a href="quickstart.html" class="btn btn-primary">Get Started</a>
+            <a href="https://github.com/baselinrhq/baselinr" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">View Documentation</a>
+        </div>
+    </section>
+
+    <!-- Core Features Section -->
+    <section class="section">
+        <div class="section-header">
+            <h2>Core Features</h2>
+            <p>Built with modern development practices and designed for scalability, reliability, and developer experience.</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon blue">📊</div>
+                <h3>Automated Profiling</h3>
+                <p>Profile tables with column-level metrics including count, null %, distinct values, mean, stddev, histograms, and more. Automatically compute comprehensive statistics for your datasets.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon green">🔍</div>
+                <h3>Drift Detection</h3>
+                <p>Compare profiling runs to detect schema and statistical drift with configurable strategies. Intelligent baseline selection automatically chooses the optimal comparison method.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon purple">📈</div>
+                <h3>Advanced Statistical Tests</h3>
+                <p>Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection. Type-specific thresholds reduce false positives.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon orange">⚠️</div>
+                <h3>Anomaly Detection</h3>
+                <p>Automatically detect outliers and seasonal anomalies using learned expectations with multiple detection methods (IQR, MAD, EWMA, trend/seasonality, regime shift).</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon blue">🗄️</div>
+                <h3>Multi-Database Support</h3>
+                <p>Works seamlessly with PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, and Redshift. Unified API across all supported databases.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon green">🖥️</div>
+                <h3>Web Dashboard</h3>
+                <p>Lightweight local web dashboard (FastAPI + Next.js) for visualizing profiling runs and drift detection. Get insights at a glance.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon purple">💻</div>
+                <h3>CLI & API</h3>
+                <p>Comprehensive command-line interface and powerful querying API for profiling runs, drift events, and table history. Perfect for automation and integration.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional Features Section -->
+    <section class="section" style="background: var(--bg-slate-50);">
+        <div class="section-header">
+            <h2>Built for Production</h2>
+            <p>Every feature is designed to meet the demands of production workloads and enterprise requirements.</p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon blue">🧠</div>
+                <h3>Expectation Learning</h3>
+                <p>Automatically learns expected metric ranges from historical profiling data, including control limits, distributions, and categorical frequencies for proactive anomaly detection.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon green">🔔</div>
+                <h3>Event & Alert Hooks</h3>
+                <p>Pluggable event system for real-time alerts and notifications on drift, schema changes, anomalies, and profiling lifecycle events. Integrate with Slack, email, or custom systems.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon purple">📦</div>
+                <h3>Partition-Aware Profiling</h3>
+                <p>Intelligent partition handling with strategies for latest, recent_n, or sample partitions. Optimize profiling for large partitioned datasets.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases Section -->
+    <section class="section">
+        <div class="section-header">
+            <h2>Use Cases</h2>
+            <p>See how teams are using Baselinr to solve real-world data quality challenges.</p>
+        </div>
+        
+        <div class="use-cases-grid">
+            <div class="use-case-card">
+                <h3>Data Quality Monitoring</h3>
+                <p>Track data quality metrics over time and automatically detect when data quality degrades. Set up alerts for critical drift events.</p>
+                <div class="tags">
+                    <span class="tag">Monitoring</span>
+                    <span class="tag">Quality</span>
+                    <span class="tag">Alerts</span>
+                </div>
+            </div>
+            
+            <div class="use-case-card">
+                <h3>Schema Change Detection</h3>
+                <p>Automatically detect schema changes in your databases. Get notified when columns are added, removed, or modified.</p>
+                <div class="tags">
+                    <span class="tag">Schema</span>
+                    <span class="tag">Changes</span>
+                    <span class="tag">Tracking</span>
+                </div>
+            </div>
+            
+            <div class="use-case-card">
+                <h3>Statistical Drift Detection</h3>
+                <p>Identify statistical anomalies in your data using advanced tests. Detect distribution shifts, value range changes, and frequency variations.</p>
+                <div class="tags">
+                    <span class="tag">Statistics</span>
+                    <span class="tag">Drift</span>
+                    <span class="tag">Analysis</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Ready to Get Started?</h2>
+        <p>Join developers building better data quality monitoring with Baselinr.</p>
+        <div class="hero-buttons">
+            <a href="https://github.com/baselinrhq/baselinr" class="btn btn-white" target="_blank" rel="noopener noreferrer">View Full Documentation</a>
+            <a href="https://github.com/baselinrhq/baselinr" class="btn btn-outline-white" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-links">
+                <a href="features.html">Features</a>
+                <a href="quickstart.html">Quick Start</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">Documentation</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+            <div class="footer-copyright">
+                <p>&copy; 2025 Baselinr. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const mobileNav = document.getElementById('mobileNav');
+            mobileNav.classList.toggle('open');
+        }
+    </script>
+</body>
+</html>
+

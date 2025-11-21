@@ -5,6 +5,8 @@
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](https://github.com/baselinrhq/baselinr/blob/main/LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
+**🌐 [Visit our website →](https://baselinr.io/)**
+
 **Baselinr** is a modern, open-source data profiling and drift detection framework for SQL-based data warehouses. It automatically profiles datasets, stores metadata and statistics, and detects drift over time.
 
 ## 🚀 Features

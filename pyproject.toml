@@ -50,7 +50,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/baselinrhq/baselinr"
+Homepage = "https://baselinr.io"
+Website = "https://baselinr.io"
 Documentation = "https://github.com/baselinrhq/baselinr/tree/main/docs"
 Repository = "https://github.com/baselinrhq/baselinr"
 Issues = "https://github.com/baselinrhq/baselinr/issues"
