@@ -24,6 +24,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ### 📋 [Schemas & CLI](schemas/)
 - **[Query Examples](schemas/QUERY_EXAMPLES.md)** - Query command examples and patterns
 - **[Status Command](schemas/STATUS_COMMAND.md)** - Status command reference and examples
+- **[UI Command](schemas/UI_COMMAND.md)** - Start local dashboard with `baselinr ui`
 - **[Schema Reference](schemas/SCHEMA_REFERENCE.md)** - Database schema documentation
 - **[Migration Guide](schemas/MIGRATION_GUIDE.md)** - Schema upgrade procedures
 
@@ -73,6 +74,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
 - **Checking system status?** → See [Status Command](schemas/STATUS_COMMAND.md)
+- **Starting the dashboard?** → See [UI Command](schemas/UI_COMMAND.md)
 - **Querying metadata?** → See [Query Examples](schemas/QUERY_EXAMPLES.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)
 - **Troubleshooting?** → Check the relevant component's README or fix guides

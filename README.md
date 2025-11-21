@@ -27,7 +27,7 @@
 - **Dagster Integration**: Built-in orchestration support with Dagster assets and schedules
 - **Configuration-Driven**: Simple YAML/JSON configuration for defining profiling targets
 - **Historical Tracking**: Store profiling results over time for trend analysis
-- **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, and schema management
+- **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, schema management, and dashboard UI
 
 ## 📋 Requirements
 
@@ -190,7 +190,24 @@ baselinr status --config config.yml --watch
 baselinr status --config config.yml --json
 ```
 
-### 7. Manage Schema Migrations
+### 7. Start Dashboard UI
+
+Launch the web dashboard to view profiling runs, drift alerts, and metrics:
+
+```bash
+# Start dashboard (foreground mode)
+baselinr ui --config config.yml
+
+# Custom ports
+baselinr ui --config config.yml --port-backend 8080 --port-frontend 3001
+
+# Localhost only
+baselinr ui --config config.yml --host 127.0.0.1
+```
+
+Press `Ctrl+C` to stop the dashboard. See [docs/schemas/UI_COMMAND.md](docs/schemas/UI_COMMAND.md) for more details.
+
+### 8. Manage Schema Migrations
 
 Check and apply schema migrations:
 
@@ -446,6 +463,9 @@ baselinr status --config examples/config.yml --watch
 
 # Status with JSON output
 baselinr status --config examples/config.yml --json
+
+# Start dashboard UI
+baselinr ui --config examples/config.yml
 
 # Check schema migration status
 baselinr migrate status --config examples/config.yml

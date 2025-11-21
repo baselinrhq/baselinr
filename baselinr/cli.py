@@ -584,6 +584,36 @@ COLUMN METRICS:
         return 1
 
 
+def ui_command(args):
+    """Execute UI command."""
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        # Import UI startup function
+        from .ui import start_dashboard_foreground
+        from .ui.dependencies import check_all_dependencies
+
+        # Check dependencies first
+        check_all_dependencies(config, args.port_backend, args.port_frontend, args.host)
+
+        # Start dashboard in foreground
+        start_dashboard_foreground(
+            config,
+            backend_port=args.port_backend,
+            frontend_port=args.port_frontend,
+            backend_host=args.host,
+        )
+        return 0
+    except KeyboardInterrupt:
+        logger.info("UI command interrupted by user")
+        return 0
+    except Exception as e:
+        logger.error(f"UI command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
 def status_command(args):
     """Execute status command."""
     try:
@@ -1220,6 +1250,30 @@ def main():
         help="Auto-refresh every N seconds (default: 5). Use --watch 0 to disable.",
     )
 
+    # UI command
+    ui_parser = subparsers.add_parser("ui", help="Start local dashboard")
+    ui_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
+    )
+    ui_parser.add_argument(
+        "--port-backend",
+        type=int,
+        default=8000,
+        help="Backend API port (default: 8000)",
+    )
+    ui_parser.add_argument(
+        "--port-frontend",
+        type=int,
+        default=3000,
+        help="Frontend UI port (default: 3000)",
+    )
+    ui_parser.add_argument(
+        "--host",
+        type=str,
+        default="0.0.0.0",
+        help="Backend host (default: 0.0.0.0)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -1246,6 +1300,8 @@ def main():
         return query_command(args)
     elif args.command == "status":
         return status_command(args)
+    elif args.command == "ui":
+        return ui_command(args)
     else:
         parser.print_help()
         return 1

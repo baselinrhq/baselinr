@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Baselinr - Modern data profiling and drift detection framework for SQL databases">
     <title>Baselinr - Modern Data Profiling & Drift Detection</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="alternate icon" href="favicon.svg">
     <style>
         * { 
             margin: 0; 
@@ -55,11 +57,32 @@
             gap: 0.5rem;
             text-decoration: none;
             color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.25rem;
+            transition: opacity 0.2s;
+        }
+        
+        .logo-link:hover {
+            opacity: 0.8;
         }
         
         .logo-link svg {
             max-width: 120px;
             height: auto;
+        }
+        
+        .logo-link .logo-compact {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .logo-link .logo-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         nav {
@@ -236,14 +259,18 @@
     <header>
         <div class="header-container">
             <a href="index.html" class="logo-link">
-                <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="max-width: 120px;">
-                    <text x="300" y="100" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#1e293b" text-anchor="middle">Baselinr</text>
-                    <g transform="translate(200, 140)">
-                        <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
-                              fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-                        <circle cx="0" cy="0" r="6" fill="#2563eb"/>
-                    </g>
-                </svg>
+                <div class="logo-compact">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg" style="width: 32px; height: 32px;">
+                            <g transform="translate(0, 50)">
+                                <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
+                                      fill="none" stroke="#2563eb" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="0" cy="0" r="4" fill="#2563eb"/>
+                            </g>
+                        </svg>
+                    </div>
+                    <span>Baselinr</span>
+                </div>
             </a>
             <nav>
                 <a href="features.html">Features</a>
