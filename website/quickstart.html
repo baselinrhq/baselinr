@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Baselinr - Get started in minutes with data profiling and drift detection">
+    <title>Quick Start - Baselinr</title>
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        :root {
+            --primary-blue: #2563eb;
+            --primary-blue-hover: #1d4ed8;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --bg-white: #ffffff;
+            --bg-blue-50: #eff6ff;
+            --bg-slate-50: #f8fafc;
+            --border-slate: #e2e8f0;
+            --code-bg: #1e293b;
+            --code-text: #e2e8f0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-white);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        /* Header */
+        header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-slate);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+        
+        .logo-link svg {
+            max-width: 120px;
+            height: auto;
+        }
+        
+        nav {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        nav a:hover, nav a.active {
+            color: var(--primary-blue);
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-secondary);
+        }
+        
+        .mobile-nav {
+            display: none;
+            padding: 1rem 2rem;
+            border-top: 1px solid var(--border-slate);
+        }
+        
+        .mobile-nav a {
+            display: block;
+            padding: 0.75rem 0;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(to bottom, var(--bg-blue-50), var(--bg-white));
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-size: 2.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Requirements Section */
+        .requirements {
+            max-width: 900px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+        
+        .requirements-box {
+            background: var(--bg-blue-50);
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+        
+        .requirements-box h3 {
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .requirements-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .requirements-box li {
+            color: var(--text-primary);
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: start;
+            gap: 0.5rem;
+        }
+        
+        .requirements-box li::before {
+            content: "•";
+            color: var(--primary-blue);
+            font-weight: bold;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+        
+        /* Steps Section */
+        .steps {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        
+        .step {
+            margin-bottom: 4rem;
+        }
+        
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .step-title {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .step-content {
+            margin-left: 0;
+            margin-top: 1.5rem;
+        }
+        
+        .step-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        
+        /* Code Block */
+        .code-block {
+            position: relative;
+            margin: 1.5rem 0;
+        }
+        
+        .code-block-container {
+            background: var(--code-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+        
+        .code-block-header {
+            background: #0f172a;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .code-block-dots {
+            display: flex;
+            gap: 0.375rem;
+        }
+        
+        .code-block-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .code-block-dot.red {
+            background: #ef4444;
+        }
+        
+        .code-block-dot.yellow {
+            background: #f59e0b;
+        }
+        
+        .code-block-dot.green {
+            background: #10b981;
+        }
+        
+        .code-block-language {
+            color: #94a3b8;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+        }
+        
+        .code-block-copy {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background: #334155;
+            border: none;
+            color: var(--code-text);
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .code-block:hover .code-block-copy {
+            opacity: 1;
+        }
+        
+        .code-block-copy:hover {
+            background: #475569;
+        }
+        
+        .code-block-copy.copied {
+            background: #10b981;
+            color: white;
+        }
+        
+        .code-block pre {
+            padding: 1.5rem;
+            margin: 0;
+            overflow-x: auto;
+        }
+        
+        .code-block code {
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: var(--code-text);
+            line-height: 1.6;
+        }
+        
+        /* What's Next Section */
+        .whats-next {
+            background: var(--bg-slate-50);
+            padding: 4rem 2rem;
+        }
+        
+        .whats-next-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .whats-next h2 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: 3rem;
+            font-weight: 700;
+        }
+        
+        .next-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .next-card {
+            background: var(--bg-white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-slate);
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s;
+            display: block;
+        }
+        
+        .next-card:hover {
+            border-color: var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .next-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+        
+        .next-card h3 {
+            font-size: 1.125rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .next-card:hover h3 {
+            color: var(--primary-blue);
+        }
+        
+        .next-card p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+        
+        .cta-section h2 {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+        
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            font-size: 1.125rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            margin: 0 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+            box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-blue-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn-secondary {
+            background: var(--bg-white);
+            color: var(--text-primary);
+            border: 1px solid var(--border-slate);
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--bg-slate-50);
+            border-top: 1px solid var(--border-slate);
+            padding: 3rem 2rem;
+        }
+        
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+        }
+        
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--primary-blue);
+        }
+        
+        .footer-copyright {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-slate);
+            width: 100%;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-container {
+                padding: 1rem;
+            }
+            
+            nav {
+                display: none;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .mobile-nav.open {
+                display: block;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .hero p {
+                font-size: 1.1rem;
+            }
+            
+            .steps {
+                padding: 2rem 1rem;
+            }
+            
+            .step {
+                margin-bottom: 3rem;
+            }
+            
+            .step-indicator {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .step-content {
+                margin-left: 0;
+            }
+            
+            .next-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn {
+                display: block;
+                width: 100%;
+                margin: 0.5rem 0;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="logo-link">
+                <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" style="max-width: 120px;">
+                    <text x="300" y="100" font-family="Arial, sans-serif" font-size="72" font-weight="700" fill="#1e293b" text-anchor="middle">Baselinr</text>
+                    <g transform="translate(200, 140)">
+                        <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
+                              fill="none" stroke="#2563eb" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="0" cy="0" r="6" fill="#2563eb"/>
+                    </g>
+                </svg>
+            </a>
+            <nav>
+                <a href="features.html">Features</a>
+                <a href="quickstart.html" class="active">Quick Start</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </nav>
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </div>
+        <div class="mobile-nav" id="mobileNav">
+            <a href="features.html">Features</a>
+            <a href="quickstart.html">Quick Start</a>
+            <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Get Started in Minutes</h1>
+        <p>Follow this quick guide to install Baselinr and start profiling your databases. You'll be up and running in less than 5 minutes.</p>
+    </section>
+
+    <!-- Requirements Section -->
+    <section class="requirements">
+        <div class="requirements-box">
+            <h3>✓ Requirements</h3>
+            <ul>
+                <li>Python 3.10 or higher</li>
+                <li>One of: PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, or Redshift</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Installation Steps -->
+    <section class="steps">
+        <!-- Step 1 -->
+        <div class="step">
+            <div class="step-indicator">
+                <div class="step-number">1</div>
+                <div class="step-title">Install Baselinr</div>
+            </div>
+            <div class="step-content">
+                <p>Install the package using pip. This will download Baselinr and all required dependencies.</p>
+                <div class="code-block">
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <div class="code-block-dots">
+                                <div class="code-block-dot red"></div>
+                                <div class="code-block-dot yellow"></div>
+                                <div class="code-block-dot green"></div>
+                            </div>
+                            <span class="code-block-language">bash</span>
+                        </div>
+                        <pre><code>pip install baselinr</code></pre>
+                    </div>
+                    <button class="code-block-copy" onclick="copyCode(this, 'pip install baselinr')">Copy</button>
+                </div>
+                <p style="font-size: 0.9375rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    <strong>Optional:</strong> Install with additional features:
+                    <code style="background: var(--bg-slate-50); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.875rem;">pip install baselinr[snowflake]</code> or 
+                    <code style="background: var(--bg-slate-50); padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.875rem;">pip install baselinr[all]</code>
+                </p>
+            </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+            <div class="step-indicator">
+                <div class="step-number">2</div>
+                <div class="step-title">Create Configuration File</div>
+            </div>
+            <div class="step-content">
+                <p>Create a <code style="background: var(--bg-slate-50); padding: 0.125rem 0.375rem; border-radius: 4px;">config.yml</code> file with your database connection and profiling targets.</p>
+                <div class="code-block">
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <div class="code-block-dots">
+                                <div class="code-block-dot red"></div>
+                                <div class="code-block-dot yellow"></div>
+                                <div class="code-block-dot green"></div>
+                            </div>
+                            <span class="code-block-language">yaml</span>
+                        </div>
+                        <pre><code>environment: development
+
+source:
+  type: postgres
+  host: localhost
+  port: 5432
+  database: mydb
+  username: user
+  password: password
+  schema: public
+
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: mydb
+    username: user
+    password: password
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+
+profiling:
+  tables:
+    - table: customers
+      sample_ratio: 1.0
+    - table: orders
+      sample_ratio: 1.0
+  
+  default_sample_ratio: 1.0
+  compute_histograms: true
+  histogram_bins: 10</code></pre>
+                    </div>
+                    <button class="code-block-copy" onclick="copyCode(this, `environment: development
+
+source:
+  type: postgres
+  host: localhost
+  port: 5432
+  database: mydb
+  username: user
+  password: password
+  schema: public
+
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: mydb
+    username: user
+    password: password
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+
+profiling:
+  tables:
+    - table: customers
+      sample_ratio: 1.0
+    - table: orders
+      sample_ratio: 1.0
+  
+  default_sample_ratio: 1.0
+  compute_histograms: true
+  histogram_bins: 10`)">Copy</button>
+                </div>
+                <p style="font-size: 0.9375rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    See <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer" style="color: var(--primary-blue);">full example configurations</a> for other database types.
+                </p>
+            </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+            <div class="step-indicator">
+                <div class="step-number">3</div>
+                <div class="step-title">Start Profiling</div>
+            </div>
+            <div class="step-content">
+                <p>Preview, profile, and detect drift with simple commands:</p>
+                
+                <div class="code-block" style="margin-bottom: 1rem;">
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <div class="code-block-dots">
+                                <div class="code-block-dot red"></div>
+                                <div class="code-block-dot yellow"></div>
+                                <div class="code-block-dot green"></div>
+                            </div>
+                            <span class="code-block-language">bash</span>
+                        </div>
+                        <pre><code># Preview what will be profiled
+baselinr plan --config config.yml</code></pre>
+                    </div>
+                    <button class="code-block-copy" onclick="copyCode(this, 'baselinr plan --config config.yml')">Copy</button>
+                </div>
+
+                <div class="code-block" style="margin-bottom: 1rem;">
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <div class="code-block-dots">
+                                <div class="code-block-dot red"></div>
+                                <div class="code-block-dot yellow"></div>
+                                <div class="code-block-dot green"></div>
+                            </div>
+                            <span class="code-block-language">bash</span>
+                        </div>
+                        <pre><code># Run profiling
+baselinr profile --config config.yml</code></pre>
+                    </div>
+                    <button class="code-block-copy" onclick="copyCode(this, 'baselinr profile --config config.yml')">Copy</button>
+                </div>
+
+                <div class="code-block">
+                    <div class="code-block-container">
+                        <div class="code-block-header">
+                            <div class="code-block-dots">
+                                <div class="code-block-dot red"></div>
+                                <div class="code-block-dot yellow"></div>
+                                <div class="code-block-dot green"></div>
+                            </div>
+                            <span class="code-block-language">bash</span>
+                        </div>
+                        <pre><code># Detect drift (after multiple runs)
+baselinr drift --config config.yml --dataset customers</code></pre>
+                    </div>
+                    <button class="code-block-copy" onclick="copyCode(this, 'baselinr drift --config config.yml --dataset customers')">Copy</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- What's Next Section -->
+    <section class="whats-next">
+        <div class="whats-next-container">
+            <h2>What's Next?</h2>
+            
+            <div class="next-cards">
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer" class="next-card">
+                    <div class="next-card-header">
+                        <h3>Full Documentation</h3>
+                        <span>→</span>
+                    </div>
+                    <p>Explore comprehensive guides, API references, and best practices.</p>
+                </a>
+
+                <a href="features.html" class="next-card">
+                    <div class="next-card-header">
+                        <h3>Explore Features</h3>
+                        <span>→</span>
+                    </div>
+                    <p>Discover all the powerful features Baselinr has to offer.</p>
+                </a>
+
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer" class="next-card">
+                    <div class="next-card-header">
+                        <h3>View on GitHub</h3>
+                        <span>→</span>
+                    </div>
+                    <p>Check out the source code, report issues, and contribute.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Need Help?</h2>
+        <p>Join our community or check out the full documentation for detailed guides and examples.</p>
+        <div>
+            <a href="https://github.com/baselinrhq/baselinr" class="btn btn-primary" target="_blank" rel="noopener noreferrer">View Full Documentation</a>
+            <a href="index.html" class="btn btn-secondary">Back to Home</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-links">
+                <a href="features.html">Features</a>
+                <a href="quickstart.html">Quick Start</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">Documentation</a>
+                <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+            <div class="footer-copyright">
+                <p>&copy; 2025 Baselinr. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const mobileNav = document.getElementById('mobileNav');
+            mobileNav.classList.toggle('open');
+        }
+
+        function copyCode(button, code) {
+            navigator.clipboard.writeText(code).then(() => {
+                const originalText = button.textContent;
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
+
