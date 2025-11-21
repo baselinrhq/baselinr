@@ -405,3 +405,180 @@ class MetadataQueryClient:
                     for row in runs
                 ],
             }
+
+    def query_run_events(
+        self, run_id: str, event_types: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Query events for a specific run.
+
+        Args:
+            run_id: Run ID to query events for
+            event_types: Optional list of event types to filter by
+                        (e.g., ["ProfilingCompleted", "AnomalyDetected"])
+
+        Returns:
+            List of event dictionaries with all event fields
+        """
+        conditions = ["run_id = :run_id"]
+        params: Dict[str, Any] = {"run_id": run_id}
+
+        if event_types:
+            placeholders = ", ".join([f":event_type_{i}" for i in range(len(event_types))])
+            conditions.append(f"event_type IN ({placeholders})")
+            for i, event_type in enumerate(event_types):
+                params[f"event_type_{i}"] = event_type
+
+        where_clause = " AND ".join(conditions)
+
+        query = text(
+            f"""
+            SELECT event_id, event_type, run_id, table_name, column_name, metric_name,
+                   baseline_value, current_value, change_percent, drift_severity,
+                   timestamp, metadata
+            FROM {self.events_table}
+            WHERE {where_clause}
+            ORDER BY timestamp DESC
+        """
+        )
+
+        with self.engine.connect() as conn:
+            results = conn.execute(query, params).fetchall()
+            events = []
+            for row in results:
+                timestamp_val: datetime
+                if isinstance(row[10], str):
+                    timestamp_val = datetime.fromisoformat(row[10])
+                elif isinstance(row[10], datetime):
+                    timestamp_val = row[10]
+                else:
+                    continue  # Skip invalid rows
+
+                # Parse metadata if it's a JSON string
+                metadata = row[11] if row[11] else {}
+                if isinstance(metadata, str):
+                    try:
+                        import json
+
+                        metadata = json.loads(metadata)
+                    except (json.JSONDecodeError, ValueError):
+                        metadata = {}
+
+                events.append(
+                    {
+                        "event_id": str(row[0]),
+                        "event_type": str(row[1]) if row[1] else None,
+                        "run_id": str(row[2]) if row[2] else None,
+                        "table_name": str(row[3]) if row[3] else None,
+                        "column_name": str(row[4]) if row[4] else None,
+                        "metric_name": str(row[5]) if row[5] else None,
+                        "baseline_value": float(row[6]) if row[6] is not None else None,
+                        "current_value": float(row[7]) if row[7] is not None else None,
+                        "change_percent": float(row[8]) if row[8] is not None else None,
+                        "drift_severity": str(row[9]) if row[9] else None,
+                        "timestamp": timestamp_val,
+                        "metadata": metadata,
+                    }
+                )
+            return events
+
+    def query_active_drift_summary(self, days: int = 7) -> List[Dict[str, Any]]:
+        """
+        Query active drift summary grouped by table.
+
+        Args:
+            days: Number of days to look back for drift events
+
+        Returns:
+            List of drift summary dictionaries, one per table with active drift
+        """
+        # Get all drift events in the time window
+        drift_events = self.query_drift_events(days=days, limit=10000)
+
+        if not drift_events:
+            return []
+
+        # Group by table_name
+        table_drifts: Dict[str, List[DriftEvent]] = {}
+        for event in drift_events:
+            if not event.table_name:
+                continue
+            if event.table_name not in table_drifts:
+                table_drifts[event.table_name] = []
+            table_drifts[event.table_name].append(event)
+
+        # Build summary for each table
+        summary = []
+        for table_name, events in table_drifts.items():
+            # Determine highest severity (high > medium > low)
+            severity_priority = {"high": 3, "medium": 2, "low": 1, "none": 0}
+            highest_severity = "none"
+            highest_priority = 0
+
+            # Find earliest timestamp (when drift started)
+            earliest_timestamp: Optional[datetime] = None
+
+            # Infer drift type from metric names
+            drift_types = set()
+
+            for event in events:
+                # Track severity
+                if event.drift_severity:
+                    priority = severity_priority.get(event.drift_severity.lower(), 0)
+                    if priority > highest_priority:
+                        highest_priority = priority
+                        highest_severity = event.drift_severity.lower()
+
+                # Track earliest timestamp
+                if event.timestamp:
+                    if earliest_timestamp is None or event.timestamp < earliest_timestamp:
+                        earliest_timestamp = event.timestamp
+
+                # Infer drift type from metric_name
+                if event.metric_name:
+                    metric_lower = event.metric_name.lower()
+                    if "schema" in metric_lower or "column" in metric_lower:
+                        drift_types.add("schema")
+                    elif "count" in metric_lower or "row" in metric_lower:
+                        drift_types.add("volume")
+                    elif (
+                        "mean" in metric_lower
+                        or "stddev" in metric_lower
+                        or "distribution" in metric_lower
+                    ):
+                        drift_types.add("distribution")
+                    elif "profiled_at" in metric_lower or "freshness" in metric_lower:
+                        drift_types.add("freshness")
+
+            # Determine primary drift type (prefer schema > volume > distribution > freshness)
+            drift_type = "unknown"
+            if "schema" in drift_types:
+                drift_type = "schema"
+            elif "volume" in drift_types:
+                drift_type = "volume"
+            elif "distribution" in drift_types:
+                drift_type = "distribution"
+            elif "freshness" in drift_types:
+                drift_type = "freshness"
+
+            summary.append(
+                {
+                    "table_name": table_name,
+                    "severity": highest_severity if highest_severity != "none" else "low",
+                    "drift_type": drift_type,
+                    "started_at": earliest_timestamp.isoformat() if earliest_timestamp else None,
+                    "event_count": len(events),
+                }
+            )
+
+        # Sort by severity (high first) then by table name
+        severity_order: Dict[str, int] = {"high": 3, "medium": 2, "low": 1, "none": 0}
+        summary.sort(
+            key=lambda x: (
+                severity_order.get(str(x.get("severity", "none")), 0),
+                str(x.get("table_name", "")),
+            ),
+            reverse=True,
+        )
+
+        return summary

@@ -57,6 +57,7 @@ def temp_db_engine():
             CREATE TABLE baselinr_events (
                 event_id VARCHAR(36) PRIMARY KEY,
                 event_type VARCHAR(100),
+                run_id VARCHAR(36),
                 table_name VARCHAR(255),
                 column_name VARCHAR(255),
                 metric_name VARCHAR(100),
@@ -64,7 +65,8 @@ def temp_db_engine():
                 current_value FLOAT,
                 change_percent FLOAT,
                 drift_severity VARCHAR(20),
-                timestamp TIMESTAMP
+                timestamp TIMESTAMP,
+                metadata TEXT
             )
         """
             )
@@ -244,13 +246,14 @@ def sample_drift(temp_db_engine):
                 text(
                     """
                 INSERT INTO baselinr_events
-                (event_id, event_type, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp)
-                VALUES (:event_id, :event_type, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp)
+                (event_id, event_type, run_id, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp, metadata)
+                VALUES (:event_id, :event_type, :run_id, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp, :metadata)
             """
                 ),
                 {
                     "event_id": event[0],
                     "event_type": event[1],
+                    "run_id": None,  # Drift events may not have run_id
                     "table_name": event[2],
                     "column_name": event[3],
                     "metric_name": event[4],
@@ -259,6 +262,7 @@ def sample_drift(temp_db_engine):
                     "change_percent": event[7],
                     "drift_severity": event[8],
                     "timestamp": event[9],
+                    "metadata": None,
                 },
             )
 
@@ -472,3 +476,293 @@ def test_query_empty_results(query_client):
     history = query_client.query_table_history("nonexistent")
     assert history["run_count"] == 0
     assert len(history["runs"]) == 0
+
+
+@pytest.fixture
+def sample_run_events(temp_db_engine):
+    """Create sample run events."""
+    import json
+    from datetime import datetime, timedelta
+
+    with temp_db_engine.connect() as conn:
+        now = datetime.utcnow()
+
+        events = [
+            (
+                "event-1",
+                "ProfilingCompleted",
+                "run-1",
+                "customers",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                now - timedelta(hours=1),
+                json.dumps({"duration_seconds": 45.5, "row_count": 1000, "column_count": 10}),
+            ),
+            (
+                "event-2",
+                "AnomalyDetected",
+                "run-1",
+                "customers",
+                "email",
+                "null_ratio",
+                None,
+                None,
+                None,
+                "medium",
+                now - timedelta(hours=1),
+                json.dumps({"anomaly_type": "outlier"}),
+            ),
+            (
+                "event-3",
+                "ProfilingCompleted",
+                "run-2",
+                "orders",
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                now - timedelta(hours=2),
+                json.dumps({"duration_seconds": 120.0, "row_count": 5000, "column_count": 15}),
+            ),
+        ]
+
+        for event in events:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO baselinr_events
+                (event_id, event_type, run_id, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp, metadata)
+                VALUES (:event_id, :event_type, :run_id, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp, :metadata)
+            """
+                ),
+                {
+                    "event_id": event[0],
+                    "event_type": event[1],
+                    "run_id": event[2],
+                    "table_name": event[3],
+                    "column_name": event[4],
+                    "metric_name": event[5],
+                    "baseline_value": event[6],
+                    "current_value": event[7],
+                    "change_percent": event[8],
+                    "drift_severity": event[9],
+                    "timestamp": event[10],
+                    "metadata": event[11],
+                },
+            )
+
+        conn.commit()
+
+
+def test_query_run_events_all(query_client, sample_run_events):
+    """Test querying all events for a run."""
+    events = query_client.query_run_events("run-1")
+    assert len(events) == 2
+    assert all(event["run_id"] == "run-1" for event in events)
+
+
+def test_query_run_events_filtered(query_client, sample_run_events):
+    """Test querying events filtered by type."""
+    events = query_client.query_run_events("run-1", event_types=["ProfilingCompleted"])
+    assert len(events) == 1
+    assert events[0]["event_type"] == "ProfilingCompleted"
+
+
+def test_query_run_events_multiple_types(query_client, sample_run_events):
+    """Test querying events with multiple event types."""
+    events = query_client.query_run_events(
+        "run-1", event_types=["ProfilingCompleted", "AnomalyDetected"]
+    )
+    assert len(events) == 2
+    event_types = {event["event_type"] for event in events}
+    assert "ProfilingCompleted" in event_types
+    assert "AnomalyDetected" in event_types
+
+
+def test_query_run_events_metadata_parsing(query_client, sample_run_events):
+    """Test that metadata is properly parsed from JSON."""
+    events = query_client.query_run_events("run-1", event_types=["ProfilingCompleted"])
+    assert len(events) == 1
+    metadata = events[0]["metadata"]
+    assert isinstance(metadata, dict)
+    assert "duration_seconds" in metadata
+    assert metadata["duration_seconds"] == 45.5
+
+
+def test_query_run_events_empty(query_client):
+    """Test querying events for non-existent run."""
+    events = query_client.query_run_events("nonexistent")
+    assert len(events) == 0
+
+
+def test_query_active_drift_summary(query_client, sample_drift):
+    """Test querying active drift summary."""
+    summary = query_client.query_active_drift_summary(days=7)
+    assert len(summary) == 2  # customers and orders
+
+    # Check customers summary
+    customers_summary = next(s for s in summary if s["table_name"] == "customers")
+    assert customers_summary["severity"] == "high"  # Highest severity
+    assert customers_summary["event_count"] == 2
+    assert "started_at" in customers_summary
+
+    # Check orders summary
+    orders_summary = next(s for s in summary if s["table_name"] == "orders")
+    assert orders_summary["severity"] == "medium"
+    assert orders_summary["event_count"] == 1
+
+
+def test_query_active_drift_summary_severity_priority(query_client, temp_db_engine):
+    """Test that highest severity is selected correctly."""
+    from datetime import datetime, timedelta
+
+    with temp_db_engine.connect() as conn:
+        now = datetime.utcnow()
+        # Create events with different severities for same table
+        events = [
+            (
+                "event-low",
+                "drift_detected",
+                "test_table",
+                "col1",
+                "mean",
+                10.0,
+                10.5,
+                5.0,
+                "low",
+                now - timedelta(hours=1),
+            ),
+            (
+                "event-high",
+                "drift_detected",
+                "test_table",
+                "col2",
+                "stddev",
+                5.0,
+                8.0,
+                60.0,
+                "high",
+                now - timedelta(hours=2),
+            ),
+        ]
+
+        for event in events:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO baselinr_events
+                (event_id, event_type, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp)
+                VALUES (:event_id, :event_type, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp)
+            """
+                ),
+                {
+                    "event_id": event[0],
+                    "event_type": event[1],
+                    "table_name": event[2],
+                    "column_name": event[3],
+                    "metric_name": event[4],
+                    "baseline_value": event[5],
+                    "current_value": event[6],
+                    "change_percent": event[7],
+                    "drift_severity": event[8],
+                    "timestamp": event[9],
+                },
+            )
+        conn.commit()
+
+    summary = query_client.query_active_drift_summary(days=7)
+    test_table_summary = next(s for s in summary if s["table_name"] == "test_table")
+    assert test_table_summary["severity"] == "high"  # Should pick highest
+
+
+def test_query_active_drift_summary_drift_type_inference(query_client, temp_db_engine):
+    """Test that drift type is inferred from metric names."""
+    from datetime import datetime, timedelta
+
+    with temp_db_engine.connect() as conn:
+        now = datetime.utcnow()
+        # Create events with different metric types
+        events = [
+            (
+                "event-schema",
+                "drift_detected",
+                "schema_table",
+                "new_col",
+                "schema_version",
+                1.0,
+                2.0,
+                100.0,
+                "medium",
+                now - timedelta(hours=1),
+            ),
+            (
+                "event-volume",
+                "drift_detected",
+                "volume_table",
+                None,
+                "row_count",
+                1000,
+                1500,
+                50.0,
+                "high",
+                now - timedelta(hours=1),
+            ),
+            (
+                "event-dist",
+                "drift_detected",
+                "dist_table",
+                "value",
+                "mean",
+                10.0,
+                15.0,
+                50.0,
+                "medium",
+                now - timedelta(hours=1),
+            ),
+        ]
+
+        for event in events:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO baselinr_events
+                (event_id, event_type, table_name, column_name, metric_name, baseline_value, current_value, change_percent, drift_severity, timestamp)
+                VALUES (:event_id, :event_type, :table_name, :column_name, :metric_name, :baseline_value, :current_value, :change_percent, :drift_severity, :timestamp)
+            """
+                ),
+                {
+                    "event_id": event[0],
+                    "event_type": event[1],
+                    "table_name": event[2],
+                    "column_name": event[3],
+                    "metric_name": event[4],
+                    "baseline_value": event[5],
+                    "current_value": event[6],
+                    "change_percent": event[7],
+                    "drift_severity": event[8],
+                    "timestamp": event[9],
+                },
+            )
+        conn.commit()
+
+    summary = query_client.query_active_drift_summary(days=7)
+    schema_summary = next(s for s in summary if s["table_name"] == "schema_table")
+    assert schema_summary["drift_type"] == "schema"
+
+    volume_summary = next(s for s in summary if s["table_name"] == "volume_table")
+    assert volume_summary["drift_type"] == "volume"
+
+    dist_summary = next(s for s in summary if s["table_name"] == "dist_table")
+    assert dist_summary["drift_type"] == "distribution"
+
+
+def test_query_active_drift_summary_empty(query_client):
+    """Test active drift summary with no drift events."""
+    summary = query_client.query_active_drift_summary(days=7)
+    assert len(summary) == 0

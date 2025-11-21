@@ -170,7 +170,25 @@ baselinr query run --config config.yml --run-id <run-id>
 baselinr query table --config config.yml --table customers --days 30
 ```
 
-### 6. Manage Schema Migrations
+### 6. Check System Status
+
+Get a quick overview of recent runs and active drift:
+
+```bash
+# Show status dashboard
+baselinr status --config config.yml
+
+# Show only drift summary
+baselinr status --config config.yml --drift-only
+
+# Watch mode (auto-refresh)
+baselinr status --config config.yml --watch
+
+# JSON output for scripting
+baselinr status --config config.yml --json
+```
+
+### 7. Manage Schema Migrations
 
 Check and apply schema migrations:
 
@@ -417,6 +435,15 @@ baselinr query table --config examples/config.yml \
   --days 30 \
   --format csv \
   --output history.csv
+
+# Check system status
+baselinr status --config examples/config.yml
+
+# Watch status (auto-refresh)
+baselinr status --config examples/config.yml --watch
+
+# Status with JSON output
+baselinr status --config examples/config.yml --json
 
 # Check schema migration status
 baselinr migrate status --config examples/config.yml
