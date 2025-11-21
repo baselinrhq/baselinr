@@ -21,6 +21,12 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **[Retry Quick Start](guides/RETRY_QUICK_START.md)** - Quick reference for retry system
 - **[Retry Implementation](guides/RETRY_IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
 
+### 📋 [Schemas & CLI](schemas/)
+- **[Query Examples](schemas/QUERY_EXAMPLES.md)** - Query command examples and patterns
+- **[Status Command](schemas/STATUS_COMMAND.md)** - Status command reference and examples
+- **[Schema Reference](schemas/SCHEMA_REFERENCE.md)** - Database schema documentation
+- **[Migration Guide](schemas/MIGRATION_GUIDE.md)** - Schema upgrade procedures
+
 ### 🏗️ [Architecture](architecture/)
 - **[Project Overview](architecture/PROJECT_OVERVIEW.md)** - High-level system architecture
 - **[Events & Hooks](architecture/EVENTS_AND_HOOKS.md)** - Event system and hook architecture
@@ -66,6 +72,8 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **Using enrichment metrics?** → See [Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
+- **Checking system status?** → See [Status Command](schemas/STATUS_COMMAND.md)
+- **Querying metadata?** → See [Query Examples](schemas/QUERY_EXAMPLES.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)
 - **Troubleshooting?** → Check the relevant component's README or fix guides
 

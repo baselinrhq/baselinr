@@ -9,8 +9,12 @@ import importlib
 import json
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from .query import MetadataQueryClient
 
 from .config.loader import ConfigLoader
 from .config.schema import BaselinrConfig, HookConfig, SamplingConfig, TablePattern
@@ -580,6 +584,394 @@ COLUMN METRICS:
         return 1
 
 
+def status_command(args):
+    """Execute status command."""
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        # Create query client
+        from .connectors.factory import create_connector
+        from .query import MetadataQueryClient
+
+        connector = create_connector(config.storage.connection, config.retry)
+        client = MetadataQueryClient(
+            connector.engine,
+            runs_table=config.storage.runs_table,
+            results_table=config.storage.results_table,
+            events_table="baselinr_events",
+        )
+
+        # Determine output format
+        output_format = "json" if args.json else "rich"
+
+        # Watch mode
+        if args.watch is not None:
+            watch_interval = args.watch if args.watch > 0 else 5
+            return _status_watch_mode(
+                client,
+                config,
+                output_format,
+                args.drift_only,
+                args.limit,
+                args.days,
+                watch_interval,
+            )
+
+        # Single run
+        return _status_single_run(
+            client, config, output_format, args.drift_only, args.limit, args.days
+        )
+
+    except Exception as e:
+        logger.error(f"Status command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
+def _status_single_run(
+    client: "MetadataQueryClient",
+    config: BaselinrConfig,
+    output_format: str,
+    drift_only: bool,
+    limit: int,
+    days: int = 7,
+) -> int:
+    """Execute a single status check."""
+    from .query.status_formatter import format_status
+
+    # Query recent runs (default: last 7 days, or limit)
+    runs = client.query_runs(days=days, limit=limit)
+
+    # Enrich runs with event data
+    runs_data = []
+    for run in runs:
+        # Query events for this run
+        events = client.query_run_events(
+            run.run_id, event_types=["ProfilingCompleted", "AnomalyDetected"]
+        )
+
+        # Extract duration from ProfilingCompleted event
+        duration = "N/A"
+        for event in events:
+            if event.get("event_type") == "ProfilingCompleted":
+                metadata = event.get("metadata", {})
+                if isinstance(metadata, dict):
+                    duration_seconds = metadata.get("duration_seconds")
+                    if duration_seconds is not None:
+                        if duration_seconds < 60:
+                            duration = f"{duration_seconds:.1f}s"
+                        elif duration_seconds < 3600:
+                            duration = f"{duration_seconds / 60:.1f}m"
+                        else:
+                            duration = f"{duration_seconds / 3600:.1f}h"
+                break
+
+        # Count anomalies
+        anomalies_count = sum(1 for event in events if event.get("event_type") == "AnomalyDetected")
+
+        # Count metrics (query results table)
+        metrics_count = 0
+        try:
+            from sqlalchemy import text
+
+            with client.engine.connect() as conn:
+                metrics_query = text(
+                    f"""
+                    SELECT COUNT(DISTINCT metric_name)
+                    FROM {client.results_table}
+                    WHERE run_id = :run_id AND dataset_name = :dataset_name
+                """
+                )
+                result = conn.execute(
+                    metrics_query, {"run_id": run.run_id, "dataset_name": run.dataset_name}
+                ).fetchone()
+                if result and result[0]:
+                    metrics_count = int(result[0])
+        except Exception as e:
+            logger.debug(f"Failed to count metrics: {e}")
+
+        # Determine status indicator
+        # Check if this table has drift
+        drift_events = client.query_drift_events(table=run.dataset_name, days=7, limit=1)
+        has_drift = len(drift_events) > 0
+        severity = drift_events[0].drift_severity if drift_events else None
+
+        runs_data.append(
+            {
+                "run_id": run.run_id,
+                "table_name": run.dataset_name,
+                "schema_name": run.schema_name,
+                "profiled_at": (
+                    run.profiled_at.isoformat()
+                    if isinstance(run.profiled_at, datetime)
+                    else str(run.profiled_at)
+                ),
+                "duration": duration,
+                "rows_scanned": run.row_count,
+                "sample_percent": "N/A",  # Not stored in current schema
+                "metrics_count": metrics_count,
+                "anomalies_count": anomalies_count,
+                "has_drift": has_drift,
+                "drift_severity": severity,
+                # Keep legacy status_indicator for text/JSON formats
+                "status_indicator": (
+                    "🟢"
+                    if not has_drift and anomalies_count == 0
+                    else ("🔴" if has_drift and severity == "high" else "🟡")
+                ),
+            }
+        )
+
+    # Query active drift summary
+    drift_summary = client.query_active_drift_summary(days=7)
+
+    # Format and display
+    output = format_status(runs_data, drift_summary, format=output_format, drift_only=drift_only)
+    print(output)
+
+    return 0
+
+
+def _status_watch_mode(
+    client: "MetadataQueryClient",
+    config: BaselinrConfig,
+    output_format: str,
+    drift_only: bool,
+    limit: int,
+    days: int = 7,
+    interval: int = 5,
+) -> int:
+    """Execute status command in watch mode."""
+    try:
+        from rich.align import Align
+        from rich.console import Console
+        from rich.live import Live
+
+        console = Console()
+
+        def generate_status_renderable():
+            """Generate Rich renderable for current state."""
+            # Query recent runs
+            runs = client.query_runs(days=days, limit=limit)
+
+            # Enrich runs (same logic as single run)
+            runs_data = []
+            for run in runs:
+                events = client.query_run_events(
+                    run.run_id, event_types=["ProfilingCompleted", "AnomalyDetected"]
+                )
+
+                duration = "N/A"
+                for event in events:
+                    if event.get("event_type") == "ProfilingCompleted":
+                        metadata = event.get("metadata", {})
+                        if isinstance(metadata, dict):
+                            duration_seconds = metadata.get("duration_seconds")
+                            if duration_seconds is not None:
+                                if duration_seconds < 60:
+                                    duration = f"{duration_seconds:.1f}s"
+                                elif duration_seconds < 3600:
+                                    duration = f"{duration_seconds / 60:.1f}m"
+                                else:
+                                    duration = f"{duration_seconds / 3600:.1f}h"
+                        break
+
+                anomalies_count = sum(
+                    1 for event in events if event.get("event_type") == "AnomalyDetected"
+                )
+
+                metrics_count = 0
+                try:
+                    from sqlalchemy import text
+
+                    with client.engine.connect() as conn:
+                        metrics_query = text(
+                            f"""
+                            SELECT COUNT(DISTINCT metric_name)
+                            FROM {client.results_table}
+                            WHERE run_id = :run_id AND dataset_name = :dataset_name
+                        """
+                        )
+                        result = conn.execute(
+                            metrics_query,
+                            {"run_id": run.run_id, "dataset_name": run.dataset_name},
+                        ).fetchone()
+                        if result and result[0]:
+                            metrics_count = int(result[0])
+                except Exception:
+                    pass
+
+                drift_events = client.query_drift_events(table=run.dataset_name, days=7, limit=1)
+                has_drift = len(drift_events) > 0
+                severity = drift_events[0].drift_severity if drift_events else None
+
+                runs_data.append(
+                    {
+                        "run_id": run.run_id,
+                        "table_name": run.dataset_name,
+                        "schema_name": run.schema_name,
+                        "profiled_at": (
+                            run.profiled_at.isoformat()
+                            if isinstance(run.profiled_at, datetime)
+                            else str(run.profiled_at)
+                        ),
+                        "duration": duration,
+                        "rows_scanned": run.row_count,
+                        "sample_percent": "N/A",
+                        "metrics_count": metrics_count,
+                        "anomalies_count": anomalies_count,
+                        "has_drift": has_drift,
+                        "drift_severity": severity,
+                        # Keep legacy status_indicator for text/JSON formats
+                        "status_indicator": (
+                            "🟢"
+                            if not has_drift and anomalies_count == 0
+                            else ("🔴" if has_drift and severity == "high" else "🟡")
+                        ),
+                    }
+                )
+
+            drift_summary = client.query_active_drift_summary(days=7)
+            from .query.status_formatter import format_status
+
+            # For watch mode, we need to return a Rich renderable, not a string
+            # So we'll use the formatter but render it differently
+            if output_format == "json":
+                # For JSON, just print and return
+                output = format_status(
+                    runs_data, drift_summary, format="json", drift_only=drift_only
+                )
+                return Align.center(output)
+            else:
+                # For rich format, we need to create the renderables directly
+                from rich.panel import Panel
+                from rich.table import Table
+                from rich.text import Text
+
+                # Build the status display
+                status_parts = []
+
+                # Header
+                last_updated = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+                header = Panel.fit(
+                    f"[bold]Baselinr Status[/bold] - [dim]Refreshing every {interval}s[/dim]\n"
+                    f"[dim]Last updated: {last_updated}[/dim]",
+                    border_style="blue",
+                )
+                status_parts.append(header)
+
+                # Recent Runs Section
+                if not drift_only:
+                    runs_table = Table(
+                        title="Recent Profiling Runs", show_header=True, header_style="bold magenta"
+                    )
+                    runs_table.add_column("Table", style="cyan", no_wrap=True)
+                    runs_table.add_column("Schema", style="dim")
+                    runs_table.add_column("Duration", justify="right")
+                    runs_table.add_column("Rows", justify="right")
+                    runs_table.add_column("Metrics", justify="right")
+                    runs_table.add_column("Anomalies", justify="right")
+                    runs_table.add_column("Status", justify="center")
+
+                    if not runs_data:
+                        runs_table.add_row("[dim]No runs found[/dim]", "", "", "", "", "", "")
+                    else:
+                        for run in runs_data:
+                            table_name = run.get("table_name", "N/A")
+                            schema_name = run.get("schema_name") or "[dim]-[/dim]"
+                            duration = run.get("duration", "N/A")
+                            rows = (
+                                f"{run.get('rows_scanned', 0):,}"
+                                if run.get("rows_scanned")
+                                else "[dim]N/A[/dim]"
+                            )
+                            metrics = str(run.get("metrics_count", 0))
+                            anomalies = str(run.get("anomalies_count", 0))
+                            status = run.get("status_indicator", "🟢")
+
+                            runs_table.add_row(
+                                table_name, schema_name, duration, rows, metrics, anomalies, status
+                            )
+
+                    status_parts.append(runs_table)
+
+                # Drift Summary Section
+                drift_table = Table(
+                    title="Active Drift Summary", show_header=True, header_style="bold yellow"
+                )
+                drift_table.add_column("Table", style="cyan", no_wrap=True)
+                drift_table.add_column("Severity", justify="center")
+                drift_table.add_column("Type", style="dim")
+                drift_table.add_column("Started", style="dim")
+                drift_table.add_column("Events", justify="right")
+
+                if not drift_summary:
+                    drift_table.add_row("[dim]No active drift detected[/dim]", "", "", "", "")
+                else:
+                    for drift in drift_summary:
+                        table_name = drift.get("table_name", "N/A")
+                        severity = drift.get("severity", "unknown")
+                        drift_type = drift.get("drift_type", "unknown")
+                        started_at = drift.get("started_at", "N/A")
+                        event_count = str(drift.get("event_count", 0))
+
+                        # Color code severity
+                        if severity == "high":
+                            severity_text = Text(severity.upper(), style="bold red")
+                        elif severity == "medium":
+                            severity_text = Text(severity.upper(), style="bold yellow")
+                        elif severity == "low":
+                            severity_text = Text(severity.upper(), style="yellow")
+                        else:
+                            severity_text = Text(severity, style="dim")
+
+                        # Format started_at timestamp
+                        if started_at and started_at != "N/A":
+                            try:
+                                dt = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                                started_at = dt.strftime("%Y-%m-%d %H:%M")
+                            except (ValueError, AttributeError):
+                                pass
+
+                        drift_table.add_row(
+                            table_name, severity_text, drift_type, started_at, event_count
+                        )
+
+                status_parts.append(drift_table)
+
+                # Combine all parts
+                from rich.console import Group
+
+                return Group(*status_parts)
+
+        # Watch loop
+        import time
+
+        try:
+            with Live(
+                generate_status_renderable(),
+                refresh_per_second=1.0 / interval if interval > 0 else 0.2,
+                console=console,
+                screen=False,
+            ) as live:
+                while True:
+                    time.sleep(interval)
+                    live.update(generate_status_renderable())
+        except KeyboardInterrupt:
+            console.print("\n[dim]Watch mode stopped[/dim]")
+            return 0
+
+    except ImportError:
+        logger.error("Rich library required for watch mode. Install with: pip install rich")
+        print("\nError: Watch mode requires Rich library")
+        return 1
+    except Exception as e:
+        logger.error(f"Watch mode failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
 def migrate_command(args):
     """Execute schema migration command."""
     logger.info(f"Loading configuration from: {args.config}")
@@ -803,6 +1195,31 @@ def main():
     )
     table_parser.add_argument("--output", "-o", help="Output file")
 
+    # Status command
+    status_parser = subparsers.add_parser(
+        "status", help="Show recent profiling runs and drift summary"
+    )
+    status_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
+    )
+    status_parser.add_argument(
+        "--drift-only", action="store_true", help="Show only drift summary, skip runs section"
+    )
+    status_parser.add_argument(
+        "--limit", type=int, default=20, help="Limit number of runs shown (default: 20)"
+    )
+    status_parser.add_argument(
+        "--days", type=int, default=7, help="Number of days to look back for runs (default: 7)"
+    )
+    status_parser.add_argument("--json", action="store_true", help="Machine-readable JSON output")
+    status_parser.add_argument(
+        "--watch",
+        type=int,
+        nargs="?",
+        const=5,
+        help="Auto-refresh every N seconds (default: 5). Use --watch 0 to disable.",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -827,6 +1244,8 @@ def main():
             query_parser.print_help()
             return 1
         return query_command(args)
+    elif args.command == "status":
+        return status_command(args)
     else:
         parser.print_help()
         return 1

@@ -125,6 +125,45 @@ jobs:
               --days 7 \
               --format json
 
+      - name: Run status command
+        run: |
+          # Test basic status command
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr status \
+              --config $BASELINR_CONFIG_PATH \
+              --limit 5
+
+          # Test status with JSON output
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr status \
+              --config $BASELINR_CONFIG_PATH \
+              --json \
+              --limit 5
+
+          # Test drift-only mode
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr status \
+              --config $BASELINR_CONFIG_PATH \
+              --drift-only
+
       - name: Dump PostgreSQL logs on failure
         if: failure()
         run: docker logs baselinr_postgres || true
