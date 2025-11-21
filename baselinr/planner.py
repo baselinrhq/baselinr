@@ -274,7 +274,137 @@ def print_plan(plan: ProfilingPlan, format: str = "text", verbose: bool = False)
 
 
 def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
-    """Print plan in human-readable text format."""
+    """Print plan in human-readable text format with Rich formatting."""
+    try:
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.table import Table
+        from rich.text import Text
+
+        # Import from cli_output if available, otherwise define locally
+        try:
+            from ..cli_output import get_status_indicator, safe_print
+        except ImportError:
+            # Define locally if import fails
+            def get_status_indicator(state: str) -> Text:
+                color_map = {
+                    "optimized": "#a78bfa",
+                    "profiling": "#4a90e2",
+                }
+                color = color_map.get(state, "#4a90e2")
+                return Text("●", style=f"bold {color}")
+
+            def safe_print(*args, **kwargs) -> None:
+                print(*args, **kwargs)
+
+        console = Console()
+        use_rich = True
+    except (ImportError, AttributeError):
+        use_rich = False
+        console = None
+
+        def get_status_indicator_dummy(_state: str) -> str:
+            return ""
+
+    if not use_rich or not console:
+        # Fallback to plain text
+        _print_text_plan_plain(plan, verbose)
+        return
+
+    # Header Panel
+    header_text = "[bold]PROFILING EXECUTION PLAN[/bold]\n\n"
+    header_text += f"Run ID: [cyan]{plan.run_id[:8]}...[/cyan]\n"
+    header_text += f"Timestamp: [dim]{plan.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}[/dim]\n"
+    header_text += f"Environment: [green]{plan.environment}[/green]\n"
+    header_text += f"Source: [cyan]{plan.source_type}[/cyan] ([dim]{plan.source_database}[/dim])\n"
+    header_text += f"Drift Strategy: [yellow]{plan.drift_strategy}[/yellow]"
+    header_panel = Panel(header_text, border_style="#4a90e2", title="[bold]Plan[/bold]")
+    console.print()
+    console.print(header_panel)
+
+    # Tables Table
+    tables_table = Table(
+        title=f"Tables to be Profiled ({plan.total_tables})",
+        show_header=True,
+        header_style="bold magenta",
+    )
+    tables_table.add_column("#", justify="right", style="dim")
+    tables_table.add_column("Table", style="cyan")
+    tables_table.add_column("Status", justify="center")
+    tables_table.add_column("Partition", style="dim")
+    tables_table.add_column("Sampling", style="dim")
+    tables_table.add_column("Optimized", justify="center")
+
+    for i, table in enumerate(plan.tables, 1):
+        # Determine if optimized (sampling or partial partition)
+        is_optimized = False
+        optimized_indicator = ""
+        if table.sampling_config and table.sampling_config.get("enabled"):
+            is_optimized = True
+            optimized_indicator = get_status_indicator("optimized")
+        elif table.partition_config and table.partition_config.get("strategy") != "all":
+            is_optimized = True
+            optimized_indicator = get_status_indicator("optimized")
+
+        # Format partition info
+        partition_str = "full table"
+        if table.partition_config:
+            partition = table.partition_config
+            strategy = partition.get("strategy", "all")
+            if strategy != "all":
+                partition_str = f"{strategy}"
+                if partition.get("key"):
+                    partition_str += f" on {partition['key']}"
+                if partition.get("strategy") == "recent_n" and partition.get("recent_n"):
+                    partition_str += f" (N={partition['recent_n']})"
+
+        # Format sampling info
+        sampling_str = "none"
+        if table.sampling_config and table.sampling_config.get("enabled"):
+            sampling = table.sampling_config
+            fraction = sampling.get("fraction", 0.01) * 100
+            method = sampling.get("method", "random")
+            sampling_str = f"{method} ({fraction:.2f}%)"
+            if sampling.get("max_rows"):
+                sampling_str += f", max {sampling['max_rows']:,} rows"
+
+        tables_table.add_row(
+            str(i),
+            table.full_name,
+            table.status,
+            partition_str,
+            sampling_str,
+            str(optimized_indicator) if is_optimized else "",
+        )
+
+    console.print()
+    console.print(tables_table)
+
+    # Summary Table
+    summary_table = Table(title="Summary", show_header=True, header_style="bold green")
+    summary_table.add_column("Metric", style="cyan")
+    summary_table.add_column("Value", justify="right", style="green")
+    summary_table.add_row("Total Tables", str(plan.total_tables))
+    summary_table.add_row("Estimated Metrics", f"~{plan.estimated_metrics}")
+
+    if verbose:
+        compute_hist = (
+            plan.tables[0].metadata.get("compute_histograms", False) if plan.tables else "N/A"
+        )
+        hist_bins = plan.tables[0].metadata.get("histogram_bins", "N/A") if plan.tables else "N/A"
+        max_dist = (
+            plan.tables[0].metadata.get("max_distinct_values", "N/A") if plan.tables else "N/A"
+        )
+        summary_table.add_row("Compute Histograms", str(compute_hist))
+        summary_table.add_row("Histogram Bins", str(hist_bins))
+        summary_table.add_row("Max Distinct Values", str(max_dist))
+
+    console.print()
+    console.print(summary_table)
+
+
+def _print_text_plan_plain(plan: ProfilingPlan, verbose: bool = False):
+    """Print plan in plain text format (fallback)."""
     print("\n" + "=" * 70)
     print("PROFILING EXECUTION PLAN")
     print("=" * 70)

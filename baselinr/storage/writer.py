@@ -95,6 +95,9 @@ class ResultWriter:
 
         logger.info("Storage tables created successfully")
 
+        # Create schema registry table if it doesn't exist (for schema change detection)
+        self._create_schema_registry_table()
+
         # Initialize or verify schema version
         self._init_schema_version()
 
@@ -334,6 +337,93 @@ class ResultWriter:
                     )
                 else:
                     logger.debug(f"Schema version verified: {current_version}")
+
+    def _create_schema_registry_table(self):
+        """Create schema registry table if it doesn't exist."""
+        try:
+            # Check if table exists
+            with self.engine.connect() as conn:
+                # Try to query the table - if it fails, create it
+                try:
+                    conn.execute(text("SELECT 1 FROM baselinr_schema_registry LIMIT 1"))
+                    return  # Table exists
+                except Exception:
+                    pass  # Table doesn't exist, create it
+
+            # Create schema registry table
+            is_snowflake = "snowflake" in str(self.engine.url).lower()
+
+            if is_snowflake:
+                create_table_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
+                        id INTEGER AUTOINCREMENT PRIMARY KEY,
+                        table_name VARCHAR(255) NOT NULL,
+                        schema_name VARCHAR(255),
+                        column_name VARCHAR(255) NOT NULL,
+                        column_type VARCHAR(100) NOT NULL,
+                        column_hash VARCHAR(64) NOT NULL,
+                        nullable BOOLEAN DEFAULT TRUE,
+                        run_id VARCHAR(36) NOT NULL,
+                        first_seen_at TIMESTAMP_NTZ NOT NULL,
+                        last_seen_at TIMESTAMP_NTZ NOT NULL
+                    )
+                """
+                )
+            else:
+                # PostgreSQL/SQLite/Generic
+                create_table_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
+                        id SERIAL PRIMARY KEY,
+                        table_name VARCHAR(255) NOT NULL,
+                        schema_name VARCHAR(255),
+                        column_name VARCHAR(255) NOT NULL,
+                        column_type VARCHAR(100) NOT NULL,
+                        column_hash VARCHAR(64) NOT NULL,
+                        nullable BOOLEAN DEFAULT TRUE,
+                        run_id VARCHAR(36) NOT NULL,
+                        first_seen_at TIMESTAMP NOT NULL,
+                        last_seen_at TIMESTAMP NOT NULL
+                    )
+                """
+                )
+
+            with self.engine.connect() as conn:
+                conn.execute(create_table_sql)
+                conn.commit()
+
+            # Create indexes
+            indexes = [
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_schema_registry_table_schema "
+                    "ON baselinr_schema_registry (table_name, schema_name, run_id)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_schema_registry_table_column "
+                    "ON baselinr_schema_registry (table_name, schema_name, column_name)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_schema_registry_run_id "
+                    "ON baselinr_schema_registry (run_id)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_schema_registry_last_seen "
+                    "ON baselinr_schema_registry (last_seen_at DESC)"
+                ),
+            ]
+
+            with self.engine.connect() as conn:
+                for index_sql in indexes:
+                    try:
+                        conn.execute(text(index_sql))
+                    except Exception:
+                        pass  # Index might already exist
+                conn.commit()
+
+            logger.debug("Schema registry table created successfully")
+        except Exception as e:
+            logger.debug(f"Could not create schema registry table (may already exist): {e}")
 
     def get_schema_version(self) -> Optional[int]:
         """

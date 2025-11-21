@@ -32,7 +32,10 @@ def check_nodejs() -> Tuple[bool, Optional[str]]:
         if not node_cmd:
             return (
                 False,
-                "Node.js not found in PATH. Please install Node.js (v18+) and ensure it's in your PATH.",
+                (
+                    "Node.js not found in PATH. Please install Node.js (v18+) "
+                    "and ensure it's in your PATH."
+                ),
             )
 
         # Check Node.js version

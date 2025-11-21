@@ -167,6 +167,16 @@ def _create_hook(hook_config: HookConfig):
 
 def profile_command(args):
     """Execute profiling command."""
+    import time
+
+    from .cli_output import (
+        create_progress_bar,
+        format_run_summary,
+        get_status_indicator,
+        safe_print,
+    )
+
+    start_time = time.time()
     log_event(
         logger,
         "command_started",
@@ -176,6 +186,8 @@ def profile_command(args):
 
     # Initialize ctx early for error handling
     ctx = None
+    progress = None
+    progress_task = None
 
     try:
         # Load configuration
@@ -234,9 +246,43 @@ def profile_command(args):
         # Create profiling engine with run context
         engine = ProfileEngine(config, event_bus=event_bus, run_context=ctx)
 
+        # Setup progress bar if we have multiple tables
+        total_tables = len(tables_to_profile)
+        if total_tables > 1:
+            progress = create_progress_bar(total_tables, "Profiling tables")
+            if progress:
+                progress_task = progress.add_task("Profiling", total=total_tables)
+                progress.__enter__()
+
+        # Define progress callback
+        def progress_callback(current: int, total: int, table_name: str) -> None:
+            """Update progress bar when profiling each table."""
+            if progress and progress_task is not None:
+                progress.update(
+                    progress_task,
+                    completed=current,
+                    description=f"Profiling: {table_name}",
+                )
+            # Show status indicator
+            status_indicator = get_status_indicator("profiling")
+            if args.debug:
+                safe_print(f"{status_indicator} Profiling table {current}/{total}: {table_name}")
+
         # Run profiling
         log_event(ctx.logger, "profiling_batch_started", "Starting profiling...")
-        results = engine.profile(table_patterns=tables_to_profile)
+        if total_tables > 0:
+            status_indicator = get_status_indicator("profiling")
+            safe_print(f"{status_indicator} Starting profiling of {total_tables} table(s)...")
+
+        results = engine.profile(
+            table_patterns=tables_to_profile, progress_callback=progress_callback
+        )
+
+        # Close progress bar if opened
+        if progress:
+            if progress_task is not None:
+                progress.update(progress_task, completed=total_tables)
+            progress.__exit__(None, None, None)
 
         if not results:
             log_event(ctx.logger, "no_results", "No profiling results generated", level="warning")
@@ -283,14 +329,49 @@ def profile_command(args):
                 metadata={"output_path": str(args.output)},
             )
 
-        # Print summary
-        for result in results:
-            print(f"\n{'='*60}")
-            print(f"Dataset: {result.dataset_name}")
-            print(f"Run ID: {result.run_id}")
-            print(f"Profiled at: {result.profiled_at}")
-            print(f"Columns profiled: {len(result.columns)}")
-            print(f"Row count: {result.metadata.get('row_count', 'N/A')}")
+        # Calculate duration and statistics
+        duration = time.time() - start_time
+        total_warnings = 0  # Could be enhanced to track warnings from events
+        total_drifts = 0  # Could be enhanced to track drifts detected
+
+        # Print Rich-formatted summary
+        summary = format_run_summary(
+            duration_seconds=duration,
+            tables_scanned=len(results),
+            drifts_detected=total_drifts,
+            warnings=total_warnings,
+            anomalies=0,  # Could be enhanced to track anomalies
+        )
+        safe_print()  # New line
+        safe_print(summary)  # Print panel directly
+
+        # Print detailed results if debug mode or single table
+        if args.debug or len(results) == 1:
+            from rich.table import Table as RichTable
+
+            from .cli_output import get_console
+
+            console = get_console()
+            if console:
+                for result in results:
+                    table = RichTable(title=f"Dataset: {result.dataset_name}", show_header=True)
+                    table.add_column("Property", style="cyan")
+                    table.add_column("Value", style="green")
+                    table.add_row("Run ID", result.run_id[:8] + "...")
+                    table.add_row("Profiled at", str(result.profiled_at))
+                    table.add_row("Columns profiled", str(len(result.columns)))
+                    table.add_row("Row count", str(result.metadata.get("row_count", "N/A")))
+                    safe_print()
+                    safe_print(table)
+            else:
+                # Fallback to plain text
+                for result in results:
+                    print(f"\n{'='*60}")
+                    print(f"Dataset: {result.dataset_name}")
+                    print(f"Run ID: {result.run_id}")
+                    print(f"Profiled at: {result.profiled_at}")
+                    print(f"Columns profiled: {len(result.columns)}")
+                    print(f"Row count: {result.metadata.get('row_count', 'N/A')}")
 
         # Keep metrics server alive if enabled (unless disabled in config)
         keep_alive = config.monitoring.keep_alive if config.monitoring.enable_metrics else False
@@ -333,6 +414,19 @@ def profile_command(args):
 
 def drift_command(args):
     """Execute drift detection command."""
+    from rich.panel import Panel
+    from rich.table import Table as RichTable
+
+    from .cli_output import (
+        extract_histogram_data,
+        format_drift_severity,
+        get_status_indicator,
+        render_histogram,
+        safe_print,
+    )
+
+    status_indicator = get_status_indicator("drift_check")
+    safe_print(f"{status_indicator} Loading configuration...")
     logger.info(f"Loading configuration from: {args.config}")
 
     try:
@@ -363,6 +457,7 @@ def drift_command(args):
         )
 
         # Detect drift
+        safe_print(f"{status_indicator} Detecting drift for dataset: {args.dataset}")
         logger.info(f"Detecting drift for dataset: {args.dataset}")
         report = detector.detect_drift(
             dataset_name=args.dataset,
@@ -371,36 +466,166 @@ def drift_command(args):
             schema_name=args.schema,
         )
 
-        # Print report
-        print(f"\n{'='*60}")
-        print("DRIFT DETECTION REPORT")
-        print(f"{'='*60}")
-        print(f"Dataset: {report.dataset_name}")
-        print(f"Baseline: {report.baseline_run_id} ({report.baseline_timestamp})")
-        print(f"Current: {report.current_run_id} ({report.current_timestamp})")
-        print("\nSummary:")
-        print(f"  Total drifts detected: {report.summary['total_drifts']}")
-        print(f"  Schema changes: {report.summary['schema_changes']}")
-        print(f"  High severity: {report.summary['drift_by_severity']['high']}")
-        print(f"  Medium severity: {report.summary['drift_by_severity']['medium']}")
-        print(f"  Low severity: {report.summary['drift_by_severity']['low']}")
+        # Format report with Rich
+        from .cli_output import get_console
 
-        if report.schema_changes:
-            print("\nSchema Changes:")
-            for change in report.schema_changes:
-                print(f"  - {change}")
+        console = get_console()
+        if console:
+            # Header Panel
+            header_text = "[bold]DRIFT DETECTION REPORT[/bold]\n\n"
+            header_text += f"Dataset: [cyan]{report.dataset_name}[/cyan]\n"
+            baseline_short = report.baseline_run_id[:8]
+            header_text += (
+                f"Baseline: [dim]{baseline_short}...[/dim] " f"({report.baseline_timestamp})\n"
+            )
+            header_text += (
+                f"Current: [dim]{report.current_run_id[:8]}...[/dim] ({report.current_timestamp})"
+            )
+            header_panel = Panel(header_text, border_style="#4a90e2", title="[bold]Report[/bold]")
+            safe_print()
+            safe_print(header_panel)
 
-        if report.column_drifts:
-            print("\nMetric Drifts:")
-            for drift in report.column_drifts:
-                if drift.drift_detected:
-                    severity = drift.drift_severity.upper()
-                    col_metric = f"{drift.column_name}.{drift.metric_name}"
-                    print(f"  [{severity}] {col_metric}")
-                    print(f"    Baseline: {drift.baseline_value:.2f}")
-                    print(f"    Current: {drift.current_value:.2f}")
-                    if drift.change_percent is not None:
-                        print(f"    Change: {drift.change_percent:+.2f}%")
+            # Summary Table
+            summary_table = RichTable(
+                title="Summary", show_header=True, header_style="bold magenta"
+            )
+            summary_table.add_column("Metric", style="cyan")
+            summary_table.add_column("Value", justify="right", style="green")
+
+            summary_table.add_row("Total drifts detected", str(report.summary["total_drifts"]))
+            summary_table.add_row("Schema changes", str(report.summary["schema_changes"]))
+            summary_table.add_row(
+                "High severity",
+                f"[bold #ff8787]{report.summary['drift_by_severity']['high']}[/bold #ff8787]",
+            )
+            summary_table.add_row(
+                "Medium severity",
+                f"[bold #f4a261]{report.summary['drift_by_severity']['medium']}[/bold #f4a261]",
+            )
+            summary_table.add_row(
+                "Low severity",
+                f"[#f4a261]{report.summary['drift_by_severity']['low']}[/#f4a261]",
+            )
+
+            safe_print()
+            safe_print(summary_table)
+
+            # Schema Changes
+            if report.schema_changes:
+                schema_table = RichTable(
+                    title="Schema Changes", show_header=True, header_style="bold yellow"
+                )
+                schema_table.add_column("Change", style="red")
+                safe_print()
+                for change in report.schema_changes:
+                    schema_table.add_row(change)
+                safe_print(schema_table)
+
+            # Metric Drifts Table
+            if report.column_drifts:
+                drifts_table = RichTable(
+                    title="Metric Drifts", show_header=True, header_style="bold yellow"
+                )
+                drifts_table.add_column("Column.Metric", style="cyan")
+                drifts_table.add_column("Severity", justify="center")
+                drifts_table.add_column("Baseline", justify="right")
+                drifts_table.add_column("Current", justify="right")
+                drifts_table.add_column("Change", justify="right")
+
+                safe_print()
+                for drift in report.column_drifts:
+                    if drift.drift_detected:
+                        col_metric = f"{drift.column_name}.{drift.metric_name}"
+                        severity_text = format_drift_severity(drift.drift_severity)
+
+                        # Format values
+                        baseline_str = (
+                            f"{drift.baseline_value:.2f}"
+                            if isinstance(drift.baseline_value, (int, float))
+                            else str(drift.baseline_value)
+                        )
+                        current_str = (
+                            f"{drift.current_value:.2f}"
+                            if isinstance(drift.current_value, (int, float))
+                            else str(drift.current_value)
+                        )
+
+                        change_str = ""
+                        if drift.change_percent is not None:
+                            change_str = f"{drift.change_percent:+.2f}%"
+                        elif drift.change_absolute is not None:
+                            change_str = f"{drift.change_absolute:+.2f}"
+
+                        drifts_table.add_row(
+                            col_metric, severity_text, baseline_str, current_str, change_str
+                        )
+
+                        # Show histogram if available and metric is distribution-related
+                        if args.debug and drift.metric_name in ["histogram", "mean", "stddev"]:
+                            baseline_hist = None
+                            current_hist = None
+                            if drift.metadata:
+                                baseline_hist = extract_histogram_data(
+                                    drift.metadata.get("baseline_histogram")
+                                )
+                                current_hist = extract_histogram_data(
+                                    drift.metadata.get("current_histogram")
+                                )
+
+                            if baseline_hist and current_hist:
+                                hist_display = render_histogram(baseline_hist, current_hist)
+                                if hist_display:
+                                    safe_print()
+                                    safe_print(
+                                        Panel(
+                                            hist_display,
+                                            title=f"[bold]{col_metric} Distribution[/bold]",
+                                            border_style="#f4a261",
+                                        )
+                                    )
+
+                safe_print(drifts_table)
+        else:
+            # Fallback to plain text
+            print(f"\n{'='*60}")
+            print("DRIFT DETECTION REPORT")
+            print(f"{'='*60}")
+            print(f"Dataset: {report.dataset_name}")
+            print(f"Baseline: {report.baseline_run_id} ({report.baseline_timestamp})")
+            print(f"Current: {report.current_run_id} ({report.current_timestamp})")
+            print("\nSummary:")
+            print(f"  Total drifts detected: {report.summary['total_drifts']}")
+            print(f"  Schema changes: {report.summary['schema_changes']}")
+            print(f"  High severity: {report.summary['drift_by_severity']['high']}")
+            print(f"  Medium severity: {report.summary['drift_by_severity']['medium']}")
+            print(f"  Low severity: {report.summary['drift_by_severity']['low']}")
+
+            if report.schema_changes:
+                print("\nSchema Changes:")
+                for change in report.schema_changes:
+                    print(f"  - {change}")
+
+            if report.column_drifts:
+                print("\nMetric Drifts:")
+                for drift in report.column_drifts:
+                    if drift.drift_detected:
+                        severity = drift.drift_severity.upper()
+                        col_metric = f"{drift.column_name}.{drift.metric_name}"
+                        print(f"  [{severity}] {col_metric}")
+                        baseline_str = (
+                            f"{drift.baseline_value:.2f}"
+                            if isinstance(drift.baseline_value, (int, float))
+                            else str(drift.baseline_value)
+                        )
+                        current_str = (
+                            f"{drift.current_value:.2f}"
+                            if isinstance(drift.current_value, (int, float))
+                            else str(drift.current_value)
+                        )
+                        print(f"    Baseline: {baseline_str}")
+                        print(f"    Current: {current_str}")
+                        if drift.change_percent is not None:
+                            print(f"    Change: {drift.change_percent:+.2f}%")
 
         # Output to file
         if args.output:
@@ -473,6 +698,8 @@ def plan_command(args):
 
 def query_command(args):
     """Execute query command."""
+    from .cli_output import safe_print
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
@@ -502,7 +729,7 @@ def query_command(args):
             )
 
             output = format_runs(runs, format=args.format)
-            print(output)
+            safe_print(output)
 
             if args.output:
                 with open(args.output, "w") as f:
@@ -519,7 +746,7 @@ def query_command(args):
             )
 
             output = format_drift(events, format=args.format)
-            print(output)
+            safe_print(output)
 
             if args.output:
                 with open(args.output, "w") as f:
@@ -527,17 +754,59 @@ def query_command(args):
                 logger.info(f"Results saved to: {args.output}")
 
         elif args.query_command == "run":
+            from rich.table import Table as RichTable
+
+            from .cli_output import get_console
+
             details = client.query_run_details(args.run_id, dataset_name=args.table)
 
             if not details:
-                print(f"Run {args.run_id} not found")
+                safe_print(f"Run {args.run_id} not found")
                 return 1
 
             if args.format == "json":
                 output = json.dumps(details, indent=2, default=str)
+                safe_print(output)
             else:
-                # Pretty print for table format
-                output = f"""
+                console = get_console()
+                if console:
+                    # Use Rich Table for better formatting
+                    run_table = RichTable(
+                        title="Run Details", show_header=True, header_style="bold cyan"
+                    )
+                    run_table.add_column("Property", style="cyan")
+                    run_table.add_column("Value", style="green")
+                    run_table.add_row("Run ID", details["run_id"][:8] + "...")
+                    run_table.add_row("Dataset", details["dataset_name"])
+                    run_table.add_row("Schema", details.get("schema_name") or "N/A")
+                    run_table.add_row("Profiled", str(details["profiled_at"]))
+                    run_table.add_row("Status", details["status"])
+                    run_table.add_row("Environment", details.get("environment") or "N/A")
+                    run_table.add_row("Row Count", f"{details['row_count']:,}")
+                    run_table.add_row("Column Count", str(details["column_count"]))
+                    safe_print()
+                    safe_print(run_table)
+
+                    # Column metrics table
+                    if details.get("columns"):
+                        metrics_table = RichTable(
+                            title="Column Metrics", show_header=True, header_style="bold magenta"
+                        )
+                        metrics_table.add_column("Column", style="cyan")
+                        metrics_table.add_column("Type", style="dim")
+                        metrics_table.add_column("Metrics", style="green")
+                        for col in details["columns"]:
+                            metrics_str = ", ".join(
+                                [f"{k}: {v}" for k, v in col.get("metrics", {}).items()]
+                            )
+                            metrics_table.add_row(
+                                col["column_name"], col.get("column_type", "N/A"), metrics_str
+                            )
+                        safe_print()
+                        safe_print(metrics_table)
+                else:
+                    # Fallback to plain text
+                    output = f"""
 RUN DETAILS
 {'=' * 80}
 Run ID: {details['run_id']}
@@ -551,16 +820,19 @@ Column Count: {details['column_count']}
 
 COLUMN METRICS:
 """
-                for col in details["columns"]:
-                    output += f"\n  {col['column_name']} ({col['column_type']}):\n"
-                    for metric, value in col["metrics"].items():
-                        output += f"    {metric}: {value}\n"
-
-            print(output)
+                    for col in details["columns"]:
+                        output += f"\n  {col['column_name']} ({col['column_type']}):\n"
+                        for metric, value in col["metrics"].items():
+                            output += f"    {metric}: {value}\n"
+                    safe_print(output)
 
             if args.output:
                 with open(args.output, "w") as f:
-                    f.write(output)
+                    if args.format == "json":
+                        f.write(output)
+                    else:
+                        # For table format, we need to capture the output
+                        f.write(str(details))
                 logger.info(f"Results saved to: {args.output}")
 
         elif args.query_command == "table":
@@ -569,7 +841,7 @@ COLUMN METRICS:
             )
 
             output = format_table_history(history, format=args.format)
-            print(output)
+            safe_print(output)
 
             if args.output:
                 with open(args.output, "w") as f:
@@ -1095,6 +1367,13 @@ def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Baselinr - Data profiling and drift detection")
 
+    # Global --debug flag (affects all commands)
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output and verbose logging",
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # Plan command
@@ -1276,6 +1555,13 @@ def main():
 
     # Parse arguments
     args = parser.parse_args()
+
+    # Set debug logging level if --debug flag is present
+    if args.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        # Also set level for all baselinr loggers
+        logging.getLogger("baselinr").setLevel(logging.DEBUG)
 
     if not args.command:
         parser.print_help()

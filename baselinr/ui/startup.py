@@ -155,7 +155,7 @@ def start_dashboard_foreground(
     # Check if node_modules exists, if not install dependencies
     node_modules_path = frontend_path / "node_modules"
     package_json_path = frontend_path / "package.json"
-    
+
     if not package_json_path.exists():
         backend_process.terminate()
         backend_process.wait(timeout=5)
@@ -163,7 +163,7 @@ def start_dashboard_foreground(
             f"package.json not found in {frontend_path}. "
             f"Please ensure the frontend directory is properly set up."
         )
-    
+
     if not node_modules_path.exists():
         logger.info("node_modules not found. Installing frontend dependencies...")
         use_shell = platform.system() == "Windows"
@@ -178,7 +178,9 @@ def start_dashboard_foreground(
         if install_process.returncode != 0:
             backend_process.terminate()
             backend_process.wait(timeout=5)
-            raise RuntimeError("Failed to install frontend dependencies. Please run 'npm install' manually.")
+            raise RuntimeError(
+                "Failed to install frontend dependencies. Please run 'npm install' manually."
+            )
 
     # On Windows, use shell=True to ensure PATH is properly resolved
     use_shell = platform.system() == "Windows"
@@ -216,7 +218,8 @@ def start_dashboard_foreground(
             f"Frontend process exited immediately with code {frontend_process.returncode}. "
             f"This usually indicates a startup error.\n"
             f"Common causes:\n"
-            f"  - Port {frontend_port} is already in use (try --port-frontend to use a different port)\n"
+            f"  - Port {frontend_port} is already in use "
+            f"(try --port-frontend to use a different port)\n"
             f"  - Missing dependencies (check the error output above)\n"
             f"  - Configuration error\n"
             f"\nTo use a different frontend port, run:\n"
