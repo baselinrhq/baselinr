@@ -105,6 +105,7 @@ class ProfileEngine:
         # Initialize worker pool ONLY if parallelism is enabled
         self.execution_config = config.execution
         self.worker_pool: Optional[Any] = None
+        self.progress_callback: Optional[Any] = None
 
         # Only create worker pool if max_workers > 1
         if self.execution_config.max_workers > 1:
@@ -139,7 +140,11 @@ class ProfileEngine:
                 level="debug",
             )
 
-    def profile(self, table_patterns: Optional[List[TablePattern]] = None) -> List[ProfilingResult]:
+    def profile(
+        self,
+        table_patterns: Optional[List[TablePattern]] = None,
+        progress_callback: Optional[Any] = None,
+    ) -> List[ProfilingResult]:
         """
         Profile tables with optional parallel execution.
 
@@ -149,6 +154,8 @@ class ProfileEngine:
         Args:
             table_patterns: Optional list of table patterns to profile
                           (uses config if not provided)
+            progress_callback: Optional callback function(current, total, table_name)
+                             called when starting each table
 
         Returns:
             List of profiling results
@@ -183,6 +190,9 @@ class ProfileEngine:
             enable_type_inference=self.config.profiling.enable_type_inference,
             type_inference_sample_size=self.config.profiling.type_inference_sample_size,
         )
+
+        # Store progress callback for use in _profile_sequential and _profile_parallel
+        self.progress_callback = progress_callback
 
         # Route to parallel or sequential execution
         try:
@@ -252,10 +262,18 @@ class ProfileEngine:
         """
         results = []
         warehouse = self.config.source.type  # Get warehouse type for metrics
+        total = len(patterns)
 
-        for pattern in patterns:
+        for idx, pattern in enumerate(patterns):
             fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
             start_time = time.time()
+
+            # Call progress callback if provided
+            if self.progress_callback:
+                try:
+                    self.progress_callback(idx + 1, total, fq_table)
+                except Exception as e:
+                    logger.debug(f"Progress callback error: {e}")
 
             try:
                 from ..utils.logging import log_and_emit
