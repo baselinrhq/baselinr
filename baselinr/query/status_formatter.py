@@ -158,7 +158,7 @@ def _format_rich(
 ) -> str:
     """Format status using Rich library."""
     console = Console()
-    output_parts = []
+    output_parts: List[Any] = []
 
     # Header
     header = Panel.fit(
