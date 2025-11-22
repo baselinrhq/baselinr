@@ -402,6 +402,32 @@ def _print_text_plan(plan: ProfilingPlan, verbose: bool = False):
     console.print()
     console.print(summary_table)
 
+    # Configuration Details section (verbose only)
+    if verbose:
+        console.print()
+        # Print title explicitly so it appears in captured output
+        console.print("[bold yellow]Configuration Details[/bold yellow]")
+        config_table = Table(
+            show_header=True,
+            header_style="bold yellow",
+        )
+        config_table.add_column("Setting", style="cyan")
+        config_table.add_column("Value", justify="right", style="green")
+
+        compute_hist = (
+            plan.tables[0].metadata.get("compute_histograms", False) if plan.tables else "N/A"
+        )
+        hist_bins = plan.tables[0].metadata.get("histogram_bins", "N/A") if plan.tables else "N/A"
+        max_dist = (
+            plan.tables[0].metadata.get("max_distinct_values", "N/A") if plan.tables else "N/A"
+        )
+
+        config_table.add_row("Compute Histograms", str(compute_hist))
+        config_table.add_row("Histogram Bins", str(hist_bins))
+        config_table.add_row("Max Distinct Values", str(max_dist))
+
+        console.print(config_table)
+
 
 def _print_text_plan_plain(plan: ProfilingPlan, verbose: bool = False):
     """Print plan in plain text format (fallback)."""
