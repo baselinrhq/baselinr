@@ -344,6 +344,57 @@ defs = build_baselinr_definitions(
 )
 ```
 
+## 🐍 Python SDK
+
+Baselinr provides a high-level Python SDK for programmatic access to all functionality.
+
+### Quick Start
+
+```python
+from baselinr import BaselinrClient
+
+# Initialize client
+client = BaselinrClient(config_path="config.yml")
+
+# Build execution plan
+plan = client.plan()
+print(f"Will profile {plan.total_tables} tables")
+
+# Profile tables
+results = client.profile()
+for result in results:
+    print(f"Profiled {result.dataset_name}: {len(result.columns)} columns")
+
+# Detect drift
+drift_report = client.detect_drift("customers")
+print(f"Found {len(drift_report.column_drifts)} column drifts")
+
+# Query recent runs
+runs = client.query_runs(days=7, limit=10)
+
+# Get status summary
+status = client.get_status()
+print(f"Active drift events: {len(status['drift_summary'])}")
+```
+
+### Documentation
+
+- **Complete SDK Guide**: [docs/guides/PYTHON_SDK.md](docs/guides/PYTHON_SDK.md) - Comprehensive API reference, examples, and best practices
+
+### SDK Examples
+
+- **Basic Usage**: [examples/sdk_quickstart.py](examples/sdk_quickstart.py) - Simple profiling and drift detection
+- **Advanced Usage**: [examples/sdk_advanced.py](examples/sdk_advanced.py) - Progress callbacks, custom analysis, querying
+
+### Key Features
+
+- **Simple API**: All functionality through a single `BaselinrClient` class
+- **Automatic Setup**: Handles configuration loading, connection management, and event bus setup
+- **Type Hints**: Full type annotations for IDE support
+- **Lazy Loading**: Connections initialized only when needed
+
+For complete SDK documentation including all methods, parameters, and advanced patterns, see the [Python SDK Guide](docs/guides/PYTHON_SDK.md).
+
 ## 🎯 Use Cases
 
 - **Data Quality Monitoring**: Track data quality metrics over time

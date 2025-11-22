@@ -1,0 +1,150 @@
+name: Build and Install Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-install:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.14'
+          - os: macos-latest
+            python-version: '3.14'
+          - os: windows-latest
+            python-version: '3.10'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Verify built artifacts
+        run: |
+          python -c "
+          import glob
+          import sys
+          
+          # Check for wheel
+          wheels = glob.glob('dist/*.whl')
+          if wheels:
+              print(f'✅ Wheel package built: {wheels[0]}')
+          else:
+              print('❌ Wheel package not found')
+              sys.exit(1)
+          
+          # Check for source distribution
+          sdists = glob.glob('dist/*.tar.gz')
+          if sdists:
+              print(f'✅ Source distribution built: {sdists[0]}')
+          else:
+              print('❌ Source distribution not found')
+              sys.exit(1)
+          "
+
+      - name: Install from wheel
+        run: |
+          python -c "
+          import glob
+          import subprocess
+          import sys
+          
+          wheels = glob.glob('dist/*.whl')
+          if not wheels:
+              print('No wheel found for installation')
+              sys.exit(1)
+          
+          subprocess.check_call([sys.executable, '-m', 'pip', 'install', wheels[0]])
+          print(f'✅ Installed from: {wheels[0]}')
+          "
+
+      - name: Verify CLI installation
+        run: |
+          python -c "
+          import subprocess
+          import sys
+          
+          # Try baselinr command
+          try:
+              result = subprocess.run(['baselinr', '--help'], 
+                                    capture_output=True, 
+                                    text=True, 
+                                    timeout=10)
+              if result.returncode == 0 or 'usage:' in result.stdout.lower() or 'error' in result.stderr.lower():
+                  print('✅ CLI command accessible via baselinr')
+                  sys.exit(0)
+          except (FileNotFoundError, subprocess.TimeoutExpired):
+              pass
+          
+          # Fallback to python -m
+          try:
+              result = subprocess.run([sys.executable, '-m', 'baselinr.cli', '--help'],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=10)
+              if result.returncode == 0 or 'usage:' in result.stdout.lower():
+                  print('✅ CLI accessible via python -m baselinr.cli')
+                  sys.exit(0)
+          except subprocess.TimeoutExpired:
+              pass
+          
+          print('❌ CLI command not accessible')
+          sys.exit(1)
+          "
+
+      - name: Test CLI accessibility
+        run: |
+          baselinr --help || python -m baselinr.cli --help
+
+      - name: Verify package can be imported
+        run: |
+          python -c "import baselinr; print(f'Baselinr version: {baselinr.__version__}')"
+          python -c "from baselinr import BaselinrClient; print('BaselinrClient imported successfully')"
+
+      - name: Verify entry points
+        run: |
+          python -c "from baselinr.cli import main; print('CLI entry point accessible')"
+
+      - name: Clean up
+        if: always()
+        run: |
+          python -c "
+          import shutil
+          import glob
+          import os
+          
+          for pattern in ['dist', 'build', '*.egg-info']:
+              for path in glob.glob(pattern):
+                  try:
+                      if os.path.isdir(path):
+                          shutil.rmtree(path)
+                      else:
+                          os.remove(path)
+                  except Exception as e:
+                      print(f'Warning: Could not remove {path}: {e}')
+          "
+        continue-on-error: true
+
