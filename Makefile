@@ -51,6 +51,9 @@ dev-setup: venv
 	.venv\Scripts\python.exe -m pip install --upgrade pip setuptools wheel
 	.venv\Scripts\python.exe -m pip install -e ".[dev]"
 	@echo ""
+	@echo "Installing git hooks..."
+	@$(MAKE) install-hooks
+	@echo ""
 	@echo "========================================="
 	@echo "Setup complete!"
 	@echo "========================================="
@@ -60,6 +63,8 @@ dev-setup: venv
 	@echo ""
 	@echo "Or manually:"
 	@echo "  .\.venv\Scripts\Activate.ps1"
+	@echo ""
+	@echo "Git hooks installed! They will run automatically on commit/push."
 	@echo ""
 
 activate:
@@ -97,19 +102,32 @@ format:
 
 install-hooks:
 	@echo "Installing git hooks..."
-	@if [ -f ".git/hooks/pre-commit" ]; then \
+ifeq ($(OS),Windows_NT)
+	@if not exist .git\hooks mkdir .git\hooks
+	@if exist hooks\pre-commit copy /Y hooks\pre-commit .git\hooks\pre-commit >nul 2>&1 && echo ✅ Installed pre-commit hook || echo ⚠️  Warning: hooks\pre-commit not found
+	@if exist hooks\pre-push copy /Y hooks\pre-push .git\hooks\pre-push >nul 2>&1 && echo ✅ Installed pre-push hook || echo ⚠️  Warning: hooks\pre-push not found
+else
+	@if [ ! -d ".git/hooks" ]; then \
+		echo "Error: .git/hooks directory not found. Are you in a git repository?"; \
+		exit 1; \
+	fi
+	@if [ -f "hooks/pre-commit" ]; then \
+		cp hooks/pre-commit .git/hooks/pre-commit; \
 		chmod +x .git/hooks/pre-commit; \
+		echo "✅ Installed pre-commit hook"; \
+	else \
+		echo "⚠️  Warning: hooks/pre-commit not found"; \
 	fi
-	@if [ -f ".git/hooks/pre-push" ]; then \
+	@if [ -f "hooks/pre-push" ]; then \
+		cp hooks/pre-push .git/hooks/pre-push; \
 		chmod +x .git/hooks/pre-push; \
+		echo "✅ Installed pre-push hook"; \
+	else \
+		echo "⚠️  Warning: hooks/pre-push not found"; \
 	fi
-	@if [ -f ".git/hooks/pre-commit.ps1" ]; then \
-		echo "PowerShell hooks available (Windows)"; \
-	fi
-	@if [ -f ".git/hooks/pre-push.ps1" ]; then \
-		echo "PowerShell hooks available (Windows)"; \
-	fi
-	@echo "Git hooks installed!"
+endif
+	@echo ""
+	@echo "Git hooks installed successfully!"
 	@echo ""
 	@echo "Pre-commit: Runs fast checks (formatting, linting)"
 	@echo "Pre-push: Runs full test suite"
