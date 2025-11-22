@@ -316,5 +316,5 @@ ORDER BY metric_name;
 
 ## License
 
-MIT License - see LICENSE file
+Apache License 2.0 with Commercial Distribution Restriction - see LICENSE file
 
