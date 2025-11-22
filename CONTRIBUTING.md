@@ -70,19 +70,14 @@ Feature requests are welcome! Please use the [feature request template](.github/
    # Linux/Mac: source .venv/bin/activate
    ```
 
-3. **Run full development setup** (recommended):
-   ```bash
-   make dev-setup
-   ```
-   This will:
-   - Create virtual environment
-   - Install development dependencies
-   - Install git hooks automatically
-
-   Or install dependencies manually:
+3. **Install development dependencies**:
    ```bash
    make install-dev
-   make install-hooks  # optional but recommended
+   ```
+
+4. **Install git hooks** (optional but recommended):
+   ```bash
+   make install-hooks
    ```
 
 5. **Start development environment** (optional):
