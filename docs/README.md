@@ -9,6 +9,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **[Installation Guide](getting-started/INSTALL.md)** - Detailed installation instructions
 
 ### 📖 [Guides](guides/)
+- **[Python SDK](guides/PYTHON_SDK.md)** - Complete guide to the Python SDK for programmatic access to Baselinr
 - **[Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)** - Enhanced profiling metrics: null ratios, uniqueness, schema tracking, and data quality metrics
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection, including type-specific thresholds
 - **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
@@ -67,6 +68,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ## 🔍 Finding What You Need
 
 - **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
+- **Using the Python SDK?** → See [Python SDK Guide](guides/PYTHON_SDK.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)

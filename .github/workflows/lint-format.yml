@@ -1,0 +1,48 @@
+name: Lint and Format Check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev]"
+
+      - name: Check code formatting with Black
+        run: |
+          black --check baselinr/ examples/
+
+      - name: Check import sorting with isort
+        run: |
+          isort --check-only baselinr/ examples/
+
+      - name: Run Flake8 linter
+        run: |
+          flake8 baselinr/ --config=.flake8
+
+      - name: Run MyPy type checker
+        run: |
+          mypy baselinr/
+        continue-on-error: false
+

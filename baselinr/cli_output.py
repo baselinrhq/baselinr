@@ -36,7 +36,7 @@ COLORS = {
 _console: Optional["Console"] = None
 
 
-def get_console() -> "Console":
+def get_console() -> Optional["Console"]:
     """Get or create Rich Console instance with error handling."""
     global _console
     if _console is None:
