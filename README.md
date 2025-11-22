@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/baselinr.svg)](https://badge.fury.io/py/baselinr)
 [![CI](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml/badge.svg)](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml)
-[![License: BSL 1.1](https://img.shields.io/badge/License-BSL%201.1-blue.svg)](https://github.com/baselinrhq/baselinr/blob/main/LICENSE)
+[![License: Custom](https://img.shields.io/badge/License-Custom-blue.svg)](https://github.com/baselinrhq/baselinr/blob/main/LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 **🌐 [Visit our website →](https://baselinr.io/)**
@@ -845,9 +845,9 @@ mypy baselinr/
 
 ## 📝 License
 
-Business Source License 1.1 - see LICENSE file for details.
+Apache License 2.0 with Commercial Distribution Restriction - see LICENSE file for details.
 
-This software is available under the Business Source License (BSL) 1.1, which allows free use for non-commercial purposes. Commercial use requires a license. The license will convert to Apache License 2.0 on January 1, 2028. For commercial licensing inquiries, please contact the project maintainers.
+This software is available under a custom license based on Apache License 2.0. You may use this software freely, including for commercial and internal business purposes. However, you may not sell, lease, rent, or otherwise monetize this software or derivative works without explicit written permission from the copyright holders. For commercial distribution licensing inquiries, please contact hello@baselinr.io.
 
 ## 🤝 Contributing
 
