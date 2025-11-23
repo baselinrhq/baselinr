@@ -103,9 +103,25 @@ class IncrementalPlanner:
         decisions: List[TableRunDecision] = []
 
         # Use expanded patterns if provided, otherwise use config tables
-        tables_to_process = (
-            expanded_patterns if expanded_patterns is not None else self.config.profiling.tables
-        )
+        if expanded_patterns is not None:
+            tables_to_process = expanded_patterns
+            logger.debug(f"Using {len(expanded_patterns)} expanded pattern(s) from plan builder")
+        else:
+            tables_to_process = self.config.profiling.tables
+            logger.debug(
+                f"Using {len(tables_to_process)} pattern(s) from config "
+                "(no expanded patterns provided)"
+            )
+
+        # Validate all patterns have table names before processing
+        invalid_patterns = [p for p in tables_to_process if p.table is None]
+        if invalid_patterns:
+            logger.error(
+                f"Found {len(invalid_patterns)} pattern(s) without table names: "
+                f"{invalid_patterns}. These should have been expanded. "
+                "Skipping invalid patterns."
+            )
+            tables_to_process = [p for p in tables_to_process if p.table is not None]
 
         for table_pattern in tables_to_process:
             decision = self._decide_for_table(table_pattern, now)
@@ -118,12 +134,13 @@ class IncrementalPlanner:
         return plan
 
     def _decide_for_table(self, table: TablePattern, now: datetime) -> TableRunDecision:
+        # Table name must be set (should be after pattern expansion)
+        # Check this even when incremental is disabled to catch expansion issues early
+        assert table.table is not None, "Table name must be set for incremental planning"
+
         incremental_cfg = self.config.incremental
         if not incremental_cfg.enabled:
             return TableRunDecision(table=table, action="full", reason="incremental_disabled")
-
-        # Table name must be set (should be after pattern expansion)
-        assert table.table is not None, "Table name must be set for incremental planning"
 
         state = self.state_store.load_state(table.table, table.schema_)
         if not self._is_due(state, now):

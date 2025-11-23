@@ -137,8 +137,32 @@ class PlanBuilder:
             expanded = self._expand_pattern(pattern)
             expanded_patterns.extend(expanded)
 
+        # Filter out any patterns without table names (should not happen, but be safe)
+        # This ensures only valid expanded patterns proceed to precedence resolution
+        valid_patterns = []
+        for pattern in expanded_patterns:
+            if pattern.table is not None:
+                valid_patterns.append(pattern)
+            else:
+                logger.warning(
+                    f"Skipping pattern without table name after expansion: {pattern}. "
+                    "This should not happen - please report this issue."
+                )
+
         # Resolve precedence and deduplicate
-        resolved_patterns = self._resolve_precedence(expanded_patterns)
+        resolved_patterns = self._resolve_precedence(valid_patterns)
+
+        # Validate that all resolved patterns have table names set
+        for pattern in resolved_patterns:
+            if pattern.table is None:
+                logger.error(
+                    f"Resolved pattern missing table name: {pattern}. "
+                    "This should not happen after expansion. "
+                    "Pattern will be skipped."
+                )
+
+        # Filter out any patterns without table names (should not happen, but be safe)
+        resolved_patterns = [p for p in resolved_patterns if p.table is not None]
 
         logger.info(f"Expanded {len(patterns)} pattern(s) into {len(resolved_patterns)} table(s)")
 
@@ -289,10 +313,25 @@ class PlanBuilder:
             )
         else:
             # Should not reach here due to validation, but handle gracefully
-            logger.warning(f"Pattern has no expansion method: {pattern}")
-            expanded.append(pattern)
+            logger.warning(
+                f"Pattern has no expansion method: {pattern}. "
+                "Pattern should have 'table', 'pattern', 'select_schema', "
+                "or 'select_all_schemas' set."
+            )
+            # Don't add pattern without table name - it will fail validation later
+            # This ensures we don't pass invalid patterns to the profiling engine
 
-        return expanded
+        # Final safety check: ensure all returned patterns have table names set
+        valid_expanded = []
+        for p in expanded:
+            if p.table is not None:
+                valid_expanded.append(p)
+            else:
+                logger.warning(
+                    f"Pattern expanded without table name: {p}. "
+                    "This should not happen. Skipping this pattern."
+                )
+        return valid_expanded
 
     def _get_schemas_to_search(self, pattern: TablePattern) -> List[Optional[str]]:
         """Get list of schemas to search based on pattern and discovery options."""
@@ -406,12 +445,19 @@ class PlanBuilder:
 
             # Create TablePattern for each table
             for table in tables:
+                if not table:  # Skip empty or None table names
+                    logger.warning(f"Skipping empty table name in schema {schema}")
+                    continue
                 table_pattern = pattern.model_copy(deep=True)
                 table_pattern.table = table
                 table_pattern.schema_ = schema
                 table_pattern.pattern = None  # Clear pattern, now it's explicit
                 table_pattern.select_schema = None
                 table_pattern.select_all_schemas = None
+                # Validate table name was set
+                assert (
+                    table_pattern.table is not None
+                ), f"Table name not set after expansion for table: {table}"
                 expanded.append(table_pattern)
 
         return expanded
@@ -474,10 +520,19 @@ class PlanBuilder:
 
             # Create TablePattern for each matched table
             for table in matched_tables:
+                if not table:  # Skip empty or None table names
+                    logger.warning(f"Skipping empty table name in schema {schema}")
+                    continue
                 table_pattern = pattern.model_copy(deep=True)
                 table_pattern.table = table
                 table_pattern.schema_ = schema
                 table_pattern.pattern = None  # Clear pattern, now it's explicit
+                table_pattern.select_schema = None
+                table_pattern.select_all_schemas = None
+                # Validate table name was set
+                assert (
+                    table_pattern.table is not None
+                ), f"Table name not set after expansion for table: {table}"
                 expanded.append(table_pattern)
 
         return expanded
@@ -718,9 +773,9 @@ class PlanBuilder:
             expanded_patterns = self.expand_table_patterns()
 
         # Pass expanded patterns to incremental planner
-        # Note: IncrementalPlanner may need to be updated to accept expanded patterns
-        # For now, it should work with the original patterns from config
-        return self._incremental_planner.get_tables_to_run(current_time)
+        return self._incremental_planner.get_tables_to_run(
+            current_time=current_time, expanded_patterns=expanded_patterns
+        )
 
     def _table_key(self, pattern: TablePattern) -> str:
         """Get unique key for table pattern."""

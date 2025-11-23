@@ -244,6 +244,18 @@ def profile_command(args):
             log_event(ctx.logger, "no_tables_expanded", "No tables found matching patterns")
             return 0
 
+        # Final validation: ensure all expanded patterns have table names
+        invalid = [p for p in expanded_patterns if p.table is None]
+        if invalid:
+            ctx.logger.error(
+                f"Found {len(invalid)} invalid pattern(s) after expansion (missing table names). "
+                f"These will be skipped: {invalid}"
+            )
+            expanded_patterns = [p for p in expanded_patterns if p.table is not None]
+            if not expanded_patterns:
+                ctx.logger.error("No valid patterns remaining after filtering invalid patterns")
+                return 0
+
         # Pass expanded patterns to incremental planner
         incremental_plan = plan_builder.get_tables_to_run(
             current_time=None, expanded_patterns=expanded_patterns
