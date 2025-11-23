@@ -147,28 +147,48 @@ if DAGSTER_AVAILABLE:
             default_metadata: Metadata merged into each asset Output.
         """
         config = ConfigLoader.load_from_file(config_path)
-        plan = PlanBuilder(config).build_plan()
-        plan_index = _plan_lookup(plan)
+        plan_builder = PlanBuilder(config)
+        # Expand patterns to get concrete table patterns (handles select_schema, patterns, etc.)
+        expanded_patterns = plan_builder.expand_table_patterns()
 
         base_tags = {"baselinr/environment": config.environment}
         if default_tags:
             base_tags.update(default_tags)
 
         assets: List[Any] = []
-        for table_pattern in config.profiling.tables:
-            table_identifier = _pattern_identifier(table_pattern)
-            table_plan = plan_index.get(table_identifier)
-            asset_def = _create_table_asset(
-                config_path=config_path,
-                table_pattern=table_pattern,
-                table_plan=table_plan,
-                plan=plan,
-                asset_name_prefix=asset_name_prefix,
-                group_name=group_name,
-                tags=base_tags,
-                default_metadata=default_metadata,
+        if not expanded_patterns:
+            logger.warning(
+                "No tables found after expanding patterns. "
+                "This may indicate that pattern-based selection found no matches."
             )
-            assets.append(asset_def)
+        else:
+            plan = plan_builder.build_plan()
+            plan_index = _plan_lookup(plan)
+
+            for table_pattern in expanded_patterns:
+                # Skip patterns without table names (should not happen after expansion, but be safe)
+                if table_pattern.table is None:
+                    logger.warning(
+                        f"Skipping pattern without table name: {table_pattern}. "
+                        "This should not happen after expansion."
+                    )
+                    continue
+                table_identifier = _pattern_identifier(table_pattern)
+                table_plan = plan_index.get(table_identifier)
+                asset_def = _create_table_asset(
+                    config_path=config_path,
+                    table_pattern=table_pattern,
+                    table_plan=table_plan,
+                    plan=plan,
+                    asset_name_prefix=asset_name_prefix,
+                    group_name=group_name,
+                    tags=base_tags,
+                    default_metadata=default_metadata,
+                )
+                assets.append(asset_def)
+
+        # Build plan for summary asset (even if no tables found)
+        plan = plan_builder.build_plan()
 
         summary_asset = _create_summary_asset(
             plan=plan,
