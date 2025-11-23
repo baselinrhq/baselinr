@@ -1,4 +1,4 @@
-naname: Build and Install Test
+name: Build and Install Test
 
 on:
   push:
