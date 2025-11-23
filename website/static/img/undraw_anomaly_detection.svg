@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Anomaly Detection</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (organic flowing shapes) -->
+      <path d="M0,0 Q200,100 400,50 T800,80 Q1000,100 1088,0 L1088,400 Q900,350 700,380 T300,360 Q100,340 0,400 Z" fill="#fff0f5" opacity="0.8"/>
+      <path d="M0,200 Q300,150 600,200 T1088,180 L1088,500 Q800,450 500,500 T0,480 Z" fill="#ffe4e1" opacity="0.6"/>
+      <path d="M200,0 Q400,80 600,40 Q800,0 1088,60 L1088,300 Q900,250 700,280 T300,260 Q150,240 0,300 Z" fill="#ffe0e6" opacity="0.5"/>
+      
+      <!-- Ground (smooth organic curve) -->
+      <path d="M0,550 Q272,520 544,550 T1088,530 Q1000,600 800,580 T400,600 Q200,580 0,600 L0,687.962 L1088,687.962 L1088,600 Z" fill="#3f3d56"/>
+      
+      <!-- Large Anomaly Chart (Center, prominent) -->
+      <g id="Anomaly_Chart" transform="translate(200 120)">
+        <!-- Chart background -->
+        <rect x="0" y="0" width="688" height="450" rx="12" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="688" height="70" rx="12" fill="#3f3d56"/>
+        
+        <!-- Chart title -->
+        <text x="344" y="45" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">Anomaly Detection</text>
+        
+        <!-- Chart area background -->
+        <rect x="60" y="100" width="568" height="300" fill="#f8f8f8" rx="8"/>
+        
+        <!-- Normal data line (thicker, more visible) -->
+        <polyline points="80,350 180,330 280,340 380,325 480,335 580,320" 
+                  fill="none" stroke="#3ecc5f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        
+        <!-- Data points -->
+        <circle cx="80" cy="350" r="6" fill="#3ecc5f"/>
+        <circle cx="180" cy="330" r="6" fill="#3ecc5f"/>
+        <circle cx="280" cy="340" r="6" fill="#3ecc5f"/>
+        <circle cx="380" cy="325" r="6" fill="#3ecc5f"/>
+        <circle cx="480" cy="335" r="6" fill="#3ecc5f"/>
+        <circle cx="580" cy="320" r="6" fill="#3ecc5f"/>
+        
+        <!-- Anomaly point (larger, more prominent) -->
+        <circle cx="400" cy="200" r="25" fill="#ff6584" stroke="#fff" stroke-width="4"/>
+        <circle cx="400" cy="200" r="40" fill="#ff6584" opacity="0.3"/>
+        <circle cx="400" cy="200" r="60" fill="#ff6584" opacity="0.15"/>
+        <text x="400" y="170" font-family="Arial, sans-serif" font-size="20" fill="#ff6584" font-weight="bold" text-anchor="middle">⚠ Anomaly</text>
+        
+        <!-- Alert icon (larger) -->
+        <g transform="translate(580 50)">
+          <circle cx="0" cy="0" r="35" fill="#ff6584"/>
+          <text x="0" y="10" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">!</text>
+        </g>
+        
+        <!-- Grid lines -->
+        <line x1="60" y1="200" x2="628" y2="200" stroke="#e0e0e0" stroke-width="1"/>
+        <line x1="60" y1="250" x2="628" y2="250" stroke="#e0e0e0" stroke-width="1"/>
+        <line x1="60" y1="300" x2="628" y2="300" stroke="#e0e0e0" stroke-width="1"/>
+        <line x1="60" y1="350" x2="628" y2="350" stroke="#e0e0e0" stroke-width="1"/>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#ff6584" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,17 @@
+<svg viewBox="0 0 220 60" xmlns="http://www.w3.org/2000/svg">
+  
+  <!-- Logo Icon - Baseline Wave -->
+  <g transform="translate(10, 30)">
+    <!-- The waveform path starting flat (baseline) then undulating -->
+    <path d="M 0,0 L 50,0 Q 65,-25 80,-25 Q 95,-25 110,0 Q 125,20 140,20 Q 155,20 170,0 L 200,0" 
+          fill="none" 
+          stroke="#2563eb" 
+          stroke-width="8" 
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    
+    <!-- Baseline emphasis dot -->
+    <circle cx="0" cy="0" r="6" fill="#2563eb"/>
+  </g>
+  
+</svg>

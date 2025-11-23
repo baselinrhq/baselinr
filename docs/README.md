@@ -10,6 +10,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 
 ### 📖 [Guides](guides/)
 - **[Python SDK](guides/PYTHON_SDK.md)** - Complete guide to the Python SDK for programmatic access to Baselinr
+- **[Secrets Management](guides/SECRETS_MANAGEMENT.md)** - Free secrets management solutions for MVP deployments (GitHub Secrets, environment variables, platform-native)
 - **[Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)** - Enhanced profiling metrics: null ratios, uniqueness, schema tracking, and data quality metrics
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection, including type-specific thresholds
 - **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
@@ -70,6 +71,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
 - **Using the Python SDK?** → See [Python SDK Guide](guides/PYTHON_SDK.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
+- **Managing secrets securely?** → See [Secrets Management Guide](guides/SECRETS_MANAGEMENT.md) (free options for MVP)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Using enrichment metrics?** → See [Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)

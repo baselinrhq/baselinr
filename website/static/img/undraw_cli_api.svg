@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>CLI &amp; API</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (bubble/cloud pattern) -->
+      <circle cx="150" cy="100" r="120" fill="#e3f2fd" opacity="0.6"/>
+      <circle cx="400" cy="80" r="100" fill="#bbdefb" opacity="0.5"/>
+      <circle cx="700" cy="120" r="110" fill="#90caf9" opacity="0.4"/>
+      <circle cx="950" cy="90" r="90" fill="#64b5f6" opacity="0.3"/>
+      <circle cx="250" cy="250" r="130" fill="#42a5f5" opacity="0.35"/>
+      <circle cx="600" cy="280" r="115" fill="#2196f3" opacity="0.3"/>
+      <circle cx="850" cy="260" r="100" fill="#1e88e5" opacity="0.25"/>
+      
+      <!-- Ground (smooth organic wave) -->
+      <path d="M0,550 Q272,600 544,550 T1088,600 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      
+      <!-- Terminal (Left, larger) -->
+      <g id="CLI_Terminal" transform="translate(100 150)">
+        <rect x="0" y="0" width="420" height="380" rx="10" fill="#1e1e1e" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="420" height="50" rx="10" fill="#2d2d2d"/>
+        <circle cx="20" cy="25" r="8" fill="#ff6584"/>
+        <circle cx="45" cy="25" r="8" fill="#ffff50"/>
+        <circle cx="70" cy="25" r="8" fill="#3ecc5f"/>
+        <text x="95" y="32" font-family="monospace" font-size="16" fill="#fff" font-weight="bold">Terminal</text>
+        <text x="30" y="90" font-family="monospace" font-size="18" fill="#3ecc5f">$ baselinr profile</text>
+        <text x="30" y="130" font-family="monospace" font-size="18" fill="#fff">Profiling database...</text>
+        <text x="30" y="170" font-family="monospace" font-size="18" fill="#3ecc5f">✓ Complete</text>
+        <text x="30" y="210" font-family="monospace" font-size="18" fill="#fff">$ baselinr drift --table users</text>
+        <text x="30" y="250" font-family="monospace" font-size="18" fill="#3ecc5f">✓ Drift detected</text>
+      </g>
+      
+      <!-- API Symbol (Right, larger) -->
+      <g id="API" transform="translate(568 150)">
+        <rect x="0" y="0" width="420" height="380" rx="10" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="420" height="50" rx="10" fill="#3f3d56"/>
+        <text x="210" y="35" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">API</text>
+        
+        <!-- API endpoints (larger) -->
+        <rect x="40" y="80" width="340" height="70" rx="8" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="2"/>
+        <text x="50" y="110" font-family="monospace" font-size="18" fill="#3f3d56" font-weight="bold">GET</text>
+        <text x="100" y="110" font-family="monospace" font-size="18" fill="#3f3d56">/api/profiles</text>
+        <text x="50" y="135" font-family="monospace" font-size="14" fill="#888">Get all profiling runs</text>
+        
+        <rect x="40" y="170" width="340" height="70" rx="8" fill="#3ecc5f" opacity="0.15" stroke="#3ecc5f" stroke-width="2"/>
+        <text x="50" y="200" font-family="monospace" font-size="18" fill="#3f3d56" font-weight="bold">GET</text>
+        <text x="100" y="200" font-family="monospace" font-size="18" fill="#3f3d56">/api/drift</text>
+        <text x="50" y="225" font-family="monospace" font-size="14" fill="#888">Query drift events</text>
+        
+        <rect x="40" y="260" width="340" height="70" rx="8" fill="#ff6584" opacity="0.15" stroke="#ff6584" stroke-width="2"/>
+        <text x="50" y="290" font-family="monospace" font-size="18" fill="#3f3d56" font-weight="bold">POST</text>
+        <text x="100" y="290" font-family="monospace" font-size="18" fill="#3f3d56">/api/events</text>
+        <text x="50" y="315" font-family="monospace" font-size="14" fill="#888">Create alert events</text>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

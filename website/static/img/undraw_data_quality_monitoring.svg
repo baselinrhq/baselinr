@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Data Quality Monitoring</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (smooth organic curves) -->
+      <path d="M0,0 Q200,150 400,100 Q600,50 800,120 Q1000,200 1088,150 L1088,300 Q900,250 700,300 T300,280 Q150,260 0,320 Z" fill="#fce4ec" opacity="0.8"/>
+      <path d="M0,200 Q300,250 600,200 Q900,150 1088,220 L1088,450 Q800,400 500,450 T0,420 Z" fill="#f8bbd0" opacity="0.6"/>
+      <ellipse cx="300" cy="150" rx="250" ry="180" fill="#f48fb1" opacity="0.3"/>
+      <ellipse cx="750" cy="200" rx="220" ry="160" fill="#f06292" opacity="0.25"/>
+      
+      <!-- Ground (smooth flowing curve) -->
+      <path d="M0,550 Q136,600 272,550 Q408,500 544,580 Q680,500 816,550 Q952,600 1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      
+      <!-- Large Quality Gauge (Center, prominent) -->
+      <g id="Quality_Gauge" transform="translate(350 120)">
+        <!-- Gauge background (semi-circle, larger) -->
+        <path d="M200,280 A200,200 0 0,1 600,280" fill="none" stroke="#f2f2f2" stroke-width="40" stroke-linecap="round"/>
+        
+        <!-- Quality segments (thicker) -->
+        <path d="M200,280 A200,200 0 0,1 400,120" fill="none" stroke="#ff6584" stroke-width="40" stroke-linecap="round"/>
+        <path d="M400,120 A200,200 0 0,1 500,200" fill="none" stroke="#ffff50" stroke-width="40" stroke-linecap="round"/>
+        <path d="M500,200 A200,200 0 0,1 600,280" fill="none" stroke="#3ecc5f" stroke-width="40" stroke-linecap="round"/>
+        
+        <!-- Needle (thicker) -->
+        <line x1="400" y1="280" x2="480" y2="180" stroke="#3f3d56" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="400" cy="280" r="16" fill="#3f3d56"/>
+        
+        <!-- Quality score (larger) -->
+        <text x="400" y="340" font-family="Arial, sans-serif" font-size="48" fill="#3ecc5f" font-weight="bold" text-anchor="middle">85%</text>
+        <text x="400" y="380" font-family="Arial, sans-serif" font-size="24" fill="#3f3d56" text-anchor="middle" font-weight="bold">Quality Score</text>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#3ecc5f" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#ff6584" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

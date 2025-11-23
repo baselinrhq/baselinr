@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Python-First</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (spiral/orbital pattern - integration theme) -->
+      <ellipse cx="200" cy="100" rx="300" ry="200" fill="#fff8e1" opacity="0.6" transform="rotate(-15 200 100)"/>
+      <ellipse cx="800" cy="150" rx="280" ry="180" fill="#ffe082" opacity="0.4" transform="rotate(20 800 150)"/>
+      <ellipse cx="500" cy="250" rx="320" ry="220" fill="#ffcc02" opacity="0.25" transform="rotate(10 500 250)"/>
+      <path d="M0,0 Q136,80 272,40 Q408,0 544,60 Q680,0 816,40 Q952,80 1088,0" fill="none" stroke="#ffd54f" stroke-width="80" opacity="0.3" stroke-linecap="round"/>
+      <path d="M0,300 Q272,250 544,300 T1088,280" fill="none" stroke="#ffb300" stroke-width="60" opacity="0.25" stroke-linecap="round"/>
+      
+      <!-- Ground (smooth organic curve) -->
+      <path d="M0,550 Q272,520 544,550 T1088,530 Q1000,600 800,580 T400,600 Q200,580 0,600 L0,687.962 L1088,687.962 L1088,600 Z" fill="#3f3d56"/>
+      
+      <!-- Integration/Orchestration Visualization (Center, prominent) -->
+      <g id="Integration_Center" transform="translate(544 250)">
+        <!-- Central hub node -->
+        <circle cx="0" cy="0" r="50" fill="#6c63ff" stroke="#fff" stroke-width="4"/>
+        <circle cx="0" cy="0" r="35" fill="#8b7fff" opacity="0.7"/>
+        <text x="0" y="8" font-family="Arial, sans-serif" font-size="24" fill="#fff" font-weight="bold" text-anchor="middle">Python</text>
+      </g>
+      
+      <!-- Connected nodes around the center (representing integration) -->
+      <g id="Connected_Nodes">
+        <!-- Top node -->
+        <g transform="translate(544 120)">
+          <circle cx="0" cy="0" r="35" fill="#3ecc5f" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">DB</text>
+          <!-- Connection line to center -->
+          <path d="M0,35 Q0,60 0,85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Top-right node -->
+        <g transform="translate(750 180)">
+          <circle cx="0" cy="0" r="35" fill="#ff6584" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">API</text>
+          <!-- Connection line to center -->
+          <path d="M-35,35 Q-50,60 -80,85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Right node -->
+        <g transform="translate(800 280)">
+          <circle cx="0" cy="0" r="35" fill="#ffff50" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">ETL</text>
+          <!-- Connection line to center -->
+          <path d="M-35,0 Q-60,0 -85,0" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Bottom-right node -->
+        <g transform="translate(750 380)">
+          <circle cx="0" cy="0" r="35" fill="#7C3AED" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">Dag</text>
+          <!-- Connection line to center -->
+          <path d="M-35,-35 Q-50,-60 -80,-85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Bottom node -->
+        <g transform="translate(544 380)">
+          <circle cx="0" cy="0" r="35" fill="#3776ab" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">Py</text>
+          <!-- Connection line to center -->
+          <path d="M0,-35 Q0,-60 0,-85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Bottom-left node -->
+        <g transform="translate(338 380)">
+          <circle cx="0" cy="0" r="35" fill="#ff6584" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">ML</text>
+          <!-- Connection line to center -->
+          <path d="M35,-35 Q50,-60 80,-85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Left node -->
+        <g transform="translate(288 280)">
+          <circle cx="0" cy="0" r="35" fill="#3ecc5f" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">SQL</text>
+          <!-- Connection line to center -->
+          <path d="M35,0 Q60,0 85,0" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+        
+        <!-- Top-left node -->
+        <g transform="translate(338 180)">
+          <circle cx="0" cy="0" r="35" fill="#ffff50" stroke="#fff" stroke-width="3"/>
+          <text x="0" y="6" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold" text-anchor="middle">Data</text>
+          <!-- Connection line to center -->
+          <path d="M35,35 Q50,60 80,85" fill="none" stroke="#6c63ff" stroke-width="4" opacity="0.5" stroke-linecap="round"/>
+        </g>
+      </g>
+      
+      <!-- Flowing data lines (representing orchestration flow) -->
+      <g id="Flow_Lines" opacity="0.4">
+        <path d="M544,120 Q600,200 750,180" fill="none" stroke="#3ecc5f" stroke-width="3" stroke-linecap="round"/>
+        <path d="M750,180 Q800,230 800,280" fill="none" stroke="#ff6584" stroke-width="3" stroke-linecap="round"/>
+        <path d="M800,280 Q775,330 750,380" fill="none" stroke="#ffff50" stroke-width="3" stroke-linecap="round"/>
+        <path d="M750,380 Q650,380 544,380" fill="none" stroke="#7C3AED" stroke-width="3" stroke-linecap="round"/>
+        <path d="M544,380 Q450,380 338,380" fill="none" stroke="#3776ab" stroke-width="3" stroke-linecap="round"/>
+        <path d="M338,380 Q288,330 288,280" fill="none" stroke="#ff6584" stroke-width="3" stroke-linecap="round"/>
+        <path d="M288,280 Q313,230 338,180" fill="none" stroke="#3ecc5f" stroke-width="3" stroke-linecap="round"/>
+        <path d="M338,180 Q450,150 544,120" fill="none" stroke="#ffff50" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+      <circle id="Ellipse_13" data-name="Ellipse 13" cx="3" cy="3" r="3" transform="translate(600 220.962)" fill="#ff6584" opacity="0.6"/>
+      <circle id="Ellipse_14" data-name="Ellipse 14" cx="3" cy="3" r="3" transform="translate(700 250.962)" fill="#7C3AED" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

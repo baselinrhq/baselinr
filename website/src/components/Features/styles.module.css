@@ -1,0 +1,95 @@
+.features {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.featuresAlternate {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+  background-color: #f5f6f7;
+  display: block;
+  width: 100%;
+}
+
+[data-theme='dark'] .featuresAlternate {
+  background-color: #1e1e1e;
+}
+
+.featuresExtraPadding {
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+.featureEmoji {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 1rem;
+}
+
+.featureSvg {
+  height: 200px;
+  width: 200px;
+  margin-bottom: 1rem;
+}
+
+.featureBox .featureSvg {
+  height: 60px;
+  width: 60px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.featuresRow {
+  justify-content: center;
+}
+
+.featureBox {
+  margin-bottom: 1.5rem;
+  background-color: #fafbfc;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-right: 2rem;
+  min-width: 0;
+}
+
+.featureBox:last-child {
+  margin-right: 0;
+}
+
+[data-theme='dark'] .featureBox {
+  background-color: #2d2d2d;
+}
+
+.featureBoxHeader {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.featureIcon {
+  font-size: 2.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.featureTitle {
+  flex: 1;
+  text-align: left;
+  margin-bottom: 0;
+}
+
+.featureDescription {
+  text-align: left;
+  clear: both;
+  width: 100%;
+}
+
+.featureDescription p {
+  margin-bottom: 0;
+  text-align: left;
+}
+

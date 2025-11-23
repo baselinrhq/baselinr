@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Multi-Database Support</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (cloud-like connected shapes) -->
+      <ellipse cx="200" cy="150" rx="180" ry="120" fill="#e3f2fd" opacity="0.6"/>
+      <ellipse cx="400" cy="180" rx="200" ry="140" fill="#bbdefb" opacity="0.5"/>
+      <ellipse cx="650" cy="160" rx="190" ry="130" fill="#90caf9" opacity="0.4"/>
+      <ellipse cx="850" cy="200" rx="170" ry="110" fill="#64b5f6" opacity="0.3"/>
+      <path d="M200,150 Q300,200 400,180 Q500,160 650,160 Q750,150 850,200" fill="none" stroke="#90caf9" stroke-width="40" opacity="0.3" stroke-linecap="round"/>
+      
+      <!-- Ground (smooth flowing curve) -->
+      <path d="M0,550 Q136,600 272,550 Q408,500 544,580 Q680,500 816,550 Q952,600 1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      
+      <!-- Large Database Icons (Center, larger and more prominent) -->
+      <g id="Databases" transform="translate(150 150)">
+        <!-- PostgreSQL -->
+        <g transform="translate(0 0)">
+          <ellipse cx="100" cy="25" rx="100" ry="25" fill="#336791"/>
+          <rect x="0" y="25" width="200" height="250" rx="8" fill="#336791"/>
+          <ellipse cx="100" cy="25" rx="100" ry="25" transform="translate(0 250)" fill="#336791" opacity="0.3"/>
+          <rect x="40" y="80" width="120" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="120" width="100" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="160" width="110" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="200" width="90" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <text x="100" y="310" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" font-weight="bold" text-anchor="middle">PostgreSQL</text>
+        </g>
+        
+        <!-- Snowflake -->
+        <g transform="translate(280 0)">
+          <ellipse cx="100" cy="25" rx="100" ry="25" fill="#29b5e8"/>
+          <rect x="0" y="25" width="200" height="250" rx="8" fill="#29b5e8"/>
+          <ellipse cx="100" cy="25" rx="100" ry="25" transform="translate(0 250)" fill="#29b5e8" opacity="0.3"/>
+          <rect x="40" y="80" width="120" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="120" width="100" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="160" width="110" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="200" width="90" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <text x="100" y="310" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" font-weight="bold" text-anchor="middle">Snowflake</text>
+        </g>
+        
+        <!-- BigQuery -->
+        <g transform="translate(560 0)">
+          <ellipse cx="100" cy="25" rx="100" ry="25" fill="#4285f4"/>
+          <rect x="0" y="25" width="200" height="250" rx="8" fill="#4285f4"/>
+          <ellipse cx="100" cy="25" rx="100" ry="25" transform="translate(0 250)" fill="#4285f4" opacity="0.3"/>
+          <rect x="40" y="80" width="120" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="120" width="100" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="160" width="110" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <rect x="40" y="200" width="90" height="5" rx="2" fill="#fff" opacity="0.6"/>
+          <text x="100" y="310" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" font-weight="bold" text-anchor="middle">BigQuery</text>
+        </g>
+      </g>
+      
+      <!-- Plus signs between databases (larger) -->
+      <text x="430" y="300" font-family="Arial, sans-serif" font-size="48" fill="#3f3d56" font-weight="bold" text-anchor="middle">+</text>
+      <text x="710" y="300" font-family="Arial, sans-serif" font-size="48" fill="#3f3d56" font-weight="bold" text-anchor="middle">+</text>
+      <text x="544" y="420" font-family="Arial, sans-serif" font-size="24" fill="#3f3d56" text-anchor="middle" font-weight="bold">MySQL, SQLite, Redshift, and more...</text>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#336791" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#29b5e8" opacity="0.6"/>
+      <circle id="Ellipse_13" data-name="Ellipse 13" cx="3" cy="3" r="3" transform="translate(600 220.962)" fill="#4285f4" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

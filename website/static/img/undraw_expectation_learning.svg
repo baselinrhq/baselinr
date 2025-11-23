@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Expectation Learning</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (radial gradient circles) -->
+      <circle cx="544" cy="200" r="300" fill="#f1f8e9" opacity="0.5"/>
+      <circle cx="200" cy="400" r="200" fill="#e8f5e9" opacity="0.4"/>
+      <circle cx="900" cy="350" r="180" fill="#fff9c4" opacity="0.3"/>
+      
+      <!-- Ground (organic wavy) -->
+      <path d="M0,550 Q136,520 272,540 T544,530 T816,540 T1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      
+      <!-- Large Brain/Learning Icon (Center, prominent) -->
+      <g id="Learning_Brain" transform="translate(350 150)">
+        <!-- Brain shape (larger) -->
+        <path d="M200,70 Q260,30 320,70 Q360,100 380,140 Q390,180 380,220 Q370,260 340,290 Q320,310 300,290 Q280,270 270,250 Q260,230 250,200 Q240,170 230,140 Q220,110 210,90 Q200,80 200,70 Z" 
+              fill="#6c63ff" opacity="0.25"/>
+        <path d="M200,70 Q260,30 320,70 Q360,100 380,140 Q390,180 380,220 Q370,260 340,290 Q320,310 300,290 Q280,270 270,250 Q260,230 250,200 Q240,170 230,140 Q220,110 210,90 Q200,80 200,70 Z" 
+              fill="none" stroke="#6c63ff" stroke-width="5"/>
+        
+        <!-- Neural network nodes (larger) -->
+        <circle cx="240" cy="140" r="20" fill="#3ecc5f"/>
+        <circle cx="290" cy="160" r="20" fill="#3ecc5f"/>
+        <circle cx="270" cy="220" r="20" fill="#3ecc5f"/>
+        <circle cx="320" cy="200" r="20" fill="#3ecc5f"/>
+        <circle cx="350" cy="250" r="20" fill="#3ecc5f"/>
+        <circle cx="220" cy="180" r="20" fill="#6c63ff"/>
+        <circle cx="260" cy="260" r="20" fill="#6c63ff"/>
+        
+        <!-- Connections (thicker) -->
+        <line x1="240" y1="140" x2="290" y2="160" stroke="#3ecc5f" stroke-width="3"/>
+        <line x1="290" y1="160" x2="270" y2="220" stroke="#3ecc5f" stroke-width="3"/>
+        <line x1="270" y1="220" x2="320" y2="200" stroke="#3ecc5f" stroke-width="3"/>
+        <line x1="320" y1="200" x2="350" y2="250" stroke="#3ecc5f" stroke-width="3"/>
+        <line x1="240" y1="140" x2="220" y2="180" stroke="#6c63ff" stroke-width="3"/>
+        <line x1="220" y1="180" x2="260" y2="260" stroke="#6c63ff" stroke-width="3"/>
+      </g>
+      
+      <!-- Learning text (larger) -->
+      <text x="544" y="480" font-family="Arial, sans-serif" font-size="36" fill="#3f3d56" font-weight="bold" text-anchor="middle">Learning Expectations</text>
+      <text x="544" y="520" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" text-anchor="middle">From Historical Data</text>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

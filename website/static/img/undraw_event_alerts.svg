@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Event &amp; Alert Hooks</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (concentric circles) -->
+      <circle cx="544" cy="300" r="400" fill="#fff3e0" opacity="0.3"/>
+      <circle cx="544" cy="300" r="300" fill="#ffe0b2" opacity="0.4"/>
+      <circle cx="544" cy="300" r="200" fill="#ffcc80" opacity="0.3"/>
+      
+      <!-- Ground (double wave) -->
+      <path d="M0,550 Q272,600 544,550 T1088,600 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      <path d="M0,580 Q272,630 544,580 T1088,630" fill="none" stroke="#3f3d56" stroke-width="20" opacity="0.5"/>
+      
+      <!-- Large Bell/Alert Icon (Center, prominent) -->
+      <g id="Alert_Bell" transform="translate(400 120)">
+        <!-- Bell shape (larger) -->
+        <path d="M144,70 Q172,40 200,70 L200,160 Q186,190 172,210 Q158,230 144,210 Q130,230 116,210 Q102,190 88,160 L88,70 Q116,40 144,70 Z" 
+              fill="#ff6584" stroke="#fff" stroke-width="4"/>
+        
+        <!-- Bell clapper (larger) -->
+        <circle cx="144" cy="220" r="12" fill="#3f3d56"/>
+        <line x1="144" y1="220" x2="144" y2="250" stroke="#3f3d56" stroke-width="6" stroke-linecap="round"/>
+        
+        <!-- Notification badge (larger) -->
+        <circle cx="200" cy="70" r="28" fill="#3ecc5f"/>
+        <text x="200" y="82" font-family="Arial, sans-serif" font-size="24" fill="#fff" font-weight="bold" text-anchor="middle">3</text>
+        
+        <!-- Sound waves -->
+        <path d="M220,120 Q240,110 260,120" fill="none" stroke="#ff6584" stroke-width="3" opacity="0.6"/>
+        <path d="M220,140 Q250,125 280,140" fill="none" stroke="#ff6584" stroke-width="3" opacity="0.4"/>
+      </g>
+      
+      <!-- Alert text (larger) -->
+      <text x="544" y="450" font-family="Arial, sans-serif" font-size="36" fill="#3f3d56" font-weight="bold" text-anchor="middle">Event &amp; Alert Hooks</text>
+      <text x="544" y="490" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" text-anchor="middle">Real-time notifications</text>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#ff6584" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

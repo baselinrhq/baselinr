@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Schema Change Detection</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (geometric organic shapes) -->
+      <path d="M0,0 L300,150 L600,50 L900,120 L1088,0 L1088,300 L800,250 L500,300 L200,280 L0,350 Z" fill="#e8f5e9" opacity="0.7"/>
+      <path d="M0,150 L400,200 L800,100 L1088,180 L1088,450 L700,400 L300,450 L0,400 Z" fill="#c8e6c9" opacity="0.5"/>
+      <polygon points="200,50 500,80 800,40 1000,100 850,200 500,180 200,200" fill="#a5d6a7" opacity="0.3"/>
+      <polygon points="100,250 400,300 700,250 950,300 800,400 400,380 100,350" fill="#81c784" opacity="0.25"/>
+      
+      <!-- Ground (smooth transformation curve) -->
+      <path d="M0,550 Q272,600 544,550 T1088,600 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      <path d="M0,570 Q544,620 1088,570" fill="none" stroke="#4a4a4a" stroke-width="15" opacity="0.4"/>
+      
+      <!-- Before Schema (Left, larger) -->
+      <g id="Schema_Before" transform="translate(100 150)">
+        <rect x="0" y="0" width="300" height="380" rx="10" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="300" height="50" rx="10" fill="#3f3d56"/>
+        <text x="150" y="35" font-family="Arial, sans-serif" font-size="24" fill="#fff" font-weight="bold" text-anchor="middle">Before</text>
+        <rect x="30" y="80" width="240" height="50" rx="6" fill="#6c63ff" opacity="0.2" stroke="#6c63ff" stroke-width="2"/>
+        <text x="150" y="110" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">id: int</text>
+        <rect x="30" y="150" width="240" height="50" rx="6" fill="#3ecc5f" opacity="0.2" stroke="#3ecc5f" stroke-width="2"/>
+        <text x="150" y="180" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">name: string</text>
+        <rect x="30" y="220" width="240" height="50" rx="6" fill="#ff6584" opacity="0.2" stroke="#ff6584" stroke-width="2"/>
+        <text x="150" y="250" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">email: string</text>
+      </g>
+      
+      <!-- Arrow (larger) -->
+      <g transform="translate(450 320)">
+        <path d="M0,0 L120,0" stroke="#3f3d56" stroke-width="6" marker-end="url(#arrowhead)"/>
+        <defs>
+          <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto">
+            <polygon points="0 0, 12 4, 0 8" fill="#3f3d56"/>
+          </marker>
+        </defs>
+      </g>
+      
+      <!-- After Schema (Right, larger) -->
+      <g id="Schema_After" transform="translate(688 150)">
+        <rect x="0" y="0" width="300" height="380" rx="10" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="300" height="50" rx="10" fill="#3f3d56"/>
+        <text x="150" y="35" font-family="Arial, sans-serif" font-size="24" fill="#fff" font-weight="bold" text-anchor="middle">After</text>
+        <rect x="30" y="80" width="240" height="50" rx="6" fill="#6c63ff" opacity="0.2" stroke="#6c63ff" stroke-width="2"/>
+        <text x="150" y="110" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">id: int</text>
+        <rect x="30" y="150" width="240" height="50" rx="6" fill="#3ecc5f" opacity="0.2" stroke="#3ecc5f" stroke-width="2"/>
+        <text x="150" y="180" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">name: string</text>
+        <rect x="30" y="220" width="240" height="50" rx="6" fill="#ff6584" opacity="0.2" stroke="#ff6584" stroke-width="2"/>
+        <text x="150" y="250" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" font-weight="bold">email: string</text>
+        <!-- New column highlighted (larger) -->
+        <rect x="30" y="290" width="240" height="50" rx="6" fill="#ffff50" opacity="0.4" stroke="#ff6584" stroke-width="3"/>
+        <text x="150" y="320" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" font-weight="bold" text-anchor="middle">+ phone: string</text>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#ffff50" opacity="0.6"/>
+    </g>
+  </g>
+</svg>
