@@ -45,6 +45,7 @@ def _safe_asset_name(name: str) -> str:
 
 def _pattern_identifier(pattern: TablePattern) -> str:
     """Return a fully qualified table identifier for lookups."""
+    assert pattern.table is not None, "Table name must be set"
     if pattern.schema_:
         return f"{pattern.schema_}.{pattern.table}"
     return pattern.table
@@ -194,6 +195,7 @@ if DAGSTER_AVAILABLE:
     ):
         """Create an asset definition that profiles a single table."""
 
+        assert table_pattern.table is not None, "Table name must be set"
         table_name = _safe_asset_name(table_pattern.table)
         asset_name = f"{asset_name_prefix}_{table_name}"
 
@@ -210,6 +212,7 @@ if DAGSTER_AVAILABLE:
             resource: BaselinrResource = context.resources.baselinr
             config = resource.get_config()
 
+            assert table_pattern.table is not None, "Table name must be set"
             emit_profiling_event(
                 context,
                 "profiling_started",
@@ -253,6 +256,7 @@ if DAGSTER_AVAILABLE:
                 description=f"Baselinr run completed for {table_pattern.table}",
             )
 
+            assert table_pattern.table is not None, "Table name must be set"
             emit_profiling_event(
                 context,
                 "profiling_completed",

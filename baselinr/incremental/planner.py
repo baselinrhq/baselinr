@@ -83,11 +83,31 @@ class IncrementalPlanner:
             config.source.type, self.connector, incremental_cfg
         )
 
-    def get_tables_to_run(self, current_time: Optional[datetime] = None) -> IncrementalPlan:
-        """Return the plan for the current tick."""
+    def get_tables_to_run(
+        self,
+        current_time: Optional[datetime] = None,
+        expanded_patterns: Optional[List[TablePattern]] = None,
+    ) -> IncrementalPlan:
+        """
+        Return the plan for the current tick.
+
+        Args:
+            current_time: Optional current time for planning
+            expanded_patterns: Optional expanded table patterns
+                (uses config.profiling.tables if not provided)
+
+        Returns:
+            IncrementalPlan with table run decisions
+        """
         now = current_time or datetime.now(timezone.utc)
         decisions: List[TableRunDecision] = []
-        for table_pattern in self.config.profiling.tables:
+
+        # Use expanded patterns if provided, otherwise use config tables
+        tables_to_process = (
+            expanded_patterns if expanded_patterns is not None else self.config.profiling.tables
+        )
+
+        for table_pattern in tables_to_process:
             decision = self._decide_for_table(table_pattern, now)
             decisions.append(decision)
         plan = IncrementalPlan(
@@ -101,6 +121,9 @@ class IncrementalPlanner:
         incremental_cfg = self.config.incremental
         if not incremental_cfg.enabled:
             return TableRunDecision(table=table, action="full", reason="incremental_disabled")
+
+        # Table name must be set (should be after pattern expansion)
+        assert table.table is not None, "Table name must be set for incremental planning"
 
         state = self.state_store.load_state(table.table, table.schema_)
         if not self._is_due(state, now):
@@ -235,6 +258,7 @@ class IncrementalPlanner:
         snapshot_id: Optional[str] = None,
         action: str = "skip",
     ):
+        assert table.table is not None, "Table name must be set"
         logger.info("Skipping %s.%s: %s", table.schema_ or "public", table.table, reason)
         self.state_store.record_decision(
             table_name=table.table,
@@ -245,6 +269,7 @@ class IncrementalPlanner:
             metadata={"previous_snapshot": state.snapshot_id if state else None},
         )
         if self.event_bus:
+            assert table.table is not None, "Table name must be set"
             self.event_bus.emit(
                 ProfilingSkipped.create(
                     table=table.table,

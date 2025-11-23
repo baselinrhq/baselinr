@@ -6,13 +6,17 @@ without actually running the profiling logic.
 """
 
 import logging
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from .config.schema import BaselinrConfig, TablePattern
+from .connectors.factory import create_connector
 from .incremental import IncrementalPlan, IncrementalPlanner, TableRunDecision
+from .profiling.table_matcher import TableMatcher
+from .profiling.tag_metadata import TagResolver
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +95,54 @@ class PlanBuilder:
         """
         self.config = config
         self._incremental_planner: Optional[IncrementalPlanner] = None
+        self._table_matcher: Optional[TableMatcher] = None
+        self._connector: Optional[Any] = None
+        self._tag_provider: Optional[Any] = None
+        self._discovery_cache: Dict[str, Tuple[List[str], float]] = (
+            {}
+        )  # schema -> (tables, timestamp)
+
+    def expand_table_patterns(
+        self, patterns: Optional[List[TablePattern]] = None
+    ) -> List[TablePattern]:
+        """
+        Expand all patterns (wildcard, regex, schema, database-level)
+        into concrete TablePattern objects.
+
+        This is a public method that can be used by CLI commands and SDK
+        to get expanded table patterns before building the plan.
+
+        Args:
+            patterns: Optional list of TablePattern objects to expand.
+                     If None, uses config.profiling.tables
+
+        Returns:
+            List of expanded TablePattern objects with concrete table names
+        """
+        if patterns is None:
+            patterns = self.config.profiling.tables
+
+        if not patterns:
+            return []
+
+        logger.info("Expanding table patterns...")
+
+        # Validate regex patterns if enabled
+        if self.config.profiling.discovery_options.validate_regex:
+            self._validate_regex_patterns(patterns)
+
+        # Expand patterns
+        expanded_patterns = []
+        for pattern in patterns:
+            expanded = self._expand_pattern(pattern)
+            expanded_patterns.extend(expanded)
+
+        # Resolve precedence and deduplicate
+        resolved_patterns = self._resolve_precedence(expanded_patterns)
+
+        logger.info(f"Expanded {len(patterns)} pattern(s) into {len(resolved_patterns)} table(s)")
+
+        return resolved_patterns
 
     def build_plan(self) -> ProfilingPlan:
         """
@@ -111,6 +163,9 @@ class PlanBuilder:
                 "Add tables to the 'profiling.tables' section in your config."
             )
 
+        # Expand patterns into concrete tables
+        expanded_patterns = self.expand_table_patterns()
+
         # Create plan
         plan = ProfilingPlan(
             run_id=str(uuid.uuid4()),
@@ -124,13 +179,14 @@ class PlanBuilder:
         incremental_plan: Optional[IncrementalPlan] = None
         decision_map: Dict[str, TableRunDecision] = {}
         if self.config.incremental.enabled:
-            incremental_plan = self.get_tables_to_run(plan.timestamp)
+            # Pass expanded patterns to incremental planner
+            incremental_plan = self.get_tables_to_run(plan.timestamp, expanded_patterns)
             decision_map = {
                 self._table_key(decision.table): decision for decision in incremental_plan.decisions
             }
 
-        # Build table plans
-        for table_pattern in self.config.profiling.tables:
+        # Build table plans from expanded patterns
+        for table_pattern in expanded_patterns:
             table_plan = self._build_table_plan(
                 table_pattern, decision_map.get(self._table_key(table_pattern))
             )
@@ -145,6 +201,394 @@ class PlanBuilder:
         )
 
         return plan
+
+    def _get_connector(self):
+        """Get or create database connector."""
+        if self._connector is None:
+            self._connector = create_connector(self.config.source, self.config.retry)
+        return self._connector
+
+    def _get_table_matcher(self) -> TableMatcher:
+        """Get or create table matcher."""
+        if self._table_matcher is None:
+            self._table_matcher = TableMatcher(
+                validate_regex=self.config.profiling.discovery_options.validate_regex
+            )
+        return self._table_matcher
+
+    def _get_tag_provider(self):
+        """Get or create tag provider."""
+        if self._tag_provider is None:
+            connector = self._get_connector()
+            tag_provider_name = self.config.profiling.discovery_options.tag_provider
+            dbt_manifest_path = self.config.profiling.discovery_options.dbt_manifest_path
+
+            self._tag_provider = TagResolver.create_provider(
+                connector,
+                self.config.source,
+                tag_provider=tag_provider_name,
+                dbt_manifest_path=dbt_manifest_path,
+            )
+        return self._tag_provider
+
+    def _validate_regex_patterns(self, patterns: List[TablePattern]) -> None:
+        """Validate all regex patterns at config load time."""
+        from .profiling.table_matcher import RegexValidator
+
+        for pattern in patterns:
+            if pattern.pattern and pattern.pattern_type == "regex":
+                if not RegexValidator.validate_pattern(pattern.pattern):
+                    raise ValueError(
+                        f"Invalid regex pattern in table pattern: '{pattern.pattern}'. "
+                        "Please check your regex syntax."
+                    )
+            if pattern.schema_pattern and pattern.pattern_type == "regex":
+                if not RegexValidator.validate_pattern(pattern.schema_pattern):
+                    raise ValueError(
+                        f"Invalid regex schema pattern in table pattern: "
+                        f"'{pattern.schema_pattern}'. Please check your regex syntax."
+                    )
+
+    def _expand_pattern(self, pattern: TablePattern) -> List[TablePattern]:
+        """
+        Expand a single pattern into concrete TablePattern objects.
+
+        Args:
+            pattern: TablePattern to expand
+
+        Returns:
+            List of expanded TablePattern objects
+        """
+        expanded = []
+
+        # Explicit table - no expansion needed
+        if pattern.table and not pattern.pattern:
+            expanded.append(pattern)
+            return expanded
+
+        # Get connector and matcher
+        connector = self._get_connector()
+        matcher = self._get_table_matcher()
+
+        # Determine schemas to search
+        schemas_to_search: List[Optional[str]] = self._get_schemas_to_search(pattern)
+
+        # Expand based on pattern type
+        if pattern.select_all_schemas:
+            # Database-level: all schemas
+            expanded.extend(self._expand_database_level(pattern, connector, matcher))
+        elif pattern.select_schema:
+            # Schema-level: all tables in specified schema(s)
+            expanded.extend(
+                self._expand_schema_level(pattern, connector, matcher, schemas_to_search)
+            )
+        elif pattern.pattern:
+            # Pattern-based: match tables against pattern
+            expanded.extend(
+                self._expand_pattern_based(pattern, connector, matcher, schemas_to_search)
+            )
+        else:
+            # Should not reach here due to validation, but handle gracefully
+            logger.warning(f"Pattern has no expansion method: {pattern}")
+            expanded.append(pattern)
+
+        return expanded
+
+    def _get_schemas_to_search(self, pattern: TablePattern) -> List[Optional[str]]:
+        """Get list of schemas to search based on pattern and discovery options."""
+        discovery_opts = self.config.profiling.discovery_options
+
+        # Start with pattern schema
+        base_schemas: List[Optional[str]] = []
+        if pattern.schema_:
+            base_schemas.append(pattern.schema_)
+        elif pattern.schema_pattern:
+            # Expand schema pattern
+            connector = self._get_connector()
+            all_schemas = connector.list_schemas()
+            matcher = self._get_table_matcher()
+            pattern_type = pattern.pattern_type or "wildcard"
+
+            for schema in all_schemas:
+                if matcher.match_schema(schema, pattern.schema_pattern, pattern_type):
+                    base_schemas.append(schema)
+        else:
+            base_schemas.append(None)  # Default schema
+
+        # Apply discovery filters
+        if discovery_opts.include_schemas:
+            base_schemas = [s for s in base_schemas if s in discovery_opts.include_schemas]
+
+        if discovery_opts.exclude_schemas:
+            base_schemas = [s for s in base_schemas if s not in discovery_opts.exclude_schemas]
+
+        return base_schemas
+
+    def _expand_database_level(
+        self, pattern: TablePattern, connector: Any, matcher: TableMatcher
+    ) -> List[TablePattern]:
+        """Expand database-level pattern (all schemas)."""
+        discovery_opts = self.config.profiling.discovery_options
+
+        # Get all schemas
+        all_schemas = connector.list_schemas()
+
+        # Apply discovery limits
+        max_schemas = discovery_opts.max_schemas_per_database
+        if len(all_schemas) > max_schemas:
+            self._handle_discovery_limit(
+                f"Database has {len(all_schemas)} schemas, limiting to {max_schemas}",
+                "schemas",
+                len(all_schemas),
+                max_schemas,
+            )
+            all_schemas = all_schemas[:max_schemas]
+
+        # Filter schemas
+        if discovery_opts.include_schemas:
+            all_schemas = [s for s in all_schemas if s in discovery_opts.include_schemas]
+
+        if discovery_opts.exclude_schemas:
+            all_schemas = [s for s in all_schemas if s not in discovery_opts.exclude_schemas]
+
+        # Expand each schema
+        expanded = []
+        for schema in all_schemas:
+            schema_pattern = pattern.model_copy(deep=True)
+            schema_pattern.select_schema = True
+            schema_pattern.select_all_schemas = None
+            schema_pattern.schema_ = schema
+            expanded.extend(self._expand_schema_level(schema_pattern, connector, matcher, [schema]))
+
+        return expanded
+
+    def _expand_schema_level(
+        self,
+        pattern: TablePattern,
+        connector: Any,
+        matcher: TableMatcher,
+        schemas: List[Optional[str]],
+    ) -> List[TablePattern]:
+        """Expand schema-level pattern (all tables in schema)."""
+        expanded = []
+
+        for schema in schemas:
+            # Get all tables in schema
+            tables = self._get_tables_in_schema(schema)
+
+            # Apply exclude patterns
+            if pattern.exclude_patterns:
+                exclude_type = pattern.pattern_type or "wildcard"
+                tables = [
+                    t
+                    for t in tables
+                    if not matcher.matches_exclude_patterns(
+                        t, pattern.exclude_patterns, exclude_type
+                    )
+                ]
+
+            # Filter by tag if tag provider available
+            if pattern.tags or pattern.tags_any:
+                tag_provider = self._get_tag_provider()
+                if tag_provider:
+                    table_tuples = [(t, schema) for t in tables]
+                    filtered = tag_provider.filter_tables_by_tags(
+                        table_tuples,
+                        required_tags=pattern.tags,
+                        any_tags=pattern.tags_any,
+                    )
+                    tables = [t for t, _ in filtered]
+                else:
+                    logger.warning(
+                        f"Tag filtering requested but no tag provider available. "
+                        f"Tags: {pattern.tags or pattern.tags_any}"
+                    )
+
+            # Create TablePattern for each table
+            for table in tables:
+                table_pattern = pattern.model_copy(deep=True)
+                table_pattern.table = table
+                table_pattern.schema_ = schema
+                table_pattern.pattern = None  # Clear pattern, now it's explicit
+                table_pattern.select_schema = None
+                table_pattern.select_all_schemas = None
+                expanded.append(table_pattern)
+
+        return expanded
+
+    def _expand_pattern_based(
+        self,
+        pattern: TablePattern,
+        connector: Any,
+        matcher: TableMatcher,
+        schemas: List[Optional[str]],
+    ) -> List[TablePattern]:
+        """Expand pattern-based selection (wildcard/regex)."""
+        expanded = []
+        pattern_type = pattern.pattern_type or "wildcard"
+
+        for schema in schemas:
+            # Get all tables in schema
+            tables = self._get_tables_in_schema(schema)
+
+            # Match against pattern
+            if pattern.pattern:
+                matched_tables = matcher.filter_tables(
+                    tables,
+                    pattern=pattern.pattern,
+                    pattern_type=pattern_type,
+                    exclude_patterns=pattern.exclude_patterns,
+                )
+            else:
+                matched_tables = tables
+
+            # Apply discovery limits
+            discovery_opts = self.config.profiling.discovery_options
+            max_tables = discovery_opts.max_tables_per_pattern
+            if len(matched_tables) > max_tables:
+                self._handle_discovery_limit(
+                    f"Pattern '{pattern.pattern}' matched {len(matched_tables)} "
+                    f"tables, limiting to {max_tables}",
+                    "tables",
+                    len(matched_tables),
+                    max_tables,
+                )
+                matched_tables = matched_tables[:max_tables]
+
+            # Filter by tag if tag provider available
+            if pattern.tags or pattern.tags_any:
+                tag_provider = self._get_tag_provider()
+                if tag_provider:
+                    table_tuples = [(t, schema) for t in matched_tables]
+                    filtered = tag_provider.filter_tables_by_tags(
+                        table_tuples,
+                        required_tags=pattern.tags,
+                        any_tags=pattern.tags_any,
+                    )
+                    matched_tables = [t for t, _ in filtered]
+                else:
+                    logger.warning(
+                        f"Tag filtering requested but no tag provider available. "
+                        f"Tags: {pattern.tags or pattern.tags_any}"
+                    )
+
+            # Create TablePattern for each matched table
+            for table in matched_tables:
+                table_pattern = pattern.model_copy(deep=True)
+                table_pattern.table = table
+                table_pattern.schema_ = schema
+                table_pattern.pattern = None  # Clear pattern, now it's explicit
+                expanded.append(table_pattern)
+
+        return expanded
+
+    def _get_tables_in_schema(self, schema: Optional[str]) -> List[str]:
+        """Get all tables in a schema, using cache if enabled."""
+        discovery_opts = self.config.profiling.discovery_options
+        cache_key = schema or "__default__"
+
+        # Check cache
+        if discovery_opts.cache_discovery and cache_key in self._discovery_cache:
+            cached_tables, cache_time = self._discovery_cache[cache_key]
+            cache_age = time.time() - cache_time
+
+            if cache_age < discovery_opts.cache_ttl_seconds:
+                logger.debug(f"Using cached table list for schema {schema}")
+                return cached_tables
+
+        # Fetch from database
+        connector = self._get_connector()
+        tables: List[str] = connector.list_tables(schema=schema)
+
+        # Store in cache
+        if discovery_opts.cache_discovery:
+            self._discovery_cache[cache_key] = (tables, time.time())
+
+        return tables
+
+    def _handle_discovery_limit(
+        self, message: str, resource_type: str, actual: int, limit: int
+    ) -> None:
+        """Handle discovery limit exceeded."""
+        discovery_opts = self.config.profiling.discovery_options
+        action = discovery_opts.discovery_limit_action
+
+        if action == "error":
+            raise ValueError(
+                f"{message}. Increase max_{resource_type}_per_pattern "
+                "or set discovery_limit_action to 'warn'."
+            )
+        elif action == "skip":
+            logger.warning(f"{message}. Skipping additional {resource_type}.")
+        else:  # warn (default)
+            logger.warning(
+                f"{message}. Consider increasing max_{resource_type}_per_pattern "
+                "in discovery_options."
+            )
+
+    def _resolve_precedence(self, patterns: List[TablePattern]) -> List[TablePattern]:
+        """
+        Resolve precedence and deduplicate patterns.
+
+        Priority order (higher is better):
+        - Explicit table: 100 (default)
+        - Tag-based: 50 (if tags specified)
+        - Pattern-based: 10 (default)
+        - Schema-based: 5 (default)
+        - Database-level: 1 (default)
+
+        Args:
+            patterns: List of TablePattern objects
+
+        Returns:
+            Deduplicated list with highest priority matches kept
+        """
+        if not patterns:
+            return []
+
+        # Calculate priority for each pattern
+        pattern_priorities: Dict[str, Tuple[TablePattern, int]] = {}
+
+        for pattern in patterns:
+            key = self._table_key(pattern)
+
+            # Calculate priority
+            if pattern.override_priority is not None:
+                priority = pattern.override_priority
+            elif pattern.table and not pattern.pattern:
+                # Explicit table
+                priority = 100
+            elif pattern.tags or pattern.tags_any:
+                # Tag-based
+                priority = 50
+            elif pattern.pattern:
+                # Pattern-based
+                priority = 10
+            elif pattern.select_schema:
+                # Schema-based
+                priority = 5
+            elif pattern.select_all_schemas:
+                # Database-level
+                priority = 1
+            else:
+                # Default
+                priority = 0
+
+            # Keep highest priority
+            if key not in pattern_priorities:
+                pattern_priorities[key] = (pattern, priority)
+            else:
+                existing_pattern, existing_priority = pattern_priorities[key]
+                if priority > existing_priority:
+                    pattern_priorities[key] = (pattern, priority)
+                    logger.debug(
+                        f"Pattern for {key} replaced with higher priority pattern "
+                        f"(old: {existing_priority}, new: {priority})"
+                    )
+
+        # Return patterns sorted by priority (highest first)
+        sorted_patterns = sorted(pattern_priorities.values(), key=lambda x: x[1], reverse=True)
+        return [pattern for pattern, _ in sorted_patterns]
 
     def _build_table_plan(
         self, pattern: TablePattern, decision: Optional[TableRunDecision]
@@ -184,8 +628,13 @@ class PlanBuilder:
                 }
             )
 
+        # Ensure table name exists (should after expansion)
+        table_name = pattern.table
+        if not table_name:
+            raise ValueError(f"TablePattern must have table name: {pattern}")
+
         return TablePlan(
-            name=pattern.table,
+            name=table_name,
             schema=pattern.schema_,
             status=status,
             partition_config=partition_dict,
@@ -246,14 +695,39 @@ class PlanBuilder:
 
         return warnings
 
-    def get_tables_to_run(self, current_time: Optional[datetime] = None) -> IncrementalPlan:
-        """Expose incremental planner decisions for sensors/CLI."""
+    def get_tables_to_run(
+        self,
+        current_time: Optional[datetime] = None,
+        expanded_patterns: Optional[List[TablePattern]] = None,
+    ) -> IncrementalPlan:
+        """
+        Expose incremental planner decisions for sensors/CLI.
+
+        Args:
+            current_time: Optional current time for incremental planning
+            expanded_patterns: Optional expanded table patterns (will expand if not provided)
+
+        Returns:
+            IncrementalPlan with table run decisions
+        """
         if self._incremental_planner is None:
             self._incremental_planner = IncrementalPlanner(self.config)
+
+        # Expand patterns if not provided
+        if expanded_patterns is None:
+            expanded_patterns = self.expand_table_patterns()
+
+        # Pass expanded patterns to incremental planner
+        # Note: IncrementalPlanner may need to be updated to accept expanded patterns
+        # For now, it should work with the original patterns from config
         return self._incremental_planner.get_tables_to_run(current_time)
 
     def _table_key(self, pattern: TablePattern) -> str:
-        return f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
+        """Get unique key for table pattern."""
+        table_name = pattern.table or pattern.pattern or "unknown"
+        if pattern.schema_:
+            return f"{pattern.schema_}.{table_name}"
+        return table_name
 
 
 def print_plan(plan: ProfilingPlan, format: str = "text", verbose: bool = False):

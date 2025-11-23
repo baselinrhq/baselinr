@@ -1,0 +1,176 @@
+# Baselinr Configuration Examples - Pattern-Based Table Selection
+# This example demonstrates pattern-based, schema-based, database-level,
+# and tag-based table selection with precedence overrides
+
+environment: development
+
+# Source database connection
+source:
+  type: postgres
+  host: localhost
+  port: 5433
+  database: baselinr
+  username: baselinr
+  password: baselinr
+  schema: public
+
+# Storage configuration
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5433
+    database: baselinr
+    username: baselinr
+    password: baselinr
+    schema: public
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+
+# Profiling configuration with pattern-based selection
+profiling:
+  # Enable table discovery (default: true)
+  table_discovery: true
+  
+  # Discovery options
+  discovery_options:
+    # Schema filters
+    include_schemas: []  # Empty = all schemas (subject to exclude_schemas)
+    exclude_schemas:
+      - "information_schema"
+      - "pg_catalog"
+      - "pg_toast"
+    
+    # Table type filters
+    include_table_types: []  # Empty = all types
+    exclude_table_types: []  # Exclude views if desired: ["view"]
+    
+    # Caching
+    cache_discovery: true
+    cache_ttl_seconds: 300  # 5 minutes
+    
+    # Performance limits
+    max_tables_per_pattern: 1000  # Limit matches per pattern
+    max_schemas_per_database: 100  # Limit schemas to scan
+    discovery_limit_action: warn  # warn | error | skip
+    
+    # Regex validation
+    validate_regex: true  # Validate regex patterns at config load time
+    
+    # Tag provider (auto-detect, or specify: snowflake, bigquery, postgres, mysql, redshift, sqlite, dbt)
+    tag_provider: auto
+    # dbt_manifest_path: target/manifest.json  # For dbt tag provider
+  
+  tables:
+    # Example 1: Wildcard pattern matching
+    - pattern: "user_*"
+      schema: public
+      # Match all tables starting with "user_"
+    
+    - pattern: "*_staging"
+      schema: analytics
+      # Match all tables ending with "_staging" in analytics schema
+    
+    - pattern: "*_2024"
+      # Match all tables ending with "_2024" in all schemas
+    
+    # Example 2: Regex pattern matching
+    - pattern: "^(customer|order)_\\d{4}$"
+      pattern_type: regex
+      schema: public
+      # Match: customer_2024, order_2024, etc.
+      # Does not match: product_2024, customer_abc
+    
+    # Example 3: Schema-based selection (all tables in schema)
+    - select_schema: true
+      schema: analytics
+      exclude_patterns:
+        - "*_temp"
+        - "*_backup"
+        - "*_test"
+      # Profile all tables in analytics schema, excluding temp/backup/test tables
+    
+    # Example 4: Database-level selection (all schemas)
+    - select_all_schemas: true
+      exclude_schemas:
+        - "information_schema"
+        - "pg_catalog"
+        - "pg_toast"
+      exclude_patterns:
+        - "*_test"
+        - "*_dev"
+      # Profile all tables in all schemas (except excluded), excluding test/dev tables
+    
+    # Example 5: Tag-based selection (Snowflake example)
+    # - tags:
+    #     - "data_quality:critical"
+    #     - "domain:customer"
+    #   schema: public
+    #   # Profile only tables with both tags (AND logic)
+    
+    # - tags_any:
+    #     - "environment:production"
+    #     - "team:analytics"
+    #   # Profile tables with either tag (OR logic)
+    
+    # Example 6: Precedence overrides
+    # Low priority: pattern match
+    - pattern: "events_*"
+      schema: analytics
+      override_priority: 10
+      # All tables matching pattern with priority 10
+    
+    # High priority: explicit override
+    - table: events_critical
+      schema: analytics
+      override_priority: 100
+      # This specific table overrides the pattern match
+      sampling:
+        enabled: false  # Full profiling for critical table
+    
+    # Example 7: Explicit table (always highest priority)
+    - table: important_table
+      schema: public
+      # No override_priority needed - explicit tables default to priority 100
+    
+    # Example 8: Pattern with additional filters
+    - pattern: "data_*"
+      schema: warehouse
+      min_rows: 1000  # Only profile tables with at least 1000 rows
+      max_rows: 1000000000  # Only profile tables with at most 1B rows
+      table_types: ["table"]  # Only base tables, exclude views
+      required_columns: ["created_at", "updated_at"]  # Only tables with these columns
+      modified_since_days: 30  # Only tables modified in last 30 days
+    
+    # Example 9: Schema pattern matching
+    - pattern: "sales_*"
+      schema_pattern: "analytics*"
+      # Match tables starting with "sales_" in schemas starting with "analytics"
+    
+    # Example 10: Combined filters
+    - select_schema: true
+      schema: staging
+      pattern: "*_clean"  # All tables ending with "_clean" in staging schema
+      exclude_patterns:
+        - "*_old"
+        - "*_deprecated"
+      tags:
+        - "status:active"
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+  
+  baselines:
+    strategy: auto
+    windows:
+      moving_average: 7
+      prior_period: 7
+      min_runs: 3
+

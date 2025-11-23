@@ -237,7 +237,17 @@ def profile_command(args):
             )
 
         plan_builder = PlanBuilder(config)
-        incremental_plan = plan_builder.get_tables_to_run()
+
+        # Expand patterns before building incremental plan
+        expanded_patterns = plan_builder.expand_table_patterns()
+        if not expanded_patterns:
+            log_event(ctx.logger, "no_tables_expanded", "No tables found matching patterns")
+            return 0
+
+        # Pass expanded patterns to incremental planner
+        incremental_plan = plan_builder.get_tables_to_run(
+            current_time=None, expanded_patterns=expanded_patterns
+        )
         tables_to_profile = _select_tables_from_plan(incremental_plan, config)
         if not tables_to_profile:
             log_event(ctx.logger, "incremental_noop", "No tables selected for this run")
@@ -1661,6 +1671,7 @@ def _update_state_store_with_results(config: BaselinrConfig, plan: IncrementalPl
 
 
 def _plan_table_key(pattern: TablePattern) -> str:
+    assert pattern.table is not None, "Table name must be set"
     return _plan_table_key_raw(pattern.schema_, pattern.table)
 
 

@@ -265,6 +265,7 @@ class ProfileEngine:
         total = len(patterns)
 
         for idx, pattern in enumerate(patterns):
+            assert pattern.table is not None, "Table name must be set"
             fq_table = f"{pattern.schema_}.{pattern.table}" if pattern.schema_ else pattern.table
             start_time = time.time()
 
@@ -282,6 +283,7 @@ class ProfileEngine:
                 if self.run_context and self.run_context.metrics_enabled:
                     from ..utils.metrics import record_profile_started
 
+                    assert pattern.table is not None, "Table name must be set"
                     record_profile_started(warehouse, fq_table)
 
                 # Log and emit profiling started
@@ -364,6 +366,9 @@ class ProfileEngine:
         Returns:
             ProfilingResult for this table
         """
+        # Ensure table name is set (should be after pattern expansion)
+        assert pattern.table is not None, "Table name must be set for profiling"
+
         # Use run_id from context
         run_id = self.run_id
         profiled_at = datetime.utcnow()

@@ -237,6 +237,8 @@ profiling:
 
 **Fields:**
 - `tables` (List[TablePattern]): List of tables to profile (default: `[]`)
+- `table_discovery` (bool): Enable automatic table discovery (default: `true` when patterns used)
+- `discovery_options` (DiscoveryOptionsConfig): Options for table discovery (see below)
 - `max_distinct_values` (int): Maximum distinct values to compute (default: `1000`)
 - `compute_histograms` (bool): Compute histograms (default: `true`)
 - `histogram_bins` (int): Number of histogram bins (default: `10`)
@@ -250,15 +252,62 @@ profiling:
 - `stability_window` (int): Stability calculation window (default: `7`)
 - `type_inference_sample_size` (int): Type inference sample size (default: `1000`)
 
-#### TablePattern
+#### DiscoveryOptionsConfig
 
-Configuration for a single table.
+Configuration options for table discovery and pattern-based selection.
 
 **Fields:**
-- `table` (str, required): Table name
+- `include_schemas` (Optional[List[str]]): Only discover in these schemas
+- `exclude_schemas` (Optional[List[str]]): Exclude these schemas from discovery
+- `include_table_types` (Optional[List[str]]): Default table types to include
+- `exclude_table_types` (Optional[List[str]]): Default table types to exclude
+- `cache_discovery` (bool): Cache discovered tables for performance (default: `true`)
+- `cache_ttl_seconds` (int): TTL for discovery cache in seconds (default: `300`)
+- `max_tables_per_pattern` (int): Max tables to match per pattern (default: `1000`)
+- `max_schemas_per_database` (int): Max schemas to scan per database (default: `100`)
+- `discovery_limit_action` (str): What to do when limit hit: `"warn"`, `"error"`, or `"skip"` (default: `"warn"`)
+- `validate_regex` (bool): Validate regex patterns at config load time (default: `true`)
+- `tag_provider` (Optional[str]): Tag metadata provider: `"auto"`, `"snowflake"`, `"bigquery"`, `"postgres"`, `"mysql"`, `"redshift"`, `"sqlite"`, `"dbt"`, or `None` (default: `None`)
+- `dbt_manifest_path` (Optional[str]): Path to dbt manifest.json for dbt tag provider
+
+#### TablePattern
+
+Configuration for a single table or table selection pattern.
+
+**Fields:**
+- `table` (Optional[str]): Explicit table name (required if pattern not used)
 - `schema` (Optional[str]): Schema name (alias: `schema_`)
+  
+  **Pattern-based selection:**
+- `pattern` (Optional[str]): Wildcard (`*`, `?`) or regex pattern for table name matching
+- `pattern_type` (Optional[str]): Pattern type - `"wildcard"` or `"regex"` (default: `"wildcard"`)
+- `schema_pattern` (Optional[str]): Wildcard/regex pattern for schema names
+  
+  **Schema/database-level selection:**
+- `select_schema` (Optional[bool]): If `true`, profile all tables in specified schema(s)
+- `select_all_schemas` (Optional[bool]): If `true`, profile all schemas in database
+  
+  **Tag-based selection:**
+- `tags` (Optional[List[str]]): Tags that tables must have (AND logic)
+- `tags_any` (Optional[List[str]]): Tags where any match (OR logic)
+  
+  **Filters:**
+- `exclude_patterns` (Optional[List[str]]): Patterns to exclude from matches
+- `table_types` (Optional[List[str]]): Filter by table type: `"table"`, `"view"`, `"materialized_view"`, etc.
+- `min_rows` (Optional[int]): Only profile tables with at least N rows
+- `max_rows` (Optional[int]): Only profile tables with at most N rows
+- `required_columns` (Optional[List[str]]): Tables must have these columns
+- `modified_since_days` (Optional[int]): Only profile tables modified in last N days
+  
+  **Precedence:**
+- `override_priority` (Optional[int]): Higher priority overrides lower priority matches
+  (default: explicit=100, patterns=10, schema=5, database=1)
+  
+  **Existing fields:**
 - `partition` (Optional[PartitionConfig]): Partition configuration
 - `sampling` (Optional[SamplingConfig]): Sampling configuration
+
+**Note:** Either `table`, `pattern`, `select_schema`, or `select_all_schemas` must be specified.
 
 #### PartitionConfig
 

@@ -31,13 +31,26 @@ storage:
 profiling:
   # Tables to profile
   tables:
-    # Full table profiling (no partition or sampling)
+    # Explicit table profiling (highest priority)
     - table: customers
       schema: public
     
-    # Full table profiling
+    # Explicit table profiling
     - table: products
       schema: public
+    
+    # Example: Pattern-based selection (matches all tables starting with "user_")
+    # - pattern: "user_*"
+    #   schema: public
+    #   # Uncomment to enable pattern matching
+    
+    # Example: Schema-based selection (all tables in schema)
+    # - select_schema: true
+    #   schema: analytics
+    #   exclude_patterns:
+    #     - "*_temp"
+    #     - "*_backup"
+    #   # Uncomment to profile all tables in analytics schema
     
     # Example with partition-aware profiling (commented out)
     - table: orders

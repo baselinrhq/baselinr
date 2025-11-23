@@ -154,7 +154,7 @@ class SnowflakeChangeDetector(ChangeDetector):
         params = {
             "database": self.connector.config.database,
             "schema": table.schema_,
-            "table": table.table.upper(),
+            "table": table.table.upper() if table.table else "",
         }
         rows = self._run_query(self.TABLE_SQL, params)
         if not rows:

@@ -8,6 +8,18 @@ from .schema_detector import (
     SchemaChangeDetector,
     SchemaRegistry,
 )
+from .table_matcher import RegexValidator, TableMatcher
+from .tag_metadata import (
+    BigQueryTagProvider,
+    DBTTagProvider,
+    MySQLTagProvider,
+    PostgresTagProvider,
+    RedshiftTagProvider,
+    SnowflakeTagProvider,
+    SQLiteTagProvider,
+    TagMetadataProvider,
+    TagResolver,
+)
 
 __all__ = [
     "ProfileEngine",
@@ -16,4 +28,15 @@ __all__ = [
     "SchemaRegistry",
     "SchemaChangeDetector",
     "ColumnRenamer",
+    "TableMatcher",
+    "RegexValidator",
+    "TagMetadataProvider",
+    "TagResolver",
+    "SnowflakeTagProvider",
+    "BigQueryTagProvider",
+    "PostgresTagProvider",
+    "MySQLTagProvider",
+    "RedshiftTagProvider",
+    "SQLiteTagProvider",
+    "DBTTagProvider",
 ]
