@@ -83,11 +83,47 @@ class IncrementalPlanner:
             config.source.type, self.connector, incremental_cfg
         )
 
-    def get_tables_to_run(self, current_time: Optional[datetime] = None) -> IncrementalPlan:
-        """Return the plan for the current tick."""
+    def get_tables_to_run(
+        self,
+        current_time: Optional[datetime] = None,
+        expanded_patterns: Optional[List[TablePattern]] = None,
+    ) -> IncrementalPlan:
+        """
+        Return the plan for the current tick.
+
+        Args:
+            current_time: Optional current time for planning
+            expanded_patterns: Optional expanded table patterns
+                (uses config.profiling.tables if not provided)
+
+        Returns:
+            IncrementalPlan with table run decisions
+        """
         now = current_time or datetime.now(timezone.utc)
         decisions: List[TableRunDecision] = []
-        for table_pattern in self.config.profiling.tables:
+
+        # Use expanded patterns if provided, otherwise use config tables
+        if expanded_patterns is not None:
+            tables_to_process = expanded_patterns
+            logger.debug(f"Using {len(expanded_patterns)} expanded pattern(s) from plan builder")
+        else:
+            tables_to_process = self.config.profiling.tables
+            logger.debug(
+                f"Using {len(tables_to_process)} pattern(s) from config "
+                "(no expanded patterns provided)"
+            )
+
+        # Validate all patterns have table names before processing
+        invalid_patterns = [p for p in tables_to_process if p.table is None]
+        if invalid_patterns:
+            logger.error(
+                f"Found {len(invalid_patterns)} pattern(s) without table names: "
+                f"{invalid_patterns}. These should have been expanded. "
+                "Skipping invalid patterns."
+            )
+            tables_to_process = [p for p in tables_to_process if p.table is not None]
+
+        for table_pattern in tables_to_process:
             decision = self._decide_for_table(table_pattern, now)
             decisions.append(decision)
         plan = IncrementalPlan(
@@ -98,6 +134,10 @@ class IncrementalPlanner:
         return plan
 
     def _decide_for_table(self, table: TablePattern, now: datetime) -> TableRunDecision:
+        # Table name must be set (should be after pattern expansion)
+        # Check this even when incremental is disabled to catch expansion issues early
+        assert table.table is not None, "Table name must be set for incremental planning"
+
         incremental_cfg = self.config.incremental
         if not incremental_cfg.enabled:
             return TableRunDecision(table=table, action="full", reason="incremental_disabled")
@@ -235,6 +275,7 @@ class IncrementalPlanner:
         snapshot_id: Optional[str] = None,
         action: str = "skip",
     ):
+        assert table.table is not None, "Table name must be set"
         logger.info("Skipping %s.%s: %s", table.schema_ or "public", table.table, reason)
         self.state_store.record_decision(
             table_name=table.table,
@@ -245,6 +286,7 @@ class IncrementalPlanner:
             metadata={"previous_snapshot": state.snapshot_id if state else None},
         )
         if self.event_bus:
+            assert table.table is not None, "Table name must be set"
             self.event_bus.emit(
                 ProfilingSkipped.create(
                     table=table.table,

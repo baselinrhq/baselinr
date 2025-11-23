@@ -122,10 +122,34 @@ storage:
 
 profiling:
   tables:
+    # Explicit table selection (highest priority)
     - table: customers
-      sample_ratio: 1.0
-    - table: orders
-      sample_ratio: 1.0
+      schema: public
+    
+    # Pattern-based selection (wildcard)
+    - pattern: "user_*"
+      schema: public
+      # Matches: user_profile, user_settings, user_preferences, etc.
+    
+    # Schema-based selection (all tables in schema)
+    - select_schema: true
+      schema: analytics
+      exclude_patterns:
+        - "*_temp"
+        - "*_backup"
+    
+    # Regex pattern matching
+    - pattern: "^(customer|order)_\\d{4}$"
+      pattern_type: regex
+      schema: public
+      # Matches: customer_2024, order_2024, etc.
+  
+  # Discovery options for pattern-based selection
+  discovery_options:
+    max_tables_per_pattern: 1000
+    max_schemas_per_database: 100
+    cache_discovery: true
+    validate_regex: true
   
   default_sample_ratio: 1.0
   compute_histograms: true
@@ -737,10 +761,57 @@ source:
 
 ```yaml
 profiling:
+  # Table discovery and pattern-based selection
+  table_discovery: true  # Enable automatic table discovery
+  discovery_options:
+    max_tables_per_pattern: 1000  # Limit matches per pattern
+    max_schemas_per_database: 100  # Limit schemas to scan
+    validate_regex: true  # Validate regex patterns at config load time
+    tag_provider: auto  # Tag metadata provider: auto, snowflake, bigquery, postgres, mysql, redshift, sqlite, dbt
+  
   tables:
+    # Explicit table selection (highest priority)
     - table: table_name
       schema: schema_name  # Optional
-      sample_ratio: 1.0    # 0.0 to 1.0
+    
+    # Pattern-based selection (wildcard)
+    - pattern: "user_*"
+      schema: public
+      # Matches all tables starting with "user_"
+    
+    # Regex pattern matching
+    - pattern: "^(customer|order)_\\d{4}$"
+      pattern_type: regex
+      schema: public
+      # Matches: customer_2024, order_2024, etc.
+    
+    # Schema-based selection (all tables in schema)
+    - select_schema: true
+      schema: analytics
+      exclude_patterns:
+        - "*_temp"
+        - "*_backup"
+    
+    # Database-level selection (all schemas)
+    - select_all_schemas: true
+      exclude_schemas:
+        - "information_schema"
+        - "pg_catalog"
+    
+    # Tag-based selection
+    - tags:
+        - "data_quality:critical"
+        - "domain:customer"
+      schema: public
+    
+    # Precedence override (explicit table overrides pattern)
+    - pattern: "events_*"
+      schema: analytics
+      override_priority: 10
+    
+    - table: events_critical
+      schema: analytics
+      override_priority: 100  # Higher priority overrides pattern
   
   default_sample_ratio: 1.0
   max_distinct_values: 1000

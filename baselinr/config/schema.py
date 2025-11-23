@@ -9,7 +9,7 @@ import os
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class DatabaseType(str, Enum):
@@ -110,14 +110,165 @@ class SamplingConfig(BaseModel):
 
 
 class TablePattern(BaseModel):
-    """Table selection pattern."""
+    """Table selection pattern.
+
+    Supports multiple selection methods:
+    - Explicit table name (table field)
+    - Pattern-based (wildcard/regex via pattern field)
+    - Schema-based (select_schema field)
+    - Database-level (select_all_schemas field)
+    - Tag-based (tags/tags_any fields)
+
+    All methods can be combined with additional filters.
+    """
 
     schema_: Optional[str] = Field(None, alias="schema")
-    table: str
+    table: Optional[str] = Field(
+        None, description="Explicit table name (required if pattern not used)"
+    )
+
+    # Pattern-based selection
+    pattern: Optional[str] = Field(
+        None, description="Wildcard (*, ?) or regex pattern for table name matching"
+    )
+    pattern_type: Optional[str] = Field(
+        None, description="Pattern type: 'wildcard' or 'regex' (default: wildcard)"
+    )
+    schema_pattern: Optional[str] = Field(
+        None, description="Wildcard/regex pattern for schema names"
+    )
+
+    # Schema/database-level selection
+    select_all_schemas: Optional[bool] = Field(
+        None, description="If True, profile all schemas in database"
+    )
+    select_schema: Optional[bool] = Field(
+        None, description="If True, profile all tables in specified schema(s)"
+    )
+
+    # Tag-based selection
+    tags: Optional[List[str]] = Field(None, description="Tags that tables must have (AND logic)")
+    tags_any: Optional[List[str]] = Field(None, description="Tags where any match (OR logic)")
+
+    # Filters
+    exclude_patterns: Optional[List[str]] = Field(
+        None, description="Patterns to exclude from matches"
+    )
+    table_types: Optional[List[str]] = Field(
+        None, description="Filter by table type: 'table', 'view', 'materialized_view', etc."
+    )
+    min_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at least N rows"
+    )
+    max_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at most N rows"
+    )
+    required_columns: Optional[List[str]] = Field(
+        None, description="Tables must have these columns"
+    )
+    modified_since_days: Optional[int] = Field(
+        None, gt=0, description="Only profile tables modified in last N days"
+    )
+
+    # Precedence override
+    override_priority: Optional[int] = Field(
+        None,
+        description=(
+            "Higher priority overrides lower priority matches "
+            "(default: explicit=100, patterns=10, schema=5, database=1)"
+        ),
+    )
+
+    # Existing fields
     partition: Optional[PartitionConfig] = None
     sampling: Optional[SamplingConfig] = None
 
     model_config = {"populate_by_name": True}
+
+    @field_validator("pattern_type")
+    @classmethod
+    def validate_pattern_type(cls, v: Optional[str]) -> Optional[str]:
+        """Validate pattern type."""
+        if v is not None and v not in ["wildcard", "regex"]:
+            raise ValueError("pattern_type must be 'wildcard' or 'regex'")
+        return v
+
+    @model_validator(mode="after")
+    def validate_table_or_pattern(self):
+        """Ensure either table or pattern/select fields are provided."""
+        has_table = self.table is not None
+        has_pattern = self.pattern is not None
+        has_select_schema = self.select_schema is True
+        has_select_all_schemas = self.select_all_schemas is True
+
+        if not (has_table or has_pattern or has_select_schema or has_select_all_schemas):
+            raise ValueError(
+                "TablePattern must specify either 'table', 'pattern', "
+                "'select_schema', or 'select_all_schemas'"
+            )
+        return self
+
+
+class DiscoveryOptionsConfig(BaseModel):
+    """Configuration options for table discovery."""
+
+    include_schemas: Optional[List[str]] = Field(None, description="Only discover in these schemas")
+    exclude_schemas: Optional[List[str]] = Field(
+        None, description="Exclude these schemas from discovery"
+    )
+    include_table_types: Optional[List[str]] = Field(
+        None, description="Default table types to include"
+    )
+    exclude_table_types: Optional[List[str]] = Field(
+        None, description="Default table types to exclude"
+    )
+    cache_discovery: bool = Field(True, description="Cache discovered tables for performance")
+    cache_ttl_seconds: int = Field(300, gt=0, description="TTL for discovery cache in seconds")
+    max_tables_per_pattern: int = Field(1000, gt=0, description="Max tables to match per pattern")
+    max_schemas_per_database: int = Field(100, gt=0, description="Max schemas to scan per database")
+    discovery_limit_action: str = Field(
+        "warn", description="What to do when limit hit: 'warn', 'error', or 'skip'"
+    )
+    validate_regex: bool = Field(True, description="Validate regex patterns at config load time")
+    tag_provider: Optional[str] = Field(
+        None,
+        description=(
+            "Tag metadata provider: 'auto', 'snowflake', 'bigquery', "
+            "'postgres', 'mysql', 'redshift', 'sqlite', 'dbt', or None"
+        ),
+    )
+    dbt_manifest_path: Optional[str] = Field(
+        None, description="Path to dbt manifest.json for dbt tag provider"
+    )
+
+    @field_validator("discovery_limit_action")
+    @classmethod
+    def validate_limit_action(cls, v: str) -> str:
+        """Validate discovery limit action."""
+        valid_actions = ["warn", "error", "skip"]
+        if v not in valid_actions:
+            raise ValueError(f"discovery_limit_action must be one of {valid_actions}")
+        return v
+
+    @field_validator("tag_provider")
+    @classmethod
+    def validate_tag_provider(cls, v: Optional[str]) -> Optional[str]:
+        """Validate tag provider."""
+        if v is not None:
+            valid_providers = [
+                "auto",
+                "snowflake",
+                "bigquery",
+                "postgres",
+                "mysql",
+                "redshift",
+                "sqlite",
+                "dbt",
+                "external",
+            ]
+            if v not in valid_providers:
+                raise ValueError(f"tag_provider must be one of {valid_providers} or None")
+        return v
 
 
 class ProfilingConfig(BaseModel):
@@ -144,6 +295,15 @@ class ProfilingConfig(BaseModel):
         ]
     )
     default_sample_ratio: float = Field(1.0, gt=0.0, le=1.0)
+
+    # Table discovery options
+    table_discovery: bool = Field(
+        True, description="Enable automatic table discovery (default: True when patterns used)"
+    )
+    discovery_options: DiscoveryOptionsConfig = Field(
+        default_factory=lambda: DiscoveryOptionsConfig(),  # type: ignore[call-arg]
+        description="Options for table discovery",
+    )
 
     # Enrichment options
     enable_enrichment: bool = Field(True, description="Enable profiling enrichment features")

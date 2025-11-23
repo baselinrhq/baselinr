@@ -117,7 +117,7 @@ class BaselinrClient:
 
         Args:
             table_patterns: Optional list of table patterns to plan for
-                          (uses config if not provided)
+                          (uses config if not provided). Patterns will be expanded.
             verbose: Whether to include verbose details in plan
 
         Returns:
@@ -130,15 +130,20 @@ class BaselinrClient:
         from .planner import PlanBuilder
 
         builder = PlanBuilder(self._config)
-        plan = builder.build_plan()
 
         if table_patterns:
-            # Filter plan to only include specified tables
-            # This is a simplified approach - in practice, you'd want to rebuild the plan
-            # with the filtered table patterns. For now, we'll return the full plan.
-            logger.warning(
-                "table_patterns parameter is not yet fully implemented, returning full plan"
-            )
+            # Expand custom patterns first
+            expanded_patterns = builder.expand_table_patterns(table_patterns)
+            # Build plan with expanded patterns
+            # Create a temporary config copy with expanded patterns
+            from copy import deepcopy
+
+            temp_config = deepcopy(self._config)
+            temp_config.profiling.tables = expanded_patterns
+            temp_builder = PlanBuilder(temp_config)
+            plan = temp_builder.build_plan()
+        else:
+            plan = builder.build_plan()
 
         return plan
 
@@ -153,7 +158,7 @@ class BaselinrClient:
 
         Args:
             table_patterns: Optional list of table patterns to profile
-                          (uses config if not provided)
+                          (uses config if not provided). Patterns will be expanded.
             dry_run: If True, profile but don't write to storage
             progress_callback: Optional callback function(current, total, table_name)
                              called when starting each table
@@ -166,8 +171,18 @@ class BaselinrClient:
             >>> for result in results:
             ...     print(f"Profiled {result.dataset_name}: {len(result.columns)} columns")
         """
+        from .planner import PlanBuilder
         from .profiling.core import ProfileEngine
         from .storage.writer import ResultWriter
+
+        # Expand patterns if provided
+        if table_patterns:
+            builder = PlanBuilder(self._config)
+            expanded_patterns = builder.expand_table_patterns(table_patterns)
+            if not expanded_patterns:
+                logger.warning("No tables found matching provided patterns")
+                return []
+            table_patterns = expanded_patterns
 
         # Create event bus
         event_bus = self._get_event_bus()

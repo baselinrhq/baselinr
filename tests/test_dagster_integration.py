@@ -168,3 +168,82 @@ def test_build_definitions_wires_assets(tmp_path):
     assert sensor_def is not None
 
     assert "baselinr" in defs.resources
+
+
+def test_asset_factory_with_pattern_based_selection(tmp_path, monkeypatch):
+    """Test that create_profiling_assets works with pattern-based selection (select_schema)."""
+    if not DAGSTER_TESTS_AVAILABLE:
+        pytest.skip("Dagster integration not available")
+    try:
+        from dagster import AssetKey
+    except ImportError:
+        pytest.skip("Dagster not installed")
+
+    # Create config with select_schema pattern (the bug scenario)
+    config = {
+        "environment": "test",
+        "source": {
+            "type": "sqlite",
+            "database": "source.db",
+            "filepath": str(tmp_path / "source.db"),
+        },
+        "storage": {
+            "connection": {
+                "type": "sqlite",
+                "database": "results.db",
+                "filepath": str(tmp_path / "results.db"),
+            },
+            "results_table": "baselinr_results",
+            "runs_table": "baselinr_runs",
+        },
+        "profiling": {
+            "tables": [
+                {"schema": "public", "select_schema": True}
+            ],
+            "metrics": ["count", "null_count"],
+            "compute_histograms": False,
+        },
+    }
+    config_path = tmp_path / "config_patterns.yml"
+    config_path.write_text(yaml.safe_dump(config))
+
+    # Mock connector to return tables when list_tables is called
+    def mock_list_tables(self, schema=None):
+        # Return mock tables for the public schema
+        if schema == "public" or schema is None:
+            return ["users", "orders", "products"]
+        return []
+
+    def mock_list_schemas(self):
+        return ["public"]
+
+    # Mock the connector methods
+    monkeypatch.setattr(
+        "baselinr.connectors.sqlite.SQLiteConnector.list_tables", mock_list_tables
+    )
+    monkeypatch.setattr(
+        "baselinr.connectors.sqlite.SQLiteConnector.list_schemas", mock_list_schemas
+    )
+    monkeypatch.setattr(
+        "baselinr.connectors.base.BaseConnector.list_tables", mock_list_tables
+    )
+    monkeypatch.setattr(
+        "baselinr.connectors.base.BaseConnector.list_schemas", mock_list_schemas
+    )
+
+    # This should not raise "Table name must be set" error
+    # The bug would have caused an AssertionError here
+    assets = create_profiling_assets(str(config_path), asset_name_prefix="test")
+
+    # Should have created assets for each expanded table (users, orders, products) plus summary
+    assert len(assets) == 4  # 3 table assets + 1 summary asset
+
+    # Verify asset keys exist for the expanded tables
+    all_keys = set()
+    for asset_def in assets:
+        all_keys.update(key.to_user_string() for key in asset_def.keys)
+
+    assert "test_users" in all_keys
+    assert "test_orders" in all_keys
+    assert "test_products" in all_keys
+    assert "test_summary" in all_keys
