@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Partition-Aware Profiling</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (layered organic shapes) -->
+      <path d="M0,0 Q272,80 544,40 Q816,0 1088,60 L1088,200 Q900,150 700,180 T300,160 Q150,140 0,200 Z" fill="#e8f5e9" opacity="0.7"/>
+      <path d="M0,150 Q300,200 600,150 Q900,100 1088,180 L1088,350 Q800,300 500,350 T0,320 Z" fill="#c8e6c9" opacity="0.5"/>
+      <path d="M200,0 Q400,120 600,80 Q800,40 1000,100" fill="none" stroke="#a5d6a7" stroke-width="80" opacity="0.4" stroke-linecap="round"/>
+      
+      <!-- Ground (smooth layered curves) -->
+      <path d="M0,550 Q136,600 272,550 Q408,500 544,580 Q680,500 816,550 Q952,600 1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      <path d="M0,570 Q272,620 544,570 T1088,570" fill="none" stroke="#4a4a4a" stroke-width="20" opacity="0.3"/>
+      
+      <!-- Large Partition Blocks (Center, prominent) -->
+      <g id="Partitions" transform="translate(200 150)">
+        <!-- Partition 1 -->
+        <rect x="0" y="0" width="180" height="250" rx="8" fill="#6c63ff" stroke="#fff" stroke-width="4"/>
+        <text x="90" y="130" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">2024-01</text>
+        <text x="90" y="160" font-family="Arial, sans-serif" font-size="18" fill="#fff" text-anchor="middle" opacity="0.9">Latest</text>
+        
+        <!-- Partition 2 -->
+        <rect x="200" y="0" width="180" height="250" rx="8" fill="#3ecc5f" stroke="#fff" stroke-width="4"/>
+        <text x="290" y="130" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">2024-02</text>
+        <text x="290" y="160" font-family="Arial, sans-serif" font-size="18" fill="#fff" text-anchor="middle" opacity="0.9">Recent</text>
+        
+        <!-- Partition 3 -->
+        <rect x="400" y="0" width="180" height="250" rx="8" fill="#ff6584" stroke="#fff" stroke-width="4"/>
+        <text x="490" y="130" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">2024-03</text>
+        <text x="490" y="160" font-family="Arial, sans-serif" font-size="18" fill="#fff" text-anchor="middle" opacity="0.9">Sample</text>
+        
+        <!-- Partition 4 -->
+        <rect x="600" y="0" width="180" height="250" rx="8" fill="#ffff50" stroke="#fff" stroke-width="4"/>
+        <text x="690" y="130" font-family="Arial, sans-serif" font-size="28" fill="#3f3d56" font-weight="bold" text-anchor="middle">2024-04</text>
+        <text x="690" y="160" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" text-anchor="middle" opacity="0.9">More...</text>
+      </g>
+      
+      <!-- Title (larger) -->
+      <text x="544" y="480" font-family="Arial, sans-serif" font-size="32" fill="#3f3d56" font-weight="bold" text-anchor="middle">Partition-Aware Profiling</text>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+      <circle id="Ellipse_13" data-name="Ellipse 13" cx="3" cy="3" r="3" transform="translate(600 220.962)" fill="#ff6584" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

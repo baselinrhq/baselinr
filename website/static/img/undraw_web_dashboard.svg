@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Web Dashboard</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (gradient circles) -->
+      <circle cx="200" cy="150" r="200" fill="#e3f2fd" opacity="0.6"/>
+      <circle cx="800" cy="200" r="180" fill="#f3e5f5" opacity="0.5"/>
+      <circle cx="500" cy="100" r="150" fill="#fff3e0" opacity="0.4"/>
+      
+      <!-- Ground (curved top edge) -->
+      <path d="M0,550 Q272,520 544,550 T1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      
+      <!-- Large Browser Window (Center, prominent) -->
+      <g id="Browser" transform="translate(150 120)">
+        <!-- Browser frame -->
+        <rect x="0" y="0" width="788" height="500" rx="10" fill="#fff" stroke="#3f3d56" stroke-width="4" opacity="0.95"/>
+        
+        <!-- Browser bar -->
+        <rect x="0" y="0" width="788" height="60" rx="10" fill="#3f3d56"/>
+        <circle cx="25" cy="30" r="10" fill="#ff6584"/>
+        <circle cx="55" cy="30" r="10" fill="#ffff50"/>
+        <circle cx="85" cy="30" r="10" fill="#3ecc5f"/>
+        <text x="120" y="38" font-family="Arial, sans-serif" font-size="18" fill="#fff">localhost:8000</text>
+        
+        <!-- Dashboard content -->
+        <rect x="60" y="90" width="668" height="50" rx="8" fill="#6c63ff"/>
+        <text x="394" y="125" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold" text-anchor="middle">Data Profiling Dashboard</text>
+        
+        <!-- Chart area (left) -->
+        <rect x="60" y="160" width="320" height="300" rx="8" fill="#f8f8f8" stroke="#3f3d56" stroke-width="2"/>
+        <text x="220" y="190" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" font-weight="bold" text-anchor="middle">Metrics Overview</text>
+        <!-- Simple bar chart representation -->
+        <rect x="100" y="230" width="60" height="180" fill="#6c63ff" rx="4"/>
+        <rect x="180" y="260" width="60" height="150" fill="#3ecc5f" rx="4"/>
+        <rect x="260" y="280" width="60" height="130" fill="#ff6584" rx="4"/>
+        
+        <!-- Stats panel (right) -->
+        <rect x="400" y="160" width="328" height="300" rx="8" fill="#f8f8f8" stroke="#3f3d56" stroke-width="2"/>
+        <text x="564" y="190" font-family="Arial, sans-serif" font-size="22" fill="#3f3d56" font-weight="bold" text-anchor="middle">Statistics</text>
+        <!-- Stats items -->
+        <rect x="430" y="220" width="268" height="50" rx="6" fill="#3ecc5f" opacity="0.15" stroke="#3ecc5f" stroke-width="2"/>
+        <text x="564" y="245" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" font-weight="bold" text-anchor="middle">Quality Score: 95%</text>
+        <rect x="430" y="290" width="268" height="50" rx="6" fill="#6c63ff" opacity="0.15" stroke="#6c63ff" stroke-width="2"/>
+        <text x="564" y="315" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" font-weight="bold" text-anchor="middle">Tables Profiled: 42</text>
+        <rect x="430" y="360" width="268" height="50" rx="6" fill="#ff6584" opacity="0.15" stroke="#ff6584" stroke-width="2"/>
+        <text x="564" y="385" font-family="Arial, sans-serif" font-size="18" fill="#3f3d56" font-weight="bold" text-anchor="middle">Drift Events: 2</text>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

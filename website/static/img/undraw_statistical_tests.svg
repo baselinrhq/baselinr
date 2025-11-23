@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Advanced Statistical Tests</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background blob (unique wavy pattern) -->
+      <path id="Path_bg" data-name="Path bg" d="M950,400c-20,60-50,100-80,130-40,40-90,50-130,70a200,200,0,0,1-30,15c-60,20-120,15-170,5a700,700,0,0,0-110-15q-15-1-30-1c-20,0-300,5-370-140-20-35-30-80-35-130-12-150,50-250,140-310,160-120,380-115,540,8C880,280,980,400,950,400Z" transform="translate(-56 -106.019)" fill="#e8f4f8"/>
+      
+      <!-- Ground (wavy line instead of ellipse) -->
+      <path d="M0,583.962 Q272,600 544,583.962 T1088,583.962" fill="none" stroke="#3f3d56" stroke-width="60" stroke-linecap="round"/>
+      
+      <!-- Large Statistical Chart (Center, prominent) -->
+      <g id="Statistical_Chart" transform="translate(250 120)">
+        <!-- Chart background -->
+        <rect x="0" y="0" width="588" height="450" rx="12" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="588" height="70" rx="12" fill="#3f3d56"/>
+        
+        <!-- Chart title -->
+        <text x="294" y="45" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">Statistical Tests</text>
+        
+        <!-- Chart bars (larger, more visible) -->
+        <g transform="translate(60 120)">
+          <!-- KS Test -->
+          <rect x="0" y="0" width="100" height="240" fill="#6c63ff" rx="8"/>
+          <text x="50" y="270" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" text-anchor="middle" font-weight="bold">KS</text>
+          <text x="50" y="290" font-family="Arial, sans-serif" font-size="16" fill="#888" text-anchor="middle">Test</text>
+          
+          <!-- PSI -->
+          <rect x="120" y="20" width="100" height="220" fill="#3ecc5f" rx="8"/>
+          <text x="170" y="270" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" text-anchor="middle" font-weight="bold">PSI</text>
+          <text x="170" y="290" font-family="Arial, sans-serif" font-size="16" fill="#888" text-anchor="middle">Index</text>
+          
+          <!-- Chi-square -->
+          <rect x="240" y="40" width="100" height="200" fill="#ff6584" rx="8"/>
+          <text x="290" y="270" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" text-anchor="middle" font-weight="bold">χ²</text>
+          <text x="290" y="290" font-family="Arial, sans-serif" font-size="16" fill="#888" text-anchor="middle">Chi-Square</text>
+          
+          <!-- Entropy -->
+          <rect x="360" y="60" width="100" height="180" fill="#ffff50" rx="8"/>
+          <text x="410" y="270" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" text-anchor="middle" font-weight="bold">H</text>
+          <text x="410" y="290" font-family="Arial, sans-serif" font-size="16" fill="#888" text-anchor="middle">Entropy</text>
+        </g>
+        
+        <!-- Y-axis label -->
+        <text x="30" y="300" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" transform="rotate(-90 30 300)" font-weight="bold">Score</text>
+        
+        <!-- Grid lines -->
+        <line x1="60" y1="200" x2="548" y2="200" stroke="#e0e0e0" stroke-width="1"/>
+        <line x1="60" y1="280" x2="548" y2="280" stroke="#e0e0e0" stroke-width="1"/>
+        <line x1="60" y1="360" x2="548" y2="360" stroke="#e0e0e0" stroke-width="1"/>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#6c63ff" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+      <circle id="Ellipse_13" data-name="Ellipse 13" cx="3" cy="3" r="3" transform="translate(600 220.962)" fill="#ff6584" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

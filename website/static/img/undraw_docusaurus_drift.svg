@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Drift Detection</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background - Soft gradient circles (different from profiling blob) -->
+      <circle cx="200" cy="150" r="180" fill="#6c63ff" opacity="0.08"/>
+      <circle cx="800" cy="200" r="220" fill="#3ecc5f" opacity="0.08"/>
+      <circle cx="550" cy="350" r="200" fill="#ff6584" opacity="0.08"/>
+      <circle cx="300" cy="400" r="150" fill="#ffff50" opacity="0.08"/>
+      <circle cx="900" cy="450" r="180" fill="#6c63ff" opacity="0.08"/>
+      
+      <!-- Subtle overlay gradient -->
+      <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#f2f2f2;stop-opacity:1" />
+          <stop offset="100%" style="stop-color:#e8e8e8;stop-opacity:1" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="1088" height="687.962" fill="url(#bgGradient)"/>
+      
+      <!-- Ground - Soft wavy line (different from profiling ellipse) -->
+      <path id="Path_ground" data-name="Path ground" d="M0,583.962 Q272,600 544,590 T1088,595 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      <path id="Path_ground_shadow" data-name="Path ground shadow" d="M0,583.962 Q272,600 544,590 T1088,595 L1088,610 Q816,600 544,610 T0,610 Z" fill="#3f3d56" opacity="0.3"/>
+      
+      <!-- Large Time Series Chart (Center, much larger) -->
+      <g id="Drift_Chart" transform="translate(200 100)">
+        <rect x="0" y="0" width="700" height="450" rx="15" fill="#fff" stroke="#3f3d56" stroke-width="3"/>
+        <rect x="0" y="0" width="700" height="70" rx="15" fill="#3f3d56"/>
+        <text x="350" y="45" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">Drift Monitoring Dashboard</text>
+        
+        <!-- Chart area background -->
+        <rect x="50" y="100" width="600" height="320" rx="8" fill="#f2f2f2" opacity="0.5"/>
+        
+        <!-- Grid lines -->
+        <line x1="50" y1="200" x2="650" y2="200" stroke="#3f3d56" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+        <line x1="50" y1="250" x2="650" y2="250" stroke="#3f3d56" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+        <line x1="50" y1="300" x2="650" y2="300" stroke="#3f3d56" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+        <line x1="50" y1="350" x2="650" y2="350" stroke="#3f3d56" stroke-width="1" opacity="0.2" stroke-dasharray="5,5"/>
+        
+        <!-- Time series line (larger, thicker) -->
+        <polyline points="80,320 150,300 220,290 290,280 360,270 430,200 500,180 570,160 620,150" 
+                  fill="none" stroke="#3ecc5f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        
+        <!-- Normal data points (larger circles) -->
+        <circle cx="80" cy="320" r="6" fill="#3ecc5f"/>
+        <circle cx="150" cy="300" r="6" fill="#3ecc5f"/>
+        <circle cx="220" cy="290" r="6" fill="#3ecc5f"/>
+        <circle cx="290" cy="280" r="6" fill="#3ecc5f"/>
+        <circle cx="360" cy="270" r="6" fill="#3ecc5f"/>
+        
+        <!-- Drift point (where it changes - much larger and more prominent) -->
+        <circle cx="430" cy="200" r="25" fill="#ff6584" stroke="#fff" stroke-width="5"/>
+        <circle cx="430" cy="200" r="40" fill="#ff6584" opacity="0.3"/>
+        <circle cx="430" cy="200" r="60" fill="#ff6584" opacity="0.15"/>
+        
+        <!-- Drifted data points -->
+        <circle cx="500" cy="180" r="6" fill="#ff6584"/>
+        <circle cx="570" cy="160" r="6" fill="#ff6584"/>
+        <circle cx="620" cy="150" r="6" fill="#ff6584"/>
+        
+        <!-- Drift line (after detection) -->
+        <polyline points="430,200 500,180 570,160 620,150" 
+                  fill="none" stroke="#ff6584" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="10,5"/>
+        
+        <!-- Large alert indicator -->
+        <g transform="translate(480 120)">
+          <circle cx="0" cy="0" r="35" fill="#ff6584"/>
+          <text x="0" y="10" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">!</text>
+        </g>
+        
+        <!-- Alert text -->
+        <text x="480" y="180" font-family="Arial, sans-serif" font-size="24" fill="#ff6584" font-weight="bold" text-anchor="middle">Drift Detected</text>
+        
+        <!-- Labels (larger) -->
+        <text x="350" y="410" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" font-weight="bold" text-anchor="middle">Time</text>
+        <text x="20" y="260" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" font-weight="bold" transform="rotate(-90 20 260)">Value</text>
+        
+        <!-- Legend -->
+        <g transform="translate(450 360)">
+          <line x1="0" y1="0" x2="40" y2="0" stroke="#3ecc5f" stroke-width="4" stroke-linecap="round"/>
+          <text x="50" y="5" font-family="Arial, sans-serif" font-size="16" fill="#3f3d56">Normal</text>
+          
+          <line x1="120" y1="0" x2="160" y2="0" stroke="#ff6584" stroke-width="4" stroke-linecap="round" stroke-dasharray="10,5"/>
+          <text x="170" y="5" font-family="Arial, sans-serif" font-size="16" fill="#3f3d56">Drift</text>
+        </g>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#3ecc5f" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#ff6584" opacity="0.6"/>
+      <circle id="Ellipse_13" data-name="Ellipse 13" cx="3" cy="3" r="3" transform="translate(600 220.962)" fill="#6c63ff" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

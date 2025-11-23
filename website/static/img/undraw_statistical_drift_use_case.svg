@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="687.962" viewBox="0 0 1088 687.962">
+  <title>Statistical Drift Detection</title>
+  <g id="Group_12" data-name="Group 12" transform="translate(-57 -56)">
+    <g id="Group_11" data-name="Group 11" transform="translate(57 56)">
+      <!-- Background (ripple/radial pattern) -->
+      <circle cx="544" cy="200" r="400" fill="#f1f8e9" opacity="0.5"/>
+      <circle cx="544" cy="200" r="400" fill="none" stroke="#c5e1a5" stroke-width="2" opacity="0.3"/>
+      <circle cx="544" cy="200" r="300" fill="#dcedc8" opacity="0.4"/>
+      <circle cx="544" cy="200" r="300" fill="none" stroke="#aed581" stroke-width="2" opacity="0.25"/>
+      <circle cx="544" cy="200" r="200" fill="#c5e1a5" opacity="0.3"/>
+      <circle cx="544" cy="200" r="200" fill="none" stroke="#8bc34a" stroke-width="2" opacity="0.2"/>
+      <circle cx="300" cy="150" r="150" fill="#aed581" opacity="0.25"/>
+      <circle cx="800" cy="250" r="140" fill="#9ccc65" opacity="0.2"/>
+      <circle cx="400" cy="300" r="120" fill="#8bc34a" opacity="0.15"/>
+      
+      <!-- Ground (flowing wave) -->
+      <path d="M0,550 Q136,600 272,550 Q408,500 544,580 Q680,500 816,550 Q952,600 1088,550 L1088,687.962 L0,687.962 Z" fill="#3f3d56"/>
+      <path d="M0,570 Q272,620 544,570 T1088,570" fill="none" stroke="#4a4a4a" stroke-width="20" opacity="0.3"/>
+      
+      <!-- Large Drift Chart (Center, prominent) -->
+      <g id="Drift_Chart" transform="translate(200 120)">
+        <!-- Chart background -->
+        <rect x="0" y="0" width="688" height="450" rx="12" fill="#fff" stroke="#3f3d56" stroke-width="3" opacity="0.95"/>
+        <rect x="0" y="0" width="688" height="70" rx="12" fill="#3f3d56"/>
+        
+        <!-- Chart title -->
+        <text x="344" y="45" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">Statistical Drift Detection</text>
+        
+        <!-- Baseline distribution (normal, larger) -->
+        <g transform="translate(60 120)">
+          <text x="0" y="0" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" font-weight="bold">Baseline</text>
+          <rect x="0" y="20" width="240" height="120" rx="8" fill="#3ecc5f" opacity="0.3" stroke="#3ecc5f" stroke-width="2"/>
+          <ellipse cx="120" cy="80" rx="100" ry="50" fill="#3ecc5f" opacity="0.4"/>
+        </g>
+        
+        <!-- Drifted distribution (larger) -->
+        <g transform="translate(388 120)">
+          <text x="0" y="0" font-family="Arial, sans-serif" font-size="20" fill="#3f3d56" font-weight="bold">Current</text>
+          <rect x="0" y="20" width="240" height="120" rx="8" fill="#ff6584" opacity="0.3" stroke="#ff6584" stroke-width="2"/>
+          <ellipse cx="120" cy="80" rx="100" ry="50" fill="#ff6584" opacity="0.4" transform="translate(40 0)"/>
+        </g>
+        
+        <!-- Arrow showing drift (larger) -->
+        <path d="M360,200 L380,200" stroke="#3f3d56" stroke-width="5" marker-end="url(#driftArrow)"/>
+        <defs>
+          <marker id="driftArrow" markerWidth="12" markerHeight="12" refX="11" refY="4" orient="auto">
+            <polygon points="0 0, 12 4, 0 8" fill="#3f3d56"/>
+          </marker>
+        </defs>
+        
+        <!-- Alert (larger) -->
+        <g transform="translate(344 300)">
+          <circle cx="0" cy="0" r="40" fill="#ff6584"/>
+          <text x="0" y="12" font-family="Arial, sans-serif" font-size="32" fill="#fff" font-weight="bold" text-anchor="middle">⚠</text>
+          <text x="0" y="70" font-family="Arial, sans-serif" font-size="22" fill="#ff6584" font-weight="bold" text-anchor="middle">Drift Detected</text>
+        </g>
+      </g>
+      
+      <!-- Decorative elements (Docusaurus style) -->
+      <circle id="Ellipse_11" data-name="Ellipse 11" cx="4" cy="4" r="4" transform="translate(479 98.962)" fill="#ff6584" opacity="0.6"/>
+      <circle id="Ellipse_12" data-name="Ellipse 12" cx="3" cy="3" r="3" transform="translate(396 201.962)" fill="#3ecc5f" opacity="0.6"/>
+    </g>
+  </g>
+</svg>
