@@ -148,8 +148,18 @@ class DBTManifestParser:
 
         for node_id, node in nodes.items():
             if node.get("resource_type") == "model":
+                # Check both top-level tags and config.tags
                 tags = node.get("tags", [])
-                if isinstance(tags, list) and tag in tags:
+                config_tags = node.get("config", {}).get("tags", [])
+
+                # Combine both tag sources
+                all_tags = []
+                if isinstance(tags, list):
+                    all_tags.extend(tags)
+                if isinstance(config_tags, list):
+                    all_tags.extend(config_tags)
+
+                if tag in all_tags:
                     models.append(node)
 
         return models

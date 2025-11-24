@@ -130,6 +130,8 @@ jobs:
           cd /tmp/test_dbt_project
           export DBT_PROFILES_DIR=./profiles
           dbt compile --profiles-dir ./profiles
+          ls -la target/ || echo "target directory not found"
+          test -f target/manifest.json && echo "manifest.json exists" || echo "manifest.json NOT found"
 
       - name: Test dbt manifest parsing
         run: |
@@ -137,9 +139,11 @@ jobs:
           from baselinr.integrations.dbt import DBTManifestParser
           import os
           
-          parser = DBTManifestParser(
-              manifest_path='/tmp/test_dbt_project/target/manifest.json'
-          )
+          manifest_path = '/tmp/test_dbt_project/target/manifest.json'
+          if not os.path.exists(manifest_path):
+              raise FileNotFoundError(f'Manifest not found at {manifest_path}')
+          
+          parser = DBTManifestParser(manifest_path=manifest_path)
           manifest = parser.load_manifest()
           
           # Test resolving refs
