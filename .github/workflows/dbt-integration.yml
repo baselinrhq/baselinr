@@ -6,9 +6,6 @@ on:
       - main
   pull_request:
 
-permissions:
-  contents: read
-
 jobs:
   dbt-integration:
     runs-on: ubuntu-latest
@@ -244,6 +241,6 @@ jobs:
           "
 
       - name: Tear down Docker resources
-        if: always
+        if: always()
         run: docker compose -f docker/docker-compose.yml down -v
 
