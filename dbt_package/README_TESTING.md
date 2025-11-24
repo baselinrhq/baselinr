@@ -4,11 +4,25 @@ This guide helps you test the dbt integration locally before pushing to CI.
 
 ## Prerequisites
 
-1. PostgreSQL running (use docker-compose or your own instance)
-2. dbt-core installed: `pip install dbt-core dbt-postgres`
-3. baselinr installed in development mode: `pip install -e ..`
+1. baselinr installed in development mode: `pip install -e ..`
+2. (Optional) dbt-core installed: `pip install dbt-core dbt-postgres` - **Note**: dbt may have compatibility issues with Python 3.14. If you encounter errors, you can test with an existing manifest.json file instead (see below).
+3. (Optional) PostgreSQL running (only needed if compiling a new dbt project)
 
-## Quick Test
+## Quick Test (Using Existing Manifest)
+
+If you have an existing dbt project with a `manifest.json` file, you can test directly:
+
+```powershell
+cd dbt_package
+python test_manifest_only.py <path-to-your-dbt-project>/target/manifest.json
+```
+
+This will show you:
+- The exact structure of models in the manifest
+- Where tags are stored
+- Results of tag queries and ref resolution
+
+## Full Test (Create New dbt Project)
 
 1. **Set up test dbt project:**
    
@@ -45,6 +59,8 @@ This guide helps you test the dbt integration locally before pushing to CI.
    $env:DBT_PROFILES_DIR='.\profiles'
    dbt compile --profiles-dir .\profiles
    ```
+   
+   **Note**: If you get compatibility errors with Python 3.14, use an existing manifest.json instead (see "Quick Test" above).
 
 4. **Run the test script:**
    

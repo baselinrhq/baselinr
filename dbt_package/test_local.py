@@ -34,6 +34,8 @@ def main():
     if not manifest_path.exists():
         print(f"ERROR: Manifest not found at {manifest_path}", file=sys.stderr)
         print(f"Create a test dbt project and run 'dbt compile' first.", file=sys.stderr)
+        print(f"\nAlternatively, if you have a manifest.json from another dbt project, you can test with:")
+        print(f"  python test_local.py <path-to-manifest.json>", file=sys.stderr)
         sys.exit(1)
     
     print(f"Loading manifest from: {manifest_path}")
