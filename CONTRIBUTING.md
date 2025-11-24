@@ -323,7 +323,7 @@ python -m twine upload dist/*
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the Apache License 2.0 with Commercial Distribution Restriction (see LICENSE file).
+By contributing, you agree that your contributions will be licensed under the Apache License 2.0 (see LICENSE file).
 
 ---
 

@@ -494,5 +494,5 @@ ORDER BY metric_name;
 
 ## License
 
-Apache License 2.0 with Commercial Distribution Restriction - see LICENSE file
+Apache License 2.0 - see LICENSE file
 

@@ -14,7 +14,7 @@ version = "0.1.0"  # Fallback version for PEP 621 compliance (overridden by setu
 description = "Modern data profiling and drift detection framework"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "Apache License 2.0 with Commercial Distribution Restriction"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Baselinr Contributors", email = "hello@baselinr.io"}
 ]

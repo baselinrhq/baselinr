@@ -66,7 +66,7 @@ profile_mesh/
 ├── Makefile             # Development automation
 ├── .gitignore          # Git ignore patterns
 ├── .dockerignore       # Docker ignore patterns
-├── LICENSE             # Apache License 2.0 with Commercial Distribution Restriction
+├── LICENSE             # Apache License 2.0
 ├── README.md           # Main documentation
 ├── docs/getting-started/QUICKSTART.md       # Quick start guide
 ├── DEVELOPMENT.md      # Developer guide
@@ -306,7 +306,7 @@ All criteria from the specification are met:
 
 ## 📄 License
 
-Apache License 2.0 with Commercial Distribution Restriction - Free to use for commercial and internal business purposes. Commercial distribution requires explicit permission.
+Apache License 2.0 - see LICENSE file for details.
 
 ## 🤝 Contributing
 
