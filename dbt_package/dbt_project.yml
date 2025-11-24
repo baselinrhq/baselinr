@@ -1,0 +1,8 @@
+name: 'baselinr'
+version: '0.1.0'
+config-version: 2
+
+macro-paths: ["macros"]
+test-paths: ["tests"]
+model-paths: ["models"]
+

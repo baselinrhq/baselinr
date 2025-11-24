@@ -18,6 +18,14 @@ from .incremental import IncrementalPlan, IncrementalPlanner, TableRunDecision
 from .profiling.table_matcher import TableMatcher
 from .profiling.tag_metadata import TagResolver
 
+# Optional dbt integration
+try:
+    from .integrations.dbt import DBTManifestParser, DBTSelectorResolver
+
+    DBT_AVAILABLE = True
+except ImportError:
+    DBT_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -333,7 +341,10 @@ class PlanBuilder:
         schemas_to_search: List[Optional[str]] = self._get_schemas_to_search(pattern, database)
 
         # Expand based on pattern type
-        if pattern.select_all_schemas:
+        if pattern.dbt_ref or pattern.dbt_selector:
+            # dbt-based: resolve dbt refs/selectors
+            expanded.extend(self._expand_dbt_pattern(pattern, database))
+        elif pattern.select_all_schemas:
             # Database-level: all schemas
             expanded.extend(self._expand_database_level(pattern, connector, matcher, database))
         elif pattern.select_schema:
@@ -351,7 +362,7 @@ class PlanBuilder:
             logger.warning(
                 f"Pattern has no expansion method: {pattern}. "
                 "Pattern should have 'table', 'pattern', 'select_schema', "
-                "or 'select_all_schemas' set."
+                "'select_all_schemas', 'dbt_ref', or 'dbt_selector' set."
             )
             # Don't add pattern without table name - it will fail validation later
             # This ensures we don't pass invalid patterns to the profiling engine
@@ -834,6 +845,88 @@ class PlanBuilder:
         return self._incremental_planner.get_tables_to_run(
             current_time=current_time, expanded_patterns=expanded_patterns
         )
+
+    def _expand_dbt_pattern(
+        self, pattern: TablePattern, database: Optional[str] = None
+    ) -> List[TablePattern]:
+        """
+        Expand dbt-based pattern (dbt_ref or dbt_selector) into concrete TablePattern objects.
+
+        Args:
+            pattern: TablePattern with dbt_ref or dbt_selector set
+            database: Optional database name
+
+        Returns:
+            List of expanded TablePattern objects
+        """
+        if not DBT_AVAILABLE:
+            logger.error(
+                "dbt integration not available. Install dbt-core or ensure "
+                "baselinr.integrations.dbt module is importable."
+            )
+            return []
+
+        # Determine manifest path
+        manifest_path = pattern.dbt_manifest_path
+        project_path = pattern.dbt_project_path
+
+        if not manifest_path and not project_path:
+            logger.error(
+                "dbt pattern requires either dbt_manifest_path or dbt_project_path to be set"
+            )
+            return []
+
+        try:
+            # Create manifest parser
+            parser = DBTManifestParser(manifest_path=manifest_path, project_path=project_path)
+            parser.load_manifest()
+
+            expanded = []
+
+            if pattern.dbt_ref:
+                # Resolve single dbt ref
+                result = parser.resolve_ref(pattern.dbt_ref)
+                if result:
+                    schema, table = result
+                    table_pattern = pattern.model_copy(deep=True)
+                    table_pattern.table = table
+                    table_pattern.schema_ = schema
+                    table_pattern.dbt_ref = None  # Clear dbt fields
+                    table_pattern.dbt_selector = None
+                    table_pattern.dbt_project_path = None
+                    table_pattern.dbt_manifest_path = None
+                    if database is not None:
+                        table_pattern.database = database
+                    expanded.append(table_pattern)
+                else:
+                    logger.warning(f"Could not resolve dbt ref: {pattern.dbt_ref}")
+
+            elif pattern.dbt_selector:
+                # Resolve dbt selector
+                selector_resolver = DBTSelectorResolver(parser)
+                models = selector_resolver.resolve_selector(pattern.dbt_selector)
+
+                for model in models:
+                    schema, table = parser.model_to_table(model)
+                    table_pattern = pattern.model_copy(deep=True)
+                    table_pattern.table = table
+                    table_pattern.schema_ = schema
+                    table_pattern.dbt_ref = None  # Clear dbt fields
+                    table_pattern.dbt_selector = None
+                    table_pattern.dbt_project_path = None
+                    table_pattern.dbt_manifest_path = None
+                    if database is not None:
+                        table_pattern.database = database
+                    expanded.append(table_pattern)
+
+                if not expanded:
+                    logger.warning(f"dbt selector '{pattern.dbt_selector}' matched no models")
+
+            return expanded
+
+        except Exception as e:
+            logger.error(f"Failed to expand dbt pattern: {e}", exc_info=True)
+            return []
 
     def _table_key(self, pattern: TablePattern) -> str:
         """Get unique key for table pattern."""

@@ -95,6 +95,11 @@ Drift detection:
 - **`sensors.py`**: Plan-aware sensor helpers
 - **`__init__.py`**: `build_baselinr_definitions` entrypoint for Dagster repos
 
+### `integrations/dbt/`
+- **`manifest_parser.py`**: Parses dbt manifest.json and resolves model references
+- **`selector_resolver.py`**: Resolves dbt selector expressions to model lists
+- **`__init__.py`**: Exports DBTManifestParser and DBTSelectorResolver
+
 ## Development Setup
 
 ### 1. Clone and Install
@@ -113,6 +118,14 @@ make dev-setup
 This will:
 - Install dependencies
 - Start Docker containers (PostgreSQL + Dagster)
+
+**For dbt integration testing**, also install dbt:
+```bash
+pip install dbt-core dbt-postgres
+# Or: pip install -e ".[dbt]"
+```
+
+See `docs/development/DBT_TESTING.md` for detailed dbt testing instructions.
 
 ### 3. Run Tests
 
@@ -148,6 +161,7 @@ Test components together with a real database:
 Test complete scenarios:
 - CLI commands
 - Dagster asset execution
+- dbt integration (manifest parsing, selector resolution, pattern expansion)
 
 ## Adding a New Database Connector
 
@@ -230,6 +244,168 @@ profiling:
 
 ### Parallel Profiling
 Future enhancement: Profile multiple tables in parallel using thread/process pools.
+
+## Testing dbt Integration Locally
+
+### Prerequisites
+
+1. Install dbt-core:
+   ```bash
+   pip install dbt-core dbt-postgres  # or dbt-snowflake, dbt-bigquery, etc.
+   ```
+
+2. Create a test dbt project (or use an existing one)
+
+### Testing dbt Manifest Parsing
+
+```python
+from baselinr.integrations.dbt import DBTManifestParser
+
+# Load manifest from your dbt project
+parser = DBTManifestParser(
+    manifest_path="./dbt_project/target/manifest.json"
+)
+manifest = parser.load_manifest()
+
+# Resolve a dbt ref
+schema, table = parser.resolve_ref("customers")
+print(f"Resolved to: {schema}.{table}")
+
+# Get models by tag
+models = parser.get_models_by_tag("critical")
+print(f"Found {len(models)} models with 'critical' tag")
+```
+
+### Testing dbt Selector Resolution
+
+```python
+from baselinr.integrations.dbt import DBTManifestParser, DBTSelectorResolver
+
+parser = DBTManifestParser(manifest_path="./dbt_project/target/manifest.json")
+parser.load_manifest()
+
+resolver = DBTSelectorResolver(parser)
+
+# Resolve selector
+models = resolver.resolve_selector("tag:critical")
+print(f"Found {len(models)} models matching selector")
+```
+
+### Testing dbt Patterns in Config
+
+1. **Generate dbt manifest**:
+   ```bash
+   cd your_dbt_project
+   dbt compile  # or dbt run
+   ```
+
+2. **Create baselinr config with dbt patterns**:
+   ```yaml
+   profiling:
+     tables:
+       - dbt_ref: customers
+         dbt_manifest_path: ./dbt_project/target/manifest.json
+       - dbt_selector: tag:critical
+         dbt_manifest_path: ./dbt_project/target/manifest.json
+   ```
+
+3. **Test pattern expansion**:
+   ```python
+   from baselinr import BaselinrClient
+   
+   client = BaselinrClient(config_path="config.yml")
+   plan = client.plan()
+   print(f"Will profile {plan.total_tables} tables")
+   ```
+
+### Testing dbt Package Macros
+
+1. **Install dbt package**:
+   ```bash
+   cd your_dbt_project
+   # Add to packages.yml:
+   # packages:
+   #   - git: "https://github.com/baselinrhq/baselinr.git"
+   #     subdirectory: dbt_package
+   dbt deps
+   ```
+
+2. **Test profiling post-hook**:
+   ```yaml
+   # schema.yml
+   models:
+     - name: customers
+       config:
+         post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+   ```
+
+3. **Run dbt model**:
+   ```bash
+   dbt run --select customers
+   ```
+
+4. **Test drift detection**:
+   ```yaml
+   # schema.yml
+   models:
+     - name: customers
+       columns:
+         - name: customer_id
+           tests:
+             - baselinr_drift:
+                 metric: count
+                 threshold: 5.0
+   ```
+
+   ```bash
+   dbt test --select customers
+   ```
+
+### Quick Test Setup
+
+Create a minimal test dbt project:
+
+```bash
+mkdir test_dbt_project
+cd test_dbt_project
+
+# Create dbt_project.yml
+cat > dbt_project.yml << EOF
+name: 'test_project'
+version: '1.0.0'
+config-version: 2
+profile: 'test_profile'
+EOF
+
+# Create models directory
+mkdir models
+
+# Create a simple model
+cat > models/customers.sql << EOF
+SELECT 
+  1 as customer_id,
+  'test@example.com' as email
+EOF
+
+# Create schema.yml
+cat > models/schema.yml << EOF
+version: 2
+models:
+  - name: customers
+    tags: [critical]
+EOF
+
+# Compile to generate manifest
+dbt compile
+```
+
+Then use the manifest in your baselinr config:
+```yaml
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_manifest_path: ./test_dbt_project/target/manifest.json
+```
 
 ## Debugging
 

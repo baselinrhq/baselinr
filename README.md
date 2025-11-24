@@ -379,6 +379,54 @@ defs = build_baselinr_definitions(
 )
 ```
 
+## 🔧 dbt Integration
+
+Baselinr provides comprehensive integration with dbt for scalable profiling and drift detection.
+
+### Using dbt Refs/Selectors in Configs
+
+Reference dbt models directly in your baselinr configuration:
+
+```yaml
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
+    - dbt_selector: tag:critical
+      dbt_project_path: ./dbt_project
+```
+
+### Direct dbt Model Integration
+
+Add baselinr tests and profiling within dbt models:
+
+```yaml
+# schema.yml
+models:
+  - name: customers
+    config:
+      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+    columns:
+      - name: customer_id
+        tests:
+          - baselinr_drift:
+              metric: count
+              threshold: 5.0
+              severity: high
+```
+
+**Installation**:
+1. Install baselinr: `pip install baselinr`
+2. Add to `packages.yml`:
+   ```yaml
+   packages:
+     - git: "https://github.com/baselinrhq/baselinr.git"
+       subdirectory: dbt_package
+   ```
+3. Run: `dbt deps`
+
+See [dbt Integration Guide](docs/guides/DBT_INTEGRATION.md) for complete documentation.
+
 ## 🐍 Python SDK
 
 Baselinr provides a high-level Python SDK for programmatic access to all functionality.
