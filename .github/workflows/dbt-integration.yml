@@ -50,26 +50,18 @@ jobs:
           models:
             - name: customers
               description: "Test customer model"
-              tags:
-                - critical
-                - customer
-              config:
-                materialized: table
             - name: orders
               description: "Test orders model"
-              tags:
-                - critical
-              config:
-                materialized: table
             - name: users
               description: "Test users model"
-              tags:
-                - user
-              config:
-                materialized: view
           EOF
           
           cat > models/customers.sql << 'EOF'
+          {{ config(
+            materialized='table',
+            tags=['critical', 'customer']
+          ) }}
+          
           SELECT 
             1 as customer_id,
             'test@example.com' as email,
@@ -77,6 +69,11 @@ jobs:
           EOF
           
           cat > models/orders.sql << 'EOF'
+          {{ config(
+            materialized='table',
+            tags=['critical']
+          ) }}
+          
           SELECT 
             1 as order_id,
             1 as customer_id,
@@ -85,6 +82,11 @@ jobs:
           EOF
           
           cat > models/users.sql << 'EOF'
+          {{ config(
+            materialized='view',
+            tags=['user']
+          ) }}
+          
           SELECT 
             1 as user_id,
             'test_user' as username
