@@ -26,6 +26,13 @@ Anomaly detection uses **learned expectations** (see [Expectation Learning](EXPE
 
 ## Configuration
 
+Anomaly detection can be configured at multiple levels:
+
+1. **Global configuration** (`storage` section) - Applies to all tables and columns
+2. **Column-level configuration** - Per-column anomaly settings (see [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md))
+
+### Global Configuration
+
 Anomaly detection is **opt-in** and disabled by default. Enable it in your storage configuration:
 
 ```yaml
@@ -52,6 +59,35 @@ storage:
   anomaly_regime_shift_window: 3       # Recent runs for regime shift (default: 3)
   anomaly_regime_shift_sensitivity: 0.05 # P-value threshold (default: 0.05)
 ```
+
+### Column-Level Configuration
+
+For fine-grained control, configure anomaly detection per column:
+
+```yaml
+profiling:
+  tables:
+    - table: orders
+      columns:
+        - name: amount
+          anomaly:
+            enabled: true
+            methods: [control_limits, iqr, mad]
+            thresholds:
+              iqr_threshold: 2.0
+              mad_threshold: 3.5
+        - name: order_date
+          anomaly:
+            enabled: true
+            methods: [seasonality, regime_shift]
+        - name: metadata
+          anomaly:
+            enabled: false  # Skip anomaly detection
+```
+
+**Important**: Column-level anomaly detection requires that the column was profiled. If `profiling.enabled: false` for a column, anomaly detection is automatically skipped for that column.
+
+**See Also**: [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md) for complete documentation on column-level configurations for profiling, drift, and anomaly detection.
 
 ### Configuration Options
 

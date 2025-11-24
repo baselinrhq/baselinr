@@ -12,8 +12,9 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
-from ..config.schema import DriftDetectionConfig, StorageConfig
+from ..config.schema import ColumnConfig, DriftDetectionConfig, StorageConfig
 from ..events import DataDriftDetected, EventBus, SchemaChangeDetected
+from ..profiling.column_matcher import ColumnMatcher
 from .baseline_selector import BaselineResult, BaselineSelector
 from .strategies import DriftDetectionStrategy, create_drift_strategy
 from .type_normalizer import normalize_column_type
@@ -197,6 +198,8 @@ class DriftDetector:
         baseline_run_id: Optional[str] = None,
         current_run_id: Optional[str] = None,
         schema_name: Optional[str] = None,
+        column_configs: Optional[List[ColumnConfig]] = None,
+        profiled_columns: Optional[List[str]] = None,
     ) -> DriftReport:
         """
         Detect drift between two profiling runs.
@@ -327,6 +330,8 @@ class DriftDetector:
             table_name=dataset_name,
             schema_name=schema_name,
             baseline_results=baseline_results,
+            column_configs=column_configs,
+            profiled_columns=profiled_columns,
         )
 
         # Generate summary
@@ -546,9 +551,15 @@ class DriftDetector:
         table_name: Optional[str] = None,
         schema_name: Optional[str] = None,
         baseline_results: Optional[Dict[str, BaselineResult]] = None,
+        column_configs: Optional[List[ColumnConfig]] = None,
+        profiled_columns: Optional[List[str]] = None,
     ) -> List[ColumnDrift]:
         """Detect metric drifts between runs."""
         drifts = []
+
+        # Initialize column matcher if column configs provided
+        column_matcher = ColumnMatcher(column_configs=column_configs) if column_configs else None
+        profiled_columns_set = set(profiled_columns) if profiled_columns else None
 
         # Get current run metrics
         current_metrics = self._get_metrics(current_run_id)
@@ -564,6 +575,18 @@ class DriftDetector:
         for (column, metric), current_value in current_metrics.items():
             # Only compare numeric drift metrics
             if metric not in self.NUMERIC_DRIFT_METRICS:
+                continue
+
+            # Check if column was profiled (dependency check)
+            if profiled_columns_set is not None and column not in profiled_columns_set:
+                logger.debug(
+                    f"Skipping drift detection for column {column}: column was not profiled"
+                )
+                continue
+
+            # Check if drift detection is enabled for this column
+            if not self._should_detect_drift(column, column_matcher):
+                logger.debug(f"Skipping drift detection for column {column}: drift disabled")
                 continue
 
             # Get baseline value
@@ -604,6 +627,9 @@ class DriftDetector:
             if baseline_value is None:
                 continue
 
+            # Get merged drift config for this column
+            merged_drift_config = self._get_column_drift_config(column, column_matcher)
+
             # Calculate drift
             # Use baseline_run_id from result if available, otherwise use the provided one
             actual_baseline_run_id = (
@@ -616,6 +642,7 @@ class DriftDetector:
                 current_value,
                 baseline_run_id=actual_baseline_run_id,
                 current_run_id=current_run_id,
+                merged_drift_config=merged_drift_config,
             )
             if drift:
                 drifts.append(drift)
@@ -745,6 +772,86 @@ class DriftDetector:
 
             return distribution if distribution else None
 
+    def _should_detect_drift(
+        self, column_name: str, column_matcher: Optional[ColumnMatcher]
+    ) -> bool:
+        """
+        Check if drift detection should be performed for a column.
+
+        Args:
+            column_name: Name of the column
+            column_matcher: Optional column matcher with column configs
+
+        Returns:
+            True if drift should be detected, False otherwise
+        """
+        if column_matcher is None:
+            # No column configs: use default (drift enabled)
+            return True
+
+        column_config = column_matcher.get_column_drift_config(column_name)
+        if column_config and column_config.drift:
+            # Check if drift is explicitly disabled
+            if column_config.drift.enabled is False:
+                return False
+            # If enabled is None or True, proceed with drift detection
+            return True
+
+        # No column-specific config: use default (drift enabled)
+        return True
+
+    def _get_column_drift_config(self, column_name: str, column_matcher: Optional[ColumnMatcher]):
+        """
+        Get merged drift configuration for a column.
+
+        Merges column-specific config with table-level and global defaults.
+
+        Args:
+            column_name: Name of the column
+            column_matcher: Optional column matcher with column configs
+
+        Returns:
+            Merged drift config dict
+        """
+        if column_matcher is None:
+            return self.drift_config
+
+        column_config = column_matcher.get_column_drift_config(column_name)
+        if column_config and column_config.drift:
+            drift_cfg = column_config.drift
+
+            # Merge column-specific config with defaults
+            merged = DriftDetectionConfig(**self.drift_config.model_dump())
+
+            # Override strategy if specified
+            if drift_cfg.strategy:
+                merged.strategy = drift_cfg.strategy
+
+            # Override thresholds if specified
+            if drift_cfg.thresholds:
+                # Map column thresholds (low, medium, high) to config format
+                threshold_map = {
+                    "low": "low_threshold",
+                    "medium": "medium_threshold",
+                    "high": "high_threshold",
+                }
+                if merged.strategy == "absolute_threshold":
+                    for key, mapped_key in threshold_map.items():
+                        if key in drift_cfg.thresholds:
+                            merged.absolute_threshold[mapped_key] = drift_cfg.thresholds[key]
+                elif merged.strategy == "standard_deviation":
+                    for key, mapped_key in threshold_map.items():
+                        if key in drift_cfg.thresholds:
+                            merged.standard_deviation[mapped_key] = drift_cfg.thresholds[key]
+
+            # Override baselines if specified
+            if drift_cfg.baselines:
+                merged.baselines.update(drift_cfg.baselines)
+
+            return merged
+
+        return self.drift_config
+
     def _calculate_drift(
         self,
         column_name: str,
@@ -753,8 +860,12 @@ class DriftDetector:
         current_value: Any,
         baseline_run_id: Optional[str] = None,
         current_run_id: Optional[str] = None,
+        merged_drift_config: Optional[DriftDetectionConfig] = None,
     ) -> Optional[ColumnDrift]:
         """Calculate drift for a metric using the configured strategy."""
+        # Use column-specific drift config if provided, otherwise use default
+        drift_config_to_use = merged_drift_config if merged_drift_config else self.drift_config
+
         # Always get column type for type-specific threshold support
         kwargs = {}
         column_type = None
@@ -766,7 +877,7 @@ class DriftDetector:
                 kwargs["column_type"] = column_type
 
         # Prepare additional data for statistical tests if strategy is statistical
-        if self.drift_config.strategy == "statistical" and baseline_run_id and current_run_id:
+        if drift_config_to_use.strategy == "statistical" and baseline_run_id and current_run_id:
             # Get histogram data if available
             baseline_hist = self._get_histogram_data(baseline_run_id, column_name)
             current_hist = self._get_histogram_data(current_run_id, column_name)
@@ -791,8 +902,46 @@ class DriftDetector:
             kwargs["baseline_data"] = baseline_data  # type: ignore[assignment]
             kwargs["current_data"] = current_data  # type: ignore[assignment]
 
+        # Create column-specific strategy if merged_drift_config differs from default
+        strategy_to_use = self.strategy
+        # Check if we need a column-specific strategy by comparing key attributes
+        needs_custom_strategy = False
+        if merged_drift_config and merged_drift_config is not self.drift_config:
+            # Check if strategy or thresholds differ
+            if merged_drift_config.strategy != self.drift_config.strategy:
+                needs_custom_strategy = True
+            elif merged_drift_config.strategy == "absolute_threshold":
+                if merged_drift_config.absolute_threshold != self.drift_config.absolute_threshold:
+                    needs_custom_strategy = True
+            elif merged_drift_config.strategy == "standard_deviation":
+                if merged_drift_config.standard_deviation != self.drift_config.standard_deviation:
+                    needs_custom_strategy = True
+
+        if needs_custom_strategy:
+            # Get parameters for the column-specific strategy
+            strategy_name = drift_config_to_use.strategy
+            params: Dict[str, Any] = {}
+            if strategy_name == "absolute_threshold":
+                params = drift_config_to_use.absolute_threshold.copy()
+            elif strategy_name == "standard_deviation":
+                params = drift_config_to_use.standard_deviation.copy()
+            elif strategy_name == "statistical":
+                stat_config = drift_config_to_use.statistical
+                params = {
+                    "tests": stat_config.get("tests", ["ks_test", "psi", "chi_square"]),
+                    "sensitivity": stat_config.get("sensitivity", "medium"),
+                    "test_params": stat_config.get("test_params", {}),
+                }
+
+            # Add type_thresholds if available
+            if self.type_thresholds:
+                params["type_thresholds"] = self.type_thresholds
+
+            # Create new strategy instance with column-specific config
+            strategy_to_use = create_drift_strategy(strategy_name, **params)
+
         # Use the configured strategy to calculate drift
-        result = self.strategy.calculate_drift(
+        result = strategy_to_use.calculate_drift(
             baseline_value=baseline_value,
             current_value=current_value,
             metric_name=metric_name,

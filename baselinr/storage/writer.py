@@ -860,6 +860,18 @@ class ResultWriter:
                         if not isinstance(current_value, (int, float)):
                             continue
 
+                        # Get column configs and profiled columns from result metadata
+                        column_configs = None
+                        profiled_columns = None
+                        if result.metadata.get("column_configs"):
+                            from ..config.schema import ColumnConfig
+
+                            column_configs = [
+                                ColumnConfig(**cfg) for cfg in result.metadata["column_configs"]
+                            ]
+                        if result.metadata.get("profiled_columns"):
+                            profiled_columns = result.metadata["profiled_columns"]
+
                         anomalies = detector.detect_anomalies(
                             table_name=result.dataset_name,
                             column_name=column_name,
@@ -867,6 +879,8 @@ class ResultWriter:
                             current_value=float(current_value),
                             schema_name=result.schema_name,
                             current_timestamp=result.profiled_at,
+                            column_configs=column_configs,
+                            profiled_columns=profiled_columns,
                         )
 
                         if anomalies:

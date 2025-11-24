@@ -78,6 +78,44 @@ profiling:
       #   method: random               # Options: random | stratified | topk
       #   fraction: 0.01               # Sample 1% of rows
       #   max_rows: 500000             # Cap at 500k rows
+    
+    # Example: Column-level configurations (commented out)
+    # - table: customers
+    #   schema: public
+    #   columns:
+    #     # Profile specific columns with custom metrics
+    #     - name: email
+    #       metrics: [count, null_count, distinct_count]
+    #       drift:
+    #         enabled: true
+    #         thresholds:
+    #           low: 2.0
+    #           medium: 5.0
+    #           high: 10.0
+    #       anomaly:
+    #         enabled: true
+    #         methods: [control_limits, iqr]
+    #     
+    #     # Profile numeric columns with full metrics
+    #     - name: age
+    #       metrics: [count, mean, stddev, min, max, null_ratio]
+    #       drift:
+    #         enabled: true
+    #         thresholds:
+    #           low: 5.0
+    #           medium: 15.0
+    #           high: 30.0
+    #     
+    #     # Pattern matching for columns (wildcard)
+    #     - name: "*_id"
+    #       metrics: [count, null_count]
+    #       drift:
+    #         enabled: false  # Skip drift detection for ID columns
+    #     
+    #     # Skip profiling for specific columns
+    #     - name: internal_notes
+    #       profiling:
+    #         enabled: false  # Not profiled, so drift/anomaly automatically skipped
   
   # Maximum distinct values to compute
   max_distinct_values: 1000

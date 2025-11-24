@@ -11,6 +11,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ### 📖 [Guides](guides/)
 - **[Python SDK](guides/PYTHON_SDK.md)** - Complete guide to the Python SDK for programmatic access to Baselinr
 - **[Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)** - Enhanced profiling metrics: null ratios, uniqueness, schema tracking, and data quality metrics
+- **[Column-Level Configurations](guides/COLUMN_LEVEL_CONFIGS.md)** - Fine-grained control over profiling, drift, and anomaly detection per column
 - **[Drift Detection](guides/DRIFT_DETECTION.md)** - Understanding and configuring drift detection, including type-specific thresholds
 - **[Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)** - Advanced statistical tests for drift detection (KS test, PSI, chi-square, etc.)
 - **[Slack Alerts](guides/SLACK_ALERTS.md)** - Set up Slack notifications for drift detection events
@@ -73,6 +74,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Using enrichment metrics?** → See [Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)
+- **Configuring column-level controls?** → See [Column-Level Configurations](guides/COLUMN_LEVEL_CONFIGS.md)
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
 - **Checking system status?** → See [Status Command](schemas/STATUS_COMMAND.md)
