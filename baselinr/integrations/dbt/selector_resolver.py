@@ -101,7 +101,9 @@ class DBTSelectorResolver:
             for m in all_models:
                 # Check both top-level tags and config.tags
                 tags = m.get("tags", [])
-                config_tags = m.get("config", {}).get("tags", []) if isinstance(m.get("config"), dict) else []
+                config_tags = (
+                    m.get("config", {}).get("tags", []) if isinstance(m.get("config"), dict) else []
+                )
                 all_tags = []
                 if isinstance(tags, list):
                     all_tags.extend(tags)
