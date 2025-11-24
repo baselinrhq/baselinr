@@ -156,6 +156,22 @@ class TablePattern(BaseModel):
     tags: Optional[List[str]] = Field(None, description="Tags that tables must have (AND logic)")
     tags_any: Optional[List[str]] = Field(None, description="Tags where any match (OR logic)")
 
+    # dbt-based selection
+    dbt_ref: Optional[str] = Field(
+        None, description="dbt model reference (e.g., 'customers' or 'package.model')"
+    )
+    dbt_selector: Optional[str] = Field(
+        None,
+        description=(
+            "dbt selector expression (e.g., 'tag:critical', " "'config.materialized:table')"
+        ),
+    )
+    dbt_project_path: Optional[str] = Field(None, description="Path to dbt project root directory")
+    dbt_manifest_path: Optional[str] = Field(
+        None,
+        description="Path to dbt manifest.json (auto-detected from project_path if not provided)",
+    )
+
     # Filters
     exclude_patterns: Optional[List[str]] = Field(
         None, description="Patterns to exclude from matches"
@@ -206,12 +222,38 @@ class TablePattern(BaseModel):
         has_pattern = self.pattern is not None
         has_select_schema = self.select_schema is True
         has_select_all_schemas = self.select_all_schemas is True
+        has_dbt_ref = self.dbt_ref is not None
+        has_dbt_selector = self.dbt_selector is not None
 
-        if not (has_table or has_pattern or has_select_schema or has_select_all_schemas):
+        if not (
+            has_table
+            or has_pattern
+            or has_select_schema
+            or has_select_all_schemas
+            or has_dbt_ref
+            or has_dbt_selector
+        ):
             raise ValueError(
                 "TablePattern must specify either 'table', 'pattern', "
-                "'select_schema', or 'select_all_schemas'"
+                "'select_schema', 'select_all_schemas', 'dbt_ref', or 'dbt_selector'"
             )
+
+        # Ensure only one primary selection method is used
+        selection_methods = [
+            has_table,
+            has_pattern,
+            has_select_schema,
+            has_select_all_schemas,
+            has_dbt_ref,
+            has_dbt_selector,
+        ]
+        if sum(selection_methods) > 1:
+            raise ValueError(
+                "TablePattern can only specify one primary selection method: "
+                "'table', 'pattern', 'select_schema', 'select_all_schemas', "
+                "'dbt_ref', or 'dbt_selector'"
+            )
+
         return self
 
 

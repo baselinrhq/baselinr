@@ -1,0 +1,113 @@
+# Baselinr Configuration Example with dbt Integration
+# This example shows how to use dbt refs and selectors in baselinr configs
+
+environment: development
+
+# Source database connection
+source:
+  type: postgres
+  host: localhost
+  port: 5433
+  database: baselinr
+  username: baselinr
+  password: baselinr
+  schema: public
+
+# Storage configuration (where to save profiling results)
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5433
+    database: baselinr
+    username: baselinr
+    password: baselinr
+    schema: public
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+
+# Profiling configuration with dbt integration
+profiling:
+  tables:
+    # Example 1: Profile specific dbt models using dbt_ref
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
+      # Optional: explicit manifest path
+      # dbt_manifest_path: ./dbt_project/target/manifest.json
+    
+    - dbt_ref: orders
+      dbt_project_path: ./dbt_project
+    
+    # Example 2: Profile all models with a specific tag
+    - dbt_selector: tag:critical
+      dbt_project_path: ./dbt_project
+    
+    # Example 3: Profile all table-materialized models
+    - dbt_selector: config.materialized:table
+      dbt_project_path: ./dbt_project
+    
+    # Example 4: Profile models with multiple tags (union)
+    - dbt_selector: tag:customer+tag:order
+      dbt_project_path: ./dbt_project
+    
+    # Example 5: Profile models matching multiple criteria (intersection)
+    - dbt_selector: tag:critical,config.materialized:table
+      dbt_project_path: ./dbt_project
+      # You can still use partition and sampling configs
+      partition:
+        key: date
+        strategy: latest
+      sampling:
+        enabled: true
+        fraction: 0.1
+    
+    # Example 6: Mix dbt patterns with regular patterns
+    - pattern: "legacy_*"
+      schema: public
+      exclude_patterns:
+        - "*_temp"
+  
+  # Maximum distinct values to compute
+  max_distinct_values: 1000
+  
+  # Whether to compute histograms
+  compute_histograms: true
+  
+  # Number of histogram bins
+  histogram_bins: 10
+  
+  # Metrics to compute
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+
+# Drift detection configuration
+drift_detection:
+  strategy: absolute_threshold
+  
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+  
+  baselines:
+    strategy: auto
+    windows:
+      moving_average: 7
+      prior_period: 7
+      min_runs: 3
+
+# Note: Before using dbt patterns, ensure you have:
+# 1. Run `dbt compile` or `dbt run` to generate manifest.json
+# 2. Set dbt_project_path to your dbt project root directory
+# 3. The manifest.json will be auto-detected from target/manifest.json
+

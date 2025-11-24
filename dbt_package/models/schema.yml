@@ -1,0 +1,85 @@
+version: 2
+
+models:
+  - name: example_customers
+    description: "Example customer model for testing baselinr integration"
+    tags:
+      - critical
+      - customer
+      - baselinr_test
+    config:
+      materialized: table
+      # Uncomment to enable baselinr profiling post-hook:
+      # Uses the same profiling config structure as baselinr config files
+      # post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+      # Or with custom profiling settings:
+      # post-hook: "{{ baselinr_profile(target.schema, target.name, profiling={'metrics': ['count', 'mean'], 'partition': {'key': 'date', 'strategy': 'latest'}}) }}"
+    columns:
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+          - unique
+          # Uncomment to enable baselinr drift test:
+          # Uses the same drift_detection config structure as baselinr config files
+          # - baselinr_drift:
+          #     drift_detection:
+          #       strategy: absolute_threshold
+          #       absolute_threshold:
+          #         low_threshold: 5.0
+          #         medium_threshold: 15.0
+          #         high_threshold: 30.0
+          #       baselines:
+          #         strategy: auto
+      - name: email
+        description: "Customer email address"
+        tests:
+          - not_null
+      - name: registration_date
+        description: "Date customer registered"
+      - name: status
+        description: "Customer status"
+      - name: lifetime_value
+        description: "Customer lifetime value"
+        # Uncomment to enable baselinr drift test:
+        # tests:
+        #   - baselinr_drift:
+        #       drift_detection:
+        #         strategy: absolute_threshold
+        #         absolute_threshold:
+        #           medium_threshold: 10.0
+        #         baselines:
+        #           strategy: last_run
+
+  - name: example_orders
+    description: "Example orders model for testing baselinr integration"
+    tags:
+      - critical
+      - order
+      - baselinr_test
+    config:
+      materialized: table
+      # Uncomment to enable baselinr profiling post-hook:
+      # Uses the same profiling config structure as baselinr config files
+      # post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+      # Or with custom profiling settings:
+      # post-hook: "{{ baselinr_profile(target.schema, target.name, profiling={'sampling': {'enabled': true, 'fraction': 0.1}, 'metrics': ['count', 'histogram']}) }}"
+    columns:
+      - name: order_id
+        description: "Order identifier"
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        description: "Customer identifier (foreign key)"
+        tests:
+          - not_null
+      - name: amount
+        description: "Order amount"
+        tests:
+          - not_null
+      - name: order_date
+        description: "Date order was placed"
+      - name: status
+        description: "Order status"
+

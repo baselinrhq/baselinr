@@ -19,6 +19,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  make test           Run tests"
+	@echo "  make test-dbt       Run dbt integration tests"
 	@echo "  make lint           Run linters"
 	@echo "  make format         Format code"
 	@echo "  make clean          Clean build artifacts"
@@ -86,6 +87,9 @@ install-all:
 
 test:
 	pytest tests/ -v
+
+test-dbt:
+	pytest tests/test_dbt_integration.py -v
 
 lint:
 	flake8 baselinr/ --config=.flake8

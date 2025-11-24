@@ -1,0 +1,273 @@
+name: dbt Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  dbt-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev]"
+
+      - name: Run dbt integration tests
+        run: pytest tests/test_dbt_integration.py -v
+
+      - name: Install dbt-core
+        run: |
+          pip install dbt-core dbt-postgres
+
+      - name: Create test dbt project
+        run: |
+          mkdir -p /tmp/test_dbt_project
+          cd /tmp/test_dbt_project
+          cat > dbt_project.yml << 'EOF'
+          name: 'test_project'
+          version: '1.0.0'
+          config-version: 2
+          profile: 'test_profile'
+          
+          model-paths: ["models"]
+          EOF
+          
+          mkdir -p models
+          cat > models/schema.yml << 'EOF'
+          version: 2
+          
+          models:
+            - name: customers
+              description: "Test customer model"
+            - name: orders
+              description: "Test orders model"
+            - name: users
+              description: "Test users model"
+          EOF
+          
+          cat > models/customers.sql << 'EOF'
+          {{ config(
+            materialized='table',
+            tags=['critical', 'customer']
+          ) }}
+          
+          SELECT 
+            1 as customer_id,
+            'test@example.com' as email,
+            '2024-01-01'::date as registration_date
+          EOF
+          
+          cat > models/orders.sql << 'EOF'
+          {{ config(
+            materialized='table',
+            tags=['critical']
+          ) }}
+          
+          SELECT 
+            1 as order_id,
+            1 as customer_id,
+            100.0 as amount,
+            '2024-01-01'::date as order_date
+          EOF
+          
+          cat > models/users.sql << 'EOF'
+          {{ config(
+            materialized='view',
+            tags=['user']
+          ) }}
+          
+          SELECT 
+            1 as user_id,
+            'test_user' as username
+          EOF
+          
+          mkdir -p profiles
+          cat > profiles/profiles.yml << 'EOF'
+          test_profile:
+            outputs:
+              dev:
+                type: postgres
+                host: localhost
+                port: 5433
+                user: baselinr
+                password: baselinr
+                dbname: baselinr
+                schema: public
+            target: dev
+          EOF
+
+      - name: Start PostgreSQL
+        run: |
+          docker compose -f docker/docker-compose.yml up -d postgres
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            if docker compose -f docker/docker-compose.yml exec -T postgres pg_isready -U baselinr; then
+              ready=1
+              break
+            fi
+            echo "Waiting for postgres startup..."
+            sleep 5
+          done
+          if [ -z "$ready" ]; then
+            echo "PostgreSQL did not become ready in time"
+            docker compose -f docker/docker-compose.yml logs postgres
+            exit 1
+          fi
+
+      - name: Run dbt compile to generate manifest
+        run: |
+          cd /tmp/test_dbt_project
+          export DBT_PROFILES_DIR=./profiles
+          dbt compile --profiles-dir ./profiles
+          ls -la target/ || echo "target directory not found"
+          test -f target/manifest.json && echo "manifest.json exists" || echo "manifest.json NOT found"
+
+      - name: Test dbt manifest parsing
+        run: |
+          python -c "
+          from baselinr.integrations.dbt import DBTManifestParser
+          import json
+          import os
+          
+          manifest_path = '/tmp/test_dbt_project/target/manifest.json'
+          if not os.path.exists(manifest_path):
+              raise FileNotFoundError(f'Manifest not found at {manifest_path}')
+          
+          parser = DBTManifestParser(manifest_path=manifest_path)
+          manifest = parser.load_manifest()
+          
+          # Debug: Check all models and their tag structure
+          all_models = parser.get_all_models()
+          print(f'Found {len(all_models)} total models')
+          for model in all_models:
+              name = model.get('name')
+              tags = model.get('tags', [])
+              config = model.get('config', {})
+              config_tags = config.get('tags', []) if isinstance(config, dict) else []
+              print(f'Model {name}: tags={tags}, config.tags={config_tags}')
+          
+          # Test resolving refs
+          schema, table = parser.resolve_ref('customers')
+          assert schema == 'public', f'Expected schema public, got {schema}'
+          assert table == 'customers', f'Expected table customers, got {table}'
+          
+          # Test getting models by tag
+          models = parser.get_models_by_tag('critical')
+          print(f'Found {len(models)} models with critical tag')
+          if len(models) == 0:
+              print('ERROR: No models found with critical tag. Checking manifest structure...')
+              # Load raw manifest to inspect
+              with open(manifest_path) as f:
+                  raw_manifest = json.load(f)
+              for node_id, node in raw_manifest.get('nodes', {}).items():
+                  if node.get('resource_type') == 'model':
+                      print(f'  Node {node_id}: {json.dumps({k: v for k, v in node.items() if k in [\"name\", \"tags\", \"config\"]}, indent=2)}')
+          
+          assert len(models) == 2, f'Expected 2 models with critical tag, got {len(models)}'
+          
+          print('✓ dbt manifest parsing tests passed')
+          "
+
+      - name: Test dbt selector resolution
+        run: |
+          python -c "
+          from baselinr.integrations.dbt import DBTManifestParser, DBTSelectorResolver
+          
+          parser = DBTManifestParser(
+              manifest_path='/tmp/test_dbt_project/target/manifest.json'
+          )
+          parser.load_manifest()
+          
+          resolver = DBTSelectorResolver(parser)
+          
+          # Test tag selector
+          models = resolver.resolve_selector('tag:critical')
+          assert len(models) == 2, f'Expected 2 models, got {len(models)}'
+          
+          # Test config selector
+          models = resolver.resolve_selector('config.materialized:table')
+          assert len(models) == 2, f'Expected 2 table models, got {len(models)}'
+          
+          print('✓ dbt selector resolution tests passed')
+          "
+
+      - name: Test dbt pattern expansion
+        run: |
+          python -c "
+          from baselinr.config.loader import ConfigLoader
+          from baselinr.planner import PlanBuilder
+          import tempfile
+          import yaml
+          
+          # Create a test config with dbt patterns
+          config_dict = {
+              'environment': 'development',
+              'source': {
+                  'type': 'postgres',
+                  'host': 'localhost',
+                  'port': 5433,
+                  'database': 'baselinr',
+                  'username': 'baselinr',
+                  'password': 'baselinr',
+                  'schema': 'public'
+              },
+              'storage': {
+                  'connection': {
+                      'type': 'postgres',
+                      'host': 'localhost',
+                      'port': 5433,
+                      'database': 'baselinr',
+                      'username': 'baselinr',
+                      'password': 'baselinr',
+                      'schema': 'public'
+                  },
+                  'results_table': 'baselinr_results',
+                  'runs_table': 'baselinr_runs',
+                  'create_tables': True
+              },
+              'profiling': {
+                  'tables': [
+                      {
+                          'dbt_ref': 'customers',
+                          'dbt_manifest_path': '/tmp/test_dbt_project/target/manifest.json'
+                      },
+                      {
+                          'dbt_selector': 'tag:critical',
+                          'dbt_manifest_path': '/tmp/test_dbt_project/target/manifest.json'
+                      }
+                  ]
+              }
+          }
+          
+          config = ConfigLoader.load_from_dict(config_dict)
+          builder = PlanBuilder(config)
+          
+          # Expand dbt patterns
+          expanded = builder.expand_table_patterns()
+          
+          # Should have customers (from dbt_ref) + customers and orders (from tag:critical)
+          # But deduplicated, so should be 2 unique tables
+          table_names = {p.table for p in expanded if p.table}
+          assert 'customers' in table_names, 'customers table not found'
+          assert 'orders' in table_names, 'orders table not found'
+          
+          print(f'✓ dbt pattern expansion tests passed (expanded {len(expanded)} patterns)')
+          "
+
+      - name: Tear down Docker resources
+        if: always()
+        run: docker compose -f docker/docker-compose.yml down -v
+
