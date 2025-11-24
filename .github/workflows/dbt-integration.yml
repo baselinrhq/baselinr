@@ -137,6 +137,7 @@ jobs:
         run: |
           python -c "
           from baselinr.integrations.dbt import DBTManifestParser
+          import json
           import os
           
           manifest_path = '/tmp/test_dbt_project/target/manifest.json'
@@ -146,6 +147,16 @@ jobs:
           parser = DBTManifestParser(manifest_path=manifest_path)
           manifest = parser.load_manifest()
           
+          # Debug: Check all models and their tag structure
+          all_models = parser.get_all_models()
+          print(f'Found {len(all_models)} total models')
+          for model in all_models:
+              name = model.get('name')
+              tags = model.get('tags', [])
+              config = model.get('config', {})
+              config_tags = config.get('tags', []) if isinstance(config, dict) else []
+              print(f'Model {name}: tags={tags}, config.tags={config_tags}')
+          
           # Test resolving refs
           schema, table = parser.resolve_ref('customers')
           assert schema == 'public', f'Expected schema public, got {schema}'
@@ -153,6 +164,16 @@ jobs:
           
           # Test getting models by tag
           models = parser.get_models_by_tag('critical')
+          print(f'Found {len(models)} models with critical tag')
+          if len(models) == 0:
+              print('ERROR: No models found with critical tag. Checking manifest structure...')
+              # Load raw manifest to inspect
+              with open(manifest_path) as f:
+                  raw_manifest = json.load(f)
+              for node_id, node in raw_manifest.get('nodes', {}).items():
+                  if node.get('resource_type') == 'model':
+                      print(f'  Node {node_id}: {json.dumps({k: v for k, v in node.items() if k in [\"name\", \"tags\", \"config\"]}, indent=2)}')
+          
           assert len(models) == 2, f'Expected 2 models with critical tag, got {len(models)}'
           
           print('✓ dbt manifest parsing tests passed')
