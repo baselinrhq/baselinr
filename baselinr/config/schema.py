@@ -120,8 +120,14 @@ class TablePattern(BaseModel):
     - Tag-based (tags/tags_any fields)
 
     All methods can be combined with additional filters.
+
+    When database is specified, the pattern operates on that database.
+    When omitted, uses config.source.database (backward compatible).
     """
 
+    database: Optional[str] = Field(
+        None, description="Database name (optional, defaults to source.database)"
+    )
     schema_: Optional[str] = Field(None, alias="schema")
     table: Optional[str] = Field(
         None, description="Explicit table name (required if pattern not used)"

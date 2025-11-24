@@ -275,6 +275,7 @@ Configuration options for table discovery and pattern-based selection.
 Configuration for a single table or table selection pattern.
 
 **Fields:**
+- `database` (Optional[str]): Database name (optional, defaults to `source.database`). When specified, the pattern operates on that database instead of the default source database. This enables multi-database profiling in a single configuration.
 - `table` (Optional[str]): Explicit table name (required if pattern not used)
 - `schema` (Optional[str]): Schema name (alias: `schema_`)
   
@@ -284,8 +285,8 @@ Configuration for a single table or table selection pattern.
 - `schema_pattern` (Optional[str]): Wildcard/regex pattern for schema names
   
   **Schema/database-level selection:**
-- `select_schema` (Optional[bool]): If `true`, profile all tables in specified schema(s)
-- `select_all_schemas` (Optional[bool]): If `true`, profile all schemas in database
+- `select_schema` (Optional[bool]): If `true`, profile all tables in specified schema(s). Can be combined with `database` field to profile all tables in a schema from a specific database.
+- `select_all_schemas` (Optional[bool]): If `true`, profile all schemas in database. Can be combined with `database` field to profile all schemas from a specific database.
   
   **Tag-based selection:**
 - `tags` (Optional[List[str]]): Tags that tables must have (AND logic)

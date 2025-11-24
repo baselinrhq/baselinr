@@ -1664,11 +1664,30 @@ def _update_state_store_with_results(config: BaselinrConfig, plan: IncrementalPl
         if decision.action in ("full", "partial", "sample")
     }
     for result in results:
+        # Try to find matching decision - need to check all possible keys
+        # since database might not be in result.
+        # First try without database, then with database from decision if available
         key = _plan_table_key_raw(result.schema_name, result.dataset_name)
         decision = decision_map.get(key)
+
+        # If not found, try with database from decision table pattern
+        if not decision:
+            for dec in plan.decisions:
+                if dec.action in ("full", "partial", "sample") and dec.table:
+                    if (
+                        dec.table.table == result.dataset_name
+                        and dec.table.schema_ == result.schema_name
+                    ):
+                        decision = dec
+                        break
+
+        # Get database from decision table pattern if available, otherwise None
+        database_name = decision.table.database if decision and decision.table else None
+
         state = TableState(
             table_name=result.dataset_name,
             schema_name=result.schema_name,
+            database_name=database_name,
             last_run_id=result.run_id,
             snapshot_id=decision.snapshot_id if decision else None,
             change_token=None,
@@ -1684,11 +1703,18 @@ def _update_state_store_with_results(config: BaselinrConfig, plan: IncrementalPl
 
 def _plan_table_key(pattern: TablePattern) -> str:
     assert pattern.table is not None, "Table name must be set"
-    return _plan_table_key_raw(pattern.schema_, pattern.table)
+    return _plan_table_key_raw(pattern.schema_, pattern.table, pattern.database)
 
 
-def _plan_table_key_raw(schema: Optional[str], table: str) -> str:
-    return f"{schema}.{table}" if schema else table
+def _plan_table_key_raw(schema: Optional[str], table: str, database: Optional[str] = None) -> str:
+    """Generate table key including database, schema, and table name."""
+    parts = []
+    if database:
+        parts.append(database)
+    if schema:
+        parts.append(schema)
+    parts.append(table)
+    return ".".join(parts)
 
 
 if __name__ == "__main__":

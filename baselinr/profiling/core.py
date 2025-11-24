@@ -7,6 +7,7 @@ collecting schema information and computing metrics.
 
 import logging
 import time
+from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -86,7 +87,11 @@ class ProfileEngine:
         """
         self.config = config
         self.connector: Optional[BaseConnector] = None
+        self._connector_cache: Dict[Optional[str], BaseConnector] = {}  # database -> connector
         self.metric_calculator: Optional[MetricCalculator] = None
+        self._metric_calculator_cache: Dict[Optional[str], MetricCalculator] = (
+            {}
+        )  # database -> calculator
         self.event_bus = event_bus
         self.run_context = run_context
 
@@ -398,10 +403,61 @@ class ProfileEngine:
             )
 
         try:
-            # Get table metadata
+            # Get database-specific connector
+            cache_key = None if pattern.database is None else pattern.database
+
+            if cache_key not in self._connector_cache:
+                # Create database-specific connector
+                if pattern.database is None:
+                    # Use default connector (already created)
+                    if self.connector is None:
+                        self.connector = create_connector(
+                            self.config.source,
+                            retry_config=self.config.retry,
+                            execution_config=self.config.execution,
+                        )
+                    connector = self.connector
+                else:
+                    # Create connector for specified database
+                    db_config = deepcopy(self.config.source)
+                    db_config.database = pattern.database
+                    connector = create_connector(
+                        db_config,
+                        retry_config=self.config.retry,
+                        execution_config=self.config.execution,
+                    )
+                self._connector_cache[cache_key] = connector
+            else:
+                connector = self._connector_cache[cache_key]
+
+            # Also set as default connector if not set (for backward compatibility)
             if self.connector is None:
-                raise RuntimeError("Connector is not initialized")
-            table = self.connector.get_table(pattern.table, schema=pattern.schema_)
+                self.connector = connector
+
+            # Get or create database-specific metric calculator
+            if cache_key not in self._metric_calculator_cache:
+                calculator = MetricCalculator(
+                    engine=connector.engine,
+                    max_distinct_values=self.config.profiling.max_distinct_values,
+                    compute_histograms=self.config.profiling.compute_histograms,
+                    histogram_bins=self.config.profiling.histogram_bins,
+                    enabled_metrics=self.config.profiling.metrics,
+                    query_builder=self.query_builder,
+                    enable_enrichment=self.config.profiling.enable_enrichment,
+                    enable_approx_distinct=self.config.profiling.enable_approx_distinct,
+                    enable_type_inference=self.config.profiling.enable_type_inference,
+                    type_inference_sample_size=self.config.profiling.type_inference_sample_size,
+                )
+                self._metric_calculator_cache[cache_key] = calculator
+            else:
+                calculator = self._metric_calculator_cache[cache_key]
+
+            # Also set as default metric calculator if not set (for backward compatibility)
+            if self.metric_calculator is None:
+                self.metric_calculator = calculator
+
+            # Get table metadata using database-specific connector
+            table = connector.get_table(pattern.table, schema=pattern.schema_)
 
             # Create result container
             result = ProfilingResult(
@@ -420,7 +476,9 @@ class ProfileEngine:
                     logger.info(f"Using inferred partition key: {inferred_key}")
 
             # Add table metadata
-            current_row_count = self._get_row_count(table, partition_config, pattern.sampling)
+            current_row_count = self._get_row_count(
+                table, partition_config, pattern.sampling, connector
+            )
             result.metadata["row_count"] = current_row_count
             result.metadata["column_count"] = len(table.columns)
             result.metadata["partition_config"] = (
@@ -435,9 +493,9 @@ class ProfileEngine:
                 logger.debug(f"Profiling column: {column.name}")
 
                 try:
-                    if self.metric_calculator is None:
+                    if calculator is None:
                         raise RuntimeError("Metric calculator is not initialized")
-                    metrics = self.metric_calculator.calculate_all_metrics(
+                    metrics = calculator.calculate_all_metrics(
                         table=table,
                         column_name=column.name,
                         partition_config=partition_config,
@@ -503,7 +561,9 @@ class ProfileEngine:
                 )
             raise
 
-    def _get_row_count(self, table, partition_config=None, sampling_config=None) -> int:
+    def _get_row_count(
+        self, table, partition_config=None, sampling_config=None, connector=None
+    ) -> int:
         """
         Get row count for a table (with optional partition/sampling).
 
@@ -511,15 +571,18 @@ class ProfileEngine:
             table: SQLAlchemy Table object
             partition_config: Partition configuration
             sampling_config: Sampling configuration
+            connector: Optional connector to use (defaults to self.connector)
 
         Returns:
             Row count
         """
         from sqlalchemy import func, select
 
-        if self.connector is None:
+        # Use provided connector or fall back to default
+        conn_to_use = connector if connector is not None else self.connector
+        if conn_to_use is None:
             raise RuntimeError("Connector is not initialized")
-        with self.connector.engine.connect() as conn:
+        with conn_to_use.engine.connect() as conn:
             # Build query with partition filtering
             query, _ = self.query_builder.build_profiling_query(
                 table=table,
