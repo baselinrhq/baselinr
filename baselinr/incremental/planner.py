@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from ..config.schema import BaselinrConfig, TablePattern
 from ..connectors.factory import create_connector
 from ..events import EventBus, ProfilingSkipped
-from .change_detection import ChangeSummary, build_change_detector
+from .change_detection import ChangeDetector, ChangeSummary, build_change_detector
 from .state import TableState, TableStateStore
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,10 @@ class IncrementalPlanner:
         self.change_detector = build_change_detector(
             config.source.type, self.connector, incremental_cfg
         )
+        # Cache change detectors per database
+        self._change_detector_cache: Dict[Optional[str], ChangeDetector] = {
+            None: self.change_detector  # Cache source database detector
+        }
 
     def get_tables_to_run(
         self,
@@ -142,7 +146,9 @@ class IncrementalPlanner:
         if not incremental_cfg.enabled:
             return TableRunDecision(table=table, action="full", reason="incremental_disabled")
 
-        state = self.state_store.load_state(table.table, table.schema_)
+        # Resolve database: use pattern.database or default to source.database
+        database = table.database if table.database is not None else self.config.source.database
+        state = self.state_store.load_state(table.table, table.schema_, database)
         if not self._is_due(state, now):
             reason = "fresh_within_interval"
             self._emit_skip(table, reason, state)
@@ -234,7 +240,25 @@ class IncrementalPlanner:
     def _summarize_changes(self, table: TablePattern, state: Optional[TableState]) -> ChangeSummary:
         previous_snapshot = state.snapshot_id if state else None
         try:
-            return self.change_detector.summarize(table, previous_snapshot_id=previous_snapshot)
+            # Get database-specific change detector
+            database = table.database if table.database is not None else self.config.source.database
+            cache_key = None if table.database is None else table.database
+
+            if cache_key not in self._change_detector_cache:
+                # Create database-specific connector and change detector
+                from copy import deepcopy
+
+                from ..connectors.factory import create_connector
+
+                db_config = deepcopy(self.config.source)
+                db_config.database = database
+                db_connector = create_connector(db_config, self.config.retry, self.config.execution)
+                self._change_detector_cache[cache_key] = build_change_detector(
+                    self.config.source.type, db_connector, self.config.incremental
+                )
+
+            change_detector = self._change_detector_cache[cache_key]
+            return change_detector.summarize(table, previous_snapshot_id=previous_snapshot)
         except Exception as exc:
             logger.warning("Change detection failed for %s: %s", table.table, exc)
             return ChangeSummary(metadata={"error": str(exc)})
@@ -276,6 +300,8 @@ class IncrementalPlanner:
         action: str = "skip",
     ):
         assert table.table is not None, "Table name must be set"
+        # Resolve database: use pattern.database or default to source.database
+        database = table.database if table.database is not None else self.config.source.database
         logger.info("Skipping %s.%s: %s", table.schema_ or "public", table.table, reason)
         self.state_store.record_decision(
             table_name=table.table,
@@ -283,6 +309,7 @@ class IncrementalPlanner:
             decision=action,
             reason=reason,
             snapshot_id=snapshot_id,
+            database_name=database,
             metadata={"previous_snapshot": state.snapshot_id if state else None},
         )
         if self.event_bus:

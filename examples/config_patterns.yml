@@ -102,6 +102,16 @@ profiling:
         - "*_dev"
       # Profile all tables in all schemas (except excluded), excluding test/dev tables
     
+    # Example 4b: Multi-database profiling
+    # - table: customers
+    #   schema: public
+    #   database: analytics_db  # Profile from analytics_db
+    # - pattern: "sales_*"
+    #   schema: public
+    #   database: warehouse_db  # Profile matching tables from warehouse_db
+    # - select_all_schemas: true
+    #   database: staging_db  # Profile all schemas in staging_db
+    
     # Example 5: Tag-based selection (Snowflake example)
     # - tags:
     #     - "data_quality:critical"

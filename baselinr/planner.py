@@ -97,6 +97,7 @@ class PlanBuilder:
         self._incremental_planner: Optional[IncrementalPlanner] = None
         self._table_matcher: Optional[TableMatcher] = None
         self._connector: Optional[Any] = None
+        self._connector_cache: Dict[Optional[str], Any] = {}  # database -> connector
         self._tag_provider: Optional[Any] = None
         self._discovery_cache: Dict[str, Tuple[List[str], float]] = (
             {}
@@ -226,11 +227,44 @@ class PlanBuilder:
 
         return plan
 
-    def _get_connector(self):
-        """Get or create database connector."""
+    def _get_connector(self, database: Optional[str] = None):
+        """
+        Get or create database connector.
+
+        Args:
+            database: Optional database name. If None, uses config.source.database.
+                     If specified, creates a connector for that database.
+
+        Returns:
+            BaseConnector instance for the specified database
+        """
+        # Use None as cache key for source database to distinguish from explicit databases
+        cache_key = None if database is None else database
+
+        # Return cached connector if available
+        if cache_key in self._connector_cache:
+            return self._connector_cache[cache_key]
+
+        # Create connector
+        if database is None:
+            # Use source connector (backward compatible)
+            connector = create_connector(self.config.source, self.config.retry)
+        else:
+            # Create connector with database override
+            from copy import deepcopy
+
+            db_config = deepcopy(self.config.source)
+            db_config.database = database
+            connector = create_connector(db_config, self.config.retry)
+
+        # Cache connector
+        self._connector_cache[cache_key] = connector
+
+        # Also cache as _connector for backward compatibility
         if self._connector is None:
-            self._connector = create_connector(self.config.source, self.config.retry)
-        return self._connector
+            self._connector = connector
+
+        return connector
 
     def _get_table_matcher(self) -> TableMatcher:
         """Get or create table matcher."""
@@ -290,26 +324,27 @@ class PlanBuilder:
             expanded.append(pattern)
             return expanded
 
-        # Get connector and matcher
-        connector = self._get_connector()
+        # Get database-specific connector and matcher
+        database = pattern.database
+        connector = self._get_connector(database)
         matcher = self._get_table_matcher()
 
         # Determine schemas to search
-        schemas_to_search: List[Optional[str]] = self._get_schemas_to_search(pattern)
+        schemas_to_search: List[Optional[str]] = self._get_schemas_to_search(pattern, database)
 
         # Expand based on pattern type
         if pattern.select_all_schemas:
             # Database-level: all schemas
-            expanded.extend(self._expand_database_level(pattern, connector, matcher))
+            expanded.extend(self._expand_database_level(pattern, connector, matcher, database))
         elif pattern.select_schema:
             # Schema-level: all tables in specified schema(s)
             expanded.extend(
-                self._expand_schema_level(pattern, connector, matcher, schemas_to_search)
+                self._expand_schema_level(pattern, connector, matcher, schemas_to_search, database)
             )
         elif pattern.pattern:
             # Pattern-based: match tables against pattern
             expanded.extend(
-                self._expand_pattern_based(pattern, connector, matcher, schemas_to_search)
+                self._expand_pattern_based(pattern, connector, matcher, schemas_to_search, database)
             )
         else:
             # Should not reach here due to validation, but handle gracefully
@@ -333,7 +368,9 @@ class PlanBuilder:
                 )
         return valid_expanded
 
-    def _get_schemas_to_search(self, pattern: TablePattern) -> List[Optional[str]]:
+    def _get_schemas_to_search(
+        self, pattern: TablePattern, database: Optional[str] = None
+    ) -> List[Optional[str]]:
         """Get list of schemas to search based on pattern and discovery options."""
         discovery_opts = self.config.profiling.discovery_options
 
@@ -342,8 +379,8 @@ class PlanBuilder:
         if pattern.schema_:
             base_schemas.append(pattern.schema_)
         elif pattern.schema_pattern:
-            # Expand schema pattern
-            connector = self._get_connector()
+            # Expand schema pattern using database-specific connector
+            connector = self._get_connector(database)
             all_schemas = connector.list_schemas()
             matcher = self._get_table_matcher()
             pattern_type = pattern.pattern_type or "wildcard"
@@ -364,7 +401,11 @@ class PlanBuilder:
         return base_schemas
 
     def _expand_database_level(
-        self, pattern: TablePattern, connector: Any, matcher: TableMatcher
+        self,
+        pattern: TablePattern,
+        connector: Any,
+        matcher: TableMatcher,
+        database: Optional[str] = None,
     ) -> List[TablePattern]:
         """Expand database-level pattern (all schemas)."""
         discovery_opts = self.config.profiling.discovery_options
@@ -397,7 +438,12 @@ class PlanBuilder:
             schema_pattern.select_schema = True
             schema_pattern.select_all_schemas = None
             schema_pattern.schema_ = schema
-            expanded.extend(self._expand_schema_level(schema_pattern, connector, matcher, [schema]))
+            # Preserve database field
+            if database is not None:
+                schema_pattern.database = database
+            expanded.extend(
+                self._expand_schema_level(schema_pattern, connector, matcher, [schema], database)
+            )
 
         return expanded
 
@@ -407,13 +453,14 @@ class PlanBuilder:
         connector: Any,
         matcher: TableMatcher,
         schemas: List[Optional[str]],
+        database: Optional[str] = None,
     ) -> List[TablePattern]:
         """Expand schema-level pattern (all tables in schema)."""
         expanded = []
 
         for schema in schemas:
-            # Get all tables in schema
-            tables = self._get_tables_in_schema(schema)
+            # Get all tables in schema using database-specific connector
+            tables = self._get_tables_in_schema(schema, database)
 
             # Apply exclude patterns
             if pattern.exclude_patterns:
@@ -454,6 +501,9 @@ class PlanBuilder:
                 table_pattern.pattern = None  # Clear pattern, now it's explicit
                 table_pattern.select_schema = None
                 table_pattern.select_all_schemas = None
+                # Preserve database field
+                if database is not None:
+                    table_pattern.database = database
                 # Validate table name was set
                 assert (
                     table_pattern.table is not None
@@ -468,14 +518,15 @@ class PlanBuilder:
         connector: Any,
         matcher: TableMatcher,
         schemas: List[Optional[str]],
+        database: Optional[str] = None,
     ) -> List[TablePattern]:
         """Expand pattern-based selection (wildcard/regex)."""
         expanded = []
         pattern_type = pattern.pattern_type or "wildcard"
 
         for schema in schemas:
-            # Get all tables in schema
-            tables = self._get_tables_in_schema(schema)
+            # Get all tables in schema using database-specific connector
+            tables = self._get_tables_in_schema(schema, database)
 
             # Match against pattern
             if pattern.pattern:
@@ -529,6 +580,9 @@ class PlanBuilder:
                 table_pattern.pattern = None  # Clear pattern, now it's explicit
                 table_pattern.select_schema = None
                 table_pattern.select_all_schemas = None
+                # Preserve database field
+                if database is not None:
+                    table_pattern.database = database
                 # Validate table name was set
                 assert (
                     table_pattern.table is not None
@@ -537,10 +591,14 @@ class PlanBuilder:
 
         return expanded
 
-    def _get_tables_in_schema(self, schema: Optional[str]) -> List[str]:
+    def _get_tables_in_schema(
+        self, schema: Optional[str], database: Optional[str] = None
+    ) -> List[str]:
         """Get all tables in a schema, using cache if enabled."""
         discovery_opts = self.config.profiling.discovery_options
-        cache_key = schema or "__default__"
+        # Include database in cache key to avoid cross-database cache collisions
+        db_key = database or self.config.source.database
+        cache_key = f"{db_key}:{schema or '__default__'}"
 
         # Check cache
         if discovery_opts.cache_discovery and cache_key in self._discovery_cache:
@@ -548,11 +606,11 @@ class PlanBuilder:
             cache_age = time.time() - cache_time
 
             if cache_age < discovery_opts.cache_ttl_seconds:
-                logger.debug(f"Using cached table list for schema {schema}")
+                logger.debug(f"Using cached table list for schema {schema} in database {db_key}")
                 return cached_tables
 
-        # Fetch from database
-        connector = self._get_connector()
+        # Fetch from database using database-specific connector
+        connector = self._get_connector(database)
         tables: List[str] = connector.list_tables(schema=schema)
 
         # Store in cache
@@ -780,9 +838,19 @@ class PlanBuilder:
     def _table_key(self, pattern: TablePattern) -> str:
         """Get unique key for table pattern."""
         table_name = pattern.table or pattern.pattern or "unknown"
+
+        # Resolve database: use pattern.database or default to source.database
+        database = pattern.database if pattern.database is not None else self.config.source.database
+
+        # Build key: database.schema.table or database.table or schema.table or table
+        parts = []
+        if database:
+            parts.append(database)
         if pattern.schema_:
-            return f"{pattern.schema_}.{table_name}"
-        return table_name
+            parts.append(pattern.schema_)
+        parts.append(table_name)
+
+        return ".".join(parts)
 
 
 def print_plan(plan: ProfilingPlan, format: str = "text", verbose: bool = False):

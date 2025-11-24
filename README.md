@@ -143,6 +143,17 @@ profiling:
       pattern_type: regex
       schema: public
       # Matches: customer_2024, order_2024, etc.
+    
+    # Multi-database profiling (optional database field)
+    # - table: users
+    #   schema: public
+    #   database: analytics_db  # Profile from analytics_db instead of source.database
+    # - pattern: "order_*"
+    #   schema: public
+    #   database: warehouse_db  # Profile matching tables from warehouse_db
+    # - select_schema: true
+    #   schema: analytics
+    #   database: production_db  # Profile all tables in analytics schema from production_db
   
   # Discovery options for pattern-based selection
   discovery_options:
@@ -797,6 +808,15 @@ profiling:
       exclude_schemas:
         - "information_schema"
         - "pg_catalog"
+    
+    # Multi-database profiling (optional database field)
+    # When database is specified, the pattern operates on that database
+    # When omitted, uses config.source.database (backward compatible)
+    # - table: customers
+    #   schema: public
+    #   database: analytics_db
+    # - select_all_schemas: true
+    #   database: staging_db  # Profile all schemas in staging_db
     
     # Tag-based selection
     - tags:

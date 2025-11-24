@@ -256,3 +256,30 @@ class TestTablePatternSchema:
         with pytest.raises(ValueError, match="pattern_type must be"):
             TablePattern(pattern="test", pattern_type="invalid")
 
+    def test_database_field(self):
+        """Test database field in TablePattern."""
+        # Explicit table with database
+        pattern = TablePattern(table="users", schema="public", database="analytics_db")
+        assert pattern.database == "analytics_db"
+        assert pattern.table == "users"
+        assert pattern.schema_ == "public"
+
+        # Pattern with database
+        pattern = TablePattern(pattern="user_*", schema="public", database="warehouse_db")
+        assert pattern.database == "warehouse_db"
+        assert pattern.pattern == "user_*"
+
+        # Schema selection with database
+        pattern = TablePattern(select_schema=True, schema="analytics", database="production_db")
+        assert pattern.database == "production_db"
+        assert pattern.select_schema is True
+
+        # Database-level selection with database (redundant but valid)
+        pattern = TablePattern(select_all_schemas=True, database="staging_db")
+        assert pattern.database == "staging_db"
+        assert pattern.select_all_schemas is True
+
+        # Database field is optional (backward compatible)
+        pattern = TablePattern(table="users", schema="public")
+        assert pattern.database is None
+

@@ -36,7 +36,8 @@ class TableState:
     """Row stored in the incremental metadata table."""
 
     table_name: str
-    schema_name: Optional[str]
+    schema_name: Optional[str] = None
+    database_name: Optional[str] = None
     last_run_id: Optional[str] = None
     snapshot_id: Optional[str] = None
     change_token: Optional[str] = None
@@ -50,9 +51,14 @@ class TableState:
 
     @property
     def table_key(self) -> str:
+        """Get unique table key including database, schema, and table name."""
+        parts = []
+        if self.database_name:
+            parts.append(self.database_name)
         if self.schema_name:
-            return f"{self.schema_name}.{self.table_name}"
-        return self.table_name
+            parts.append(self.schema_name)
+        parts.append(self.table_name)
+        return ".".join(parts)
 
 
 class TableStateStore:
@@ -73,6 +79,7 @@ class TableStateStore:
         self._table = Table(
             self.table_name,
             self._metadata,
+            Column("database_name", String(255), primary_key=True, nullable=True),
             Column("schema_name", String(255), primary_key=True, nullable=True),
             Column("table_name", String(255), primary_key=True, nullable=False),
             Column("last_run_id", String(36)),
@@ -91,17 +98,25 @@ class TableStateStore:
             self._metadata.create_all(self.engine)
             logger.debug("Ensured incremental state table %s exists", self.table_name)
 
-    def load_state(self, table_name: str, schema_name: Optional[str]) -> Optional[TableState]:
+    def load_state(
+        self, table_name: str, schema_name: Optional[str], database_name: Optional[str] = None
+    ) -> Optional[TableState]:
         with self.engine.connect() as conn:
             schema_clause = (
                 self._table.c.schema_name.is_(None)
                 if schema_name is None
                 else self._table.c.schema_name == schema_name
             )
+            database_clause = (
+                self._table.c.database_name.is_(None)
+                if database_name is None
+                else self._table.c.database_name == database_name
+            )
             stmt = (
                 select(self._table)
                 .where(self._table.c.table_name == table_name)
                 .where(schema_clause)
+                .where(database_clause)
                 .limit(1)
             )
             row = conn.execute(stmt).fetchone()
@@ -113,6 +128,7 @@ class TableStateStore:
             return TableState(
                 table_name=data["table_name"],
                 schema_name=data.get("schema_name"),
+                database_name=data.get("database_name"),
                 last_run_id=data.get("last_run_id"),
                 snapshot_id=data.get("snapshot_id"),
                 change_token=data.get("change_token"),
@@ -127,6 +143,7 @@ class TableStateStore:
 
     def upsert_state(self, state: TableState):
         payload = {
+            "database_name": state.database_name,
             "schema_name": state.schema_name,
             "table_name": state.table_name,
             "last_run_id": state.last_run_id,
@@ -140,11 +157,16 @@ class TableStateStore:
             "bytes_scanned": state.bytes_scanned,
             "metadata": json.dumps(state.metadata or {}),
         }
-        existing = self.load_state(state.table_name, state.schema_name)
+        existing = self.load_state(state.table_name, state.schema_name, state.database_name)
         schema_clause = (
             self._table.c.schema_name.is_(None)
             if state.schema_name is None
             else self._table.c.schema_name == state.schema_name
+        )
+        database_clause = (
+            self._table.c.database_name.is_(None)
+            if state.database_name is None
+            else self._table.c.database_name == state.database_name
         )
         with self.engine.begin() as conn:
             if existing:
@@ -152,6 +174,7 @@ class TableStateStore:
                     update(self._table)
                     .where(self._table.c.table_name == state.table_name)
                     .where(schema_clause)
+                    .where(database_clause)
                     .values(**payload)
                 )
                 conn.execute(stmt)
@@ -166,11 +189,13 @@ class TableStateStore:
         decision: str,
         reason: str,
         snapshot_id: Optional[str],
+        database_name: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ):
-        state = self.load_state(table_name, schema_name) or TableState(
+        state = self.load_state(table_name, schema_name, database_name) or TableState(
             table_name=table_name,
             schema_name=schema_name,
+            database_name=database_name,
         )
         state.decision = decision
         state.decision_reason = reason
