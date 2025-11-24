@@ -15,6 +15,7 @@ from ..config.schema import BaselinrConfig, TablePattern
 from ..connectors.base import BaseConnector
 from ..connectors.factory import create_connector
 from ..events import EventBus, ProfilingCompleted, ProfilingFailed, ProfilingStarted
+from .column_matcher import ColumnMatcher
 from .metrics import MetricCalculator
 from .query_builder import QueryBuilder
 
@@ -488,31 +489,87 @@ class ProfileEngine:
                 pattern.sampling.model_dump() if pattern.sampling else None
             )
 
+            # Initialize column matcher if column configs exist
+            column_matcher = (
+                ColumnMatcher(column_configs=pattern.columns) if pattern.columns else None
+            )
+
+            # Determine which columns to profile
+            all_column_names = [col.name for col in table.columns]
+            if column_matcher:
+                profiled_column_names = column_matcher.get_profiled_columns(
+                    all_column_names, include_defaults=True
+                )
+            else:
+                # No column configs: profile all columns (backward compatibility)
+                profiled_column_names = set(all_column_names)
+
+            # Track which columns were actually profiled (for drift/anomaly dependency checking)
+            actually_profiled = set()
+
             # Profile each column
             for column in table.columns:
-                logger.debug(f"Profiling column: {column.name}")
+                column_name = column.name
+
+                # Skip columns that shouldn't be profiled
+                if column_name not in profiled_column_names:
+                    logger.debug(f"Skipping column {column_name} (not in profiled columns)")
+                    continue
+
+                logger.debug(f"Profiling column: {column_name}")
 
                 try:
                     if calculator is None:
                         raise RuntimeError("Metric calculator is not initialized")
-                    metrics = calculator.calculate_all_metrics(
+
+                    # Get column-specific metrics if configured
+                    column_metrics = None
+                    if column_matcher:
+                        column_metrics = column_matcher.get_column_metrics(column_name)
+
+                    # Create column-specific calculator if needed
+                    column_calculator = calculator
+                    if column_metrics is not None:
+                        # Create a new calculator with column-specific metrics
+                        column_calculator = MetricCalculator(
+                            engine=calculator.engine,
+                            max_distinct_values=calculator.max_distinct_values,
+                            compute_histograms=calculator.compute_histograms,
+                            histogram_bins=calculator.histogram_bins,
+                            enabled_metrics=column_metrics,
+                            query_builder=calculator.query_builder,
+                            enable_enrichment=calculator.enable_enrichment,
+                            enable_approx_distinct=calculator.enable_approx_distinct,
+                            enable_type_inference=calculator.enable_type_inference,
+                            type_inference_sample_size=calculator.type_inference_sample_size,
+                        )
+
+                    metrics = column_calculator.calculate_all_metrics(
                         table=table,
-                        column_name=column.name,
+                        column_name=column_name,
                         partition_config=partition_config,
                         sampling_config=pattern.sampling,
                     )
 
                     result.add_column_metrics(
-                        column_name=column.name, column_type=str(column.type), metrics=metrics
+                        column_name=column_name, column_type=str(column.type), metrics=metrics
                     )
+                    actually_profiled.add(column_name)
                 except Exception as e:
-                    logger.error(f"Failed to profile column {column.name}: {e}")
-                    # Add error marker
+                    logger.error(f"Failed to profile column {column_name}: {e}")
+                    # Add error marker (still counts as attempted profiling)
                     result.add_column_metrics(
-                        column_name=column.name,
+                        column_name=column_name,
                         column_type=str(column.type),
                         metrics={"error": str(e)},
                     )
+                    # Don't add to actually_profiled since it failed
+
+            # Store list of actually profiled columns for drift/anomaly dependency checking
+            result.metadata["profiled_columns"] = list(actually_profiled)
+            result.metadata["column_configs"] = (
+                [col.model_dump() for col in pattern.columns] if pattern.columns else None
+            )
 
             # Store schema snapshot for enrichment metrics (calculated during storage write)
             if self.config.profiling.enable_enrichment:

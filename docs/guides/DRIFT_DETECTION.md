@@ -9,7 +9,15 @@ Drift detection compares profiling results from different runs to identify:
 - **Statistical changes**: Changes in metrics like mean, count, null percentage, etc.
 - **Severity classification**: Low, medium, or high severity based on the magnitude of change
 
-## Configuration
+## Configuration Levels
+
+Drift detection can be configured at multiple levels:
+
+1. **Global configuration** (`drift_detection` section) - Applies to all tables and columns
+2. **Type-specific thresholds** - Adjusts sensitivity based on column data type (numeric, categorical, etc.)
+3. **Column-level configuration** - Per-column drift settings (see [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md))
+
+### Global Configuration
 
 Drift detection behavior is controlled through the `drift_detection` section of your configuration file.
 
@@ -584,6 +592,39 @@ drift_detection:
 - When you have histogram data available
 
 **See Also**: [Statistical Drift Detection Guide](STATISTICAL_DRIFT_DETECTION.md) for detailed documentation.
+
+---
+
+## Column-Level Drift Configuration
+
+For fine-grained control, you can configure drift detection per column using column-level configurations. This allows you to:
+
+- Set custom drift thresholds per column
+- Enable/disable drift detection for specific columns
+- Override drift strategy per column
+- Use patterns to configure multiple columns at once
+
+**Example**:
+```yaml
+profiling:
+  tables:
+    - table: customers
+      columns:
+        - name: lifetime_value
+          drift:
+            enabled: true
+            thresholds:
+              low: 5.0
+              medium: 10.0
+              high: 20.0
+        - name: "*_id"
+          drift:
+            enabled: false  # Skip drift for ID columns
+```
+
+**Important**: Column-level drift detection requires that the column was profiled. If `profiling.enabled: false` for a column, drift detection is automatically skipped for that column.
+
+**See Also**: [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md) for complete documentation on column-level configurations for profiling, drift, and anomaly detection.
 
 ---
 

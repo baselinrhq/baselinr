@@ -109,6 +109,178 @@ class SamplingConfig(BaseModel):
         return v
 
 
+class ColumnDriftConfig(BaseModel):
+    """Column-level drift detection configuration."""
+
+    enabled: Optional[bool] = Field(
+        None, description="Enable/disable drift detection for this column"
+    )
+    strategy: Optional[str] = Field(
+        None,
+        description=(
+            "Override drift strategy " "(absolute_threshold, standard_deviation, statistical)"
+        ),
+    )
+    thresholds: Optional[Dict[str, float]] = Field(
+        None, description="Per-column thresholds (low, medium, high)"
+    )
+    baselines: Optional[Dict[str, Any]] = Field(
+        None, description="Override baseline selection strategy and windows"
+    )
+
+    @field_validator("strategy")
+    @classmethod
+    def validate_strategy(cls, v: Optional[str]) -> Optional[str]:
+        """Validate drift strategy."""
+        if v is not None:
+            valid_strategies = ["absolute_threshold", "standard_deviation", "statistical"]
+            if v not in valid_strategies:
+                raise ValueError(f"Strategy must be one of {valid_strategies}")
+        return v
+
+
+class ColumnAnomalyConfig(BaseModel):
+    """Column-level anomaly detection configuration."""
+
+    enabled: Optional[bool] = Field(
+        None, description="Enable/disable anomaly detection for this column"
+    )
+    methods: Optional[List[str]] = Field(
+        None,
+        description=(
+            "List of enabled detection methods "
+            "(control_limits, iqr, mad, ewma, seasonality, regime_shift)"
+        ),
+    )
+    thresholds: Optional[Dict[str, float]] = Field(
+        None,
+        description=(
+            "Per-column thresholds "
+            "(iqr_threshold, mad_threshold, ewma_deviation_threshold, etc.)"
+        ),
+    )
+
+    @field_validator("methods")
+    @classmethod
+    def validate_methods(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate anomaly detection methods."""
+        if v is not None:
+            valid_methods = [
+                "control_limits",
+                "iqr",
+                "mad",
+                "ewma",
+                "seasonality",
+                "regime_shift",
+            ]
+            invalid = [m for m in v if m not in valid_methods]
+            if invalid:
+                raise ValueError(f"Invalid methods: {invalid}. Must be one of {valid_methods}")
+        return v
+
+
+class ColumnProfilingConfig(BaseModel):
+    """Column-level profiling configuration."""
+
+    enabled: Optional[bool] = Field(
+        None, description="Enable/disable profiling for this column (default: true)"
+    )
+
+
+class ColumnConfig(BaseModel):
+    """Column-level configuration for profiling, drift, and anomaly detection.
+
+    Supports both explicit column names and patterns (wildcards/regex).
+    When patterns are used, multiple columns may match a single configuration.
+    """
+
+    name: str = Field(..., description="Column name or pattern (supports wildcards: *, ?)")
+    pattern_type: Optional[str] = Field(
+        None, description="Pattern type: 'wildcard' (default) or 'regex'"
+    )
+    metrics: Optional[List[str]] = Field(
+        None, description="List of metrics to compute (overrides table-level metrics)"
+    )
+    profiling: Optional[ColumnProfilingConfig] = Field(
+        None, description="Profiling configuration for this column"
+    )
+    drift: Optional[ColumnDriftConfig] = Field(
+        None, description="Drift detection configuration for this column"
+    )
+    anomaly: Optional[ColumnAnomalyConfig] = Field(
+        None, description="Anomaly detection configuration for this column"
+    )
+
+    @field_validator("pattern_type")
+    @classmethod
+    def validate_pattern_type(cls, v: Optional[str]) -> Optional[str]:
+        """Validate pattern type."""
+        if v is not None and v not in ["wildcard", "regex"]:
+            raise ValueError("pattern_type must be 'wildcard' or 'regex'")
+        return v
+
+    @field_validator("metrics")
+    @classmethod
+    def validate_metrics(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate metric names."""
+        if v is not None:
+            valid_metrics = [
+                "count",
+                "null_count",
+                "null_ratio",
+                "distinct_count",
+                "unique_ratio",
+                "approx_distinct_count",
+                "min",
+                "max",
+                "mean",
+                "stddev",
+                "histogram",
+                "data_type_inferred",
+                "min_length",
+                "max_length",
+                "avg_length",
+            ]
+            invalid = [m for m in v if m not in valid_metrics]
+            if invalid:
+                raise ValueError(f"Invalid metrics: {invalid}. Must be one of {valid_metrics}")
+        return v
+
+    @model_validator(mode="after")
+    def validate_dependencies(self):
+        """Validate dependencies between profiling, drift, and anomaly detection.
+
+        Drift and anomaly detection require profiling to be enabled.
+        """
+        # Default to enabled if profiling config not specified
+        profiling_enabled = True
+        if self.profiling and self.profiling.enabled is not None:
+            profiling_enabled = self.profiling.enabled
+
+        # If profiling is disabled, drift and anomaly should not be configured
+        if not profiling_enabled:
+            if self.drift and self.drift.enabled is not False:
+                import warnings
+
+                warnings.warn(
+                    f"Column '{self.name}': Drift detection configured but "
+                    "profiling is disabled. Drift detection requires profiling. "
+                    "Consider removing drift config or enabling profiling.",
+                    UserWarning,
+                )
+            if self.anomaly and self.anomaly.enabled is not False:
+                import warnings
+
+                warnings.warn(
+                    f"Column '{self.name}': Anomaly detection configured but "
+                    "profiling is disabled. Anomaly detection requires profiling. "
+                    "Consider removing anomaly config or enabling profiling.",
+                    UserWarning,
+                )
+
+        return self
+
+
 class TablePattern(BaseModel):
     """Table selection pattern.
 
@@ -204,6 +376,13 @@ class TablePattern(BaseModel):
     # Existing fields
     partition: Optional[PartitionConfig] = None
     sampling: Optional[SamplingConfig] = None
+
+    # Column-level configuration
+    columns: Optional[List[ColumnConfig]] = Field(
+        None,
+        description="Column-level configurations for profiling, drift, and anomaly detection. "
+        "If not specified, all columns are profiled with table-level defaults.",
+    )
 
     model_config = {"populate_by_name": True}
 

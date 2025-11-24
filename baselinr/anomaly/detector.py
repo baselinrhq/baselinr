@@ -14,10 +14,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from ..config.schema import StorageConfig
+from ..config.schema import ColumnConfig, StorageConfig
 from ..events import EventBus
 from ..learning.expectation_learner import LearnedExpectation
 from ..learning.expectation_storage import ExpectationStorage
+from ..profiling.column_matcher import ColumnMatcher
 from .anomaly_types import AnomalyType
 from .detection_methods import (
     DetectionResult,
@@ -146,6 +147,8 @@ class AnomalyDetector:
         current_value: float,
         schema_name: Optional[str] = None,
         current_timestamp: Optional[datetime] = None,
+        column_configs: Optional[List[ColumnConfig]] = None,
+        profiled_columns: Optional[List[str]] = None,
     ) -> List[AnomalyResult]:
         """
         Detect anomalies for a metric value.
@@ -157,12 +160,40 @@ class AnomalyDetector:
             current_value: Current metric value to check
             schema_name: Optional schema name
             current_timestamp: Optional timestamp of current value
+            column_configs: Optional column-level configurations
+            profiled_columns: Optional list of columns that were actually profiled
 
         Returns:
             List of AnomalyResult objects for detected anomalies
         """
         if current_timestamp is None:
             current_timestamp = datetime.utcnow()
+
+        # Check if column was profiled (dependency check)
+        if profiled_columns is not None and column_name not in profiled_columns:
+            logger.debug(
+                f"Skipping anomaly detection for column {column_name}: column was not profiled"
+            )
+            return []
+
+        # Check if anomaly detection is enabled for this column
+        column_matcher = ColumnMatcher(column_configs=column_configs) if column_configs else None
+        if not self._should_detect_anomaly(column_name, column_matcher):
+            logger.debug(
+                f"Skipping anomaly detection for column {column_name}: anomaly detection disabled"
+            )
+            return []
+
+        # Get column-specific anomaly config if available
+        column_anomaly_config = None
+        enabled_methods = self.enabled_methods
+        if column_matcher:
+            column_config = column_matcher.get_column_anomaly_config(column_name)
+            if column_config and column_config.anomaly:
+                column_anomaly_config = column_config.anomaly
+                # Override enabled methods if specified
+                if column_anomaly_config.methods:
+                    enabled_methods = column_anomaly_config.methods
 
         # Skip non-numeric metrics for most methods
         if metric_name not in self.NUMERIC_METRICS:
@@ -183,8 +214,21 @@ class AnomalyDetector:
 
         anomalies = []
 
+        # Apply column-specific thresholds if available
+        iqr_threshold = self.iqr_detector.threshold
+        mad_threshold = self.mad_detector.threshold
+        ewma_threshold = self.ewma_detector.deviation_threshold
+
+        if column_anomaly_config and column_anomaly_config.thresholds:
+            if "iqr_threshold" in column_anomaly_config.thresholds:
+                iqr_threshold = column_anomaly_config.thresholds["iqr_threshold"]
+            if "mad_threshold" in column_anomaly_config.thresholds:
+                mad_threshold = column_anomaly_config.thresholds["mad_threshold"]
+            if "ewma_deviation_threshold" in column_anomaly_config.thresholds:
+                ewma_threshold = column_anomaly_config.thresholds["ewma_deviation_threshold"]
+
         # Control limits check
-        if "control_limits" in self.enabled_methods:
+        if "control_limits" in enabled_methods:
             result = self._check_control_limits(current_value, expectation)
             if result.is_anomaly:
                 anomalies.append(
@@ -204,12 +248,19 @@ class AnomalyDetector:
                 )
 
         # IQR detection
-        if "iqr" in self.enabled_methods:
+        if "iqr" in enabled_methods:
             historical_values = self._get_historical_metrics(
                 table_name, column_name, metric_name, schema_name
             )
             if len(historical_values) >= 4:
-                result = self.iqr_detector.detect(current_value, historical_values)
+                # Use column-specific threshold if different
+                if iqr_threshold != self.iqr_detector.threshold:
+                    from .detection_methods import IQRDetector
+
+                    iqr_detector = IQRDetector(threshold=iqr_threshold)
+                else:
+                    iqr_detector = self.iqr_detector
+                result = iqr_detector.detect(current_value, historical_values)
                 if result.is_anomaly:
                     anomalies.append(
                         AnomalyResult(
@@ -228,12 +279,19 @@ class AnomalyDetector:
                     )
 
         # MAD detection
-        if "mad" in self.enabled_methods:
+        if "mad" in enabled_methods:
             historical_values = self._get_historical_metrics(
                 table_name, column_name, metric_name, schema_name
             )
             if len(historical_values) >= 3:
-                result = self.mad_detector.detect(current_value, historical_values)
+                # Use column-specific threshold if different
+                if mad_threshold != self.mad_detector.threshold:
+                    from .detection_methods import MADDetector
+
+                    mad_detector = MADDetector(threshold=mad_threshold)
+                else:
+                    mad_detector = self.mad_detector
+                result = mad_detector.detect(current_value, historical_values)
                 if result.is_anomaly:
                     anomalies.append(
                         AnomalyResult(
@@ -252,8 +310,15 @@ class AnomalyDetector:
                     )
 
         # EWMA detection
-        if "ewma" in self.enabled_methods:
-            result = self.ewma_detector.detect(current_value, expectation)
+        if "ewma" in enabled_methods:
+            # Use column-specific threshold if different
+            if ewma_threshold != self.ewma_detector.deviation_threshold:
+                from .detection_methods import EWMADetector
+
+                ewma_detector = EWMADetector(deviation_threshold=ewma_threshold)
+            else:
+                ewma_detector = self.ewma_detector
+            result = ewma_detector.detect(current_value, expectation)
             if result.is_anomaly:
                 anomalies.append(
                     AnomalyResult(
@@ -272,7 +337,7 @@ class AnomalyDetector:
                 )
 
         # Trend/seasonality detection
-        if "seasonality" in self.enabled_methods:
+        if "seasonality" in enabled_methods:
             historical_series = self._get_historical_series(
                 table_name, column_name, metric_name, schema_name
             )
@@ -302,7 +367,7 @@ class AnomalyDetector:
                     )
 
         # Regime shift detection
-        if "regime_shift" in self.enabled_methods:
+        if "regime_shift" in enabled_methods:
             historical_values = self._get_historical_metrics(
                 table_name, column_name, metric_name, schema_name
             )
@@ -335,6 +400,34 @@ class AnomalyDetector:
             self._categorize_anomaly(anomaly)
 
         return anomalies
+
+    def _should_detect_anomaly(
+        self, column_name: str, column_matcher: Optional[ColumnMatcher]
+    ) -> bool:
+        """
+        Check if anomaly detection should be performed for a column.
+
+        Args:
+            column_name: Name of the column
+            column_matcher: Optional column matcher with column configs
+
+        Returns:
+            True if anomaly should be detected, False otherwise
+        """
+        if column_matcher is None:
+            # No column configs: use default (anomaly enabled)
+            return True
+
+        column_config = column_matcher.get_column_anomaly_config(column_name)
+        if column_config and column_config.anomaly:
+            # Check if anomaly is explicitly disabled
+            if column_config.anomaly.enabled is False:
+                return False
+            # If enabled is None or True, proceed with anomaly detection
+            return True
+
+        # No column-specific config: use default (anomaly enabled)
+        return True
 
     def _check_control_limits(
         self, current_value: float, expectation: LearnedExpectation
