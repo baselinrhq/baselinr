@@ -16,8 +16,17 @@ except ImportError:
 
 
 def main():
-    # Default to the test project created by test_local.sh
-    manifest_path = Path("/tmp/test_dbt_project_local/target/manifest.json")
+    # Default to the test project created by test_local.sh or test_local.ps1
+    import tempfile
+    import os
+    
+    # Try Windows temp path first, then Unix
+    if os.name == 'nt':  # Windows
+        default_path = Path(tempfile.gettempdir()) / "test_dbt_project_local" / "target" / "manifest.json"
+    else:
+        default_path = Path("/tmp/test_dbt_project_local/target/manifest.json")
+    
+    manifest_path = default_path
     
     if len(sys.argv) > 1:
         manifest_path = Path(sys.argv[1])

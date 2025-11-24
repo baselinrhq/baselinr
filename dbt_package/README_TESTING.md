@@ -11,9 +11,17 @@ This guide helps you test the dbt integration locally before pushing to CI.
 ## Quick Test
 
 1. **Set up test dbt project:**
+   
+   **On Linux/Mac:**
    ```bash
    cd dbt_package
    bash test_local.sh
+   ```
+   
+   **On Windows (PowerShell):**
+   ```powershell
+   cd dbt_package
+   .\test_local.ps1
    ```
 
 2. **Start PostgreSQL** (if using docker-compose):
@@ -23,16 +31,33 @@ This guide helps you test the dbt integration locally before pushing to CI.
    ```
 
 3. **Compile dbt project:**
+   
+   **On Linux/Mac:**
    ```bash
    cd /tmp/test_dbt_project_local
    export DBT_PROFILES_DIR=./profiles
    dbt compile --profiles-dir ./profiles
    ```
+   
+   **On Windows (PowerShell):**
+   ```powershell
+   cd $env:TEMP\test_dbt_project_local
+   $env:DBT_PROFILES_DIR='.\profiles'
+   dbt compile --profiles-dir .\profiles
+   ```
 
 4. **Run the test script:**
+   
+   **On Linux/Mac:**
    ```bash
    cd ../../baselinr/dbt_package
    python test_local.py /tmp/test_dbt_project_local/target/manifest.json
+   ```
+   
+   **On Windows (PowerShell):**
+   ```powershell
+   cd ..\..\baselinr\dbt_package
+   python test_local.py "$env:TEMP\test_dbt_project_local\target\manifest.json"
    ```
 
 The test script will show you:
@@ -52,8 +77,16 @@ You can also test interactively:
 ```python
 from baselinr.integrations.dbt import DBTManifestParser
 import json
+import tempfile
+import os
 
-parser = DBTManifestParser(manifest_path='/tmp/test_dbt_project_local/target/manifest.json')
+# Use appropriate temp path for your OS
+if os.name == 'nt':  # Windows
+    manifest_path = os.path.join(tempfile.gettempdir(), 'test_dbt_project_local', 'target', 'manifest.json')
+else:
+    manifest_path = '/tmp/test_dbt_project_local/target/manifest.json'
+
+parser = DBTManifestParser(manifest_path=manifest_path)
 
 # Check all models
 all_models = parser.get_all_models()
