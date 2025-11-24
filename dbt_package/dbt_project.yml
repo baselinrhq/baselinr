@@ -6,3 +6,6 @@ macro-paths: ["macros"]
 test-paths: ["tests"]
 model-paths: ["models"]
 
+# Require baselinr Python package
+require-dbt-version: ">=1.0.0"
+

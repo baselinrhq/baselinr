@@ -325,10 +325,12 @@ print(f"Found {len(models)} models matching selector")
    cd your_dbt_project
    # Add to packages.yml:
    # packages:
-   #   - git: "https://github.com/baselinrhq/baselinr.git"
-   #     subdirectory: dbt_package
+   #   - git: "https://github.com/baselinrhq/dbt-baselinr.git"
+   #     revision: v0.1.0
    dbt deps
    ```
+   
+   > **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr).
 
 2. **Test profiling post-hook**:
    ```yaml

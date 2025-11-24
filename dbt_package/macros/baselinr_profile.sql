@@ -38,6 +38,7 @@
     {%- set script_path -%}
       {{- var('baselinr_script_path', 'dbt_packages/baselinr/scripts/baselinr_profile.py') -}}
     {%- endset -%}
+    {# Note: When installed as a package, the path will be dbt_packages/baselinr/scripts/baselinr_profile.py #}
     
     {%- set config_arg -%}
       {%- if config_path -%}

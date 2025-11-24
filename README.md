@@ -420,10 +420,12 @@ models:
 2. Add to `packages.yml`:
    ```yaml
    packages:
-     - git: "https://github.com/baselinrhq/baselinr.git"
-       subdirectory: dbt_package
+     - git: "https://github.com/baselinrhq/dbt-baselinr.git"
+       revision: v0.1.0
    ```
 3. Run: `dbt deps`
+
+> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were using `subdirectory: dbt_package`, please migrate to the new repository.
 
 See [dbt Integration Guide](docs/guides/DBT_INTEGRATION.md) for complete documentation.
 

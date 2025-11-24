@@ -214,14 +214,16 @@ In your dbt project's `packages.yml`:
 
 ```yaml
 packages:
-  - git: "https://github.com/baselinrhq/baselinr.git"
-    subdirectory: dbt_package
+  - git: "https://github.com/baselinrhq/dbt-baselinr.git"
+    revision: v0.1.0
 ```
 
 Then:
 ```bash
 dbt deps
 ```
+
+> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were using `subdirectory: dbt_package`, please migrate to the new repository.
 
 ### 2. Test Profiling Post-Hook
 
