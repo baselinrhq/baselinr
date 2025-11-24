@@ -20,9 +20,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[dev]"
 
       - name: Run dbt integration tests
         run: pytest tests/test_dbt_integration.py -v
