@@ -97,21 +97,7 @@ class DBTSelectorResolver:
         # tag:tag_name
         if selector.startswith("tag:"):
             tag = selector[4:].strip()
-            matching_models = []
-            for m in all_models:
-                # Check both top-level tags and config.tags
-                tags = m.get("tags", [])
-                config_tags = (
-                    m.get("config", {}).get("tags", []) if isinstance(m.get("config"), dict) else []
-                )
-                all_tags = []
-                if isinstance(tags, list):
-                    all_tags.extend(tags)
-                if isinstance(config_tags, list):
-                    all_tags.extend(config_tags)
-                if tag in all_tags:
-                    matching_models.append(m)
-            return matching_models
+            return [m for m in all_models if tag in m.get("tags", [])]
 
         # config.materialized:value
         if selector.startswith("config.materialized:"):

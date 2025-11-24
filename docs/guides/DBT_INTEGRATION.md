@@ -25,8 +25,8 @@ Add the baselinr dbt package to your `packages.yml`:
 
 ```yaml
 packages:
-  - git: "https://github.com/baselinrhq/baselinr.git"
-    subdirectory: dbt_package
+  - git: "https://github.com/baselinrhq/dbt-baselinr.git"
+    revision: v0.1.0
 ```
 
 Then install:
@@ -34,6 +34,8 @@ Then install:
 ```bash
 dbt deps
 ```
+
+> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were previously using `subdirectory: dbt_package` from the main baselinr repository, please migrate to the new repository. See the [dbt-baselinr repository](https://github.com/baselinrhq/dbt-baselinr) for the latest version and migration guide.
 
 ## Component 1: dbt Refs/Selectors in Baselinr Configs
 

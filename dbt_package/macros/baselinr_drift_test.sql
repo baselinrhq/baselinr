@@ -52,6 +52,7 @@
     {%- set script_path -%}
       {{- var('baselinr_script_path', 'dbt_packages/baselinr/scripts/baselinr_drift_check.py') -}}
     {%- endset -%}
+    {# Note: When installed as a package, the path will be dbt_packages/baselinr/scripts/baselinr_drift_check.py #}
     
     {%- set config_arg -%}
       {%- if config_path -%}
