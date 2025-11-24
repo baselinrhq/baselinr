@@ -70,6 +70,8 @@ jobs:
           EOF
           
           cat > models/customers.sql << 'EOF'
+          {{ config(tags=['critical', 'customer']) }}
+          
           SELECT 
             1 as customer_id,
             'test@example.com' as email,
@@ -77,6 +79,8 @@ jobs:
           EOF
           
           cat > models/orders.sql << 'EOF'
+          {{ config(tags=['critical']) }}
+          
           SELECT 
             1 as order_id,
             1 as customer_id,
@@ -85,6 +89,8 @@ jobs:
           EOF
           
           cat > models/users.sql << 'EOF'
+          {{ config(tags=['user']) }}
+          
           SELECT 
             1 as user_id,
             'test_user' as username
