@@ -6,6 +6,7 @@ from baselinr.config.schema import (
     ColumnConfig,
     ColumnDriftConfig,
     ColumnProfilingConfig,
+    DatabaseConfig,
     PartitionConfig,
     ProfilingConfig,
     SamplingConfig,
@@ -317,4 +318,210 @@ class TestConfigResolver:
         assert found is not None
         assert found.partition is not None
         assert found.sampling is None
+
+    def test_find_database_config_exact_match(self):
+        """Test finding database config with exact database match."""
+        database_config = DatabaseConfig(database="warehouse")
+        resolver = ConfigResolver(database_configs=[database_config])
+
+        found = resolver.find_database_config("warehouse")
+        assert found is not None
+        assert found.database == "warehouse"
+
+    def test_find_database_config_no_match(self):
+        """Test finding database config when no match exists."""
+        database_config = DatabaseConfig(database="warehouse")
+        resolver = ConfigResolver(database_configs=[database_config])
+
+        found = resolver.find_database_config("other")
+        assert found is None
+
+    def test_find_database_config_none_database(self):
+        """Test finding database config when database is None."""
+        database_config = DatabaseConfig(database="warehouse")
+        resolver = ConfigResolver(database_configs=[database_config])
+
+        found = resolver.find_database_config(None)
+        assert found is None
+
+    def test_resolve_table_config_merges_database_config(self):
+        """Test that database config is merged into table pattern."""
+        database_config = DatabaseConfig(
+            database="warehouse", partition=PartitionConfig(strategy="latest", key="date")
+        )
+        table_pattern = TablePattern(table="orders", schema="analytics", database="warehouse")
+        resolver = ConfigResolver(database_configs=[database_config])
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        assert resolved.partition is not None
+        assert resolved.partition.strategy == "latest"
+        assert resolved.partition.key == "date"
+
+    def test_resolve_table_config_database_schema_table_precedence(self):
+        """Test that precedence is database → schema → table."""
+        database_config = DatabaseConfig(
+            database="warehouse", partition=PartitionConfig(strategy="all", key="date")
+        )
+        schema_config = SchemaConfig(
+            schema="analytics",
+            database="warehouse",
+            partition=PartitionConfig(strategy="latest", key="timestamp"),
+        )
+        table_pattern = TablePattern(
+            table="orders",
+            schema="analytics",
+            database="warehouse",
+            partition=PartitionConfig(strategy="all", key="created_at"),
+        )
+        resolver = ConfigResolver(
+            schema_configs=[schema_config], database_configs=[database_config]
+        )
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        # Table should override both database and schema
+        assert resolved.partition is not None
+        assert resolved.partition.strategy == "all"
+        assert resolved.partition.key == "created_at"
+
+    def test_resolve_table_config_merges_column_configs_all_levels(self):
+        """Test that column configs from all levels are merged correctly."""
+        database_config = DatabaseConfig(
+            database="warehouse",
+            columns=[
+                ColumnConfig(
+                    name="*_id",
+                    drift=ColumnDriftConfig(enabled=False),  # Database-level: disable drift for IDs
+                )
+            ],
+        )
+        schema_config = SchemaConfig(
+            schema="analytics",
+            database="warehouse",
+            columns=[
+                ColumnConfig(
+                    name="customer_id",
+                    drift=ColumnDriftConfig(enabled=True),  # Schema-level: enable for customer_id
+                )
+            ],
+        )
+        table_pattern = TablePattern(
+            table="orders",
+            schema="analytics",
+            database="warehouse",
+            columns=[
+                ColumnConfig(
+                    name="customer_id",
+                    drift=ColumnDriftConfig(
+                        enabled=False, thresholds={"low": 1.0}
+                    ),  # Table-level: disable with custom thresholds
+                )
+            ],
+        )
+        resolver = ConfigResolver(
+            schema_configs=[schema_config], database_configs=[database_config]
+        )
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        assert resolved.columns is not None
+        assert len(resolved.columns) == 3
+
+        # Column order should be: table → schema → database (table checked first)
+        # Table column should be first
+        assert resolved.columns[0].name == "customer_id"
+        assert resolved.columns[0].drift is not None
+        assert resolved.columns[0].drift.enabled is False
+        assert resolved.columns[0].drift.thresholds == {"low": 1.0}
+
+        # Schema column should be second
+        assert resolved.columns[1].name == "customer_id"
+        assert resolved.columns[1].drift is not None
+        assert resolved.columns[1].drift.enabled is True
+
+        # Database column should be third
+        assert resolved.columns[2].name == "*_id"
+        assert resolved.columns[2].drift is not None
+        assert resolved.columns[2].drift.enabled is False
+
+    def test_resolve_table_config_merges_sampling_database_schema_table(self):
+        """Test that sampling configs are merged correctly across all levels."""
+        database_config = DatabaseConfig(
+            database="warehouse", sampling=SamplingConfig(enabled=True, fraction=0.1)
+        )
+        schema_config = SchemaConfig(
+            schema="analytics",
+            database="warehouse",
+            sampling=SamplingConfig(enabled=True, fraction=0.05),
+        )
+        table_pattern = TablePattern(
+            table="orders",
+            schema="analytics",
+            database="warehouse",
+            sampling=SamplingConfig(enabled=True, fraction=0.01),
+        )
+        resolver = ConfigResolver(
+            schema_configs=[schema_config], database_configs=[database_config]
+        )
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        # Table should override both database and schema
+        assert resolved.sampling is not None
+        assert resolved.sampling.enabled is True
+        assert resolved.sampling.fraction == 0.01
+
+    def test_resolve_table_config_merges_filters_database_schema_table(self):
+        """Test that filter fields are merged correctly across all levels."""
+        database_config = DatabaseConfig(
+            database="warehouse", min_rows=100, table_types=["table"]
+        )
+        schema_config = SchemaConfig(
+            schema="analytics",
+            database="warehouse",
+            min_rows=500,  # Schema overrides database
+            required_columns=["id"],  # Schema adds requirement
+        )
+        table_pattern = TablePattern(
+            table="orders",
+            schema="analytics",
+            database="warehouse",
+            min_rows=1000,  # Table overrides both
+            required_columns=["customer_id"],  # Table adds another requirement
+        )
+        resolver = ConfigResolver(
+            schema_configs=[schema_config], database_configs=[database_config]
+        )
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        # Table should override min_rows
+        assert resolved.min_rows == 1000
+        # Table types should be combined (database + schema + table, but table has none)
+        assert resolved.table_types == ["table"]
+        # Required columns should be combined
+        assert resolved.required_columns is not None
+        assert "id" in resolved.required_columns
+        assert "customer_id" in resolved.required_columns
+
+    def test_resolve_table_config_no_database_config(self):
+        """Test resolving table config when no database config exists."""
+        table_pattern = TablePattern(
+            table="orders", schema="analytics", database="warehouse"
+        )
+        resolver = ConfigResolver(database_configs=[])
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        assert resolved.table == "orders"
+        assert resolved.schema_ == "analytics"
+        assert resolved.database == "warehouse"
+
+    def test_resolve_table_config_database_config_no_match(self):
+        """Test resolving table config when database config doesn't match."""
+        database_config = DatabaseConfig(database="other_db")
+        table_pattern = TablePattern(
+            table="orders", schema="analytics", database="warehouse"
+        )
+        resolver = ConfigResolver(database_configs=[database_config])
+
+        resolved = resolver.resolve_table_config(table_pattern)
+        # Should return table pattern as-is since database doesn't match
+        assert resolved.table == "orders"
+        assert resolved.database == "warehouse"
 

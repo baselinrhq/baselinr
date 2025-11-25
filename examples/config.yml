@@ -117,6 +117,35 @@ profiling:
     #       profiling:
     #         enabled: false  # Not profiled, so drift/anomaly automatically skipped
   
+  # Database-level configurations (commented out)
+  # Apply settings to all schemas/tables within a specified database
+  # databases:
+  #   # Example 1: Database-level column configs
+  #   - database: warehouse
+  #     columns:
+  #       - name: "*_id"
+  #         drift:
+  #           enabled: false  # All ID columns in warehouse database skip drift
+  #       - name: "*_temp"
+  #         profiling:
+  #           enabled: false  # Skip temp columns
+  #   
+  #   # Example 2: Database-level sampling
+  #   - database: staging_db
+  #     sampling:
+  #       enabled: true
+  #       fraction: 0.05  # All tables in staging_db sample 5%
+  #   
+  #   # Example 3: Database-level partition config
+  #   - database: analytics_db
+  #     partition:
+  #       strategy: latest
+  #       key: date
+  #     columns:
+  #       - name: "*_metadata"
+  #         profiling:
+  #           enabled: false  # Skip metadata columns across entire database
+
   # Schema-level configurations (commented out)
   # Apply settings to all tables within a specified schema
   # schemas:

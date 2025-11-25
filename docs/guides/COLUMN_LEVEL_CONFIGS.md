@@ -607,6 +607,168 @@ profiling:
       schema: analytics  # All tables in analytics schema inherit configs
 ```
 
+## Database-Level Configuration
+
+Database-level configurations allow you to apply settings to all schemas/tables within a specified database, providing the broadest scope for organizational policy management.
+
+### Overview
+
+Database-level configs support all the same options as schema-level configs (partition, sampling, column configs, filters), and they merge with schema and table configs following the precedence: **Database → Schema → Table → Column**.
+
+### Database Configuration Structure
+
+```yaml
+profiling:
+  databases:
+    - database: warehouse
+      partition:
+        strategy: latest
+        key: date
+      sampling:
+        enabled: true
+        fraction: 0.05  # All tables in warehouse database sample 5%
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false  # All ID columns in warehouse database skip drift
+        - name: "*_temp"
+          profiling:
+            enabled: false  # Skip temp columns in all tables
+      # Filter fields also supported
+      min_rows: 100
+      table_types: [table]
+      exclude_patterns: ["*_temp", "*_test"]
+
+  schemas:
+    - schema: analytics
+      database: warehouse  # Inherits database-level configs
+      columns:
+        - name: "*_metadata"
+          profiling:
+            enabled: false  # Schema-level override
+
+  tables:
+    - table: orders
+      schema: analytics
+      database: warehouse  # Inherits both database and schema configs
+```
+
+### How Database Configs Work
+
+1. **Scope**: Database configs apply to ALL schemas/tables in the specified database
+2. **Merging**: Database configs are merged with schema and table configs
+3. **Precedence**: Database → Schema → Table → Column (each level can override previous)
+4. **Column Configs**: Database column configs are merged with schema and table column configs (table takes highest precedence)
+
+### Example: Database-Level Column Configs
+
+Apply policies at the database level that can be overridden at schema or table level:
+
+```yaml
+profiling:
+  databases:
+    - database: warehouse
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false  # Database-level: disable drift for all ID columns
+  
+  schemas:
+    - schema: analytics
+      database: warehouse
+      columns:
+        - name: "customer_id"
+          drift:
+            enabled: true  # Schema-level: override for customer_id in analytics schema
+  
+  tables:
+    - table: orders
+      schema: analytics
+      database: warehouse
+      columns:
+        - name: "customer_id"
+          drift:
+            enabled: false  # Table-level: override again for orders table
+            thresholds:
+              low: 1.0  # With custom thresholds
+```
+
+### Example: Database-Level Sampling
+
+Apply consistent sampling strategy across all tables in a database:
+
+```yaml
+profiling:
+  databases:
+    - database: staging_db
+      sampling:
+        enabled: true
+        fraction: 0.05  # All tables in staging_db sample 5%
+  
+  tables:
+    - select_all_schemas: true
+      database: staging_db  # Inherits database-level sampling
+```
+
+### Example: Multi-Level Precedence
+
+Demonstrate how configurations merge across all levels:
+
+```yaml
+profiling:
+  databases:
+    - database: warehouse
+      partition:
+        strategy: all  # Database-level default
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false
+  
+  schemas:
+    - schema: analytics
+      database: warehouse
+      partition:
+        strategy: latest  # Schema-level override
+      columns:
+        - name: "customer_id"
+          drift:
+            enabled: true
+  
+  tables:
+    - table: orders
+      schema: analytics
+      database: warehouse
+      partition:
+        strategy: range  # Table-level override
+        key: created_at
+      columns:
+        - name: "customer_id"
+          drift:
+            enabled: false  # Table-level override
+```
+
+**Result**:
+- `orders` table uses `range` partition strategy (table overrides schema and database)
+- `customer_id` column has drift disabled (table overrides schema, which overrides database)
+
+### When to Use Database-Level Configs
+
+Use database-level configs for:
+
+1. **Organization-Wide Policies**: Apply consistent policies across all tables in a database
+2. **Cost Management**: Apply sampling or filtering at the database level
+3. **Security**: Disable profiling/drift for sensitive column patterns across the entire database
+4. **Environment-Specific Settings**: Different policies for `production` vs `staging` databases
+
+### Database Configs vs Schema Configs
+
+- **Database Configs**: Apply to ALL schemas/tables in the database (broadest scope)
+- **Schema Configs**: Apply to ALL tables in a specific schema (can be database-specific)
+- **Table Configs**: Apply to a specific table (most specific)
+
+Use database configs for organization-wide policies, and schema configs for schema-specific overrides.
+
 ## Configuration Precedence
 
 Configurations are merged with the following precedence (highest to lowest):
@@ -614,9 +776,10 @@ Configurations are merged with the following precedence (highest to lowest):
 1. **Column-level config** (most specific)
 2. **Table-level config** (from `profiling.tables`)
 3. **Schema-level config** (from `profiling.schemas`)
-4. **Global config** (defaults from `drift_detection` and `storage` sections)
+4. **Database-level config** (from `profiling.databases`)
+5. **Global config** (defaults from `drift_detection` and `storage` sections)
 
-Example with Schema-Level:
+Example with Database, Schema, and Table Levels:
 
 ```yaml
 # Global defaults
@@ -628,19 +791,28 @@ drift_detection:
     high_threshold: 30.0
 
 profiling:
-  schemas:
-    - schema: analytics
+  databases:
+    - database: warehouse
       columns:
         - name: "*_id"
           drift:
-            enabled: false  # Schema-level: disable drift for all IDs
+            enabled: false  # Database-level: disable drift for all IDs
+  
+  schemas:
+    - schema: analytics
+      database: warehouse
+      columns:
+        - name: "customer_id"
+          drift:
+            enabled: true  # Schema-level: override for customer_id
   
   tables:
     - table: customers
       schema: analytics
+      database: warehouse
       columns:
         - name: amount
-          # Column-level overrides schema-level and global
+          # Column-level overrides schema, database, and global
           drift:
             enabled: true
             thresholds:
