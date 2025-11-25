@@ -128,14 +128,14 @@ class OpenAIProvider(LLMProvider):
         max_toks = max_tokens if max_tokens is not None else self.config.max_tokens
 
         try:
-            messages = []
+            messages: list[dict[str, str]] = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
             messages.append({"role": "user", "content": prompt})
 
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=messages,  # type: ignore[arg-type]
                 temperature=temp,
                 max_tokens=max_toks,
                 timeout=self.config.timeout,

@@ -125,22 +125,29 @@ class AnthropicProvider(LLMProvider):
 
         try:
             # Anthropic API structure
-            messages = [{"role": "user", "content": prompt}]
+            messages: list[dict[str, str]] = [{"role": "user", "content": prompt}]
             system_message = system_prompt if system_prompt else None
 
             response = self.client.messages.create(
                 model=self.model,
                 max_tokens=max_toks,
                 temperature=temp,
-                system=system_message,
-                messages=messages,
+                system=system_message,  # type: ignore[arg-type]
+                messages=messages,  # type: ignore[arg-type]
                 timeout=self.config.timeout,
             )
 
             latency_ms = (time.time() - start_time) * 1000
 
             # Extract response
-            content = response.content[0].text if response.content else ""
+            if response.content and len(response.content) > 0:
+                first_block = response.content[0]
+                if hasattr(first_block, "text"):
+                    content = first_block.text
+                else:
+                    content = ""
+            else:
+                content = ""
             tokens_used = (
                 response.usage.input_tokens + response.usage.output_tokens
                 if response.usage
