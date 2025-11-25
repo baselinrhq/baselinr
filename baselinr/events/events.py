@@ -38,6 +38,7 @@ class DataDriftDetected(BaseEvent):
     current_value: float
     change_percent: Optional[float]
     drift_severity: str
+    explanation: Optional[str] = None  # Human-readable explanation
 
     def __post_init__(self):
         """Populate metadata from fields."""
@@ -52,6 +53,7 @@ class DataDriftDetected(BaseEvent):
                 "current_value": self.current_value,
                 "change_percent": self.change_percent,
                 "drift_severity": self.drift_severity,
+                "explanation": self.explanation,
             }
         )
 
@@ -70,6 +72,7 @@ class SchemaChangeDetected(BaseEvent):
     new_type: Optional[str] = None
     partition_info: Optional[Dict[str, Any]] = None  # For partition changes
     change_severity: str = "medium"  # 'low', 'medium', 'high', 'breaking'
+    explanation: Optional[str] = None  # Human-readable explanation
 
     def __post_init__(self):
         """Populate metadata from fields."""
@@ -85,6 +88,7 @@ class SchemaChangeDetected(BaseEvent):
                 "new_type": self.new_type,
                 "partition_info": self.partition_info,
                 "change_severity": self.change_severity,
+                "explanation": self.explanation,
             }
         )
 
@@ -256,6 +260,7 @@ class AnomalyDetected(BaseEvent):
     actual_value: float
     severity: str  # 'low', 'medium', 'high'
     detection_method: str
+    explanation: Optional[str] = None  # Human-readable explanation
 
     def __post_init__(self):
         """Populate metadata from fields."""
@@ -271,5 +276,6 @@ class AnomalyDetected(BaseEvent):
                 "actual_value": self.actual_value,
                 "severity": self.severity,
                 "detection_method": self.detection_method,
+                "explanation": self.explanation,
             }
         )

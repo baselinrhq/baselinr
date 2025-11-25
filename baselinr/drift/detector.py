@@ -36,6 +36,7 @@ class ColumnDrift:
     drift_detected: bool = False
     drift_severity: str = "none"  # none, low, medium, high
     metadata: Optional[Dict[str, Any]] = None
+    explanation: Optional[str] = None  # Human-readable explanation
 
     def __post_init__(self):
         if self.metadata is None:
@@ -76,6 +77,7 @@ class DriftReport:
                     "drift_detected": d.drift_detected,
                     "drift_severity": d.drift_severity,
                     "metadata": d.metadata or {},
+                    "explanation": d.explanation,
                 }
                 for d in self.column_drifts
             ],
@@ -105,6 +107,7 @@ class DriftDetector:
         event_bus: Optional[EventBus] = None,
         metrics_enabled: bool = False,
         retry_config=None,
+        llm_config=None,
     ):
         """
         Initialize drift detector.
@@ -115,6 +118,7 @@ class DriftDetector:
             event_bus: Optional event bus for emitting drift events
             metrics_enabled: Whether Prometheus metrics are enabled
             retry_config: Optional retry configuration
+            llm_config: Optional LLM configuration for explanations
         """
         self.storage_config = storage_config
         self.drift_config = drift_config or DriftDetectionConfig()  # type: ignore[call-arg]
@@ -122,6 +126,7 @@ class DriftDetector:
         self.engine = self._setup_connection()
         self.event_bus = event_bus
         self.metrics_enabled = metrics_enabled
+        self.llm_config = llm_config
 
         # Create type-specific thresholds if enabled
         self.type_thresholds = None
@@ -384,6 +389,7 @@ class DriftDetector:
                             current_value=drift.current_value,
                             change_percent=drift.change_percent,
                             drift_severity=drift.drift_severity,
+                            explanation=drift.explanation,
                             metadata={},
                         )
                     )
@@ -424,6 +430,28 @@ class DriftDetector:
                     elif column_info:
                         column = column_info.strip()
 
+                    # Generate explanation for schema change if LLM is enabled
+                    explanation = None
+                    if self.llm_config and self.llm_config.enabled:
+                        try:
+                            from ..llm.explainer import LLMExplainer
+
+                            explainer = LLMExplainer(self.llm_config)
+                            alert_data = {
+                                "table": dataset_name,
+                                "change_type": change_type,
+                                "column": column,
+                                "new_type": new_type,
+                                "change_severity": "medium",
+                            }
+                            explanation = explainer.generate_explanation(
+                                alert_data=alert_data,
+                                alert_type="schema_change",
+                                fallback_object=change,
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to generate schema change explanation: {e}")
+
                     self.event_bus.emit(
                         SchemaChangeDetected(
                             event_type="SchemaChangeDetected",
@@ -432,6 +460,7 @@ class DriftDetector:
                             change_type=change_type,
                             column=column,
                             new_type=new_type,
+                            explanation=explanation,
                             metadata={},
                         )
                     )
@@ -501,6 +530,27 @@ class DriftDetector:
             changes.append(f"Column added: {col}")
             # Emit schema change event
             if self.event_bus:
+                # Generate explanation for schema change if LLM is enabled
+                explanation = None
+                if self.llm_config and self.llm_config.enabled:
+                    try:
+                        from ..llm.explainer import LLMExplainer
+
+                        explainer = LLMExplainer(self.llm_config)
+                        alert_data = {
+                            "table": table_name,
+                            "change_type": "column_added",
+                            "column": col,
+                            "change_severity": "medium",
+                        }
+                        explanation = explainer.generate_explanation(
+                            alert_data=alert_data,
+                            alert_type="schema_change",
+                            fallback_object=f"Column added: {col}",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to generate schema change explanation: {e}")
+
                 self.event_bus.emit(
                     SchemaChangeDetected(
                         event_type="SchemaChangeDetected",
@@ -508,6 +558,7 @@ class DriftDetector:
                         table=table_name,
                         change_type="column_added",
                         column=col,
+                        explanation=explanation,
                         metadata={},
                     )
                 )
@@ -518,6 +569,27 @@ class DriftDetector:
             changes.append(f"Column removed: {col}")
             # Emit schema change event
             if self.event_bus:
+                # Generate explanation for schema change if LLM is enabled
+                explanation = None
+                if self.llm_config and self.llm_config.enabled:
+                    try:
+                        from ..llm.explainer import LLMExplainer
+
+                        explainer = LLMExplainer(self.llm_config)
+                        alert_data = {
+                            "table": table_name,
+                            "change_type": "column_removed",
+                            "column": col,
+                            "change_severity": "high",
+                        }
+                        explanation = explainer.generate_explanation(
+                            alert_data=alert_data,
+                            alert_type="schema_change",
+                            fallback_object=f"Column removed: {col}",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to generate schema change explanation: {e}")
+
                 self.event_bus.emit(
                     SchemaChangeDetected(
                         event_type="SchemaChangeDetected",
@@ -525,6 +597,7 @@ class DriftDetector:
                         table=table_name,
                         change_type="column_removed",
                         column=col,
+                        explanation=explanation,
                         metadata={},
                     )
                 )
@@ -643,6 +716,7 @@ class DriftDetector:
                 baseline_run_id=actual_baseline_run_id,
                 current_run_id=current_run_id,
                 merged_drift_config=merged_drift_config,
+                table_name=table_name,
             )
             if drift:
                 drifts.append(drift)
@@ -667,6 +741,7 @@ class DriftDetector:
                             current_value=current_value,
                             change_percent=drift.change_percent,
                             drift_severity=drift.drift_severity,
+                            explanation=drift.explanation,
                             metadata=drift.metadata or {},
                         )
                     )
@@ -861,6 +936,7 @@ class DriftDetector:
         baseline_run_id: Optional[str] = None,
         current_run_id: Optional[str] = None,
         merged_drift_config: Optional[DriftDetectionConfig] = None,
+        table_name: Optional[str] = None,
     ) -> Optional[ColumnDrift]:
         """Calculate drift for a metric using the configured strategy."""
         # Use column-specific drift config if provided, otherwise use default
@@ -953,7 +1029,7 @@ class DriftDetector:
         if result is None:
             return None
 
-        # Convert DriftResult to ColumnDrift
+            # Convert DriftResult to ColumnDrift
         drift = ColumnDrift(
             column_name=column_name,
             metric_name=metric_name,
@@ -965,6 +1041,32 @@ class DriftDetector:
             drift_severity=result.drift_severity,
             metadata=result.metadata or {},
         )
+        # Store table name in metadata for template generation
+        if table_name and drift.metadata:
+            drift.metadata["table_name"] = table_name
+
+        # Generate LLM explanation if enabled and drift was detected
+        if drift.drift_detected and self.llm_config and self.llm_config.enabled:
+            try:
+                from ..llm.explainer import LLMExplainer
+
+                explainer = LLMExplainer(self.llm_config)
+                alert_data = {
+                    "table": table_name or "unknown",
+                    "column": column_name,
+                    "metric": metric_name,
+                    "baseline_value": baseline_value,
+                    "current_value": current_value,
+                    "change_percent": result.change_percent,
+                    "change_absolute": result.change_absolute,
+                    "drift_severity": result.drift_severity,
+                    "metadata": drift.metadata,
+                }
+                drift.explanation = explainer.generate_explanation(
+                    alert_data=alert_data, alert_type="drift", fallback_object=drift
+                )
+            except Exception as e:
+                logger.warning(f"Failed to generate drift explanation: {e}")
 
         # Emit drift event if drift was detected and event bus is available
         if drift.drift_detected and self.event_bus:
@@ -981,6 +1083,7 @@ class DriftDetector:
                     current_value=current_value,
                     change_percent=result.change_percent,
                     drift_severity=result.drift_severity,
+                    explanation=drift.explanation,
                     metadata={},
                 )
             )

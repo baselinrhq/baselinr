@@ -53,6 +53,9 @@ class ConfigLoader:
         # Apply environment variable overrides
         config_dict = ConfigLoader._apply_env_overrides(config_dict)
 
+        # Expand environment variables in config values (e.g., ${OPENAI_API_KEY})
+        config_dict = ConfigLoader._expand_env_vars(config_dict)
+
         # Validate and return
         try:
             return BaselinrConfig(**config_dict)
@@ -126,6 +129,52 @@ class ConfigLoader:
         return value
 
     @staticmethod
+    def _expand_env_vars(config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Expand environment variable references in config values.
+
+        Supports syntax like ${VAR_NAME} or ${VAR_NAME:default_value}.
+
+        Args:
+            config: Configuration dictionary
+
+        Returns:
+            Configuration with environment variables expanded
+        """
+        import re
+
+        def expand_value(value: Any) -> Any:
+            """Recursively expand environment variables in config values."""
+            if isinstance(value, str):
+                # Match ${VAR_NAME} or ${VAR_NAME:default}
+                pattern = r"\$\{([^}:]+)(?::([^}]*))?\}"
+                matches = re.findall(pattern, value)
+
+                if matches:
+                    result = value
+                    for var_name, default_val in matches:
+                        env_value = os.environ.get(var_name)
+                        if env_value is not None:
+                            replacement = env_value
+                        elif default_val:
+                            replacement = default_val
+                        else:
+                            # Keep original if no env var and no default
+                            continue
+                        result = result.replace(f"${{{var_name}}}", replacement)
+                        result = result.replace(f"${{{var_name}:{default_val}}}", replacement)
+                    return result
+                return value
+            elif isinstance(value, dict):
+                return {k: expand_value(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [expand_value(item) for item in value]
+            else:
+                return value
+
+        return expand_value(config)  # type: ignore[no-any-return]
+
+    @staticmethod
     def load_from_dict(config_dict: Dict[str, Any]) -> BaselinrConfig:
         """
         Load configuration from a dictionary.
@@ -136,4 +185,6 @@ class ConfigLoader:
         Returns:
             Validated BaselinrConfig instance
         """
+        # Expand environment variables
+        config_dict = ConfigLoader._expand_env_vars(config_dict)
         return BaselinrConfig(**config_dict)
