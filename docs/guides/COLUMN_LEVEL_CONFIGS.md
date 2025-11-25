@@ -455,15 +455,168 @@ profiling:
           metrics: [count, null_count, distinct_count]
 ```
 
+## Schema-Level Configuration
+
+Schema-level configurations allow you to apply settings to all tables within a specified schema, reducing configuration duplication and enabling organizational policy management.
+
+### Overview
+
+Schema-level configs support all the same options as table-level configs (partition, sampling, column configs, filters), and they merge with table-level configs following the precedence: **Schema → Table → Column**.
+
+### Schema Configuration Structure
+
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      database: warehouse  # Optional: database-specific schema config
+      partition:
+        strategy: latest
+        key: date
+      sampling:
+        enabled: true
+        fraction: 0.1
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false  # All ID columns in analytics schema skip drift
+        - name: "*_metadata"
+          profiling:
+            enabled: false  # Skip metadata columns
+      # Filter fields also supported
+      min_rows: 100
+      table_types: [table]
+      exclude_patterns: ["*_temp"]
+
+  tables:
+    - table: orders
+      schema: analytics  # Inherits schema-level configs
+      columns:
+        - name: total_amount  # Override/add table-specific config
+          drift:
+            thresholds:
+              low: 1.0
+```
+
+### How Schema Configs Work
+
+1. **Schema Matching**: Schema configs match based on schema name (and optionally database name)
+2. **Config Merging**: Schema configs are merged with table patterns before profiling
+3. **Precedence**: Table-level configs override schema-level configs
+4. **Column Configs**: Schema column configs are merged with table column configs (table takes precedence)
+
+### Example: Schema-Level Column Configs
+
+Apply column configurations to all tables in a schema:
+
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false  # All ID columns skip drift detection
+        - name: "*_metadata"
+          profiling:
+            enabled: false  # Skip metadata columns
+  
+  tables:
+    - table: orders
+      schema: analytics  # Inherits schema-level column configs
+    - table: customers
+      schema: analytics  # Also inherits schema-level column configs
+      columns:
+        - name: email  # Add table-specific override
+          drift:
+            enabled: true
+```
+
+### Example: Schema-Level Sampling
+
+Apply sampling configuration to all tables in a schema:
+
+```yaml
+profiling:
+  schemas:
+    - schema: staging
+      sampling:
+        enabled: true
+        fraction: 0.1  # All staging tables sample 10%
+  
+  tables:
+    - select_schema: true
+      schema: staging  # Inherits sampling config
+```
+
+### Example: Database-Specific Schema Configs
+
+Use database-specific schema configs for multi-database setups:
+
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      database: warehouse_prod
+      sampling:
+        enabled: true
+        fraction: 0.05  # Production: 5% sampling
+    - schema: analytics
+      database: warehouse_dev
+      sampling:
+        enabled: true
+        fraction: 0.2  # Development: 20% sampling
+```
+
+### Schema Config with Pattern Matching
+
+Schema configs apply to tables discovered via patterns:
+
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false
+  
+  tables:
+    - pattern: "user_*"  # Pattern matches user_profiles, user_sessions, etc.
+      schema: analytics  # All matched tables inherit schema column configs
+```
+
+### Schema Config with select_schema
+
+Schema configs work with `select_schema` to apply to all tables:
+
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      partition:
+        strategy: latest
+        key: date
+      columns:
+        - name: "*_temp"
+          profiling:
+            enabled: false
+  
+  tables:
+    - select_schema: true
+      schema: analytics  # All tables in analytics schema inherit configs
+```
+
 ## Configuration Precedence
 
 Configurations are merged with the following precedence (highest to lowest):
 
 1. **Column-level config** (most specific)
-2. **Table-level config** (from `profiling` section)
-3. **Global config** (defaults from `drift_detection` and `storage` sections)
+2. **Table-level config** (from `profiling.tables`)
+3. **Schema-level config** (from `profiling.schemas`)
+4. **Global config** (defaults from `drift_detection` and `storage` sections)
 
-Example:
+Example with Schema-Level:
 
 ```yaml
 # Global defaults
@@ -475,12 +628,21 @@ drift_detection:
     high_threshold: 30.0
 
 profiling:
+  schemas:
+    - schema: analytics
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false  # Schema-level: disable drift for all IDs
+  
   tables:
     - table: customers
+      schema: analytics
       columns:
         - name: amount
-          # Column-level overrides global
+          # Column-level overrides schema-level and global
           drift:
+            enabled: true
             thresholds:
               low: 2.0      # Uses 2.0 instead of 5.0
               medium: 10.0  # Uses 10.0 instead of 15.0

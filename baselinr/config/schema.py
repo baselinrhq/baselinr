@@ -436,6 +436,50 @@ class TablePattern(BaseModel):
         return self
 
 
+class SchemaConfig(BaseModel):
+    """Schema-level configuration that applies to all tables in a schema."""
+
+    database: Optional[str] = Field(None, description="Database name")
+    schema_: Optional[str] = Field(None, alias="schema")
+
+    # Table-level options (same as TablePattern but without selection)
+    partition: Optional[PartitionConfig] = None
+    sampling: Optional[SamplingConfig] = None
+    columns: Optional[List[ColumnConfig]] = Field(
+        None,
+        description="Column-level configurations applied to all tables in this schema",
+    )
+
+    # Filters (same as TablePattern)
+    table_types: Optional[List[str]] = Field(
+        None, description="Filter by table type: 'table', 'view', 'materialized_view', etc."
+    )
+    min_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at least N rows"
+    )
+    max_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at most N rows"
+    )
+    required_columns: Optional[List[str]] = Field(
+        None, description="Tables must have these columns"
+    )
+    modified_since_days: Optional[int] = Field(
+        None, gt=0, description="Only profile tables modified in last N days"
+    )
+    exclude_patterns: Optional[List[str]] = Field(
+        None, description="Patterns to exclude from matches"
+    )
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="after")
+    def validate_schema(self):
+        """Ensure schema is specified."""
+        if self.schema_ is None:
+            raise ValueError("Schema name is required for SchemaConfig")
+        return self
+
+
 class DiscoveryOptionsConfig(BaseModel):
     """Configuration options for table discovery."""
 
@@ -502,6 +546,10 @@ class ProfilingConfig(BaseModel):
     """Profiling behavior configuration."""
 
     tables: List[TablePattern] = Field(default_factory=list)
+    schemas: Optional[List[SchemaConfig]] = Field(
+        None,
+        description="Schema-level configurations that apply to all tables in specified schemas",
+    )
     max_distinct_values: int = Field(1000)
     compute_histograms: bool = Field(True)
     histogram_bins: int = Field(10)

@@ -117,6 +117,54 @@ profiling:
     #       profiling:
     #         enabled: false  # Not profiled, so drift/anomaly automatically skipped
   
+  # Schema-level configurations (commented out)
+  # Apply settings to all tables within a specified schema
+  # schemas:
+  #   # Example 1: Schema-level column configs
+  #   - schema: analytics
+  #     database: warehouse  # Optional: database-specific schema config
+  #     columns:
+  #       - name: "*_id"
+  #         drift:
+  #           enabled: false  # All ID columns in analytics schema skip drift
+  #       - name: "*_metadata"
+  #         profiling:
+  #           enabled: false  # Skip metadata columns
+  
+  #   # Example 2: Schema-level sampling
+  #   - schema: staging
+  #     sampling:
+  #       enabled: true
+  #       fraction: 0.1  # All staging tables sample 10%
+  #     columns:
+  #       - name: "*_temp"
+  #         profiling:
+  #           enabled: false  # Skip temporary columns
+  
+  #   # Example 3: Schema-level partition config
+  #   - schema: analytics
+  #     partition:
+  #       strategy: latest
+  #       key: date
+  #     columns:
+  #       - name: "*_id"
+  #         drift:
+  #           enabled: false
+  #     # Filter fields also supported
+  #     min_rows: 100
+  #     table_types: [table]
+  #     exclude_patterns: ["*_temp"]
+  
+  # Tables matching schema configs inherit the settings
+  # tables:
+  #   - table: orders
+  #     schema: analytics  # Inherits schema-level column configs and partition
+  #     columns:
+  #       - name: total_amount  # Override/add table-specific config
+  #         drift:
+  #           thresholds:
+  #             low: 1.0
+  
   # Maximum distinct values to compute
   max_distinct_values: 1000
   
