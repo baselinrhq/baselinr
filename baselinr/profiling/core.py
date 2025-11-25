@@ -16,6 +16,7 @@ from ..connectors.base import BaseConnector
 from ..connectors.factory import create_connector
 from ..events import EventBus, ProfilingCompleted, ProfilingFailed, ProfilingStarted
 from .column_matcher import ColumnMatcher
+from .config_resolver import ConfigResolver
 from .metrics import MetricCalculator
 from .query_builder import QueryBuilder
 
@@ -457,13 +458,32 @@ class ProfileEngine:
             if self.metric_calculator is None:
                 self.metric_calculator = calculator
 
+            # Resolve configs (merge schema + table configs)
+            resolver = ConfigResolver(
+                schema_configs=self.config.profiling.schemas,
+                profiling_config=self.config.profiling,
+            )
+            resolved_pattern = resolver.resolve_table_config(
+                table_pattern=pattern,
+                schema_name=pattern.schema_,
+                database_name=pattern.database,
+            )
+
+            # Use resolved pattern for rest of method
+            pattern = resolved_pattern
+
+            # Ensure table name is set (should already be set by planner expansion)
+            if pattern.table is None:
+                raise ValueError(f"Table name is required for profiling. Pattern: {pattern}")
+            table_name = pattern.table
+
             # Get table metadata using database-specific connector
-            table = connector.get_table(pattern.table, schema=pattern.schema_)
+            table = connector.get_table(table_name, schema=pattern.schema_)
 
             # Create result container
             result = ProfilingResult(
                 run_id=run_id,
-                dataset_name=pattern.table,
+                dataset_name=table_name,
                 schema_name=pattern.schema_,
                 profiled_at=profiled_at,
             )
@@ -588,7 +608,7 @@ class ProfileEngine:
                     ProfilingCompleted(
                         event_type="ProfilingCompleted",
                         timestamp=datetime.utcnow(),
-                        table=pattern.table,
+                        table=table_name,
                         run_id=run_id,
                         row_count=result.metadata.get("row_count", 0),
                         column_count=result.metadata.get("column_count", 0),
@@ -598,7 +618,7 @@ class ProfileEngine:
                 )
 
             logger.info(
-                f"Successfully profiled {pattern.table} with {len(result.columns)} "
+                f"Successfully profiled {table_name} with {len(result.columns)} "
                 f"columns in {duration:.2f}s"
             )
             return result
@@ -606,11 +626,13 @@ class ProfileEngine:
         except Exception as e:
             # Emit profiling failed event
             if self.event_bus:
+                # Use table_name if available, otherwise fall back to pattern.table or "unknown"
+                failed_table = table_name or pattern.table or "unknown"
                 self.event_bus.emit(
                     ProfilingFailed(
                         event_type="ProfilingFailed",
                         timestamp=datetime.utcnow(),
-                        table=pattern.table,
+                        table=failed_table,
                         run_id=run_id,
                         error=str(e),
                         metadata={},
