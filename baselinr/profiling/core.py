@@ -458,9 +458,10 @@ class ProfileEngine:
             if self.metric_calculator is None:
                 self.metric_calculator = calculator
 
-            # Resolve configs (merge schema + table configs)
+            # Resolve configs (merge database + schema + table configs)
             resolver = ConfigResolver(
                 schema_configs=self.config.profiling.schemas,
+                database_configs=self.config.profiling.databases,
                 profiling_config=self.config.profiling,
             )
             resolved_pattern = resolver.resolve_table_config(

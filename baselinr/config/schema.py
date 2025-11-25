@@ -480,6 +480,49 @@ class SchemaConfig(BaseModel):
         return self
 
 
+class DatabaseConfig(BaseModel):
+    """Database-level configuration that applies to all schemas/tables in a database."""
+
+    database: str = Field(..., description="Database name (required)")
+
+    # Schema-level options (same as SchemaConfig but without schema field)
+    partition: Optional[PartitionConfig] = None
+    sampling: Optional[SamplingConfig] = None
+    columns: Optional[List[ColumnConfig]] = Field(
+        None,
+        description="Column-level configurations applied to all tables in this database",
+    )
+
+    # Filters (same as SchemaConfig)
+    table_types: Optional[List[str]] = Field(
+        None, description="Filter by table type: 'table', 'view', 'materialized_view', etc."
+    )
+    min_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at least N rows"
+    )
+    max_rows: Optional[int] = Field(
+        None, gt=0, description="Only profile tables with at most N rows"
+    )
+    required_columns: Optional[List[str]] = Field(
+        None, description="Tables must have these columns"
+    )
+    modified_since_days: Optional[int] = Field(
+        None, gt=0, description="Only profile tables modified in last N days"
+    )
+    exclude_patterns: Optional[List[str]] = Field(
+        None, description="Patterns to exclude from matches"
+    )
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="after")
+    def validate_database(self):
+        """Ensure database is specified."""
+        if not self.database:
+            raise ValueError("Database name is required for DatabaseConfig")
+        return self
+
+
 class DiscoveryOptionsConfig(BaseModel):
     """Configuration options for table discovery."""
 
@@ -549,6 +592,12 @@ class ProfilingConfig(BaseModel):
     schemas: Optional[List[SchemaConfig]] = Field(
         None,
         description="Schema-level configurations that apply to all tables in specified schemas",
+    )
+    databases: Optional[List[DatabaseConfig]] = Field(
+        None,
+        description=(
+            "Database-level configurations that apply to all schemas/tables in specified databases"
+        ),
     )
     max_distinct_values: int = Field(1000)
     compute_histograms: bool = Field(True)

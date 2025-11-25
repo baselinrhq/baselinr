@@ -1,24 +1,25 @@
 """
 Configuration resolution utility for Baselinr.
 
-Resolves and merges configurations from schema, table, and column levels
-following the precedence: Schema → Table → Column.
+Resolves and merges configurations from database, schema, table, and column levels
+following the precedence: Database → Schema → Table → Column.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from ..config.schema import ProfilingConfig, SchemaConfig, TablePattern
+from ..config.schema import DatabaseConfig, ProfilingConfig, SchemaConfig, TablePattern
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigResolver:
-    """Resolves and merges configurations from schema, table, and column levels."""
+    """Resolves and merges configurations from database, schema, table, and column levels."""
 
     def __init__(
         self,
         schema_configs: Optional[List[SchemaConfig]] = None,
+        database_configs: Optional[List[DatabaseConfig]] = None,
         profiling_config: Optional[ProfilingConfig] = None,
     ):
         """
@@ -26,10 +27,30 @@ class ConfigResolver:
 
         Args:
             schema_configs: List of schema-level configurations
+            database_configs: List of database-level configurations
             profiling_config: Optional profiling config for context
         """
         self.schema_configs = schema_configs or []
+        self.database_configs = database_configs or []
         self.profiling_config = profiling_config
+
+    def find_database_config(self, database_name: Optional[str]) -> Optional[DatabaseConfig]:
+        """
+        Find matching database configuration.
+
+        Args:
+            database_name: Database name to match
+
+        Returns:
+            Matching DatabaseConfig, or None if no match found
+        """
+        if database_name is None:
+            return None
+
+        for db_config in self.database_configs:
+            if db_config.database == database_name:
+                return db_config
+        return None
 
     def find_schema_config(
         self, schema_name: Optional[str], database_name: Optional[str] = None
@@ -77,7 +98,7 @@ class ConfigResolver:
         database_name: Optional[str] = None,
     ) -> TablePattern:
         """
-        Resolve and merge schema + table configs into final TablePattern.
+        Resolve and merge database + schema + table configs into final TablePattern.
 
         Args:
             table_pattern: Table pattern from configuration
@@ -85,34 +106,79 @@ class ConfigResolver:
             database_name: Database name (defaults to table_pattern.database)
 
         Returns:
-            Merged TablePattern with schema configs applied
+            Merged TablePattern with database, schema, and table configs applied
         """
         # Use provided schema/database or fall back to pattern values
         resolved_schema = schema_name or table_pattern.schema_
         resolved_database = database_name or table_pattern.database
 
-        # Find matching schema config
+        # Find matching database and schema configs
+        database_config = self.find_database_config(resolved_database)
         schema_config = self.find_schema_config(resolved_schema, resolved_database)
 
-        if schema_config is None:
-            # No schema config found, return table pattern as-is
-            return table_pattern
+        # Merge database → schema → table (in that order)
+        # Start with table pattern and build up: database → schema → table
+        merged = table_pattern.model_copy(deep=True)
 
-        # Merge schema config into table pattern
-        return self.merge_table_patterns(schema_config, table_pattern)
+        # Store original table columns to rebuild in correct order
+        table_columns = list(table_pattern.columns) if table_pattern.columns else []
+        database_columns = []
+        schema_columns = []
 
-    def merge_table_patterns(
-        self, schema_config: SchemaConfig, table_pattern: TablePattern
+        # Store original table partition and sampling to check if schema should override database
+        table_has_partition = table_pattern.partition is not None
+        table_has_sampling = table_pattern.sampling is not None
+
+        # Apply database config first (lowest priority)
+        if database_config:
+            merged = self._merge_config_into_pattern(
+                database_config,
+                merged,
+                is_database=True,
+                table_has_partition=table_has_partition,
+                table_has_sampling=table_has_sampling,
+            )
+            if database_config.columns:
+                database_columns = list(database_config.columns)
+
+        # Apply schema config second (medium priority, overrides database)
+        if schema_config:
+            merged = self._merge_config_into_pattern(
+                schema_config,
+                merged,
+                is_schema=True,
+                table_has_partition=table_has_partition,
+                table_has_sampling=table_has_sampling,
+            )
+            if schema_config.columns:
+                schema_columns = list(schema_config.columns)
+
+        # Rebuild column list in correct order: table → schema → database
+        # ColumnMatcher checks in order, so higher priority must come first
+        if table_columns or schema_columns or database_columns:
+            merged.columns = table_columns + schema_columns + database_columns
+
+        # Table config is already in merged (highest priority)
+        return merged
+
+    def _merge_config_into_pattern(
+        self,
+        config: Union[DatabaseConfig, SchemaConfig],
+        table_pattern: TablePattern,
+        is_database: bool = False,
+        is_schema: bool = False,
+        table_has_partition: bool = False,
+        table_has_sampling: bool = False,
     ) -> TablePattern:
         """
-        Merge schema config into table pattern.
+        Merge database or schema config into table pattern.
 
-        Table-level values override schema-level values. For nested objects
+        Table-level values override config-level values. For nested objects
         (partition, sampling), merge recursively. For lists (columns, filters),
         combine both with table taking precedence for duplicates.
 
         Args:
-            schema_config: Schema-level configuration
+            config: Database-level or schema-level configuration
             table_pattern: Table-level configuration
 
         Returns:
@@ -122,77 +188,98 @@ class ConfigResolver:
         merged = table_pattern.model_copy(deep=True)
 
         # Merge partition config
-        if schema_config.partition and merged.partition is None:
-            merged.partition = schema_config.partition.model_copy(deep=True)
-        elif schema_config.partition and merged.partition:
-            # Merge partition configs: table overrides schema
-            schema_partition_dict = schema_config.partition.model_dump()
-            table_partition_dict = merged.partition.model_dump()
-            # Table values override schema values
-            merged_partition_dict = {**schema_partition_dict, **table_partition_dict}
-            merged.partition = type(schema_config.partition)(**merged_partition_dict)
+        # Precedence: table → schema → database
+        # When merging database into table: table wins (database only fills if table is None)
+        # When merging schema into (table+database): schema overrides database, but table still wins
+        if config.partition and not table_has_partition:
+            # Table doesn't have partition, so we can merge config-level partition
+            if is_schema:
+                # Schema merge: schema should override database (even if database already set it)
+                # Always override when schema is merging (schema overrides database)
+                merged.partition = config.partition.model_copy(deep=True)
+            elif merged.partition is None:
+                # Database merge or first merge: fill if empty
+                merged.partition = config.partition.model_copy(deep=True)
 
         # Merge sampling config
-        if schema_config.sampling and merged.sampling is None:
-            merged.sampling = schema_config.sampling.model_copy(deep=True)
-        elif schema_config.sampling and merged.sampling:
-            # Merge sampling configs: table overrides schema
-            schema_sampling_dict = schema_config.sampling.model_dump()
-            table_sampling_dict = merged.sampling.model_dump()
-            merged_sampling_dict = {**schema_sampling_dict, **table_sampling_dict}
-            merged.sampling = type(schema_config.sampling)(**merged_sampling_dict)
+        # Precedence: table → schema → database
+        # Schema should override database, but table still wins
+        if config.sampling and not table_has_sampling:
+            # Table doesn't have sampling, so we can merge config-level sampling
+            if is_schema:
+                # Schema merge: schema should override database (even if database already set it)
+                # Always override when schema is merging (schema overrides database)
+                merged.sampling = config.sampling.model_copy(deep=True)
+            elif merged.sampling is None:
+                # Database merge or first merge: fill if empty
+                merged.sampling = config.sampling.model_copy(deep=True)
 
-        # Merge column configs: table columns first (higher priority), then schema columns
-        # ColumnMatcher.find_matching_config returns first match, so table configs must come first
-        merged_columns = []
-
-        # Add table column configs first (higher priority, checked first by ColumnMatcher)
-        if merged.columns:
-            merged_columns.extend(merged.columns)
-
-        # Add schema column configs second (lower priority, checked after table configs)
-        if schema_config.columns:
-            merged_columns.extend(schema_config.columns)
-
-        if merged_columns:
-            merged.columns = merged_columns
+        # Column configs are handled in resolve_table_config to ensure correct order.
+        # Don't modify columns here - they'll be rebuilt in resolve_table_config.
 
         # Merge filter fields: combine both (both apply)
         # For lists, extend if not None
-        if schema_config.table_types:
+        if config.table_types:
             if merged.table_types is None:
-                merged.table_types = schema_config.table_types.copy()
+                merged.table_types = config.table_types.copy()
             else:
                 # Combine both lists
-                combined = list(set(schema_config.table_types + merged.table_types))
+                combined = list(set(config.table_types + merged.table_types))
                 merged.table_types = combined
 
-        if schema_config.min_rows is not None and merged.min_rows is None:
-            merged.min_rows = schema_config.min_rows
+        if config.min_rows is not None and merged.min_rows is None:
+            merged.min_rows = config.min_rows
         # If both set, table overrides (no merge needed - already set)
 
-        if schema_config.max_rows is not None and merged.max_rows is None:
-            merged.max_rows = schema_config.max_rows
+        if config.max_rows is not None and merged.max_rows is None:
+            merged.max_rows = config.max_rows
         # If both set, table overrides (no merge needed - already set)
 
-        if schema_config.required_columns:
+        if config.required_columns:
             if merged.required_columns is None:
-                merged.required_columns = schema_config.required_columns.copy()
+                merged.required_columns = config.required_columns.copy()
             else:
                 # Combine both lists (both required)
-                combined = list(set(schema_config.required_columns + merged.required_columns))
+                combined = list(set(config.required_columns + merged.required_columns))
                 merged.required_columns = combined
 
-        if schema_config.modified_since_days is not None and merged.modified_since_days is None:
-            merged.modified_since_days = schema_config.modified_since_days
+        if config.modified_since_days is not None and merged.modified_since_days is None:
+            merged.modified_since_days = config.modified_since_days
         # If both set, table overrides (no merge needed - already set)
 
-        if schema_config.exclude_patterns:
+        if config.exclude_patterns:
             if merged.exclude_patterns is None:
-                merged.exclude_patterns = schema_config.exclude_patterns.copy()
+                merged.exclude_patterns = config.exclude_patterns.copy()
             else:
                 # Combine both lists (exclude if in either)
-                combined = list(set(schema_config.exclude_patterns + merged.exclude_patterns))
+                combined = list(set(config.exclude_patterns + merged.exclude_patterns))
                 merged.exclude_patterns = combined
 
         return merged
+
+    def merge_table_patterns(
+        self, schema_config: SchemaConfig, table_pattern: TablePattern
+    ) -> TablePattern:
+        """
+        Merge schema config into table pattern.
+
+        This method is kept for backward compatibility. It now delegates to
+        _merge_config_into_pattern.
+
+        Args:
+            schema_config: Schema-level configuration
+            table_pattern: Table-level configuration
+
+        Returns:
+            Merged TablePattern
+        """
+        # For backward compatibility, check original table pattern state
+        table_has_partition = table_pattern.partition is not None
+        table_has_sampling = table_pattern.sampling is not None
+        return self._merge_config_into_pattern(
+            schema_config,
+            table_pattern,
+            is_schema=True,
+            table_has_partition=table_has_partition,
+            table_has_sampling=table_has_sampling,
+        )
