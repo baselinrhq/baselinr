@@ -47,6 +47,7 @@ class AnomalyResult:
     severity: str  # "low", "medium", "high"
     detection_method: str
     metadata: Dict[str, Any] = field(default_factory=dict)
+    explanation: Optional[str] = None  # Human-readable explanation
 
 
 class AnomalyDetector:
@@ -90,6 +91,7 @@ class AnomalyDetector:
         regime_shift_enabled: bool = True,
         regime_shift_window: int = 3,
         regime_shift_sensitivity: float = 0.05,
+        llm_config=None,
     ):
         """
         Initialize anomaly detector.
@@ -107,11 +109,13 @@ class AnomalyDetector:
             regime_shift_enabled: Whether to enable regime shift detection
             regime_shift_window: Number of recent runs for regime shift
             regime_shift_sensitivity: P-value threshold for regime shift
+            llm_config: Optional LLM configuration for explanations
         """
         self.storage_config = storage_config
         self.engine = engine
         self.event_bus = event_bus
         self.expectation_storage = ExpectationStorage(storage_config=storage_config, engine=engine)
+        self.llm_config = llm_config
 
         # Default to all methods if not specified
         if enabled_methods is None:
@@ -399,7 +403,53 @@ class AnomalyDetector:
         for anomaly in anomalies:
             self._categorize_anomaly(anomaly)
 
+        # Generate LLM explanations for detected anomalies
+        if self.llm_config and self.llm_config.enabled:
+            self._generate_anomaly_explanations(anomalies, table_name, schema_name)
+
         return anomalies
+
+    def _generate_anomaly_explanations(
+        self,
+        anomalies: List[AnomalyResult],
+        table_name: str,
+        schema_name: Optional[str],
+    ):
+        """Generate LLM explanations for detected anomalies."""
+        try:
+            from ..llm.explainer import LLMExplainer
+
+            explainer = LLMExplainer(self.llm_config)
+
+            for anomaly in anomalies:
+                # Construct alert data for prompt
+                alert_data = {
+                    "table": table_name,
+                    "column": anomaly.column_name,
+                    "metric": anomaly.metric_name,
+                    "expected_value": anomaly.expected_value,
+                    "actual_value": anomaly.actual_value,
+                    "deviation_score": anomaly.deviation_score,
+                    "severity": anomaly.severity,
+                    "anomaly_type": (
+                        anomaly.anomaly_type.value
+                        if hasattr(anomaly.anomaly_type, "value")
+                        else str(anomaly.anomaly_type)
+                    ),
+                    "detection_method": anomaly.detection_method,
+                    "metadata": anomaly.metadata or {},
+                }
+
+                # Generate explanation
+                explanation = explainer.generate_explanation(
+                    alert_data=alert_data,
+                    alert_type="anomaly",
+                    fallback_object=anomaly,
+                )
+                anomaly.explanation = explanation
+
+        except Exception as e:
+            logger.warning(f"Failed to generate anomaly explanations: {e}")
 
     def _should_detect_anomaly(
         self, column_name: str, column_matcher: Optional[ColumnMatcher]
@@ -650,6 +700,7 @@ class AnomalyDetector:
                         actual_value=anomaly.actual_value,
                         severity=anomaly.severity,
                         detection_method=anomaly.detection_method,
+                        explanation=anomaly.explanation,
                         metadata=anomaly.metadata,
                     )
                 )

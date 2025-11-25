@@ -1,0 +1,200 @@
+"""
+OpenAI provider implementation for LLM explanations.
+
+Supports GPT models via OpenAI API with retry logic and timeout handling.
+"""
+
+import logging
+import os
+import time
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..base import LLMConfig
+
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+from ..base import LLMAPIError, LLMConfigError, LLMProvider, LLMResponse, LLMTimeoutError
+
+logger = logging.getLogger(__name__)
+
+try:
+    from openai import OpenAI
+    from openai._exceptions import APIError, APITimeoutError
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    OpenAI = None  # type: ignore[assignment,misc]
+    APIError = Exception  # type: ignore[assignment,misc]
+    APITimeoutError = Exception  # type: ignore[assignment,misc]
+
+
+class OpenAIProvider(LLMProvider):
+    """OpenAI provider for LLM explanations."""
+
+    def __init__(self, config: "LLMConfig"):
+        """
+        Initialize OpenAI provider.
+
+        Args:
+            config: LLM configuration
+        """
+        super().__init__(config)
+
+        if not OPENAI_AVAILABLE:
+            raise LLMConfigError(
+                "OpenAI library not installed. Install with: pip install openai>=1.0.0"
+            )
+
+        # Get API key from config or environment
+        api_key = self._get_api_key()
+        if not api_key:
+            raise LLMConfigError(
+                "OpenAI API key not found. Set OPENAI_API_KEY environment variable "
+                "or configure llm.api_key in config."
+            )
+
+        self.client = OpenAI(api_key=api_key, timeout=self.config.timeout)
+        self.model = self.config.model
+
+    def _get_api_key(self) -> Optional[str]:
+        """Get API key from config or environment."""
+        if self.config.api_key:
+            return self.config.api_key
+        return os.environ.get("OPENAI_API_KEY")
+
+    def validate_config(self) -> bool:
+        """
+        Validate OpenAI configuration.
+
+        Returns:
+            True if configuration is valid
+
+        Raises:
+            LLMConfigError: If configuration is invalid
+        """
+        if not OPENAI_AVAILABLE:
+            raise LLMConfigError("OpenAI library not installed")
+
+        api_key = self._get_api_key()
+        if not api_key:
+            raise LLMConfigError("OpenAI API key not found")
+
+        # Validate model name format (basic check)
+        if not self.config.model:
+            raise LLMConfigError("Model name is required")
+
+        return True
+
+    @retry(
+        retry=retry_if_exception_type((APIError,)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def generate(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: int = 500,
+    ) -> LLMResponse:
+        """
+        Generate completion from OpenAI API.
+
+        Args:
+            prompt: User prompt text
+            system_prompt: Optional system prompt
+            temperature: Sampling temperature (uses config default if not specified)
+            max_tokens: Maximum tokens to generate (uses config default if not specified)
+
+        Returns:
+            LLMResponse with generated text and metadata
+
+        Raises:
+            LLMAPIError: If API call fails
+            LLMTimeoutError: If request times out
+        """
+        start_time = time.time()
+
+        # Use config defaults if not specified
+        temp = temperature if temperature is not None else self.config.temperature
+        max_toks = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        try:
+            messages: list[dict[str, str]] = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,  # type: ignore[arg-type]
+                temperature=temp,
+                max_tokens=max_toks,
+                timeout=self.config.timeout,
+            )
+
+            latency_ms = (time.time() - start_time) * 1000
+
+            # Extract response
+            content = response.choices[0].message.content or ""
+            tokens_used = response.usage.total_tokens if response.usage else None
+
+            # Estimate cost (rough estimates for common models)
+            cost_usd = self._estimate_cost(tokens_used, self.model) if tokens_used else None
+
+            return LLMResponse(
+                text=content,
+                model=self.model,
+                provider="openai",
+                tokens_used=tokens_used,
+                cost_usd=cost_usd,
+                latency_ms=latency_ms,
+            )
+
+        except APITimeoutError as e:
+            raise LLMTimeoutError(f"OpenAI API request timed out: {e}") from e
+        except APIError as e:
+            raise LLMAPIError(f"OpenAI API error: {e}") from e
+        except Exception as e:
+            raise LLMAPIError(f"Unexpected error calling OpenAI API: {e}") from e
+
+    def _estimate_cost(self, tokens: int, model: str) -> Optional[float]:
+        """
+        Estimate cost in USD for API call.
+
+        Args:
+            tokens: Number of tokens used
+            model: Model name
+
+        Returns:
+            Estimated cost in USD or None if unknown model
+        """
+        # Rough cost estimates per 1M tokens (as of 2024)
+        # These are approximate and may change
+        cost_per_million = {
+            "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+            "gpt-4o": {"input": 2.50, "output": 10.00},
+            "gpt-4-turbo": {"input": 10.00, "output": 30.00},
+            "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+        }
+
+        if model not in cost_per_million:
+            return None
+
+        # Rough estimate: assume 70% input, 30% output tokens
+        input_tokens = int(tokens * 0.7)
+        output_tokens = int(tokens * 0.3)
+
+        costs = cost_per_million[model]
+        input_cost = (input_tokens / 1_000_000) * costs["input"]
+        output_cost = (output_tokens / 1_000_000) * costs["output"]
+
+        return input_cost + output_cost

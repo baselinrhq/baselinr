@@ -840,6 +840,9 @@ class ResultWriter:
                 regime_shift_enabled=self.config.anomaly_regime_shift_enabled,
                 regime_shift_window=self.config.anomaly_regime_shift_window,
                 regime_shift_sensitivity=self.config.anomaly_regime_shift_sensitivity,
+                llm_config=(
+                    getattr(self.baselinr_config, "llm", None) if self.baselinr_config else None
+                ),
             )
 
             # Numeric metrics to check for anomalies

@@ -32,8 +32,8 @@ profiling:
   # Tables to profile
   tables:
     # Explicit table profiling (highest priority)
-    # - table: customers
-    #   schema: public
+    - table: customers
+      schema: public
     
     # Explicit table profiling
     # - table: products
@@ -45,8 +45,8 @@ profiling:
     #   # Uncomment to enable pattern matching
     
     # Example: Schema-based selection (all tables in schema)
-     - select_schema: true
-       schema: public
+    #  - select_schema: true
+    #    schema: public
     #   exclude_patterns:
     #     - "*_temp"
     #     - "*_backup"
@@ -364,17 +364,18 @@ hooks:
       enabled: true
       log_level: INFO
     
-    # Example 2: SQL event persistence (commented out)
-    # - type: sql
-    #   enabled: true
-    #   table_name: baselinr_events
-    #   connection:
-    #     type: postgres
-    #     host: localhost
-    #     port: 5432
-    #     database: baselinr
-    #     username: baselinr
-    #     password: baselinr
+    # Example 2: SQL event persistence
+    - type: sql
+      enabled: true
+      table_name: baselinr_events
+      connection:
+        type: postgres
+        host: localhost
+        port: 5433
+        database: baselinr
+        username: baselinr
+        password: baselinr
+        schema: public
     
     # Example 3: Snowflake event persistence (commented out)
     # - type: snowflake
@@ -396,4 +397,32 @@ hooks:
     #   params:
     #     webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
     #     channel: "#data-alerts"
+
+# LLM configuration for human-readable explanations (optional)
+# This feature is opt-in and disabled by default
+llm:
+  enabled: false  # Set to true to enable LLM explanations
+  provider: openai  # Options: openai | anthropic | azure | ollama
+  api_key: ${OPENAI_API_KEY}  # Supports environment variable expansion
+  model: gpt-4o-mini  # Provider-specific model name
+  temperature: 0.3  # Low temperature for consistent explanations
+  max_tokens: 500  # Reasonable limit for single explanations
+  timeout: 30  # API timeout in seconds
+  fallback_to_template: true  # Use templates if LLM fails
+#
+#   # Example: Anthropic provider
+#   # provider: anthropic
+#   # api_key: ${ANTHROPIC_API_KEY}
+#   # model: claude-sonnet-4-20250514
+#
+#   # Example: Azure OpenAI provider
+#   # provider: azure
+#   # api_key: ${AZURE_OPENAI_API_KEY}
+#   # model: gpt-4o-mini
+#   # Note: Azure requires additional configuration (endpoint, api_version)
+#
+#   # Example: Ollama provider (local/air-gapped)
+#   # provider: ollama
+#   # model: llama2
+#   # Note: Ollama runs locally, no API key needed
 

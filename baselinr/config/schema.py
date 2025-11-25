@@ -1052,6 +1052,37 @@ class SchemaChangeConfig(BaseModel):
     suppression: List[SchemaChangeSuppressionRule] = Field(default_factory=list)
 
 
+class LLMConfig(BaseModel):
+    """Configuration for LLM-powered human-readable explanations."""
+
+    enabled: bool = Field(
+        False, description="Enable LLM explanations (opt-in, disabled by default)"
+    )
+    provider: str = Field("openai", description="LLM provider: openai | anthropic | azure | ollama")
+    api_key: Optional[str] = Field(
+        None, description="API key (supports env var expansion like ${OPENAI_API_KEY})"
+    )
+    model: str = Field("gpt-4o-mini", description="Provider-specific model name")
+    temperature: float = Field(0.3, ge=0.0, le=2.0, description="Sampling temperature")
+    max_tokens: int = Field(500, gt=0, description="Maximum tokens to generate")
+    timeout: int = Field(30, gt=0, description="API timeout in seconds")
+    rate_limit: Dict[str, Any] = Field(
+        default_factory=dict, description="Rate limiting configuration (for future use)"
+    )
+    fallback_to_template: bool = Field(
+        True, description="Use template-based explanations if LLM fails"
+    )
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        """Validate provider name."""
+        valid_providers = ["openai", "anthropic", "azure", "ollama"]
+        if v not in valid_providers:
+            raise ValueError(f"Provider must be one of {valid_providers}")
+        return v
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -1078,6 +1109,7 @@ class BaselinrConfig(BaseModel):
     schema_change: SchemaChangeConfig = Field(
         default_factory=lambda: SchemaChangeConfig()  # type: ignore[call-arg]
     )
+    llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
 
     @field_validator("environment")
     @classmethod

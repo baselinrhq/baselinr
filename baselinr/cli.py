@@ -476,6 +476,7 @@ def drift_command(args):
             event_bus=event_bus,
             retry_config=config.retry,
             metrics_enabled=config.monitoring.enable_metrics,
+            llm_config=config.llm,
         )
 
         # Detect drift
@@ -582,6 +583,17 @@ def drift_command(args):
                             col_metric, severity_text, baseline_str, current_str, change_str
                         )
 
+                        # Show explanation if available
+                        if drift.explanation:
+                            safe_print()
+                            explanation_panel = Panel(
+                                drift.explanation,
+                                title="[bold]💡 Explanation[/bold]",
+                                border_style="#4a90e2",
+                                padding=(1, 2),
+                            )
+                            safe_print(explanation_panel)
+
                         # Show histogram if available and metric is distribution-related
                         if args.debug and drift.metric_name in ["histogram", "mean", "stddev"]:
                             baseline_hist = None
@@ -648,13 +660,16 @@ def drift_command(args):
                         print(f"    Current: {current_str}")
                         if drift.change_percent is not None:
                             print(f"    Change: {drift.change_percent:+.2f}%")
+                        if drift.explanation:
+                            print("\n    💡 Explanation:")
+                            print(f"    {drift.explanation}")
 
         # Output to file
         if args.output:
             output_path = Path(args.output)
             with open(output_path, "w") as f:
                 json.dump(report.to_dict(), f, indent=2)
-            logger.info(f"Report saved to: {args.output}")
+            logger.info("Report saved to: %s", args.output)
 
         # Return error code if critical drift detected
         if report.summary["has_critical_drift"] and args.fail_on_drift:
