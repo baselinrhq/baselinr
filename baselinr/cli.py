@@ -908,11 +908,16 @@ def lineage_command(args):
         from .query import MetadataQueryClient
 
         connector = create_connector(config.storage.connection, config.retry)
+        # Get warn_stale_days from config if available
+        warn_stale_days = None
+        if config.lineage and config.lineage.query_history:
+            warn_stale_days = config.lineage.query_history.warn_stale_days
         client = MetadataQueryClient(
             connector.engine,
             runs_table=config.storage.runs_table,
             results_table=config.storage.results_table,
             events_table="baselinr_events",
+            warn_stale_days=warn_stale_days,
         )
 
         # Execute subcommand
@@ -1103,9 +1108,15 @@ def lineage_command(args):
 
         elif args.lineage_command == "providers":
             try:
+                from .connectors.factory import create_connector
                 from .integrations.lineage import LineageProviderRegistry
 
-                registry = LineageProviderRegistry()
+                # Create source connector for registry
+                source_connector = create_connector(config.source, config.retry)
+                source_engine = source_connector.engine
+
+                # Create registry with config and source engine
+                registry = LineageProviderRegistry(config=config, source_engine=source_engine)
                 available = registry.get_available_providers()
                 all_providers = registry._providers
 
@@ -1160,6 +1171,193 @@ def lineage_command(args):
             except Exception as e:
                 logger.warning(f"Could not list providers: {e}")
                 safe_print(f"Could not list lineage providers: {e}")
+
+        elif args.lineage_command == "sync":
+            from .connectors.factory import create_connector
+            from .integrations.lineage import LineageProviderRegistry
+            from .storage.writer import ResultWriter
+
+            # Create source connector for registry
+            source_connector = create_connector(config.source, config.retry)
+            source_engine = source_connector.engine
+
+            # Create registry with config
+            # Sync tracker is created automatically by registry
+            registry = LineageProviderRegistry(config=config, source_engine=source_engine)
+
+            # Get query history providers
+            all_providers = registry._providers
+            provider_names = [
+                p.get_provider_name() if hasattr(p, "get_provider_name") else type(p).__name__
+                for p in all_providers
+            ]
+            logger.debug(f"All registered providers: {provider_names}")
+            query_history_providers = [
+                p
+                for p in all_providers
+                if hasattr(p, "get_provider_name")
+                and p.get_provider_name().endswith("_query_history")
+            ]
+
+            if not query_history_providers:
+                safe_print("No query history providers found")
+                provider_names = [
+                    p.get_provider_name() if hasattr(p, "get_provider_name") else type(p).__name__
+                    for p in all_providers
+                ]
+                safe_print(f"Available providers: {provider_names}")
+                return 0
+
+            # Filter by provider name if specified
+            if args.provider:
+                query_history_providers = [
+                    p for p in query_history_providers if p.get_provider_name() == args.provider
+                ]
+                if not query_history_providers:
+                    safe_print(f"Provider '{args.provider}' not found")
+                    return 1
+
+            # Override lookback_days if specified
+            if args.lookback_days:
+                for provider in query_history_providers:
+                    if hasattr(provider, "lookback_days"):
+                        provider.lookback_days = args.lookback_days
+
+            # Force resync if requested
+            if args.force:
+                for provider in query_history_providers:
+                    if hasattr(provider, "sync_tracker") and provider.sync_tracker:
+                        # Clear last sync by setting it to None (will trigger full sync)
+                        provider.sync_tracker.update_sync(
+                            provider.get_provider_name(),
+                            datetime(1970, 1, 1),  # Very old timestamp
+                            0,
+                            0,
+                        )
+
+            # Create writer for storing lineage
+            writer = ResultWriter(
+                config.storage, config.retry, baselinr_config=config, event_bus=None
+            )
+
+            total_edges = 0
+
+            for provider in query_history_providers:
+                if not provider.is_available():
+                    safe_print(
+                        f"Provider {provider.get_provider_name()} is not available, skipping"
+                    )
+                    continue
+
+                safe_print(f"Syncing lineage from {provider.get_provider_name()}...")
+
+                try:
+                    # Get all lineage
+                    all_lineage = provider.get_all_lineage()
+
+                    if args.dry_run:
+                        edge_count = sum(len(edges) for edges in all_lineage.values())
+                        safe_print(
+                            f"  Would extract {edge_count} edges from {len(all_lineage)} tables"
+                        )
+                        continue
+
+                    # Write lineage
+                    all_edges = []
+                    for edges in all_lineage.values():
+                        all_edges.extend(edges)
+
+                    if all_edges:
+                        writer.write_lineage(all_edges)
+                        total_edges += len(all_edges)
+                        safe_print(f"  Extracted {len(all_edges)} lineage edges")
+
+                except Exception as e:
+                    logger.error(f"Error syncing {provider.get_provider_name()}: {e}")
+                    safe_print(f"  Error: {e}")
+
+            if not args.dry_run:
+                safe_print(f"\nSync complete: {total_edges} edges extracted")
+
+        elif args.lineage_command == "cleanup":
+            from datetime import datetime, timedelta
+
+            from sqlalchemy import text
+
+            from .connectors.factory import create_connector
+
+            # Get config
+            query_history_config = (
+                config.lineage.query_history
+                if config.lineage and config.lineage.query_history
+                else None
+            )
+
+            if not query_history_config:
+                safe_print("Query history configuration not found")
+                return 1
+
+            expiration_days = args.expiration_days or query_history_config.edge_expiration_days
+
+            if expiration_days is None:
+                safe_print(
+                    "No expiration_days configured. "
+                    "Set edge_expiration_days in config or use --expiration-days"
+                )
+                return 1
+
+            # Create storage connector
+            storage_connector = create_connector(config.storage.connection, config.retry)
+            engine = storage_connector.engine
+
+            # Determine provider filter
+            provider_filter = ""
+            if args.provider:
+                provider_filter = f"AND provider = '{args.provider}'"
+            else:
+                # Clean up all query history providers
+                provider_filter = "AND provider LIKE '%_query_history'"
+
+            # Calculate cutoff timestamp
+            cutoff_timestamp = datetime.utcnow() - timedelta(days=expiration_days)
+
+            with engine.connect() as conn:
+                # Count stale edges
+                count_sql = text(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM baselinr_lineage
+                    WHERE last_seen_at < :cutoff_timestamp
+                      {provider_filter}
+                """
+                )
+                count_result = conn.execute(count_sql, {"cutoff_timestamp": cutoff_timestamp})
+                stale_count = count_result.scalar()
+
+                if stale_count == 0:
+                    safe_print("No stale edges found")
+                    return 0
+
+                if args.dry_run:
+                    safe_print(
+                        f"Would delete {stale_count} stale edges "
+                        f"(older than {expiration_days} days)"
+                    )
+                    return 0
+
+                # Delete stale edges
+                delete_sql = text(
+                    f"""
+                    DELETE FROM baselinr_lineage
+                    WHERE last_seen_at < :cutoff_timestamp
+                      {provider_filter}
+                """
+                )
+                result = conn.execute(delete_sql, {"cutoff_timestamp": cutoff_timestamp})
+                deleted_count = result.rowcount
+                conn.commit()
+
+                safe_print(f"Cleaned up {deleted_count} stale edges")
 
         return 0
 
@@ -1904,6 +2102,43 @@ def main():
     providers_parser.add_argument("--config", "-c", required=True, help="Configuration file")
     providers_parser.add_argument(
         "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
+    # lineage sync
+    sync_parser = lineage_subparsers.add_parser(
+        "sync", help="Sync lineage from query history (bulk operation)"
+    )
+    sync_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    sync_parser.add_argument(
+        "--provider",
+        help="Specific provider to sync (e.g., postgres_query_history, snowflake_query_history)",
+    )
+    sync_parser.add_argument("--all", action="store_true", help="Sync all query history providers")
+    sync_parser.add_argument("--lookback-days", type=int, help="Override lookback days from config")
+    sync_parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be extracted without writing"
+    )
+    sync_parser.add_argument(
+        "--force", action="store_true", help="Force full resync (ignore last sync timestamp)"
+    )
+
+    # lineage cleanup
+    cleanup_parser = lineage_subparsers.add_parser(
+        "cleanup", help="Clean up stale lineage edges from query history"
+    )
+    cleanup_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    cleanup_parser.add_argument(
+        "--provider",
+        help=(
+            "Specific provider to clean up "
+            "(e.g., postgres_query_history, snowflake_query_history)"
+        ),
+    )
+    cleanup_parser.add_argument(
+        "--dry-run", action="store_true", help="Show what would be deleted without deleting"
+    )
+    cleanup_parser.add_argument(
+        "--expiration-days", type=int, help="Override expiration days from config"
     )
 
     # UI command

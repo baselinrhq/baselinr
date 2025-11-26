@@ -4,6 +4,7 @@ Client for querying data lineage from storage.
 
 import json
 import logging
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
@@ -15,16 +16,70 @@ logger = logging.getLogger(__name__)
 class LineageQueryClient:
     """Client for querying lineage relationships."""
 
-    def __init__(self, engine: Engine, lineage_table: str = "baselinr_lineage"):
+    def __init__(
+        self,
+        engine: Engine,
+        lineage_table: str = "baselinr_lineage",
+        warn_stale_days: Optional[int] = None,
+    ):
         """
         Initialize lineage query client.
 
         Args:
             engine: SQLAlchemy engine
             lineage_table: Name of lineage table
+            warn_stale_days: Days after which to warn about stale edges (default: 90)
         """
         self.engine = engine
         self.lineage_table = lineage_table
+        self.warn_stale_days = warn_stale_days or 90
+
+    def _check_staleness(self, edges: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Check for stale edges and add staleness metadata.
+
+        Args:
+            edges: List of edge dictionaries
+
+        Returns:
+            List of edges with staleness metadata added
+        """
+        if not edges:
+            return edges
+
+        stale_edges = []
+        cutoff_date = datetime.utcnow() - timedelta(days=self.warn_stale_days)
+
+        for edge in edges:
+            # Check if this is a query history edge (has last_seen_at)
+            last_seen_at = edge.get("last_seen_at")
+            if last_seen_at:
+                if isinstance(last_seen_at, str):
+                    try:
+                        last_seen_at = datetime.fromisoformat(last_seen_at.replace("Z", "+00:00"))
+                    except (ValueError, AttributeError):
+                        continue
+                elif not isinstance(last_seen_at, datetime):
+                    continue
+
+                if last_seen_at < cutoff_date:
+                    edge["is_stale"] = True
+                    stale_edges.append(edge)
+                else:
+                    edge["is_stale"] = False
+            else:
+                # Not a query history edge, not considered stale
+                edge["is_stale"] = False
+
+        if stale_edges:
+            logger.warning(
+                f"Found {len(stale_edges)} stale lineage edges "
+                f"(not seen in query history for >{self.warn_stale_days} days). "
+                f"Consider running 'baselinr lineage sync' to refresh or "
+                f"'baselinr lineage cleanup' to remove stale edges."
+            )
+
+        return edges
 
     def get_upstream_tables(
         self,
@@ -63,7 +118,7 @@ class LineageQueryClient:
                 query = text(
                     f"""
                     SELECT upstream_schema, upstream_table, lineage_type, provider,
-                           confidence_score, metadata
+                           confidence_score, metadata, last_seen_at
                     FROM {self.lineage_table}
                     WHERE downstream_table = :table_name
                     AND (downstream_schema = :schema_name OR downstream_schema IS NULL)
@@ -74,7 +129,7 @@ class LineageQueryClient:
                 query = text(
                     f"""
                     SELECT upstream_schema, upstream_table, lineage_type, provider,
-                           confidence_score, metadata
+                           confidence_score, metadata, last_seen_at
                     FROM {self.lineage_table}
                     WHERE downstream_table = :table_name
                     AND (downstream_schema IS NULL OR downstream_schema = '')
@@ -86,7 +141,15 @@ class LineageQueryClient:
                 rows = conn.execute(query, params).fetchall()
 
             for row in rows:
-                upstream_schema, upstream_table, lineage_type, provider, confidence, metadata = row
+                (
+                    upstream_schema,
+                    upstream_table,
+                    lineage_type,
+                    provider,
+                    confidence,
+                    metadata,
+                    last_seen_at,
+                ) = row
 
                 upstream_info = {
                     "schema": upstream_schema or "",
@@ -100,6 +163,7 @@ class LineageQueryClient:
                         if metadata and isinstance(metadata, str)
                         else (metadata or {})
                     ),
+                    "last_seen_at": last_seen_at,
                 }
                 result.append(upstream_info)
 
@@ -107,6 +171,7 @@ class LineageQueryClient:
                 traverse_upstream(upstream_table, upstream_schema, current_depth + 1)
 
         traverse_upstream(table_name, schema_name, 0)
+        result = self._check_staleness(result)
         return result
 
     def get_downstream_tables(
@@ -146,7 +211,7 @@ class LineageQueryClient:
                 query = text(
                     f"""
                     SELECT downstream_schema, downstream_table, lineage_type, provider,
-                           confidence_score, metadata
+                           confidence_score, metadata, last_seen_at
                     FROM {self.lineage_table}
                     WHERE upstream_table = :table_name
                     AND (upstream_schema = :schema_name OR upstream_schema IS NULL)
@@ -157,7 +222,7 @@ class LineageQueryClient:
                 query = text(
                     f"""
                     SELECT downstream_schema, downstream_table, lineage_type, provider,
-                           confidence_score, metadata
+                           confidence_score, metadata, last_seen_at
                     FROM {self.lineage_table}
                     WHERE upstream_table = :table_name
                     AND (upstream_schema IS NULL OR upstream_schema = '')
@@ -176,6 +241,7 @@ class LineageQueryClient:
                     provider,
                     confidence,
                     metadata,
+                    last_seen_at,
                 ) = row
 
                 downstream_info = {
@@ -190,6 +256,7 @@ class LineageQueryClient:
                         if metadata and isinstance(metadata, str)
                         else (metadata or {})
                     ),
+                    "last_seen_at": last_seen_at,
                 }
                 result.append(downstream_info)
 
@@ -197,6 +264,7 @@ class LineageQueryClient:
                 traverse_downstream(downstream_table, downstream_schema, current_depth + 1)
 
         traverse_downstream(table_name, schema_name, 0)
+        result = self._check_staleness(result)
         return result
 
     def get_lineage_path(

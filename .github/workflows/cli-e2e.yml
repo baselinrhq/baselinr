@@ -179,6 +179,31 @@ jobs:
               --to customer_summary \
               --format json || echo "No path found (expected if lineage not enabled)"
 
+          # Test lineage sync command (may fail if pg_stat_statements not available, that's ok)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage sync \
+              --config $BASELINR_CONFIG_PATH \
+              --provider postgres_query_history || echo "Sync failed (expected if pg_stat_statements not available)"
+
+          # Test lineage cleanup command (dry-run, should work even with no stale edges)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage cleanup \
+              --config $BASELINR_CONFIG_PATH \
+              --dry-run \
+              --expiration-days 90 || echo "Cleanup failed (expected if no stale edges or config missing)"
+
       - name: Run status command
         run: |
           # Test basic status command
