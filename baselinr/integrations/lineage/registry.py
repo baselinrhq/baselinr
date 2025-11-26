@@ -61,6 +61,132 @@ class LineageProviderRegistry:
         except Exception as e:
             logger.debug(f"Could not register dbt provider: {e}")
 
+        # Register query history providers (if enabled)
+        if self.config and self.config.lineage and self.config.lineage.query_history:
+            query_history_config = self.config.lineage.query_history
+            if query_history_config.enabled:
+                try:
+                    from ...storage.lineage_sync_tracker import LineageSyncTracker
+
+                    # Create sync tracker if storage engine is available
+                    sync_tracker = None
+                    if hasattr(self.config, "storage") and self.config.storage:
+                        try:
+                            from ...connectors.factory import create_connector
+
+                            storage_connector = create_connector(self.config.storage.connection)
+                            sync_tracker = LineageSyncTracker(storage_connector.engine)
+                        except Exception as e:
+                            logger.debug(f"Could not create sync tracker: {e}")
+
+                    # Get warehouse type
+                    warehouse_type = None
+                    if hasattr(self.config, "source") and self.config.source:
+                        warehouse_type = self.config.source.type
+
+                    if not warehouse_type:
+                        logger.debug(
+                            "No warehouse type detected, "
+                            "skipping query history provider registration"
+                        )
+                        return
+
+                    # Get query history config dict
+                    qh_config_dict = query_history_config.model_dump()
+
+                    # Register warehouse-specific providers
+                    if warehouse_type == "snowflake":
+                        try:
+                            from .snowflake_query_history_provider import (
+                                SnowflakeQueryHistoryProvider,
+                            )
+
+                            snowflake_config = qh_config_dict.get("snowflake", {})
+                            qh_config_dict["snowflake"] = snowflake_config
+                            provider = SnowflakeQueryHistoryProvider(
+                                source_engine=self.source_engine,
+                                config=qh_config_dict,
+                                sync_tracker=sync_tracker,
+                            )
+                            self.register_provider(provider)
+                        except Exception as e:
+                            logger.debug(
+                                f"Could not register Snowflake query history provider: {e}"
+                            )
+
+                    elif warehouse_type == "bigquery":
+                        try:
+                            from .bigquery_query_history_provider import (
+                                BigQueryQueryHistoryProvider,
+                            )
+
+                            bigquery_config = qh_config_dict.get("bigquery", {})
+                            qh_config_dict["bigquery"] = bigquery_config
+                            provider = BigQueryQueryHistoryProvider(
+                                source_engine=self.source_engine,
+                                config=qh_config_dict,
+                                sync_tracker=sync_tracker,
+                            )
+                            self.register_provider(provider)
+                        except Exception as e:
+                            logger.debug(f"Could not register BigQuery query history provider: {e}")
+
+                    elif warehouse_type == "postgres":
+                        try:
+                            from .postgres_query_history_provider import (
+                                PostgresQueryHistoryProvider,
+                            )
+
+                            postgres_config = qh_config_dict.get("postgres", {})
+                            qh_config_dict["postgres"] = postgres_config
+                            provider = PostgresQueryHistoryProvider(
+                                source_engine=self.source_engine,
+                                config=qh_config_dict,
+                                sync_tracker=sync_tracker,
+                            )
+                            self.register_provider(provider)
+                        except Exception as e:
+                            logger.debug(
+                                f"Could not register PostgreSQL query history provider: {e}"
+                            )
+
+                    elif warehouse_type == "redshift":
+                        try:
+                            from .redshift_query_history_provider import (
+                                RedshiftQueryHistoryProvider,
+                            )
+
+                            redshift_config = qh_config_dict.get("redshift", {})
+                            qh_config_dict["redshift"] = redshift_config
+                            provider = RedshiftQueryHistoryProvider(
+                                source_engine=self.source_engine,
+                                config=qh_config_dict,
+                                sync_tracker=sync_tracker,
+                            )
+                            self.register_provider(provider)
+                        except Exception as e:
+                            logger.debug(f"Could not register Redshift query history provider: {e}")
+
+                    elif warehouse_type == "mysql":
+                        try:
+                            from .mysql_query_history_provider import (
+                                MySQLQueryHistoryProvider,
+                            )
+
+                            mysql_config = qh_config_dict.get("mysql", {})
+                            qh_config_dict["mysql"] = mysql_config
+                            provider = MySQLQueryHistoryProvider(
+                                source_engine=self.source_engine,
+                                config=qh_config_dict,
+                                sync_tracker=sync_tracker,
+                            )
+                            self.register_provider(provider)
+                        except Exception as e:
+                            logger.debug(f"Could not register MySQL query history provider: {e}")
+
+                except Exception as e:
+                    logger.debug(f"Could not register query history providers: {e}")
+
     def register_provider(self, provider: LineageProvider):
         """
         Register a lineage provider.

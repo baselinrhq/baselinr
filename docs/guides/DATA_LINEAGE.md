@@ -26,6 +26,7 @@ Baselinr uses a provider-based architecture that supports multiple lineage sourc
 
 - **dbt Manifest**: Extract lineage from dbt `manifest.json` files
 - **SQL Parser**: Parse SQL queries and view definitions using SQLGlot
+- **Query History**: Extract lineage from warehouse query execution history (Snowflake, BigQuery, PostgreSQL, Redshift, MySQL)
 - **Future Providers**: Dagster, Airflow, and other orchestration tools
 
 ## Quick Start
@@ -71,6 +72,15 @@ baselinr lineage path --config config.yml --from raw.events --to analytics.reven
 
 # List available providers
 baselinr lineage providers --config config.yml
+
+# Sync lineage from query history (bulk operation)
+baselinr lineage sync --config config.yml --provider postgres_query_history
+
+# Sync all query history providers
+baselinr lineage sync --config config.yml --all
+
+# Clean up stale lineage edges
+baselinr lineage cleanup --config config.yml --provider postgres_query_history
 ```
 
 ## Lineage Providers
@@ -130,8 +140,89 @@ lineage:
 **Limitations:**
 
 - Requires SQL to be provided explicitly
-- View definition parsing requires database access (coming soon)
+- View definition parsing requires database access
 - Complex SQL with dynamic table names may not be fully parsed
+
+### Query History Providers
+
+Query history providers extract lineage from actual query execution history in your warehouse. This captures real-world data dependencies based on queries that have been executed, complementing dbt and SQL parsing providers.
+
+**Supported Warehouses:**
+
+- **PostgreSQL**: Uses `pg_stat_statements` extension
+- **Snowflake**: Uses `SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY`
+- **BigQuery**: Uses `INFORMATION_SCHEMA.JOBS_BY_PROJECT`
+- **Redshift**: Uses `STL_QUERY` and `STL_SCAN` tables
+- **MySQL**: Uses `performance_schema.events_statements_history_long`
+
+**Configuration:**
+
+```yaml
+lineage:
+  enabled: true
+  providers: [dbt, sql_parser, postgres_query_history]
+  query_history:
+    enabled: true
+    incremental: true  # Enable incremental updates during profiling
+    lookback_days: 30  # Days of history for bulk sync
+    min_query_count: 2  # Minimum queries to establish relationship
+    exclude_patterns:
+      - ".*INFORMATION_SCHEMA.*"
+      - ".*SHOW.*"
+    edge_expiration_days: 90  # Auto-cleanup edges not seen for 90+ days (None = never)
+    warn_stale_days: 90  # Warn about edges not seen for 90+ days
+    postgres:
+      require_extension: true  # Fail if pg_stat_statements not installed
+    snowflake:
+      use_account_usage: true
+    bigquery:
+      region: "us"
+```
+
+**How it works:**
+
+1. **Initial Bulk Sync**: Run `baselinr lineage sync` to populate lineage from query history (last 30 days by default)
+2. **Incremental Updates**: During profiling, query history providers automatically extract new lineage from queries executed since the last sync
+3. **Staleness Detection**: System warns about edges not seen in query history for extended periods
+4. **Cleanup**: Optionally remove stale edges that haven't been observed recently
+
+**Workflow:**
+
+```bash
+# Initial setup: Bulk sync lineage from query history
+baselinr lineage sync --provider postgres_query_history
+
+# Regular profiling: Automatically updates lineage incrementally
+baselinr profile --config config.yml
+
+# Periodic refresh: Re-sync to catch any missed queries
+baselinr lineage sync --provider postgres_query_history
+
+# Cleanup stale edges
+baselinr lineage cleanup --provider postgres_query_history
+```
+
+**Requirements:**
+
+- **PostgreSQL**: Requires `CREATE EXTENSION pg_stat_statements;` (run by DBA)
+- **Snowflake**: Requires `ACCOUNTADMIN` role or access to `SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY`
+- **BigQuery**: Requires `bigquery.jobs.listAll` permission
+- **Redshift**: Requires appropriate IAM permissions for `STL_QUERY` access
+- **MySQL**: Requires `performance_schema = ON` in MySQL configuration
+
+**Benefits:**
+
+- Captures real-world dependencies from actual query execution
+- High confidence (0.95) since based on executed queries
+- Automatic incremental updates during profiling
+- Complements dbt/SQL parsing by capturing ad-hoc queries
+
+**Limitations:**
+
+- Query history may have latency (Snowflake ACCESS_HISTORY can lag by hours)
+- Data retention varies by warehouse (Redshift: 2-5 days, others: longer)
+- Requires appropriate permissions/extensions
+- PostgreSQL `pg_stat_statements` doesn't track individual query timestamps (aggregate stats only)
 
 ## Configuration
 
@@ -143,21 +234,32 @@ profiling:
 
 lineage:
   enabled: true
-  providers:
-    # dbt provider
-    - name: dbt_manifest
-      enabled: true
-      config:
-        manifest_path: "target/manifest.json"
-    
-    # SQL parser provider
-    - name: sql_parser
-      enabled: true
+  providers: [dbt, sql_parser, postgres_query_history]
   
-  # Optional: Only use specific providers
-  enabled_providers:
-    - dbt_manifest
-    - sql_parser
+  # dbt provider configuration
+  dbt:
+    manifest_path: "target/manifest.json"
+  
+  # Query history provider configuration
+  query_history:
+    enabled: true
+    incremental: true  # Enable incremental updates during profiling
+    lookback_days: 30  # Days of history for bulk sync
+    min_query_count: 2  # Minimum queries to establish relationship
+    exclude_patterns:
+      - ".*INFORMATION_SCHEMA.*"
+      - ".*SHOW.*"
+      - ".*pg_stat.*"
+    edge_expiration_days: 90  # Auto-cleanup edges not seen for 90+ days (None = never)
+    warn_stale_days: 90  # Warn about edges not seen for 90+ days
+    
+    # Warehouse-specific configs
+    postgres:
+      require_extension: true  # Fail if pg_stat_statements not installed
+    snowflake:
+      use_account_usage: true
+    bigquery:
+      region: "us"
 ```
 
 ### Provider-Specific Configuration
@@ -274,7 +376,59 @@ Lineage Providers
 ┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━┩
 │ dbt_manifest   │ Available          │
 │ sql_parser     │ Available          │
+│ postgres_query_history │ Available  │
 └────────────────┴────────────────────┘
+```
+
+### Sync Query History Lineage
+
+Sync lineage from warehouse query history (bulk operation):
+
+```bash
+# Sync specific provider
+baselinr lineage sync --config config.yml --provider postgres_query_history
+
+# Sync all query history providers
+baselinr lineage sync --config config.yml --all
+
+# Override lookback days
+baselinr lineage sync --config config.yml --provider snowflake_query_history --lookback-days 60
+
+# Dry run (show what would be extracted)
+baselinr lineage sync --config config.yml --provider postgres_query_history --dry-run
+
+# Force full resync (ignore last sync timestamp)
+baselinr lineage sync --config config.yml --provider postgres_query_history --force
+```
+
+**Output Example:**
+
+```
+Syncing lineage from postgres_query_history...
+  Extracted 142 lineage edges
+
+Sync complete: 142 edges extracted
+```
+
+### Cleanup Stale Lineage Edges
+
+Remove lineage edges that haven't been seen in query history for extended periods:
+
+```bash
+# Clean up stale edges (uses edge_expiration_days from config)
+baselinr lineage cleanup --config config.yml --provider postgres_query_history
+
+# Override expiration days
+baselinr lineage cleanup --config config.yml --provider postgres_query_history --expiration-days 60
+
+# Dry run (show what would be deleted)
+baselinr lineage cleanup --config config.yml --provider postgres_query_history --dry-run
+```
+
+**Output Example:**
+
+```
+Cleaned up 23 stale edges
 ```
 
 ## Python SDK Usage
@@ -437,12 +591,16 @@ Use multiple providers for comprehensive coverage:
 ```yaml
 lineage:
   enabled: true
-  providers:
-    - name: dbt_manifest
-      enabled: true
-    - name: sql_parser
-      enabled: true
+  providers: [dbt, sql_parser, postgres_query_history]
+  query_history:
+    enabled: true
+    incremental: true
 ```
+
+This combination provides:
+- **dbt**: High-confidence lineage from dbt models
+- **sql_parser**: Lineage from view definitions and explicit SQL
+- **query_history**: Real-world dependencies from executed queries
 
 ### 2. Keep dbt Manifest Updated
 
@@ -511,23 +669,61 @@ if drift.summary["total_drifts"] > 0:
 **Solutions**:
 1. **dbt_manifest**: Ensure dbt is installed and manifest.json exists
 2. **sql_parser**: SQLGlot should be installed automatically with baselinr
-3. Check provider-specific requirements in logs
+3. **postgres_query_history**: Ensure `pg_stat_statements` extension is installed (`CREATE EXTENSION pg_stat_statements;`)
+4. **snowflake_query_history**: Ensure `ACCOUNTADMIN` role or access to `SNOWFLAKE.ACCOUNT_USAGE.ACCESS_HISTORY`
+5. **bigquery_query_history**: Ensure `bigquery.jobs.listAll` permission
+6. **redshift_query_history**: Ensure appropriate IAM permissions for `STL_QUERY` access
+7. **mysql_query_history**: Ensure `performance_schema = ON` in MySQL configuration
+8. Check provider-specific requirements in logs
 
 ### Incomplete Lineage
 
 **Problem**: Lineage graph is incomplete or missing relationships.
 
 **Solutions**:
-1. Enable multiple providers for better coverage
+1. Enable multiple providers for better coverage (dbt + sql_parser + query_history)
 2. For dbt: Ensure all models are compiled
 3. For SQL parser: Provide explicit SQL when possible
-4. Check confidence scores - low confidence may indicate parsing issues
+4. For query history: Run initial bulk sync: `baselinr lineage sync --all`
+5. Check confidence scores - low confidence may indicate parsing issues
+6. Query history captures real-world usage but may miss rarely-executed queries
+
+### 6. Use Query History for Real-World Dependencies
+
+Query history providers capture dependencies from actual query execution:
+
+```bash
+# Initial bulk sync
+baselinr lineage sync --provider postgres_query_history
+
+# Regular profiling automatically updates incrementally
+baselinr profile --config config.yml
+
+# Periodic refresh
+baselinr lineage sync --provider postgres_query_history
+```
+
+This captures ad-hoc queries and real-world usage patterns that may not be in dbt or view definitions.
+
+### 7. Monitor Stale Lineage
+
+Query history lineage includes staleness detection:
+
+```python
+# System automatically warns about stale edges
+upstream = client.get_upstream_lineage(table="customers")
+# Warning logged if edges haven't been seen in query history for >90 days
+```
+
+Clean up stale edges periodically:
+
+```bash
+baselinr lineage cleanup --provider postgres_query_history
+```
 
 ## Future Enhancements
 
 - **Column-Level Lineage**: Track dependencies at the column level
-- **View Definition Parsing**: Automatically extract lineage from view definitions
-- **Query History Integration**: Extract lineage from warehouse query logs
 - **Dagster Provider**: Native integration with Dagster
 - **Airflow Provider**: Extract lineage from Airflow DAGs
 - **Lineage Visualization**: Visual graph representation in dashboard

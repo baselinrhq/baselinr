@@ -410,8 +410,27 @@ hooks:
 # Lineage configuration for data lineage extraction
 lineage:
   enabled: true  # Enable lineage extraction
-  # providers: [dbt_manifest, sql_parser]  # Optional: specify which providers to use
+  providers: [dbt, sql_parser, postgres_query_history]  # Enable dbt, SQL parser, and PostgreSQL query history
   # If not specified, uses all available providers
+  
+  # dbt configuration (optional)
+  dbt:
+    manifest_path: dbt_package/target/manifest.json
+  
+  # Query history lineage configuration
+  query_history:
+    enabled: true
+    incremental: true  # Enable incremental updates during profiling
+    lookback_days: 30  # Days of history for bulk sync
+    min_query_count: 1  # Minimum queries to establish relationship
+    exclude_patterns:
+      - ".*INFORMATION_SCHEMA.*"
+      - ".*SHOW.*"
+      - ".*pg_stat.*"
+    edge_expiration_days: 90  # Auto-cleanup edges not seen for 90+ days (None = never)
+    warn_stale_days: 90  # Warn about edges not seen for 90+ days
+    postgres:
+      require_extension: false  # Set to true to fail if pg_stat_statements not installed
 
 # LLM configuration for human-readable explanations (optional)
 # This feature is opt-in and disabled by default

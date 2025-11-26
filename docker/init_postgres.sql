@@ -6,6 +6,13 @@ CREATE DATABASE dagster;
 -- Switch to baselinr database (created by POSTGRES_DB env var)
 \c baselinr;
 
+-- Enable pg_stat_statements extension for query history lineage
+-- This extension tracks query execution statistics and is required for
+-- PostgreSQL query history lineage extraction.
+-- Note: If you have an existing database volume, you may need to recreate it
+-- (docker-compose down -v) for shared_preload_libraries to take effect.
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+
 -- Create sample schema and tables for profiling
 
 -- Customers table

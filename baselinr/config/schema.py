@@ -1055,6 +1055,39 @@ class SchemaChangeConfig(BaseModel):
     suppression: List[SchemaChangeSuppressionRule] = Field(default_factory=list)
 
 
+class QueryHistoryConfig(BaseModel):
+    """Configuration for query history lineage extraction."""
+
+    enabled: bool = Field(True, description="Enable query history lineage")
+    incremental: bool = Field(True, description="Enable incremental updates during profiling")
+    lookback_days: int = Field(30, ge=1, le=365, description="Days of history for bulk sync")
+    min_query_count: int = Field(1, ge=1, description="Minimum queries to establish relationship")
+    exclude_patterns: Optional[List[str]] = Field(
+        None, description="Regex patterns to exclude queries"
+    )
+    edge_expiration_days: Optional[int] = Field(
+        None,
+        ge=1,
+        description=(
+            "Days after which query history edges are considered stale and can be removed. "
+            "None = never expire automatically"
+        ),
+    )
+    warn_stale_days: int = Field(
+        90,
+        ge=1,
+        description=(
+            "Days after which to warn about stale edges when querying lineage (default: 90)"
+        ),
+    )
+    # Warehouse-specific configs
+    snowflake: Optional[Dict[str, Any]] = None
+    bigquery: Optional[Dict[str, Any]] = None
+    postgres: Optional[Dict[str, Any]] = None
+    redshift: Optional[Dict[str, Any]] = None
+    mysql: Optional[Dict[str, Any]] = None
+
+
 class LineageConfig(BaseModel):
     """Configuration for data lineage extraction."""
 
@@ -1071,6 +1104,10 @@ class LineageConfig(BaseModel):
     dbt: Optional[Dict[str, Any]] = Field(
         None,
         description="dbt-specific configuration (e.g., manifest_path)",
+    )
+    query_history: Optional[QueryHistoryConfig] = Field(
+        None,
+        description="Query history lineage configuration",
     )
 
 

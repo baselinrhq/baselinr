@@ -92,11 +92,13 @@ class MetadataQueryClient:
         runs_table: str = "baselinr_runs",
         results_table: str = "baselinr_results",
         events_table: str = "baselinr_events",
+        warn_stale_days: Optional[int] = None,
     ):
         self.engine = engine
         self.runs_table = runs_table
         self.results_table = results_table
         self.events_table = events_table
+        self.warn_stale_days = warn_stale_days
 
     def query_runs(
         self,
@@ -602,7 +604,7 @@ class MetadataQueryClient:
         """
         from .lineage_client import LineageQueryClient
 
-        lineage_client = LineageQueryClient(self.engine)
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
         return lineage_client.get_upstream_tables(table_name, schema_name, max_depth)
 
     def query_lineage_downstream(
@@ -624,7 +626,7 @@ class MetadataQueryClient:
         """
         from .lineage_client import LineageQueryClient
 
-        lineage_client = LineageQueryClient(self.engine)
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
         return lineage_client.get_downstream_tables(table_name, schema_name, max_depth)
 
     def query_lineage_path(
@@ -650,7 +652,7 @@ class MetadataQueryClient:
         """
         from .lineage_client import LineageQueryClient
 
-        lineage_client = LineageQueryClient(self.engine)
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
         return lineage_client.get_lineage_path(
             from_table, to_table, from_schema, to_schema, max_depth
         )
@@ -667,5 +669,5 @@ class MetadataQueryClient:
         """
         from .lineage_client import LineageQueryClient
 
-        lineage_client = LineageQueryClient(self.engine)
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
         return lineage_client.get_lineage_by_provider(provider)
