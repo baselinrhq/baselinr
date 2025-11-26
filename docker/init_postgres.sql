@@ -129,9 +129,9 @@ LEFT JOIN orders o ON c.customer_id = o.customer_id
 GROUP BY c.customer_id, c.customer_segment;
 
 -- Grant permissions
+-- Note: GRANT ON ALL TABLES covers both tables and views in PostgreSQL
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO baselinr;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO baselinr;
-GRANT ALL PRIVILEGES ON ALL VIEWS IN SCHEMA public TO baselinr;
 
 -- ============================================================================
 -- Baselinr Storage Schema

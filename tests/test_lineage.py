@@ -559,8 +559,6 @@ class TestLineageStorage:
                 downstream_table="revenue",
                 upstream_schema="staging",
                 upstream_table="events_enriched",
-                downstream_database=None,  # Explicitly None for testing
-                upstream_database=None,  # Explicitly None for testing
                 lineage_type="dbt_ref",
                 confidence_score=1.0,
                 provider="dbt_manifest",

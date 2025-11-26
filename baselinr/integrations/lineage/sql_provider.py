@@ -251,7 +251,7 @@ class SQLLineageProvider(LineageProvider):
                 with engine.connect() as conn:
                     result = conn.execute(query, params).fetchone()
                     if result:
-                        return str(result[0]) if result[0] is not None else None
+                        return str(result[0])
 
             # Generic approach: try INFORMATION_SCHEMA
             if schema:
@@ -279,7 +279,7 @@ class SQLLineageProvider(LineageProvider):
             with engine.connect() as conn:
                 result = conn.execute(query, params).fetchone()
                 if result:
-                    return str(result[0]) if result[0] is not None else None
+                    return str(result[0])
 
         except Exception as e:
             logger.debug(f"Error fetching view definition for {schema}.{table_name}: {e}")

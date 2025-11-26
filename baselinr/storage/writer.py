@@ -837,16 +837,16 @@ class ResultWriter:
                 else:
                     metadata_str = json.dumps(edge.metadata) if edge.metadata else None
 
-                # For SQLite, convert None to empty string for unique constraint
-                # SQLite's UNIQUE constraint allows multiple NULLs, so we use empty strings
+                # For SQLite, convert None to empty string for database fields
+                # SQLite's UNIQUE constraint allows multiple NULLs, so we use empty string
                 downstream_db = (
                     edge.downstream_database
-                    if edge.downstream_database
+                    if edge.downstream_database is not None
                     else ("" if is_sqlite else None)
                 )
                 upstream_db = (
                     edge.upstream_database
-                    if edge.upstream_database
+                    if edge.upstream_database is not None
                     else ("" if is_sqlite else None)
                 )
 
@@ -866,12 +866,14 @@ class ResultWriter:
                                 :upstream_table AS upstream_table,
                                 :provider AS provider
                         ) AS source
-                        ON COALESCE(target.downstream_database, '') =
+                        ON COALESCE(target.downstream_database, '') = (
                             COALESCE(source.downstream_database, '')
+                        )
                             AND target.downstream_schema = source.downstream_schema
                             AND target.downstream_table = source.downstream_table
-                            AND COALESCE(target.upstream_database, '') =
-                            COALESCE(source.upstream_database, '')
+                            AND COALESCE(target.upstream_database, '') = (
+                                COALESCE(source.upstream_database, '')
+                            )
                             AND target.upstream_schema = source.upstream_schema
                             AND target.upstream_table = source.upstream_table
                             AND target.provider = source.provider
@@ -923,7 +925,6 @@ class ResultWriter:
                     )
 
                 try:
-                    # Use converted database values (empty string for SQLite NULLs)
                     conn.execute(
                         merge_sql,
                         {
@@ -956,12 +957,14 @@ class ResultWriter:
                         check_sql = text(
                             """
                             SELECT id FROM baselinr_lineage
-                            WHERE COALESCE(downstream_database, '') =
+                            WHERE COALESCE(downstream_database, '') = (
                                 COALESCE(:downstream_database, '')
+                            )
                                 AND downstream_schema = :downstream_schema
                                 AND downstream_table = :downstream_table
-                                AND COALESCE(upstream_database, '') =
-                                COALESCE(:upstream_database, '')
+                                AND COALESCE(upstream_database, '') = (
+                                    COALESCE(:upstream_database, '')
+                                )
                                 AND upstream_schema = :upstream_schema
                                 AND upstream_table = :upstream_table
                                 AND provider = :provider
