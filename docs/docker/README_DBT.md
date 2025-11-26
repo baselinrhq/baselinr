@@ -129,57 +129,32 @@ baselinr plan --config config_dbt_test.yml
 baselinr profile --config config_dbt_test.yml
 ```
 
-## Using dbt Package
+## Using dbt with Baselinr
 
-### 1. Install dbt Package
+### 1. Use dbt Refs/Selectors in Baselinr Config
 
-In your dbt project's `packages.yml`:
-
-```yaml
-packages:
-  - git: "https://github.com/baselinrhq/dbt-baselinr.git"
-    revision: v0.1.0
-```
-
-Then:
-```bash
-dbt deps
-```
-
-> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were using `subdirectory: dbt_package`, please migrate to the new repository.
-
-### 2. Test Post-Hook Profiling
+Reference dbt models directly in your baselinr configuration:
 
 ```yaml
-# models/schema.yml
-models:
-  - name: customers
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
+    - dbt_selector: tag:critical
+      dbt_project_path: ./dbt_project
 ```
 
-Run the model:
-```bash
-dbt run --select customers
-```
+> **Note**: dbt hooks can only execute SQL, not Python scripts. Run profiling after `dbt run` using an orchestrator or manually. See the [dbt Integration Guide](../guides/DBT_INTEGRATION.md) for details.
 
-### 3. Test Drift Detection
+### 2. Verify Profiling
 
-```yaml
-# models/schema.yml
-models:
-  - name: customers
-    columns:
-      - name: customer_id
-        tests:
-          - baselinr_drift:
-              metric: count
-              threshold: 5.0
-```
+After running profiling, verify the results were stored:
 
-Run tests:
-```bash
-dbt test --select customers
+```python
+from baselinr import BaselinrClient
+client = BaselinrClient()
+runs = client.query_runs(table="customers", limit=1)
+print(f"Latest run: {runs[0]}")
 ```
 
 ## Troubleshooting
@@ -198,11 +173,11 @@ If baselinr can't find the manifest:
 - Check path: `./test_dbt_project/target/manifest.json`
 - Use absolute path if relative path doesn't work
 
-### dbt Package Not Found
+### dbt Integration Issues
 
-If dbt can't find the baselinr package:
-- Run `dbt deps` to install packages
-- Check `dbt_packages/` directory exists
+If baselinr can't find dbt manifest:
+- Run `dbt compile` or `dbt run` to generate `manifest.json`
+- Check that `dbt_project_path` in config points to your dbt project root
 - Verify git URL in `packages.yml`
 
 ## Full Example

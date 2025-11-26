@@ -206,66 +206,36 @@ for result in results:
     print(f"Profiled {result.dataset_name}: {len(result.columns)} columns")
 ```
 
-## Testing dbt Package
+## Testing dbt Integration
 
-### 1. Install dbt Package
+### 1. Test dbt Refs/Selectors
 
-In your dbt project's `packages.yml`:
+The dbt integration allows you to use dbt model references and selectors in baselinr configs. To test:
 
-```yaml
-packages:
-  - git: "https://github.com/baselinrhq/dbt-baselinr.git"
-    revision: v0.1.0
-```
-
-Then:
-```bash
-dbt deps
-```
-
-> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were using `subdirectory: dbt_package`, please migrate to the new repository.
-
-### 2. Test Profiling Post-Hook
+1. Set up a dbt project with some models
+2. Run `dbt compile` or `dbt run` to generate `manifest.json`
+3. Create a baselinr config with dbt refs:
 
 ```yaml
-# models/schema.yml
-models:
-  - name: customers
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
 ```
 
-Run the model:
-```bash
-dbt run --select customers
-```
+4. Run profiling: `baselinr profile --config baselinr_config.yml`
 
-Check that profiling ran:
+> **Note**: dbt hooks can only execute SQL, not Python scripts. Use orchestrators to run profiling after `dbt run`.
+
+### 2. Verify Profiling Results
+
+After running profiling, check the results:
+
 ```python
 from baselinr import BaselinrClient
 client = BaselinrClient()
 runs = client.query_runs(table="customers", limit=1)
 print(f"Latest run: {runs[0]}")
-```
-
-### 3. Test Drift Detection
-
-```yaml
-# models/schema.yml
-models:
-  - name: customers
-    columns:
-      - name: customer_id
-        tests:
-          - baselinr_drift:
-              metric: count
-              threshold: 5.0
-              severity: high
-```
-
-Run tests:
-```bash
-dbt test --select customers
 ```
 
 ## Integration with Docker
