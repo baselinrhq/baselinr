@@ -1094,6 +1094,9 @@ class LineageConfig(BaseModel):
     enabled: bool = Field(
         True, description="Enable lineage extraction (requires profiling.extract_lineage=true)"
     )
+    extract_column_lineage: bool = Field(
+        False, description="Enable column-level lineage extraction"
+    )
     providers: Optional[List[str]] = Field(
         None,
         description=(

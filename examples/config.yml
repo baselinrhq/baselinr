@@ -410,6 +410,7 @@ hooks:
 # Lineage configuration for data lineage extraction
 lineage:
   enabled: true  # Enable lineage extraction
+  extract_column_lineage: true  # Enable column-level lineage extraction
   providers: [dbt, sql_parser, postgres_query_history]  # Enable dbt, SQL parser, and PostgreSQL query history
   # If not specified, uses all available providers
   

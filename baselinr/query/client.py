@@ -671,3 +671,85 @@ class MetadataQueryClient:
 
         lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
         return lineage_client.get_lineage_by_provider(provider)
+
+    def query_column_lineage_upstream(
+        self,
+        table_name: str,
+        column_name: str,
+        schema_name: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query upstream column lineage for a specific column.
+
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column
+            schema_name: Optional schema name
+            max_depth: Maximum depth to traverse
+
+        Returns:
+            List of upstream columns with depth information
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
+        return lineage_client.get_upstream_columns(table_name, column_name, schema_name, max_depth)
+
+    def query_column_lineage_downstream(
+        self,
+        table_name: str,
+        column_name: str,
+        schema_name: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query downstream column lineage for a specific column.
+
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column
+            schema_name: Optional schema name
+            max_depth: Maximum depth to traverse
+
+        Returns:
+            List of downstream columns with depth information
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
+        return lineage_client.get_downstream_columns(
+            table_name, column_name, schema_name, max_depth
+        )
+
+    def query_column_lineage_path(
+        self,
+        from_table: str,
+        from_column: str,
+        to_table: str,
+        to_column: str,
+        from_schema: Optional[str] = None,
+        to_schema: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Query column lineage path between two columns.
+
+        Args:
+            from_table: Source table name
+            from_column: Source column name
+            to_table: Target table name
+            to_column: Target column name
+            from_schema: Optional source schema
+            to_schema: Optional target schema
+            max_depth: Maximum depth to search
+
+        Returns:
+            List of columns in the path, or None if no path found
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine, warn_stale_days=self.warn_stale_days)
+        return lineage_client.get_column_lineage_path(
+            from_table, from_column, to_table, to_column, from_schema, to_schema, max_depth
+        )

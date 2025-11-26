@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.engine import Engine
 
-from .base import LineageEdge, LineageProvider
+from .base import ColumnLineageEdge, LineageEdge, LineageProvider
 from .sql_provider import SQLLineageProvider
 
 logger = logging.getLogger(__name__)
@@ -271,3 +271,84 @@ class QueryHistoryLineageProvider(LineageProvider):
         self._update_sync_timestamp(datetime.utcnow(), len(queries), len(edges))
 
         return result
+
+    def _extract_column_lineage_from_queries(
+        self, queries: List[Dict[str, Any]]
+    ) -> List[ColumnLineageEdge]:
+        """
+        Extract column-level lineage edges from list of query records.
+
+        Args:
+            queries: List of query history records
+
+        Returns:
+            List of ColumnLineageEdge objects
+        """
+        column_edges: List[ColumnLineageEdge] = []
+
+        for query_record in queries:
+            try:
+                query_text, query_timestamp, table_refs = self._parse_query_result(query_record)
+
+                if self._should_exclude_query(query_text):
+                    continue
+
+                if len(table_refs) < 1:
+                    # Need at least 1 table for column lineage
+                    continue
+
+                # Use SQL provider to extract column-level lineage from query
+                # We'll try to infer the output table from the query
+                # For INSERT/SELECT INTO, the output table is the target
+                # For CREATE TABLE AS SELECT, the output table is the created table
+                # For now, we'll extract column mappings from SELECT statements
+                try:
+                    # Parse query to extract column mappings
+                    # Use SQL provider's column extraction
+                    column_mappings = self.sql_provider.extract_column_references(
+                        query_text,
+                        default_database=query_record.get("database"),
+                        default_schema="public",
+                    )
+
+                    # Group columns by table to infer relationships
+                    # This is a simplified approach - a more complete implementation
+                    # would parse the full SELECT statement to map output to input columns
+                    for schema, table, column, database in column_mappings:
+                        # For now, create relationships between columns in the same query
+                        # A more sophisticated approach would parse SELECT expressions
+                        # This is a placeholder - full implementation would use
+                        # extract_column_lineage_from_sql from SQL provider
+                        pass
+
+                except Exception as e:
+                    logger.debug(f"Error extracting column lineage from query: {e}")
+                    continue
+
+            except Exception as e:
+                logger.debug(f"Error processing query record for column lineage: {e}")
+                continue
+
+        # For now, return empty list
+        # Full implementation would parse SELECT statements to extract column mappings
+        # This requires more sophisticated SQL parsing to map output columns to input columns
+        return column_edges
+
+    def extract_column_lineage(
+        self, table_name: str, schema: Optional[str] = None
+    ) -> List[ColumnLineageEdge]:
+        """
+        Extract column-level lineage incrementally (queries only since last sync).
+
+        Args:
+            table_name: Name of the table (not used for query history, but required by interface)
+            schema: Optional schema name (not used for query history, but required by interface)
+
+        Returns:
+            List of ColumnLineageEdge objects
+        """
+        # For now, return empty list
+        # Column-level lineage from query history requires more sophisticated
+        # SQL parsing to map output columns to input columns from SELECT statements
+        # This can be enhanced in the future
+        return []

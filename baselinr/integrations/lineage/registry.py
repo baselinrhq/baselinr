@@ -7,7 +7,7 @@ Manages multiple lineage providers and coordinates lineage extraction.
 import logging
 from typing import List, Optional
 
-from .base import LineageEdge, LineageProvider
+from .base import ColumnLineageEdge, LineageEdge, LineageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +281,91 @@ class LineageProviderRegistry:
                 edge.downstream_table,
                 edge.upstream_schema,
                 edge.upstream_table,
+                edge.provider,
+            )
+            if key not in seen:
+                seen.add(key)
+                unique_edges.append(edge)
+
+        return unique_edges
+
+    def extract_column_lineage_for_table(
+        self,
+        table_name: str,
+        schema: Optional[str] = None,
+        enabled_providers: Optional[List[str]] = None,
+    ) -> List[ColumnLineageEdge]:
+        """
+        Extract column-level lineage for a table using all enabled/available providers.
+
+        Args:
+            table_name: Name of the table
+            schema: Optional schema name
+            enabled_providers: Optional list of provider names to use.
+                             If None, uses all available providers.
+
+        Returns:
+            List of ColumnLineageEdge objects from all providers
+        """
+        logger.info(
+            f"Extracting column lineage for {schema}.{table_name} "
+            f"with enabled_providers={enabled_providers}"
+        )
+        if enabled_providers:
+            # Use only specified providers
+            providers_to_use = [
+                p
+                for p in self._providers
+                if p.get_provider_name() in enabled_providers and p.is_available()
+            ]
+        else:
+            # Use all available providers
+            providers_to_use = self.get_available_providers()
+
+        logger.info(
+            f"Found {len(providers_to_use)} providers for column lineage: "
+            f"{[p.get_provider_name() for p in providers_to_use]}"
+        )
+
+        if not providers_to_use:
+            logger.warning(
+                f"No lineage providers available for column lineage of {schema}.{table_name}"
+            )
+            return []
+
+        all_edges = []
+        for provider in providers_to_use:
+            try:
+                logger.info(
+                    f"Trying provider {provider.get_provider_name()} for column lineage "
+                    f"of {schema}.{table_name}"
+                )
+                edges = provider.extract_column_lineage(table_name, schema)
+                all_edges.extend(edges)
+                logger.info(
+                    f"Provider {provider.get_provider_name()} extracted "
+                    f"{len(edges)} column lineage edges for {schema}.{table_name}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Provider {provider.get_provider_name()} failed to extract "
+                    f"column lineage for {schema}.{table_name}: {e}",
+                    exc_info=True,
+                )
+                # Continue with other providers
+                continue
+
+        # Deduplicate edges (same downstream/upstream/provider/column combination)
+        seen = set()
+        unique_edges = []
+        for edge in all_edges:
+            key = (
+                edge.downstream_schema,
+                edge.downstream_table,
+                edge.downstream_column,
+                edge.upstream_schema,
+                edge.upstream_table,
+                edge.upstream_column,
                 edge.provider,
             )
             if key not in seen:
