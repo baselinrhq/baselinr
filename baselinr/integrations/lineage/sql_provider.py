@@ -450,9 +450,7 @@ class SQLLineageProvider(LineageProvider):
                             database = default_database
                         elif isinstance(col_table_expr, exp.Table):
                             schema = (
-                                col_table_expr.db
-                                if col_table_expr.db
-                                else (default_schema or "")
+                                col_table_expr.db if col_table_expr.db else (default_schema or "")
                             )
                             table = col_table_expr.name if col_table_expr.name else ""
                             database = (
@@ -485,11 +483,7 @@ class SQLLineageProvider(LineageProvider):
                                     if nested_table_expr.db
                                     else (default_schema or "")
                                 )
-                                table = (
-                                    nested_table_expr.name
-                                    if nested_table_expr.name
-                                    else ""
-                                )
+                                table = nested_table_expr.name if nested_table_expr.name else ""
                                 database = (
                                     nested_table_expr.catalog
                                     if nested_table_expr.catalog
