@@ -1,6 +1,6 @@
 """Schema version management for Baselinr storage layer."""
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 # Version history
 VERSION_HISTORY = {
@@ -17,6 +17,14 @@ VERSION_HISTORY = {
     3: {
         "description": "Add expectations table for learned metric ranges and control limits",
         "applied": "2025-01-20",
+        "breaking_changes": False,
+    },
+    4: {
+        "description": (
+            "Add lineage table for data dependency relationships from multiple providers "
+            "with database, schema, and table support"
+        ),
+        "applied": "2025-01-21",
         "breaking_changes": False,
     },
 }

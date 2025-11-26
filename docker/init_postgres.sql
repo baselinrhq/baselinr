@@ -92,7 +92,44 @@ CREATE INDEX idx_orders_customer_id ON orders(customer_id);
 CREATE INDEX idx_orders_date ON orders(order_date);
 CREATE INDEX idx_products_category ON products(category);
 
+-- Create downstream views/tables for lineage testing
+-- Customer summary view (depends on customers table)
+CREATE OR REPLACE VIEW customer_summary AS
+SELECT 
+    customer_id,
+    first_name || ' ' || last_name AS full_name,
+    email,
+    age,
+    customer_segment,
+    total_purchases,
+    is_active,
+    registration_date,
+    CASE 
+        WHEN total_purchases > 2000 THEN 'High Value'
+        WHEN total_purchases > 1000 THEN 'Medium Value'
+        ELSE 'Low Value'
+    END AS value_tier
+FROM customers;
+
+-- Customer analytics table (depends on customers and orders tables)
+-- Drop if exists to allow re-running the init script
+DROP TABLE IF EXISTS customer_analytics;
+
+CREATE TABLE customer_analytics AS
+SELECT 
+    c.customer_id,
+    c.customer_segment,
+    COUNT(o.order_id) AS total_orders,
+    COALESCE(SUM(o.total_amount), 0) AS lifetime_revenue,
+    COALESCE(AVG(o.total_amount), 0) AS avg_order_value,
+    MAX(o.order_date) AS last_order_date,
+    MIN(o.order_date) AS first_order_date
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_segment;
+
 -- Grant permissions
+-- Note: GRANT ON ALL TABLES covers both tables and views in PostgreSQL
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO baselinr;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO baselinr;
 

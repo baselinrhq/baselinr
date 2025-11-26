@@ -36,13 +36,13 @@ def _infer_drift_type(metric_name: Optional[str]) -> str:
 def _get_status_indicator(
     has_drift: bool, has_anomalies: bool, severity: Optional[str] = None
 ) -> str:
-    """Get status indicator emoji based on run health."""
+    """Get status indicator text based on run health."""
     if has_drift and severity == "high":
-        return "🔴"
+        return "[ERROR]"
     elif has_drift or has_anomalies:
-        return "🟡"
+        return "[WARNING]"
     else:
-        return "🟢"
+        return "[OK]"
 
 
 def _get_status_indicator_rich(

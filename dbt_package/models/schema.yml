@@ -52,3 +52,31 @@ models:
         description: "Date order was placed"
       - name: status
         description: "Order status"
+
+  - name: customer_analytics
+    description: "Downstream analytics model that depends on example_customers for lineage testing"
+    tags:
+      - analytics
+      - customer
+      - test
+    config:
+      materialized: table
+    columns:
+      - name: customer_id
+        description: "Customer identifier"
+        tests:
+          - not_null
+      - name: email
+        description: "Customer email address"
+      - name: registration_date
+        description: "Date customer registered"
+      - name: status
+        description: "Customer status"
+      - name: lifetime_value
+        description: "Customer lifetime value"
+      - name: value_segment
+        description: "Customer value segment (High/Medium/Low)"
+      - name: is_active
+        description: "Whether customer is active"
+      - name: days_since_registration
+        description: "Days since customer registered"

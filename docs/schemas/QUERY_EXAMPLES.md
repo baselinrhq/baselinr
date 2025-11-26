@@ -13,6 +13,10 @@ baselinr query runs      # Query profiling run history
 baselinr query drift     # Query drift detection events
 baselinr query run       # Get details for specific run
 baselinr query table     # Query table profiling history
+baselinr lineage upstream    # Get upstream dependencies
+baselinr lineage downstream # Get downstream dependencies
+baselinr lineage path        # Find path between tables
+baselinr lineage providers  # List available providers
 ```
 
 ---

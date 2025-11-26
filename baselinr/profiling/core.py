@@ -347,15 +347,23 @@ class ProfileEngine:
                     record_profile_failed(warehouse, fq_table, duration)
 
                 # Log and emit failure
+                error_msg = str(e) if e else "Unknown error"
+                error_type = type(e).__name__ if e else "UnknownError"
+                error_repr = repr(e) if e else "Unknown error"
+
                 log_and_emit(
                     self.logger,
                     self.event_bus,
                     "profiling_error",
-                    f"Failed to profile table {fq_table}: {e}",
+                    f"Failed to profile table {fq_table}: {error_msg}",
                     level="error",
                     table=fq_table,
                     run_id=self.run_id,
-                    metadata={"error": str(e), "error_type": type(e).__name__},
+                    metadata={
+                        "error": error_msg,
+                        "error_type": error_type,
+                        "error_repr": error_repr,
+                    },
                 )
 
                 # Continue processing other tables instead of aborting

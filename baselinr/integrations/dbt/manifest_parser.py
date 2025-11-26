@@ -206,3 +206,68 @@ class DBTManifestParser:
         schema = model.get("schema", "")
         alias = model.get("alias") or model.get("name", "")
         return (schema, alias)
+
+    def extract_lineage(self) -> Dict[str, List[Tuple[str, str]]]:
+        """
+        Extract table-to-table lineage from manifest.
+
+        Returns:
+            Dictionary mapping downstream table (schema.table) to list of upstream tables
+        """
+        manifest = self.get_manifest()
+        nodes = manifest.get("nodes", {})
+        lineage: Dict[str, List[Tuple[str, str]]] = {}
+
+        for node_id, node in nodes.items():
+            if node.get("resource_type") != "model":
+                continue
+
+            downstream_schema, downstream_table = self.model_to_table(node)
+            downstream_key = f"{downstream_schema}.{downstream_table}"
+
+            # Get dependencies
+            depends_on = node.get("depends_on", {})
+            depends_on_nodes = depends_on.get("nodes", [])
+
+            upstream_tables = []
+            for dep_id in depends_on_nodes:
+                dep_node = nodes.get(dep_id)
+                if dep_node and dep_node.get("resource_type") == "model":
+                    dep_schema, dep_table = self.model_to_table(dep_node)
+                    upstream_tables.append((dep_schema, dep_table))
+
+            if upstream_tables:
+                lineage[downstream_key] = upstream_tables
+
+        return lineage
+
+    def get_model_dependencies(
+        self, model_name: str, package: Optional[str] = None
+    ) -> List[Tuple[str, str]]:
+        """
+        Get upstream dependencies for a specific model.
+
+        Args:
+            model_name: Model name
+            package: Optional package name
+
+        Returns:
+            List of (schema, table) tuples for upstream dependencies
+        """
+        model = self.get_model_by_name(model_name, package)
+        if not model:
+            return []
+
+        manifest = self.get_manifest()
+        nodes = manifest.get("nodes", {})
+        depends_on = model.get("depends_on", {})
+        depends_on_nodes = depends_on.get("nodes", [])
+
+        upstream_tables = []
+        for dep_id in depends_on_nodes:
+            dep_node = nodes.get(dep_id)
+            if dep_node and dep_node.get("resource_type") == "model":
+                dep_schema, dep_table = self.model_to_table(dep_node)
+                upstream_tables.append((dep_schema, dep_table))
+
+        return upstream_tables

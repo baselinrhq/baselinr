@@ -357,9 +357,11 @@ def profile_command(args):
         total_drifts = 0  # Could be enhanced to track drifts detected
 
         # Print Rich-formatted summary
+        # Use total_tables (attempted) instead of len(results) (successful only)
+        # to show accurate count of tables that were attempted
         summary = format_run_summary(
             duration_seconds=duration,
-            tables_scanned=len(results),
+            tables_scanned=total_tables,
             drifts_detected=total_drifts,
             warnings=total_warnings,
             anomalies=0,  # Could be enhanced to track anomalies
@@ -588,7 +590,7 @@ def drift_command(args):
                             safe_print()
                             explanation_panel = Panel(
                                 drift.explanation,
-                                title="[bold]💡 Explanation[/bold]",
+                                title="[bold]Explanation[/bold]",
                                 border_style="#4a90e2",
                                 padding=(1, 2),
                             )
@@ -661,7 +663,7 @@ def drift_command(args):
                         if drift.change_percent is not None:
                             print(f"    Change: {drift.change_percent:+.2f}%")
                         if drift.explanation:
-                            print("\n    💡 Explanation:")
+                            print("\n    Explanation:")
                             print(f"    {drift.explanation}")
 
         # Output to file
@@ -893,6 +895,280 @@ COLUMN METRICS:
         return 1
 
 
+def lineage_command(args):
+    """Execute lineage command."""
+    from .cli_output import safe_print
+
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        # Create query client
+        from .connectors.factory import create_connector
+        from .query import MetadataQueryClient
+
+        connector = create_connector(config.storage.connection, config.retry)
+        client = MetadataQueryClient(
+            connector.engine,
+            runs_table=config.storage.runs_table,
+            results_table=config.storage.results_table,
+            events_table="baselinr_events",
+        )
+
+        # Execute subcommand
+        if args.lineage_command == "upstream":
+            lineage_data = client.query_lineage_upstream(
+                args.table, schema_name=args.schema, max_depth=args.max_depth
+            )
+
+            if not lineage_data:
+                safe_print(f"No upstream lineage found for {args.schema or ''}.{args.table}")
+                return 0
+
+            if args.format == "json":
+                output = json.dumps(lineage_data, indent=2, default=str)
+                safe_print(output)
+            else:
+                from rich.table import Table as RichTable
+
+                from .cli_output import get_console
+
+                console = get_console()
+                if console:
+                    table = RichTable(
+                        title=f"Upstream Lineage: {args.table}",
+                        show_header=True,
+                        header_style="bold cyan",
+                    )
+                    table.add_column("Schema", style="cyan")
+                    table.add_column("Table", style="green")
+                    table.add_column("Depth", justify="right", style="yellow")
+                    table.add_column("Provider", style="dim")
+                    table.add_column("Type", style="dim")
+                    table.add_column("Confidence", justify="right", style="dim")
+
+                    for item in lineage_data:
+                        table.add_row(
+                            item.get("schema", ""),
+                            item.get("table", ""),
+                            str(item.get("depth", 0)),
+                            item.get("provider", "unknown"),
+                            item.get("lineage_type", ""),
+                            f"{item.get('confidence_score', 1.0):.2f}",
+                        )
+                    safe_print()
+                    safe_print(table)
+                else:
+                    # Fallback to plain text
+                    output = f"\nUpstream Lineage for {args.table}:\n"
+                    output += "=" * 80 + "\n"
+                    for item in lineage_data:
+                        output += f"  {item.get('schema', '')}.{item.get('table', '')} "
+                        output += f"(depth: {item.get('depth', 0)}, "
+                        output += f"provider: {item.get('provider', 'unknown')})\n"
+                    safe_print(output)
+
+            if args.output:
+                with open(args.output, "w") as f:
+                    if args.format == "json":
+                        f.write(output)
+                    else:
+                        f.write(json.dumps(lineage_data, indent=2, default=str))
+                logger.info(f"Results saved to: {args.output}")
+
+        elif args.lineage_command == "downstream":
+            lineage_data = client.query_lineage_downstream(
+                args.table, schema_name=args.schema, max_depth=args.max_depth
+            )
+
+            if not lineage_data:
+                safe_print(f"No downstream lineage found for {args.schema or ''}.{args.table}")
+                return 0
+
+            if args.format == "json":
+                output = json.dumps(lineage_data, indent=2, default=str)
+                safe_print(output)
+            else:
+                from rich.table import Table as RichTable
+
+                from .cli_output import get_console
+
+                console = get_console()
+                if console:
+                    table = RichTable(
+                        title=f"Downstream Lineage: {args.table}",
+                        show_header=True,
+                        header_style="bold cyan",
+                    )
+                    table.add_column("Schema", style="cyan")
+                    table.add_column("Table", style="green")
+                    table.add_column("Depth", justify="right", style="yellow")
+                    table.add_column("Provider", style="dim")
+                    table.add_column("Type", style="dim")
+                    table.add_column("Confidence", justify="right", style="dim")
+
+                    for item in lineage_data:
+                        table.add_row(
+                            item.get("schema", ""),
+                            item.get("table", ""),
+                            str(item.get("depth", 0)),
+                            item.get("provider", "unknown"),
+                            item.get("lineage_type", ""),
+                            f"{item.get('confidence_score', 1.0):.2f}",
+                        )
+                    safe_print()
+                    safe_print(table)
+                else:
+                    # Fallback to plain text
+                    output = f"\nDownstream Lineage for {args.table}:\n"
+                    output += "=" * 80 + "\n"
+                    for item in lineage_data:
+                        output += f"  {item.get('schema', '')}.{item.get('table', '')} "
+                        output += f"(depth: {item.get('depth', 0)}, "
+                        output += f"provider: {item.get('provider', 'unknown')})\n"
+                    safe_print(output)
+
+            if args.output:
+                with open(args.output, "w") as f:
+                    if args.format == "json":
+                        f.write(output)
+                    else:
+                        f.write(json.dumps(lineage_data, indent=2, default=str))
+                logger.info(f"Results saved to: {args.output}")
+
+        elif args.lineage_command == "path":
+            # Parse from/to tables (support schema.table format)
+            from_parts = args.from_table.split(".", 1)
+            from_table_name = from_parts[-1]
+            from_schema = from_parts[0] if len(from_parts) == 2 else None
+
+            to_parts = args.to_table.split(".", 1)
+            to_table_name = to_parts[-1]
+            to_schema = to_parts[0] if len(to_parts) == 2 else None
+
+            path = client.query_lineage_path(
+                from_table_name,
+                to_table_name,
+                from_schema=from_schema,
+                to_schema=to_schema,
+                max_depth=args.max_depth,
+            )
+
+            if not path:
+                safe_print(f"No path found from {args.from_table} to {args.to_table}")
+                return 0
+
+            if args.format == "json":
+                output = json.dumps(path, indent=2, default=str)
+                safe_print(output)
+            else:
+                from rich.table import Table as RichTable
+
+                from .cli_output import get_console
+
+                console = get_console()
+                if console:
+                    table = RichTable(
+                        title=f"Lineage Path: {args.from_table} → {args.to_table}",
+                        show_header=True,
+                        header_style="bold cyan",
+                    )
+                    table.add_column("Step", justify="right", style="yellow")
+                    table.add_column("Schema", style="cyan")
+                    table.add_column("Table", style="green")
+
+                    for i, item in enumerate(path):
+                        table.add_row(
+                            str(i + 1),
+                            item.get("schema", ""),
+                            item.get("table", ""),
+                        )
+                    safe_print()
+                    safe_print(table)
+                else:
+                    # Fallback to plain text
+                    output = f"\nLineage Path from {args.from_table} to {args.to_table}:\n"
+                    output += "=" * 80 + "\n"
+                    for i, item in enumerate(path):
+                        output += f"  {i+1}. {item.get('schema', '')}.{item.get('table', '')}\n"
+                    safe_print(output)
+
+            if args.output:
+                with open(args.output, "w") as f:
+                    if args.format == "json":
+                        f.write(output)
+                    else:
+                        f.write(json.dumps(path, indent=2, default=str))
+                logger.info(f"Results saved to: {args.output}")
+
+        elif args.lineage_command == "providers":
+            try:
+                from .integrations.lineage import LineageProviderRegistry
+
+                registry = LineageProviderRegistry()
+                available = registry.get_available_providers()
+                all_providers = registry._providers
+
+                if args.format == "json":
+                    providers_data = {
+                        "available": [p.get_provider_name() for p in available],
+                        "all": [
+                            {
+                                "name": p.get_provider_name(),
+                                "available": p.is_available(),
+                            }
+                            for p in all_providers
+                        ],
+                    }
+                    output = json.dumps(providers_data, indent=2)
+                    safe_print(output)
+                else:
+                    from rich.table import Table as RichTable
+
+                    from .cli_output import get_console
+
+                    console = get_console()
+                    if console:
+                        table = RichTable(
+                            title="Lineage Providers",
+                            show_header=True,
+                            header_style="bold cyan",
+                        )
+                        table.add_column("Provider", style="cyan")
+                        table.add_column("Status", justify="center")
+
+                        for provider in all_providers:
+                            name = provider.get_provider_name()
+                            is_avail = provider.is_available()
+                            status = (
+                                "[green]Available[/green]" if is_avail else "[red]Unavailable[/red]"
+                            )
+                            table.add_row(name, status)
+                        safe_print()
+                        safe_print(table)
+                    else:
+                        # Fallback to plain text
+                        output = "\nLineage Providers:\n"
+                        output += "=" * 80 + "\n"
+                        for provider in all_providers:
+                            name = provider.get_provider_name()
+                            is_avail = provider.is_available()
+                            status = "Available" if is_avail else "Unavailable"
+                            output += f"  {name}: {status}\n"
+                        safe_print(output)
+
+            except Exception as e:
+                logger.warning(f"Could not list providers: {e}")
+                safe_print(f"Could not list lineage providers: {e}")
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Lineage command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
 def ui_command(args):
     """Execute UI command."""
     try:
@@ -1055,9 +1331,9 @@ def _status_single_run(
                 "drift_severity": severity,
                 # Keep legacy status_indicator for text/JSON formats
                 "status_indicator": (
-                    "🟢"
+                    "healthy"
                     if not has_drift and anomalies_count == 0
-                    else ("🔴" if has_drift and severity == "high" else "🟡")
+                    else ("error" if has_drift and severity == "high" else "warning")
                 ),
             }
         )
@@ -1164,9 +1440,9 @@ def _status_watch_mode(
                         "drift_severity": severity,
                         # Keep legacy status_indicator for text/JSON formats
                         "status_indicator": (
-                            "🟢"
+                            "healthy"
                             if not has_drift and anomalies_count == 0
-                            else ("🔴" if has_drift and severity == "high" else "🟡")
+                            else ("error" if has_drift and severity == "high" else "warning")
                         ),
                     }
                 )
@@ -1227,7 +1503,7 @@ def _status_watch_mode(
                             )
                             metrics = str(run.get("metrics_count", 0))
                             anomalies = str(run.get("anomalies_count", 0))
-                            status = run.get("status_indicator", "🟢")
+                            status = run.get("status_indicator", "healthy")
 
                             runs_table.add_row(
                                 table_name, schema_name, duration, rows, metrics, anomalies, status
@@ -1343,32 +1619,38 @@ def migrate_command(args):
             print(f"Current code version: {CURRENT_SCHEMA_VERSION}")
 
             if current is None:
-                print("\n⚠️  Schema version not initialized")
+                print("\n[WARNING] Schema version not initialized")
                 print("Run: baselinr migrate apply --target 1")
             elif current < CURRENT_SCHEMA_VERSION:
-                print(f"\n⚠️  Database schema is behind (v{current} < v{CURRENT_SCHEMA_VERSION})")
+                print(
+                    f"\n[WARNING] Database schema is behind "
+                    f"(v{current} < v{CURRENT_SCHEMA_VERSION})"
+                )
                 print(f"Run: baselinr migrate apply --target {CURRENT_SCHEMA_VERSION}")
             elif current > CURRENT_SCHEMA_VERSION:
-                print(f"\n❌ Database schema is ahead (v{current} > v{CURRENT_SCHEMA_VERSION})")
+                print(
+                    f"\n[ERROR] Database schema is ahead "
+                    f"(v{current} > v{CURRENT_SCHEMA_VERSION})"
+                )
                 print("Update Baselinr package to match database version")
             else:
-                print("\n✅ Schema version is up to date")
+                print("\n[SUCCESS] Schema version is up to date")
 
         elif args.migrate_command == "apply":
             target = args.target
             dry_run = args.dry_run
 
             if dry_run:
-                print("🔍 DRY RUN MODE - No changes will be applied\n")
+                print("[DRY RUN] No changes will be applied\n")
 
             success = manager.migrate_to(target, dry_run=dry_run)
 
             if success:
                 if not dry_run:
-                    print(f"\n✅ Successfully migrated to version {target}")
+                    print(f"\n[SUCCESS] Successfully migrated to version {target}")
                 return 0
             else:
-                print("\n❌ Migration failed")
+                print("\n[ERROR] Migration failed")
                 return 1
 
         elif args.migrate_command == "validate":
@@ -1376,18 +1658,18 @@ def migrate_command(args):
             results = manager.validate_schema()
 
             print(f"Schema Version: {results['version']}")
-            print(f"Valid: {'✅ Yes' if results['valid'] else '❌ No'}\n")
+            print(f"Valid: {'[SUCCESS] Yes' if results['valid'] else '[ERROR] No'}\n")
 
             if results["errors"]:
                 print("Errors:")
                 for error in results["errors"]:
-                    print(f"  ❌ {error}")
+                    print(f"  [ERROR] {error}")
                 print()
 
             if results["warnings"]:
                 print("Warnings:")
                 for warning in results["warnings"]:
-                    print(f"  ⚠️  {warning}")
+                    print(f"  [WARNING] {warning}")
                 print()
 
             return 0 if results["valid"] else 1
@@ -1396,7 +1678,7 @@ def migrate_command(args):
 
     except Exception as e:
         logger.error(f"Migration command failed: {e}", exc_info=True)
-        print(f"\n❌ Error: {e}")
+        print(f"\n[ERROR] {e}")
         return 1
 
 
@@ -1566,6 +1848,64 @@ def main():
         help="Auto-refresh every N seconds (default: 5). Use --watch 0 to disable.",
     )
 
+    # Lineage command
+    lineage_parser = subparsers.add_parser("lineage", help="Query data lineage")
+    lineage_subparsers = lineage_parser.add_subparsers(
+        dest="lineage_command", help="Lineage operation"
+    )
+
+    # lineage upstream
+    upstream_parser = lineage_subparsers.add_parser("upstream", help="Get upstream dependencies")
+    upstream_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    upstream_parser.add_argument("--table", required=True, help="Table name")
+    upstream_parser.add_argument("--schema", help="Schema name")
+    upstream_parser.add_argument(
+        "--max-depth", type=int, help="Maximum depth to traverse (default: unlimited)"
+    )
+    upstream_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    upstream_parser.add_argument("--output", "-o", help="Output file")
+
+    # lineage downstream
+    downstream_parser = lineage_subparsers.add_parser(
+        "downstream", help="Get downstream dependencies"
+    )
+    downstream_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    downstream_parser.add_argument("--table", required=True, help="Table name")
+    downstream_parser.add_argument("--schema", help="Schema name")
+    downstream_parser.add_argument(
+        "--max-depth", type=int, help="Maximum depth to traverse (default: unlimited)"
+    )
+    downstream_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    downstream_parser.add_argument("--output", "-o", help="Output file")
+
+    # lineage path
+    path_parser = lineage_subparsers.add_parser("path", help="Find path between two tables")
+    path_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    path_parser.add_argument(
+        "--from", dest="from_table", required=True, help="Source table (schema.table)"
+    )
+    path_parser.add_argument(
+        "--to", dest="to_table", required=True, help="Target table (schema.table)"
+    )
+    path_parser.add_argument(
+        "--max-depth", type=int, help="Maximum depth to search (default: unlimited)"
+    )
+    path_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    path_parser.add_argument("--output", "-o", help="Output file")
+
+    # lineage providers
+    providers_parser = lineage_subparsers.add_parser("providers", help="List available providers")
+    providers_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    providers_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
     # UI command
     ui_parser = subparsers.add_parser("ui", help="Start local dashboard")
     ui_parser.add_argument(
@@ -1623,6 +1963,11 @@ def main():
         return query_command(args)
     elif args.command == "status":
         return status_command(args)
+    elif args.command == "lineage":
+        if not args.lineage_command:
+            lineage_parser.print_help()
+            return 1
+        return lineage_command(args)
     elif args.command == "ui":
         return ui_command(args)
     else:

@@ -582,3 +582,90 @@ class MetadataQueryClient:
         )
 
         return summary
+
+    def query_lineage_upstream(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query upstream lineage for a table.
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            max_depth: Maximum depth to traverse
+
+        Returns:
+            List of upstream tables with depth information
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine)
+        return lineage_client.get_upstream_tables(table_name, schema_name, max_depth)
+
+    def query_lineage_downstream(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query downstream lineage for a table.
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            max_depth: Maximum depth to traverse
+
+        Returns:
+            List of downstream tables with depth information
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine)
+        return lineage_client.get_downstream_tables(table_name, schema_name, max_depth)
+
+    def query_lineage_path(
+        self,
+        from_table: str,
+        to_table: str,
+        from_schema: Optional[str] = None,
+        to_schema: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Query lineage path between two tables.
+
+        Args:
+            from_table: Source table name
+            to_table: Target table name
+            from_schema: Optional source schema
+            to_schema: Optional target schema
+            max_depth: Maximum depth to search
+
+        Returns:
+            List of tables in the path
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine)
+        return lineage_client.get_lineage_path(
+            from_table, to_table, from_schema, to_schema, max_depth
+        )
+
+    def query_lineage_by_provider(self, provider: str) -> Dict[str, List[str]]:
+        """
+        Query lineage filtered by provider.
+
+        Args:
+            provider: Provider name (e.g., 'dbt', 'sql_parser')
+
+        Returns:
+            Dictionary mapping downstream tables to lists of upstream tables
+        """
+        from .lineage_client import LineageQueryClient
+
+        lineage_client = LineageQueryClient(self.engine)
+        return lineage_client.get_lineage_by_provider(provider)

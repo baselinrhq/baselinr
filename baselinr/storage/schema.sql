@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS baselinr_results (
 CREATE TABLE IF NOT EXISTS baselinr_events (
     event_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
+    run_id VARCHAR(36),
     table_name VARCHAR(255),
     column_name VARCHAR(255),
     metric_name VARCHAR(100),
@@ -58,6 +59,7 @@ CREATE TABLE IF NOT EXISTS baselinr_events (
     metadata TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_event_type (event_type),
+    INDEX idx_run_id (run_id),
     INDEX idx_table_name (table_name),
     INDEX idx_timestamp (timestamp DESC),
     INDEX idx_drift_severity (drift_severity)
@@ -95,5 +97,30 @@ CREATE TABLE IF NOT EXISTS baselinr_schema_registry (
     INDEX idx_table_schema (table_name, schema_name, run_id),
     INDEX idx_table_column (table_name, schema_name, column_name),
     INDEX idx_run_id (run_id),
+    INDEX idx_last_seen (last_seen_at DESC)
+);
+
+-- Lineage table - tracks data lineage relationships from multiple providers
+CREATE TABLE IF NOT EXISTS baselinr_lineage (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    downstream_database VARCHAR(255),
+    downstream_schema VARCHAR(255) NOT NULL,
+    downstream_table VARCHAR(255) NOT NULL,
+    upstream_database VARCHAR(255),
+    upstream_schema VARCHAR(255) NOT NULL,
+    upstream_table VARCHAR(255) NOT NULL,
+    lineage_type VARCHAR(50) NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    confidence_score FLOAT DEFAULT 1.0,
+    first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata TEXT,
+    UNIQUE KEY unique_lineage (
+        downstream_database, downstream_schema, downstream_table,
+        upstream_database, upstream_schema, upstream_table, provider
+    ),
+    INDEX idx_downstream (downstream_database, downstream_schema, downstream_table),
+    INDEX idx_upstream (upstream_database, upstream_schema, upstream_table),
+    INDEX idx_provider (provider),
     INDEX idx_last_seen (last_seen_at DESC)
 );

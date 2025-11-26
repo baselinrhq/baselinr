@@ -35,6 +35,12 @@ profiling:
     - table: customers
       schema: public
     
+    - table: customer_summary
+      schema: public
+    
+    - table: customer_analytics
+      schema: public
+    
     # Explicit table profiling
     # - table: products
     #   schema: public
@@ -202,6 +208,9 @@ profiling:
   
   # Number of histogram bins
   histogram_bins: 10
+  
+  # Enable lineage extraction during profiling
+  extract_lineage: true
   
   # Metrics to compute
   metrics:
@@ -397,6 +406,12 @@ hooks:
     #   params:
     #     webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
     #     channel: "#data-alerts"
+
+# Lineage configuration for data lineage extraction
+lineage:
+  enabled: true  # Enable lineage extraction
+  # providers: [dbt_manifest, sql_parser]  # Optional: specify which providers to use
+  # If not specified, uses all available providers
 
 # LLM configuration for human-readable explanations (optional)
 # This feature is opt-in and disabled by default

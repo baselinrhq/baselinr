@@ -181,7 +181,28 @@ class BaseConnector(ABC):
         """
 
         def _get_table():
-            return Table(table_name, MetaData(), autoload_with=self.engine, schema=schema)
+            try:
+                return Table(table_name, MetaData(), autoload_with=self.engine, schema=schema)
+            except Exception as e:
+                # Preserve original exception details
+                fq_name = f"{schema}.{table_name}" if schema else table_name
+                error_msg = str(e) if e else "Unknown error"
+                error_type = type(e).__name__
+
+                # If error message is just the table name, provide more context
+                if error_msg == table_name or error_msg == fq_name:
+                    error_msg = (
+                        f"Table/view '{fq_name}' not found or cannot be reflected. "
+                        f"Original error type: {error_type}"
+                    )
+                else:
+                    error_msg = (
+                        f"Failed to reflect table/view '{fq_name}': "
+                        f"{error_msg} (type: {error_type})"
+                    )
+
+                # Re-raise with more context, preserving original exception type
+                raise type(e)(error_msg).with_traceback(e.__traceback__) from e
 
         return cast(Table, self._wrap_with_retry(_get_table))
 

@@ -345,6 +345,8 @@ def test_integration_with_result_writer(
     schema_change_config = SchemaChangeConfig(enabled=False)
     baselinr_config = Mock(spec=BaselinrConfig)
     baselinr_config.schema_change = schema_change_config
+    baselinr_config.profiling = Mock()
+    baselinr_config.profiling.extract_lineage = False
 
     # Create ResultWriter
     writer = ResultWriter(

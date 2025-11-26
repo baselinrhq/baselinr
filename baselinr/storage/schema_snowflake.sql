@@ -58,6 +58,7 @@ ON baselinr_results (dataset_name, column_name, metric_name);
 CREATE TABLE IF NOT EXISTS baselinr_events (
     event_id VARCHAR(36) PRIMARY KEY,
     event_type VARCHAR(100) NOT NULL,
+    run_id VARCHAR(36),
     table_name VARCHAR(255),
     column_name VARCHAR(255),
     metric_name VARCHAR(100),
@@ -73,6 +74,9 @@ CREATE TABLE IF NOT EXISTS baselinr_events (
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_events_event_type 
 ON baselinr_events (event_type);
+
+CREATE INDEX IF NOT EXISTS idx_events_run_id 
+ON baselinr_events (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_events_table_name 
 ON baselinr_events (table_name);
@@ -126,3 +130,37 @@ ON baselinr_schema_registry (run_id);
 
 CREATE INDEX IF NOT EXISTS idx_schema_registry_last_seen 
 ON baselinr_schema_registry (last_seen_at DESC);
+
+-- Lineage table - tracks data lineage relationships from multiple providers
+CREATE TABLE IF NOT EXISTS baselinr_lineage (
+    id INTEGER AUTOINCREMENT PRIMARY KEY,
+    downstream_database VARCHAR(255),
+    downstream_schema VARCHAR(255) NOT NULL,
+    downstream_table VARCHAR(255) NOT NULL,
+    upstream_database VARCHAR(255),
+    upstream_schema VARCHAR(255) NOT NULL,
+    upstream_table VARCHAR(255) NOT NULL,
+    lineage_type VARCHAR(50) NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    confidence_score FLOAT DEFAULT 1.0,
+    first_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    last_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    metadata VARIANT,
+    UNIQUE (
+        downstream_database, downstream_schema, downstream_table,
+        upstream_database, upstream_schema, upstream_table, provider
+    )
+);
+
+-- Create indexes for lineage table
+CREATE INDEX IF NOT EXISTS idx_lineage_downstream 
+ON baselinr_lineage (downstream_database, downstream_schema, downstream_table);
+
+CREATE INDEX IF NOT EXISTS idx_lineage_upstream 
+ON baselinr_lineage (upstream_database, upstream_schema, upstream_table);
+
+CREATE INDEX IF NOT EXISTS idx_lineage_provider 
+ON baselinr_lineage (provider);
+
+CREATE INDEX IF NOT EXISTS idx_lineage_last_seen 
+ON baselinr_lineage (last_seen_at DESC);
