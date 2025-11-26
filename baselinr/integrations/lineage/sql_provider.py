@@ -5,7 +5,7 @@ Extracts lineage by parsing SQL statements using SQLGlot.
 """
 
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import sqlglot
 from sqlalchemy import text
@@ -321,11 +321,23 @@ class SQLLineageProvider(LineageProvider):
             # Find all column references in the SQL
             for column_expr in parsed.find_all(exp.Column):
                 # Get table reference for this column
-                table_expr = column_expr.table
+                # column_expr.table can be either a string or a Table object
+                table_expr: Union[str, exp.Table, None] = (
+                    column_expr.table  # type: ignore[assignment]
+                )
                 if table_expr:
-                    schema = table_expr.db if table_expr.db else (default_schema or "")
-                    table = table_expr.name if table_expr.name else ""
-                    database = table_expr.catalog if table_expr.catalog else default_database
+                    # Handle both string table names and Table expression objects
+                    if isinstance(table_expr, str):
+                        schema = default_schema or ""
+                        table = table_expr
+                        database = default_database
+                    elif isinstance(table_expr, exp.Table):
+                        schema = table_expr.db if table_expr.db else (default_schema or "")
+                        table = table_expr.name if table_expr.name else ""
+                        database = table_expr.catalog if table_expr.catalog else default_database
+                    else:
+                        # Unknown type, skip
+                        continue
                     column = column_expr.name if column_expr.name else ""
 
                     if table and column:
@@ -426,18 +438,27 @@ class SQLLineageProvider(LineageProvider):
 
                 if isinstance(expr, exp.Column):
                     # Direct column reference
-                    table_expr = expr.table
-                    if table_expr:
+                    # expr.table can be either a string or a Table object
+                    col_table_expr: Union[str, exp.Table, None] = (
+                        expr.table  # type: ignore[assignment]
+                    )
+                    if col_table_expr:
                         # Handle both string table names and Table expression objects
-                        if isinstance(table_expr, str):
+                        if isinstance(col_table_expr, str):
                             schema = default_schema or ""
-                            table = table_expr
+                            table = col_table_expr
                             database = default_database
-                        elif isinstance(table_expr, exp.Table):
-                            schema = table_expr.db if table_expr.db else (default_schema or "")
-                            table = table_expr.name if table_expr.name else ""
+                        elif isinstance(col_table_expr, exp.Table):
+                            schema = (
+                                col_table_expr.db
+                                if col_table_expr.db
+                                else (default_schema or "")
+                            )
+                            table = col_table_expr.name if col_table_expr.name else ""
                             database = (
-                                table_expr.catalog if table_expr.catalog else default_database
+                                col_table_expr.catalog
+                                if col_table_expr.catalog
+                                else default_database
                             )
                         else:
                             # Unknown type, skip
@@ -448,18 +469,31 @@ class SQLLineageProvider(LineageProvider):
                 else:
                     # Complex expression - find all column references within it
                     for col_expr in expr.find_all(exp.Column):
-                        table_expr = col_expr.table
-                        if table_expr:
+                        # col_expr.table can be either a string or a Table object
+                        nested_table_expr: Union[str, exp.Table, None] = (
+                            col_expr.table  # type: ignore[assignment]
+                        )
+                        if nested_table_expr:
                             # Handle both string table names and Table expression objects
-                            if isinstance(table_expr, str):
+                            if isinstance(nested_table_expr, str):
                                 schema = default_schema or ""
-                                table = table_expr
+                                table = nested_table_expr
                                 database = default_database
-                            elif isinstance(table_expr, exp.Table):
-                                schema = table_expr.db if table_expr.db else (default_schema or "")
-                                table = table_expr.name if table_expr.name else ""
+                            elif isinstance(nested_table_expr, exp.Table):
+                                schema = (
+                                    nested_table_expr.db
+                                    if nested_table_expr.db
+                                    else (default_schema or "")
+                                )
+                                table = (
+                                    nested_table_expr.name
+                                    if nested_table_expr.name
+                                    else ""
+                                )
                                 database = (
-                                    table_expr.catalog if table_expr.catalog else default_database
+                                    nested_table_expr.catalog
+                                    if nested_table_expr.catalog
+                                    else default_database
                                 )
                             else:
                                 # Unknown type, skip
