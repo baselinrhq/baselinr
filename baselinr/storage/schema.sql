@@ -124,3 +124,35 @@ CREATE TABLE IF NOT EXISTS baselinr_lineage (
     INDEX idx_provider (provider),
     INDEX idx_last_seen (last_seen_at DESC)
 );
+
+-- Column lineage table - tracks column-level lineage relationships from multiple providers
+CREATE TABLE IF NOT EXISTS baselinr_column_lineage (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    downstream_database VARCHAR(255),
+    downstream_schema VARCHAR(255) NOT NULL,
+    downstream_table VARCHAR(255) NOT NULL,
+    downstream_column VARCHAR(255) NOT NULL,
+    upstream_database VARCHAR(255),
+    upstream_schema VARCHAR(255) NOT NULL,
+    upstream_table VARCHAR(255) NOT NULL,
+    upstream_column VARCHAR(255) NOT NULL,
+    lineage_type VARCHAR(50) NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    confidence_score FLOAT DEFAULT 1.0,
+    transformation_expression TEXT,
+    first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata TEXT,
+    UNIQUE KEY unique_column_lineage (
+        downstream_database, downstream_schema, downstream_table, downstream_column,
+        upstream_database, upstream_schema, upstream_table, upstream_column, provider
+    ),
+    INDEX idx_downstream (
+        downstream_database, downstream_schema, downstream_table, downstream_column
+    ),
+    INDEX idx_upstream (
+        upstream_database, upstream_schema, upstream_table, upstream_column
+    ),
+    INDEX idx_provider (provider),
+    INDEX idx_last_seen (last_seen_at DESC)
+);

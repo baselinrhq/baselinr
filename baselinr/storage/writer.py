@@ -112,6 +112,9 @@ class ResultWriter:
         # Create lineage table if it doesn't exist
         self._create_lineage_table()
 
+        # Create column lineage table if it doesn't exist
+        self._create_column_lineage_table()
+
         # Initialize or verify schema version
         self._init_schema_version()
 
@@ -810,6 +813,139 @@ class ResultWriter:
         except Exception as e:
             logger.debug(f"Could not create lineage table (may already exist): {e}")
 
+    def _create_column_lineage_table(self):
+        """Ensure column lineage table exists with correct schema."""
+        if self.engine is None:
+            return
+
+        try:
+            is_snowflake = "snowflake" in str(self.engine.url).lower()
+            is_sqlite = "sqlite" in str(self.engine.url).lower()
+
+            if is_snowflake:
+                create_table_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_column_lineage (
+                        id INTEGER AUTOINCREMENT PRIMARY KEY,
+                        downstream_database VARCHAR(255),
+                        downstream_schema VARCHAR(255) NOT NULL,
+                        downstream_table VARCHAR(255) NOT NULL,
+                        downstream_column VARCHAR(255) NOT NULL,
+                        upstream_database VARCHAR(255),
+                        upstream_schema VARCHAR(255) NOT NULL,
+                        upstream_table VARCHAR(255) NOT NULL,
+                        upstream_column VARCHAR(255) NOT NULL,
+                        lineage_type VARCHAR(50) NOT NULL,
+                        provider VARCHAR(50) NOT NULL,
+                        confidence_score FLOAT DEFAULT 1.0,
+                        transformation_expression VARCHAR(5000),
+                        first_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+                        last_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+                        metadata VARIANT,
+                        UNIQUE (
+                            downstream_database, downstream_schema, downstream_table,
+                            downstream_column, upstream_database, upstream_schema,
+                            upstream_table, upstream_column, provider
+                        )
+                    )
+                """
+                )
+            elif is_sqlite:
+                create_table_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_column_lineage (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        downstream_database VARCHAR(255),
+                        downstream_schema VARCHAR(255) NOT NULL,
+                        downstream_table VARCHAR(255) NOT NULL,
+                        downstream_column VARCHAR(255) NOT NULL,
+                        upstream_database VARCHAR(255),
+                        upstream_schema VARCHAR(255) NOT NULL,
+                        upstream_table VARCHAR(255) NOT NULL,
+                        upstream_column VARCHAR(255) NOT NULL,
+                        lineage_type VARCHAR(50) NOT NULL,
+                        provider VARCHAR(50) NOT NULL,
+                        confidence_score FLOAT DEFAULT 1.0,
+                        transformation_expression TEXT,
+                        first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        metadata TEXT,
+                        UNIQUE (
+                            downstream_database, downstream_schema, downstream_table,
+                            downstream_column, upstream_database, upstream_schema,
+                            upstream_table, upstream_column, provider
+                        )
+                    )
+                """
+                )
+            else:
+                # PostgreSQL/MySQL/Generic
+                create_table_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_column_lineage (
+                        id SERIAL PRIMARY KEY,
+                        downstream_database VARCHAR(255),
+                        downstream_schema VARCHAR(255) NOT NULL,
+                        downstream_table VARCHAR(255) NOT NULL,
+                        downstream_column VARCHAR(255) NOT NULL,
+                        upstream_database VARCHAR(255),
+                        upstream_schema VARCHAR(255) NOT NULL,
+                        upstream_table VARCHAR(255) NOT NULL,
+                        upstream_column VARCHAR(255) NOT NULL,
+                        lineage_type VARCHAR(50) NOT NULL,
+                        provider VARCHAR(50) NOT NULL,
+                        confidence_score FLOAT DEFAULT 1.0,
+                        transformation_expression TEXT,
+                        first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        metadata TEXT,
+                        UNIQUE (
+                            downstream_database, downstream_schema, downstream_table,
+                            downstream_column, upstream_database, upstream_schema,
+                            upstream_table, upstream_column, provider
+                        )
+                    )
+                """
+                )
+
+            with self.engine.connect() as conn:
+                conn.execute(create_table_sql)
+                conn.commit()
+
+            # Create indexes
+            indexes = [
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_column_lineage_downstream "
+                    "ON baselinr_column_lineage "
+                    "(downstream_database, downstream_schema, downstream_table, downstream_column)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_column_lineage_upstream "
+                    "ON baselinr_column_lineage "
+                    "(upstream_database, upstream_schema, upstream_table, upstream_column)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_column_lineage_provider "
+                    "ON baselinr_column_lineage (provider)"
+                ),
+                (
+                    "CREATE INDEX IF NOT EXISTS idx_column_lineage_last_seen "
+                    "ON baselinr_column_lineage (last_seen_at DESC)"
+                ),
+            ]
+
+            with self.engine.connect() as conn:
+                for index_sql in indexes:
+                    try:
+                        conn.execute(text(index_sql))
+                    except Exception:
+                        pass  # Index might already exist
+                conn.commit()
+
+            logger.debug("Column lineage table created successfully")
+        except Exception as e:
+            logger.debug(f"Could not create column lineage table (may already exist): {e}")
+
     def write_lineage(self, edges: List) -> None:
         """
         Write lineage edges to storage.
@@ -1045,6 +1181,268 @@ class ResultWriter:
             conn.commit()
             logger.debug(f"Wrote {len(edges)} lineage edges to storage")
 
+    def write_column_lineage(self, edges: List) -> None:
+        """
+        Write column-level lineage edges to storage.
+
+        Args:
+            edges: List of ColumnLineageEdge objects
+        """
+        if not edges:
+            return
+
+        if self.engine is None:
+            raise RuntimeError("Engine is not initialized")
+
+        import json
+
+        is_snowflake = "snowflake" in str(self.engine.url).lower()
+        is_sqlite = "sqlite" in str(self.engine.url).lower()
+
+        with self.engine.connect() as conn:
+            for edge in edges:
+                # Serialize metadata
+                if is_snowflake:
+                    # Snowflake uses VARIANT which accepts JSON strings
+                    metadata_str = json.dumps(edge.metadata) if edge.metadata else None
+                else:
+                    metadata_str = json.dumps(edge.metadata) if edge.metadata else None
+
+                # For SQLite, convert None to empty string for database fields
+                # SQLite's UNIQUE constraint allows multiple NULLs, so we use empty string
+                downstream_db = (
+                    edge.downstream_database
+                    if edge.downstream_database is not None
+                    else ("" if is_sqlite else None)
+                )
+                upstream_db = (
+                    edge.upstream_database
+                    if edge.upstream_database is not None
+                    else ("" if is_sqlite else None)
+                )
+
+                # Use INSERT ... ON CONFLICT or MERGE depending on database
+                if is_snowflake:
+                    # Snowflake uses MERGE
+                    merge_sql = text(
+                        """
+                        MERGE INTO baselinr_column_lineage AS target
+                        USING (
+                            SELECT
+                                :downstream_database AS downstream_database,
+                                :downstream_schema AS downstream_schema,
+                                :downstream_table AS downstream_table,
+                                :downstream_column AS downstream_column,
+                                :upstream_database AS upstream_database,
+                                :upstream_schema AS upstream_schema,
+                                :upstream_table AS upstream_table,
+                                :upstream_column AS upstream_column,
+                                :provider AS provider
+                        ) AS source
+                        ON COALESCE(target.downstream_database, '') = (
+                            COALESCE(source.downstream_database, '')
+                        )
+                            AND target.downstream_schema = source.downstream_schema
+                            AND target.downstream_table = source.downstream_table
+                            AND target.downstream_column = source.downstream_column
+                            AND COALESCE(target.upstream_database, '') = (
+                                COALESCE(source.upstream_database, '')
+                            )
+                            AND target.upstream_schema = source.upstream_schema
+                            AND target.upstream_table = source.upstream_table
+                            AND target.upstream_column = source.upstream_column
+                            AND target.provider = source.provider
+                        WHEN MATCHED THEN
+                            UPDATE SET
+                                last_seen_at = CURRENT_TIMESTAMP(),
+                                confidence_score = :confidence_score,
+                                transformation_expression = :transformation_expression,
+                                metadata = PARSE_JSON(:metadata)
+                        WHEN NOT MATCHED THEN
+                            INSERT (
+                                downstream_database, downstream_schema, downstream_table,
+                                downstream_column, upstream_database, upstream_schema,
+                                upstream_table, upstream_column, lineage_type, provider,
+                                confidence_score, transformation_expression,
+                                first_seen_at, last_seen_at, metadata
+                            )
+                            VALUES (
+                                :downstream_database, :downstream_schema, :downstream_table,
+                                :downstream_column, :upstream_database, :upstream_schema,
+                                :upstream_table, :upstream_column, :lineage_type, :provider,
+                                :confidence_score, :transformation_expression,
+                                CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(),
+                                PARSE_JSON(:metadata)
+                            )
+                    """
+                    )
+                else:
+                    # PostgreSQL/MySQL/SQLite use INSERT ... ON CONFLICT
+                    merge_sql = text(
+                        """
+                        INSERT INTO baselinr_column_lineage (
+                            downstream_database, downstream_schema, downstream_table,
+                            downstream_column, upstream_database, upstream_schema,
+                            upstream_table, upstream_column, lineage_type, provider,
+                            confidence_score, transformation_expression,
+                            first_seen_at, last_seen_at, metadata
+                        )
+                        VALUES (
+                            :downstream_database, :downstream_schema, :downstream_table,
+                            :downstream_column, :upstream_database, :upstream_schema,
+                            :upstream_table, :upstream_column, :lineage_type, :provider,
+                            :confidence_score, :transformation_expression,
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                            :metadata
+                        )
+                        ON CONFLICT (
+                            downstream_database, downstream_schema, downstream_table,
+                            downstream_column, upstream_database, upstream_schema,
+                            upstream_table, upstream_column, provider
+                        )
+                        DO UPDATE SET
+                            last_seen_at = CURRENT_TIMESTAMP,
+                            confidence_score = :confidence_score,
+                            transformation_expression = :transformation_expression,
+                            metadata = :metadata
+                    """
+                    )
+
+                try:
+                    conn.execute(
+                        merge_sql,
+                        {
+                            "downstream_database": downstream_db,
+                            "downstream_schema": edge.downstream_schema,
+                            "downstream_table": edge.downstream_table,
+                            "downstream_column": edge.downstream_column,
+                            "upstream_database": upstream_db,
+                            "upstream_schema": edge.upstream_schema,
+                            "upstream_table": edge.upstream_table,
+                            "upstream_column": edge.upstream_column,
+                            "lineage_type": edge.lineage_type,
+                            "provider": edge.provider,
+                            "confidence_score": edge.confidence_score,
+                            "transformation_expression": edge.transformation_expression,
+                            "metadata": metadata_str,
+                        },
+                    )
+                except Exception as e:
+                    # Handle databases that don't support ON CONFLICT
+                    # Fall back to checking existence first
+                    # If transaction is aborted, rollback and retry with new connection
+                    logger.debug(
+                        f"ON CONFLICT not supported or transaction error, using fallback: {e}"
+                    )
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass  # Ignore rollback errors
+
+                    # Use a fresh connection for the fallback
+                    with self.engine.connect() as fallback_conn:
+                        check_sql = text(
+                            """
+                            SELECT id FROM baselinr_column_lineage
+                            WHERE COALESCE(downstream_database, '') = (
+                                COALESCE(:downstream_database, '')
+                            )
+                                AND downstream_schema = :downstream_schema
+                                AND downstream_table = :downstream_table
+                                AND downstream_column = :downstream_column
+                                AND COALESCE(upstream_database, '') = (
+                                    COALESCE(:upstream_database, '')
+                                )
+                                AND upstream_schema = :upstream_schema
+                                AND upstream_table = :upstream_table
+                                AND upstream_column = :upstream_column
+                                AND provider = :provider
+                            LIMIT 1
+                        """
+                        )
+                        existing = fallback_conn.execute(
+                            check_sql,
+                            {
+                                "downstream_database": downstream_db,
+                                "downstream_schema": edge.downstream_schema,
+                                "downstream_table": edge.downstream_table,
+                                "downstream_column": edge.downstream_column,
+                                "upstream_database": upstream_db,
+                                "upstream_schema": edge.upstream_schema,
+                                "upstream_table": edge.upstream_table,
+                                "upstream_column": edge.upstream_column,
+                                "provider": edge.provider,
+                            },
+                        ).fetchone()
+
+                        if existing:
+                            # Update existing
+                            update_sql = text(
+                                """
+                                UPDATE baselinr_column_lineage
+                                SET last_seen_at = CURRENT_TIMESTAMP,
+                                    confidence_score = :confidence_score,
+                                    transformation_expression = :transformation_expression,
+                                    metadata = :metadata
+                                WHERE id = :id
+                            """
+                            )
+                            fallback_conn.execute(
+                                update_sql,
+                                {
+                                    "id": existing[0],
+                                    "confidence_score": edge.confidence_score,
+                                    "transformation_expression": edge.transformation_expression,
+                                    "metadata": metadata_str,
+                                },
+                            )
+                            fallback_conn.commit()
+                        else:
+                            # Insert new
+                            insert_sql = text(
+                                """
+                                INSERT INTO baselinr_column_lineage (
+                                    downstream_database, downstream_schema, downstream_table,
+                                    downstream_column, upstream_database, upstream_schema,
+                                    upstream_table, upstream_column, lineage_type, provider,
+                                    confidence_score, transformation_expression,
+                                    first_seen_at, last_seen_at, metadata
+                                )
+                                VALUES (
+                                    :downstream_database, :downstream_schema, :downstream_table,
+                                    :downstream_column, :upstream_database, :upstream_schema,
+                                    :upstream_table, :upstream_column, :lineage_type, :provider,
+                                    :confidence_score, :transformation_expression,
+                                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                                    :metadata
+                                )
+                            """
+                            )
+                            fallback_conn.execute(
+                                insert_sql,
+                                {
+                                    "downstream_database": downstream_db,
+                                    "downstream_schema": edge.downstream_schema,
+                                    "downstream_table": edge.downstream_table,
+                                    "downstream_column": edge.downstream_column,
+                                    "upstream_database": upstream_db,
+                                    "upstream_schema": edge.upstream_schema,
+                                    "upstream_table": edge.upstream_table,
+                                    "upstream_column": edge.upstream_column,
+                                    "lineage_type": edge.lineage_type,
+                                    "provider": edge.provider,
+                                    "confidence_score": edge.confidence_score,
+                                    "transformation_expression": edge.transformation_expression,
+                                    "metadata": metadata_str,
+                                },
+                            )
+                            fallback_conn.commit()
+                    # If we used fallback, skip the main conn.commit() since we already committed
+                    continue
+
+            conn.commit()
+            logger.debug(f"Wrote {len(edges)} column lineage edges to storage")
+
     def _extract_and_write_lineage(self, result: ProfilingResult):
         """
         Extract lineage for a profiled table and write to storage.
@@ -1102,6 +1500,33 @@ class ResultWriter:
                 )
             else:
                 logger.debug(f"No lineage found for {result.schema_name}.{result.dataset_name}")
+
+            # Extract column-level lineage if enabled
+            if (
+                self.baselinr_config
+                and self.baselinr_config.lineage
+                and self.baselinr_config.lineage.extract_column_lineage
+            ):
+                logger.info(
+                    f"Extracting column lineage for {result.schema_name}.{result.dataset_name}"
+                )
+                column_edges = registry.extract_column_lineage_for_table(
+                    table_name=result.dataset_name,
+                    schema=result.schema_name,
+                    enabled_providers=enabled_providers,
+                )
+
+                if column_edges:
+                    # Write column lineage edges
+                    self.write_column_lineage(column_edges)
+                    logger.info(
+                        f"Extracted and wrote {len(column_edges)} column lineage edges for "
+                        f"{result.schema_name}.{result.dataset_name}"
+                    )
+                else:
+                    logger.info(
+                        f"No column lineage found for {result.schema_name}.{result.dataset_name}"
+                    )
 
         except Exception as e:
             # Don't fail profiling if lineage extraction fails

@@ -922,12 +922,28 @@ def lineage_command(args):
 
         # Execute subcommand
         if args.lineage_command == "upstream":
-            lineage_data = client.query_lineage_upstream(
-                args.table, schema_name=args.schema, max_depth=args.max_depth
-            )
+            if args.column:
+                # Column-level lineage
+                lineage_data = client.query_column_lineage_upstream(
+                    args.table,
+                    args.column,
+                    schema_name=args.schema,
+                    max_depth=args.max_depth,
+                )
+            else:
+                # Table-level lineage
+                lineage_data = client.query_lineage_upstream(
+                    args.table, schema_name=args.schema, max_depth=args.max_depth
+                )
 
             if not lineage_data:
-                safe_print(f"No upstream lineage found for {args.schema or ''}.{args.table}")
+                if args.column:
+                    safe_print(
+                        f"No upstream column lineage found for "
+                        f"{args.schema or ''}.{args.table}.{args.column}"
+                    )
+                else:
+                    safe_print(f"No upstream lineage found for {args.schema or ''}.{args.table}")
                 return 0
 
             if args.format == "json":
@@ -940,35 +956,61 @@ def lineage_command(args):
 
                 console = get_console()
                 if console:
+                    if args.column:
+                        title = f"Upstream Column Lineage: {args.table}.{args.column}"
+                    else:
+                        title = f"Upstream Lineage: {args.table}"
                     table = RichTable(
-                        title=f"Upstream Lineage: {args.table}",
+                        title=title,
                         show_header=True,
                         header_style="bold cyan",
                     )
                     table.add_column("Schema", style="cyan")
                     table.add_column("Table", style="green")
+                    if args.column:
+                        table.add_column("Column", style="magenta")
                     table.add_column("Depth", justify="right", style="yellow")
                     table.add_column("Provider", style="dim")
                     table.add_column("Type", style="dim")
                     table.add_column("Confidence", justify="right", style="dim")
+                    if args.column:
+                        table.add_column("Transformation", style="dim")
 
                     for item in lineage_data:
-                        table.add_row(
+                        row = [
                             item.get("schema", ""),
                             item.get("table", ""),
-                            str(item.get("depth", 0)),
-                            item.get("provider", "unknown"),
-                            item.get("lineage_type", ""),
-                            f"{item.get('confidence_score', 1.0):.2f}",
+                        ]
+                        if args.column:
+                            row.append(item.get("column", ""))
+                        row.extend(
+                            [
+                                str(item.get("depth", 0)),
+                                item.get("provider", "unknown"),
+                                item.get("lineage_type", ""),
+                                f"{item.get('confidence_score', 1.0):.2f}",
+                            ]
                         )
+                        if args.column:
+                            row.append(item.get("transformation_expression", "") or "")
+                        table.add_row(*row)
                     safe_print()
                     safe_print(table)
                 else:
                     # Fallback to plain text
-                    output = f"\nUpstream Lineage for {args.table}:\n"
+                    if args.column:
+                        output = f"\nUpstream Column Lineage for {args.table}.{args.column}:\n"
+                    else:
+                        output = f"\nUpstream Lineage for {args.table}:\n"
                     output += "=" * 80 + "\n"
                     for item in lineage_data:
-                        output += f"  {item.get('schema', '')}.{item.get('table', '')} "
+                        if args.column:
+                            output += (
+                                f"  {item.get('schema', '')}.{item.get('table', '')}."
+                                f"{item.get('column', '')} "
+                            )
+                        else:
+                            output += f"  {item.get('schema', '')}.{item.get('table', '')} "
                         output += f"(depth: {item.get('depth', 0)}, "
                         output += f"provider: {item.get('provider', 'unknown')})\n"
                     safe_print(output)
@@ -982,12 +1024,28 @@ def lineage_command(args):
                 logger.info(f"Results saved to: {args.output}")
 
         elif args.lineage_command == "downstream":
-            lineage_data = client.query_lineage_downstream(
-                args.table, schema_name=args.schema, max_depth=args.max_depth
-            )
+            if args.column:
+                # Column-level lineage
+                lineage_data = client.query_column_lineage_downstream(
+                    args.table,
+                    args.column,
+                    schema_name=args.schema,
+                    max_depth=args.max_depth,
+                )
+            else:
+                # Table-level lineage
+                lineage_data = client.query_lineage_downstream(
+                    args.table, schema_name=args.schema, max_depth=args.max_depth
+                )
 
             if not lineage_data:
-                safe_print(f"No downstream lineage found for {args.schema or ''}.{args.table}")
+                if args.column:
+                    safe_print(
+                        f"No downstream column lineage found for "
+                        f"{args.schema or ''}.{args.table}.{args.column}"
+                    )
+                else:
+                    safe_print(f"No downstream lineage found for {args.schema or ''}.{args.table}")
                 return 0
 
             if args.format == "json":
@@ -1000,35 +1058,61 @@ def lineage_command(args):
 
                 console = get_console()
                 if console:
+                    if args.column:
+                        title = f"Downstream Column Lineage: {args.table}.{args.column}"
+                    else:
+                        title = f"Downstream Lineage: {args.table}"
                     table = RichTable(
-                        title=f"Downstream Lineage: {args.table}",
+                        title=title,
                         show_header=True,
                         header_style="bold cyan",
                     )
                     table.add_column("Schema", style="cyan")
                     table.add_column("Table", style="green")
+                    if args.column:
+                        table.add_column("Column", style="magenta")
                     table.add_column("Depth", justify="right", style="yellow")
                     table.add_column("Provider", style="dim")
                     table.add_column("Type", style="dim")
                     table.add_column("Confidence", justify="right", style="dim")
+                    if args.column:
+                        table.add_column("Transformation", style="dim")
 
                     for item in lineage_data:
-                        table.add_row(
+                        row = [
                             item.get("schema", ""),
                             item.get("table", ""),
-                            str(item.get("depth", 0)),
-                            item.get("provider", "unknown"),
-                            item.get("lineage_type", ""),
-                            f"{item.get('confidence_score', 1.0):.2f}",
+                        ]
+                        if args.column:
+                            row.append(item.get("column", ""))
+                        row.extend(
+                            [
+                                str(item.get("depth", 0)),
+                                item.get("provider", "unknown"),
+                                item.get("lineage_type", ""),
+                                f"{item.get('confidence_score', 1.0):.2f}",
+                            ]
                         )
+                        if args.column:
+                            row.append(item.get("transformation_expression", "") or "")
+                        table.add_row(*row)
                     safe_print()
                     safe_print(table)
                 else:
                     # Fallback to plain text
-                    output = f"\nDownstream Lineage for {args.table}:\n"
+                    if args.column:
+                        output = f"\nDownstream Column Lineage for {args.table}.{args.column}:\n"
+                    else:
+                        output = f"\nDownstream Lineage for {args.table}:\n"
                     output += "=" * 80 + "\n"
                     for item in lineage_data:
-                        output += f"  {item.get('schema', '')}.{item.get('table', '')} "
+                        if args.column:
+                            output += (
+                                f"  {item.get('schema', '')}.{item.get('table', '')}."
+                                f"{item.get('column', '')} "
+                            )
+                        else:
+                            output += f"  {item.get('schema', '')}.{item.get('table', '')} "
                         output += f"(depth: {item.get('depth', 0)}, "
                         output += f"provider: {item.get('provider', 'unknown')})\n"
                     safe_print(output)
@@ -1051,16 +1135,35 @@ def lineage_command(args):
             to_table_name = to_parts[-1]
             to_schema = to_parts[0] if len(to_parts) == 2 else None
 
-            path = client.query_lineage_path(
-                from_table_name,
-                to_table_name,
-                from_schema=from_schema,
-                to_schema=to_schema,
-                max_depth=args.max_depth,
-            )
+            if args.from_column and args.to_column:
+                # Column-level lineage path
+                path = client.query_column_lineage_path(
+                    from_table_name,
+                    args.from_column,
+                    to_table_name,
+                    args.to_column,
+                    from_schema=from_schema,
+                    to_schema=to_schema,
+                    max_depth=args.max_depth,
+                )
+            else:
+                # Table-level lineage path
+                path = client.query_lineage_path(
+                    from_table_name,
+                    to_table_name,
+                    from_schema=from_schema,
+                    to_schema=to_schema,
+                    max_depth=args.max_depth,
+                )
 
             if not path:
-                safe_print(f"No path found from {args.from_table} to {args.to_table}")
+                if args.from_column and args.to_column:
+                    safe_print(
+                        f"No column path found from {args.from_table}.{args.from_column} "
+                        f"to {args.to_table}.{args.to_column}"
+                    )
+                else:
+                    safe_print(f"No path found from {args.from_table} to {args.to_table}")
                 return 0
 
             if args.format == "json":
@@ -1073,26 +1176,44 @@ def lineage_command(args):
 
                 console = get_console()
                 if console:
+                    if args.from_column and args.to_column:
+                        title = (
+                            f"Column Lineage Path: {args.from_table}.{args.from_column} → "
+                            f"{args.to_table}.{args.to_column}"
+                        )
+                    else:
+                        title = f"Lineage Path: {args.from_table} → {args.to_table}"
                     table = RichTable(
-                        title=f"Lineage Path: {args.from_table} → {args.to_table}",
+                        title=title,
                         show_header=True,
                         header_style="bold cyan",
                     )
                     table.add_column("Step", justify="right", style="yellow")
                     table.add_column("Schema", style="cyan")
                     table.add_column("Table", style="green")
+                    if args.from_column and args.to_column:
+                        table.add_column("Column", style="magenta")
 
                     for i, item in enumerate(path):
-                        table.add_row(
+                        row = [
                             str(i + 1),
                             item.get("schema", ""),
                             item.get("table", ""),
-                        )
+                        ]
+                        if args.from_column and args.to_column:
+                            row.append(item.get("column", ""))
+                        table.add_row(*row)
                     safe_print()
                     safe_print(table)
                 else:
                     # Fallback to plain text
-                    output = f"\nLineage Path from {args.from_table} to {args.to_table}:\n"
+                    if args.from_column and args.to_column:
+                        output = (
+                            f"\nColumn Lineage Path from {args.from_table}.{args.from_column} "
+                            f"to {args.to_table}.{args.to_column}:\n"
+                        )
+                    else:
+                        output = f"\nLineage Path from {args.from_table} to {args.to_table}:\n"
                     output += "=" * 80 + "\n"
                     for i, item in enumerate(path):
                         output += f"  {i+1}. {item.get('schema', '')}.{item.get('table', '')}\n"
@@ -2057,6 +2178,7 @@ def main():
     upstream_parser.add_argument("--config", "-c", required=True, help="Configuration file")
     upstream_parser.add_argument("--table", required=True, help="Table name")
     upstream_parser.add_argument("--schema", help="Schema name")
+    upstream_parser.add_argument("--column", help="Column name (for column-level lineage)")
     upstream_parser.add_argument(
         "--max-depth", type=int, help="Maximum depth to traverse (default: unlimited)"
     )
@@ -2072,6 +2194,7 @@ def main():
     downstream_parser.add_argument("--config", "-c", required=True, help="Configuration file")
     downstream_parser.add_argument("--table", required=True, help="Table name")
     downstream_parser.add_argument("--schema", help="Schema name")
+    downstream_parser.add_argument("--column", help="Column name (for column-level lineage)")
     downstream_parser.add_argument(
         "--max-depth", type=int, help="Maximum depth to traverse (default: unlimited)"
     )
@@ -2089,6 +2212,8 @@ def main():
     path_parser.add_argument(
         "--to", dest="to_table", required=True, help="Target table (schema.table)"
     )
+    path_parser.add_argument("--from-column", help="Source column (for column-level lineage)")
+    path_parser.add_argument("--to-column", help="Target column (for column-level lineage)")
     path_parser.add_argument(
         "--max-depth", type=int, help="Maximum depth to search (default: unlimited)"
     )

@@ -1,6 +1,6 @@
 """Schema version management for Baselinr storage layer."""
 
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 # Version history
 VERSION_HISTORY = {
@@ -25,6 +25,14 @@ VERSION_HISTORY = {
             "with database, schema, and table support"
         ),
         "applied": "2025-01-21",
+        "breaking_changes": False,
+    },
+    5: {
+        "description": (
+            "Add column-level lineage table for column-to-column dependency relationships "
+            "from multiple providers with transformation expression support"
+        ),
+        "applied": "2025-11-26",
         "breaking_changes": False,
     },
 }

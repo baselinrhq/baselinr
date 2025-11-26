@@ -164,3 +164,44 @@ ON baselinr_lineage (provider);
 
 CREATE INDEX IF NOT EXISTS idx_lineage_last_seen 
 ON baselinr_lineage (last_seen_at DESC);
+
+-- Column lineage table - tracks column-level lineage relationships from multiple providers
+CREATE TABLE IF NOT EXISTS baselinr_column_lineage (
+    id INTEGER AUTOINCREMENT PRIMARY KEY,
+    downstream_database VARCHAR(255),
+    downstream_schema VARCHAR(255) NOT NULL,
+    downstream_table VARCHAR(255) NOT NULL,
+    downstream_column VARCHAR(255) NOT NULL,
+    upstream_database VARCHAR(255),
+    upstream_schema VARCHAR(255) NOT NULL,
+    upstream_table VARCHAR(255) NOT NULL,
+    upstream_column VARCHAR(255) NOT NULL,
+    lineage_type VARCHAR(50) NOT NULL,
+    provider VARCHAR(50) NOT NULL,
+    confidence_score FLOAT DEFAULT 1.0,
+    transformation_expression VARCHAR(5000),
+    first_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    last_seen_at TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+    metadata VARIANT,
+    UNIQUE (
+        downstream_database, downstream_schema, downstream_table, downstream_column,
+        upstream_database, upstream_schema, upstream_table, upstream_column, provider
+    )
+);
+
+-- Create indexes for column lineage table
+CREATE INDEX IF NOT EXISTS idx_column_lineage_downstream 
+ON baselinr_column_lineage (
+    downstream_database, downstream_schema, downstream_table, downstream_column
+);
+
+CREATE INDEX IF NOT EXISTS idx_column_lineage_upstream 
+ON baselinr_column_lineage (
+    upstream_database, upstream_schema, upstream_table, upstream_column
+);
+
+CREATE INDEX IF NOT EXISTS idx_column_lineage_provider 
+ON baselinr_column_lineage (provider);
+
+CREATE INDEX IF NOT EXISTS idx_column_lineage_last_seen 
+ON baselinr_column_lineage (last_seen_at DESC);
