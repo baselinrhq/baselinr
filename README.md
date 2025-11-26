@@ -398,34 +398,33 @@ profiling:
 
 ### Direct dbt Model Integration
 
-Add baselinr tests and profiling within dbt models:
+Use dbt model references and selectors in baselinr configs:
 
 ```yaml
-# schema.yml
-models:
-  - name: customers
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
-    columns:
-      - name: customer_id
-        tests:
-          - baselinr_drift:
-              metric: count
-              threshold: 5.0
-              severity: high
+# baselinr_config.yml
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
+    - dbt_selector: tag:critical
+      dbt_project_path: ./dbt_project
 ```
 
 **Installation**:
 1. Install baselinr: `pip install baselinr`
-2. Add to `packages.yml`:
+2. Use dbt refs/selectors in your baselinr config:
    ```yaml
-   packages:
-     - git: "https://github.com/baselinrhq/dbt-baselinr.git"
-       revision: v0.1.0
+   profiling:
+     tables:
+       - dbt_ref: customers
+         dbt_project_path: ./dbt_project
+       - dbt_selector: tag:critical
+         dbt_project_path: ./dbt_project
    ```
-3. Run: `dbt deps`
+3. Run `dbt compile` or `dbt run` to generate manifest.json
+4. Run profiling: `baselinr profile --config baselinr_config.yml`
 
-> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were using `subdirectory: dbt_package`, please migrate to the new repository.
+> **Note**: dbt hooks can only execute SQL, not Python scripts. Run profiling after `dbt run` using an orchestrator or manually.
 
 See [dbt Integration Guide](docs/guides/DBT_INTEGRATION.md) for complete documentation.
 

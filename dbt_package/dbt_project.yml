@@ -1,11 +1,9 @@
-name: 'baselinr'
-version: '0.1.0'
+name: 'baselinr_test'
+version: '1.0.0'
 config-version: 2
 
-macro-paths: ["macros"]
-test-paths: ["tests"]
+profile: 'baselinr_test'
+
 model-paths: ["models"]
 
-# Require baselinr Python package
 require-dbt-version: ">=1.0.0"
-

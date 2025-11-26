@@ -31,29 +31,29 @@ storage:
 profiling:
   tables:
     # Example 1: Profile specific dbt models using dbt_ref
-    - dbt_ref: customers
-      dbt_project_path: ./dbt_project
+    - dbt_ref: example_customers
+      dbt_project_path: ./dbt_package
       # Optional: explicit manifest path
-      # dbt_manifest_path: ./dbt_project/target/manifest.json
+      # dbt_manifest_path: ./dbt_package/target/manifest.json
     
-    - dbt_ref: orders
-      dbt_project_path: ./dbt_project
+    - dbt_ref: example_orders
+      dbt_project_path: ./dbt_package
     
     # Example 2: Profile all models with a specific tag
     - dbt_selector: tag:critical
-      dbt_project_path: ./dbt_project
+      dbt_project_path: ./dbt_package
     
     # Example 3: Profile all table-materialized models
     - dbt_selector: config.materialized:table
-      dbt_project_path: ./dbt_project
+      dbt_project_path: ./dbt_package
     
     # Example 4: Profile models with multiple tags (union)
     - dbt_selector: tag:customer+tag:order
-      dbt_project_path: ./dbt_project
+      dbt_project_path: ./dbt_package
     
     # Example 5: Profile models matching multiple criteria (intersection)
     - dbt_selector: tag:critical,config.materialized:table
-      dbt_project_path: ./dbt_project
+      dbt_project_path: ./dbt_package
       # You can still use partition and sampling configs
       partition:
         key: date

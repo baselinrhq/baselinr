@@ -318,49 +318,33 @@ print(f"Found {len(models)} models matching selector")
    print(f"Will profile {plan.total_tables} tables")
    ```
 
-### Testing dbt Package Macros
+### Testing dbt Integration
 
-1. **Install dbt package**:
+1. **Test dbt refs/selectors**:
    ```bash
    cd your_dbt_project
    # Add to packages.yml:
    # packages:
-   #   - git: "https://github.com/baselinrhq/dbt-baselinr.git"
-   #     revision: v0.1.0
-   dbt deps
-   ```
-   
-   > **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr).
-
-2. **Test profiling post-hook**:
-   ```yaml
-   # schema.yml
-   models:
-     - name: customers
-       config:
-         post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+   # Test dbt refs/selectors in baselinr configs
+   # See docs/guides/DBT_INTEGRATION.md for details
    ```
 
-3. **Run dbt model**:
+2. **Run dbt models**:
    ```bash
    dbt run --select customers
    ```
 
-4. **Test drift detection**:
-   ```yaml
-   # schema.yml
-   models:
-     - name: customers
-       columns:
-         - name: customer_id
-           tests:
-             - baselinr_drift:
-                 metric: count
-                 threshold: 5.0
+3. **Run profiling**:
+   ```bash
+   baselinr profile --config baselinr_config.yml
    ```
 
-   ```bash
-   dbt test --select customers
+4. **Verify results**:
+   ```python
+   from baselinr import BaselinrClient
+   client = BaselinrClient()
+   runs = client.query_runs(table="customers", limit=1)
+   print(f"Latest run: {runs[0]}")
    ```
 
 ### Quick Test Setup

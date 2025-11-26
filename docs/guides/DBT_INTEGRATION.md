@@ -4,14 +4,9 @@ Baselinr provides comprehensive integration with dbt (data build tool) to enable
 
 ## Overview
 
-The dbt integration consists of two main components:
-
-1. **dbt refs/selectors in baselinr configs**: Use dbt model references, selectors, and tags in baselinr table patterns
-2. **Direct dbt model integration**: Add baselinr tests and profiling within dbt models via macros, tests, and post-hooks
+Baselinr integrates with dbt by allowing you to use dbt model references and selectors directly in your baselinr configuration files. This enables you to profile dbt models without maintaining separate table lists.
 
 ## Installation
-
-### Python Package
 
 The dbt integration is included in the main baselinr package:
 
@@ -19,25 +14,9 @@ The dbt integration is included in the main baselinr package:
 pip install baselinr
 ```
 
-### dbt Package
+No additional dbt package installation is required. The integration works by reading dbt's `manifest.json` file to resolve model references and selectors.
 
-Add the baselinr dbt package to your `packages.yml`:
-
-```yaml
-packages:
-  - git: "https://github.com/baselinrhq/dbt-baselinr.git"
-    revision: v0.1.0
-```
-
-Then install:
-
-```bash
-dbt deps
-```
-
-> **Note**: The dbt package is now in a [separate repository](https://github.com/baselinrhq/dbt-baselinr). If you were previously using `subdirectory: dbt_package` from the main baselinr repository, please migrate to the new repository. See the [dbt-baselinr repository](https://github.com/baselinrhq/dbt-baselinr) for the latest version and migration guide.
-
-## Component 1: dbt Refs/Selectors in Baselinr Configs
+## Using dbt Refs and Selectors in Baselinr Configs
 
 ### Using dbt Refs
 
@@ -107,143 +86,54 @@ Baselinr will automatically detect the manifest.json file:
 
 **Note**: You must run `dbt compile` or `dbt run` first to generate the manifest.json file.
 
-## Component 2: Direct dbt Model Integration
+## Running Profiling After dbt
 
-### Post-Hook Profiling
+Since dbt hooks can only execute SQL (not Python scripts), you cannot run baselinr profiling directly from dbt hooks. Instead, use one of these approaches:
 
-Profile tables automatically after model execution. The `baselinr_profile` macro uses the same `profiling` configuration structure as baselinr config files:
+### Option 1: Orchestrator (Recommended for Production)
 
-```yaml
-# schema.yml
-models:
-  - name: customers
-    config:
-      # Use profiling from base config file
-      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
+Use your orchestrator (Airflow, Dagster, Prefect, etc.) to run profiling after `dbt run`:
+
+```python
+# Example: Airflow DAG
+dbt_run = BashOperator(
+    task_id='dbt_run',
+    bash_command='dbt run'
+)
+
+baselinr_profile = BashOperator(
+    task_id='baselinr_profile',
+    bash_command='baselinr profile --config baselinr_config.yml'
+)
+
+dbt_run >> baselinr_profile
 ```
 
-With custom profiling settings:
+### Option 2: Script After dbt Run
 
-```yaml
-models:
-  - name: customers
-    config:
-      # Override metrics and partition per model
-      post-hook: "{{ baselinr_profile(target.schema, target.name, profiling={'metrics': ['count', 'mean', 'stddev'], 'partition': {'key': 'created_date', 'strategy': 'latest'}}) }}"
-  
-  - name: events
-    config:
-      # Use sampling for large tables
-      post-hook: "{{ baselinr_profile(target.schema, target.name, profiling={'sampling': {'enabled': true, 'fraction': 0.1}, 'metrics': ['count', 'histogram']}) }}"
+Run a script after `dbt run` that reads `run_results.json` to find materialized models:
+
+```bash
+dbt run
+python scripts/baselinr_run_profiling_for_models.py
 ```
 
-Macro parameters:
-- `schema_name`: Schema name (typically `target.schema`)
-- `table_name`: Table name (typically `target.name`)
-- `config_path`: Optional path to baselinr config file (for connection/storage settings)
-- `profiling`: Dictionary matching the `profiling` section from baselinr config files (optional - uses base config if not provided)
+This script automatically:
+- Reads `target/run_results.json` to find successfully materialized models
+- Reads `target/manifest.json` to get per-model configurations
+- Runs profiling for each model
 
-**Configuration options** (same as baselinr config files):
-- `metrics`: List of metrics to compute (e.g., `['count', 'mean', 'stddev', 'histogram']`)
-- `compute_histograms`: Whether to compute histograms (boolean)
-- `histogram_bins`: Number of histogram bins (integer)
-- `max_distinct_values`: Maximum distinct values to track (integer)
-- `partition`: Partition configuration (`key`, `strategy`, `recent_n`, etc.)
-- `sampling`: Sampling configuration (`enabled`, `method`, `fraction`, `max_rows`)
+### Option 3: CI/CD Pipeline
 
-If `profiling` is not provided, the macro uses the `profiling` settings from your baselinr config file.
-
-**Note**: The `baselinr_profile` macro requires the baselinr Python package to be installed and a config file available. For databases that don't support executing shell commands in post-hooks, use dbt's `on-run-end` hook instead:
+Add profiling as a step in your CI/CD pipeline:
 
 ```yaml
-# dbt_project.yml
-on-run-end:
-  - "python dbt_packages/baselinr/scripts/baselinr_profile.py --schema {{ target.schema }} --table {{ this }}"
-```
+# Example: GitHub Actions
+- name: Run dbt models
+  run: dbt run
 
-### Drift Detection Tests
-
-Add drift detection tests to your models. The `baselinr_drift` test uses the same `drift_detection` configuration structure as baselinr config files:
-
-```yaml
-# schema.yml
-models:
-  - name: customers
-    columns:
-      - name: customer_id
-        tests:
-          # Use drift_detection config (same structure as baselinr config files)
-          - baselinr_drift:
-              drift_detection:
-                strategy: absolute_threshold
-                absolute_threshold:
-                  low_threshold: 5.0
-                  medium_threshold: 15.0
-                  high_threshold: 30.0
-                baselines:
-                  strategy: auto
-      - name: email
-        tests:
-          # Override just the thresholds for this column
-          - baselinr_drift:
-              drift_detection:
-                strategy: absolute_threshold
-                absolute_threshold:
-                  medium_threshold: 10.0
-```
-
-Test parameters:
-- `drift_detection`: Dictionary matching the `drift_detection` section from baselinr config files (optional - uses base config if not provided)
-- `config_path`: Optional path to baselinr config file (for connection/storage settings)
-
-**Configuration options** (same as baselinr config files):
-- `strategy`: `absolute_threshold`, `standard_deviation`, `statistical`, or `ml_based`
-- `absolute_threshold`: `low_threshold`, `medium_threshold`, `high_threshold` (percentages)
-- `standard_deviation`: `low_threshold`, `medium_threshold`, `high_threshold` (std devs)
-- `baselines`: Baseline selection strategy (`auto`, `last_run`, `moving_average`, etc.)
-
-If `drift_detection` is not provided, the test uses the `drift_detection` settings from your baselinr config file.
-
-### Column-Level Configuration
-
-Document baselinr configuration per column:
-
-```yaml
-models:
-  - name: customers
-    columns:
-      - name: customer_id
-        description: "{{ baselinr_config(metric='count', threshold=10.0) }}"
-```
-
-### Execution Order
-
-When using both profiling post-hooks and drift tests on the same model, dbt executes them in this order:
-
-1. **Model materialization** - The dbt model runs
-2. **Post-hooks** - Profiling post-hook executes (synchronously)
-3. **Tests** - Drift tests execute (can access profiling results)
-
-The profiling post-hook runs **synchronously** to ensure results are written to storage before tests execute. The drift test automatically uses the latest profiling run for comparison.
-
-**Important**: The profiling script blocks until profiling is complete and results are written to storage. This ensures that when the drift test runs, it can access the profiling results from the post-hook.
-
-**Example**:
-```yaml
-models:
-  - name: customers
-    config:
-      # Runs first (after model)
-      post-hook: "{{ baselinr_profile(target.schema, target.name) }}"
-    columns:
-      - name: customer_id
-        tests:
-          # Runs second (after post-hook)
-          - baselinr_drift:
-              drift_detection:
-                strategy: absolute_threshold
-                absolute_threshold:
-                  medium_threshold: 5.0
+- name: Profile models
+  run: baselinr profile --config baselinr_config.yml
 ```
 
 ## Examples
@@ -276,49 +166,21 @@ profiling:
         recent_n: 24
 ```
 
-### Example 3: Full dbt Model with Profiling and Tests
+### Example 3: Profile dbt Models with Partitioning
 
 ```yaml
-# schema.yml
-models:
-  - name: customers
-    config:
-      # Profile with custom metrics and partition
-      post-hook: "{{ baselinr_profile(target.schema, target.name, profiling={'metrics': ['count', 'mean', 'stddev'], 'partition': {'key': 'created_date', 'strategy': 'latest'}}) }}"
-    columns:
-      - name: customer_id
-        tests:
-          - not_null
-          - unique
-          # Use drift_detection config structure (same as baselinr config files)
-          - baselinr_drift:
-              drift_detection:
-                strategy: absolute_threshold
-                absolute_threshold:
-                  low_threshold: 5.0
-                  medium_threshold: 15.0
-                  high_threshold: 30.0
-                baselines:
-                  strategy: auto
-      - name: email
-        tests:
-          - not_null
-          # Override just the thresholds for this column
-          - baselinr_drift:
-              drift_detection:
-                strategy: absolute_threshold
-                absolute_threshold:
-                  medium_threshold: 1.0
-      - name: registration_date
-        tests:
-          # Use standard deviation strategy
-          - baselinr_drift:
-              drift_detection:
-                strategy: standard_deviation
-                standard_deviation:
-                  low_threshold: 1.0
-                  medium_threshold: 2.0
-                  high_threshold: 3.0
+# baselinr_config.yml
+profiling:
+  tables:
+    - dbt_ref: customers
+      dbt_project_path: ./dbt_project
+      partition:
+        key: created_date
+        strategy: latest
+      metrics:
+        - count
+        - mean
+        - stddev
 ```
 
 ### Example 4: Using dbt Selectors for Scalable Profiling
@@ -344,8 +206,8 @@ profiling:
 1. **Generate Manifest First**: Always run `dbt compile` or `dbt run` before using dbt patterns in baselinr configs
 2. **Use Tags Strategically**: Tag your dbt models to enable scalable profiling (e.g., `tag:critical`, `tag:profile`)
 3. **Combine with Pattern Matching**: Use dbt selectors for model selection, then apply baselinr filters (partitioning, sampling)
-4. **Test in Development**: Use drift tests in development to catch issues early
-5. **Profile After Critical Models**: Use post-hooks for models that need immediate profiling
+4. **Use Orchestrators**: Run profiling after `dbt run` using your orchestrator (Airflow, Dagster, etc.)
+5. **Profile Critical Models**: Focus profiling on models tagged as critical or high-value
 
 ## Troubleshooting
 
@@ -373,51 +235,48 @@ profiling:
 - Check that models have the specified tags/configs
 - Use `dbt list --select <selector>` to test your selector
 
-### Post-Hook Not Executing
+### Profiling Not Running After dbt
 
-**Issue**: Profiling post-hook doesn't run
+**Issue**: Profiling doesn't run after `dbt run`
 
 **Solution**:
 - Ensure baselinr Python package is installed
-- Check that the config file path is correct
-- For databases that don't support shell commands, use `on-run-end` hook instead
-- Verify dbt has permission to execute the profiling script
+- Run profiling manually after `dbt run`: `baselinr profile --config baselinr_config.yml`
+- Use an orchestrator to automate the workflow
+- Check that `target/run_results.json` exists (generated by `dbt run`)
 
 ## Advanced Usage
 
-### Custom Script Paths
+### Per-Model Configuration
 
-Set custom script paths via dbt variables:
+You can still configure profiling settings per model by using dbt selectors with different baselinr configs:
 
 ```yaml
-# dbt_project.yml
-vars:
-  baselinr_script_path: "custom/path/to/scripts/baselinr_profile.py"
+# baselinr_config_critical.yml
+profiling:
+  tables:
+    - dbt_selector: tag:critical
+      dbt_project_path: ./dbt_project
+      metrics:
+        - count
+        - mean
+        - stddev
+        - histogram
+
+# baselinr_config_staging.yml
+profiling:
+  tables:
+    - dbt_selector: path:models/staging
+      dbt_project_path: ./dbt_project
+      sampling:
+        enabled: true
+        fraction: 0.1
 ```
 
-### Async Profiling
-
-For large tables, use async execution (if supported by your database):
-
-```yaml
-models:
-  - name: large_table
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name, async_execution=true) }}"
-```
-
-### Multiple Config Files
-
-Use different baselinr configs for different models:
-
-```yaml
-models:
-  - name: customers
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name, config_path='configs/customers_baselinr.yml') }}"
-  - name: orders
-    config:
-      post-hook: "{{ baselinr_profile(target.schema, target.name, config_path='configs/orders_baselinr.yml') }}"
+Then run with different configs:
+```bash
+baselinr profile --config baselinr_config_critical.yml
+baselinr profile --config baselinr_config_staging.yml
 ```
 
 ## See Also
