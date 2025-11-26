@@ -640,6 +640,9 @@ class ProfilingConfig(BaseModel):
     stability_window: int = Field(7, description="Number of runs to use for stability calculations")
     type_inference_sample_size: int = Field(1000, description="Sample size for type inference")
 
+    # Lineage extraction
+    extract_lineage: bool = Field(False, description="Enable lineage extraction during profiling")
+
 
 class StorageConfig(BaseModel):
     """Results storage configuration."""
@@ -1052,6 +1055,25 @@ class SchemaChangeConfig(BaseModel):
     suppression: List[SchemaChangeSuppressionRule] = Field(default_factory=list)
 
 
+class LineageConfig(BaseModel):
+    """Configuration for data lineage extraction."""
+
+    enabled: bool = Field(
+        True, description="Enable lineage extraction (requires profiling.extract_lineage=true)"
+    )
+    providers: Optional[List[str]] = Field(
+        None,
+        description=(
+            "List of lineage providers to use (e.g., ['dbt', 'sql_parse']). "
+            "If None, uses all available providers."
+        ),
+    )
+    dbt: Optional[Dict[str, Any]] = Field(
+        None,
+        description="dbt-specific configuration (e.g., manifest_path)",
+    )
+
+
 class LLMConfig(BaseModel):
     """Configuration for LLM-powered human-readable explanations."""
 
@@ -1109,6 +1131,7 @@ class BaselinrConfig(BaseModel):
     schema_change: SchemaChangeConfig = Field(
         default_factory=lambda: SchemaChangeConfig()  # type: ignore[call-arg]
     )
+    lineage: Optional[LineageConfig] = Field(None, description="Lineage extraction configuration")
     llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
 
     @field_validator("environment")

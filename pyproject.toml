@@ -52,6 +52,7 @@ dependencies = [
     "anthropic>=0.18.0",
     "httpx>=0.24.0",
     "tenacity>=8.0.0",
+    "sqlglot>=23.0.0",
 ]
 
 [project.urls]

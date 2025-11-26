@@ -210,6 +210,8 @@ def test_end_to_end_anomaly_detection_workflow(
     schema_change_config = SchemaChangeConfig(enabled=False)
     baselinr_config = Mock(spec=BaselinrConfig)
     baselinr_config.schema_change = schema_change_config
+    baselinr_config.profiling = Mock()
+    baselinr_config.profiling.extract_lineage = False
 
     event_bus = Mock(spec=EventBus)
 
@@ -307,6 +309,8 @@ def test_anomaly_detection_with_existing_expectations(
     schema_change_config = SchemaChangeConfig(enabled=False)
     baselinr_config = Mock(spec=BaselinrConfig)
     baselinr_config.schema_change = schema_change_config
+    baselinr_config.profiling = Mock()
+    baselinr_config.profiling.extract_lineage = False
 
     event_bus = Mock(spec=EventBus)
 
@@ -356,6 +360,8 @@ def test_anomaly_detection_disabled(
     schema_change_config = SchemaChangeConfig(enabled=False)
     baselinr_config = Mock(spec=BaselinrConfig)
     baselinr_config.schema_change = schema_change_config
+    baselinr_config.profiling = Mock()
+    baselinr_config.profiling.extract_lineage = False
 
     event_bus = Mock(spec=EventBus)
 
@@ -406,6 +412,8 @@ def test_anomaly_detection_no_expectations(
     schema_change_config = SchemaChangeConfig(enabled=False)
     baselinr_config = Mock(spec=BaselinrConfig)
     baselinr_config.schema_change = schema_change_config
+    baselinr_config.profiling = Mock()
+    baselinr_config.profiling.extract_lineage = False
 
     event_bus = Mock(spec=EventBus)
 

@@ -512,6 +512,101 @@ class BaselinrClient:
         client = self._ensure_query_client()
         return client.query_table_history(table_name=table, schema_name=schema, days=days)
 
+    def get_upstream_lineage(
+        self,
+        table: str,
+        schema: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get upstream lineage for a table.
+
+        Args:
+            table: Table name
+            schema: Optional schema name
+            max_depth: Maximum depth to traverse (None = unlimited)
+
+        Returns:
+            List of upstream tables with depth information
+
+        Example:
+            >>> upstream = client.get_upstream_lineage("customers", max_depth=2)
+            >>> print(f"Found {len(upstream)} upstream dependencies")
+        """
+        client = self._ensure_query_client()
+        return client.query_lineage_upstream(table, schema, max_depth)
+
+    def get_downstream_lineage(
+        self,
+        table: str,
+        schema: Optional[str] = None,
+        max_depth: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get downstream lineage for a table.
+
+        Args:
+            table: Table name
+            schema: Optional schema name
+            max_depth: Maximum depth to traverse (None = unlimited)
+
+        Returns:
+            List of downstream tables with depth information
+
+        Example:
+            >>> downstream = client.get_downstream_lineage("customers")
+            >>> print(f"Found {len(downstream)} downstream dependencies")
+        """
+        client = self._ensure_query_client()
+        return client.query_lineage_downstream(table, schema, max_depth)
+
+    def get_lineage_path(
+        self,
+        from_table: str,
+        to_table: str,
+        from_schema: Optional[str] = None,
+        to_schema: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get lineage path between two tables.
+
+        Args:
+            from_table: Source table name
+            to_table: Target table name
+            from_schema: Optional source schema
+            to_schema: Optional target schema
+
+        Returns:
+            List of tables in the path, or empty list if no path found
+
+        Example:
+            >>> path = client.get_lineage_path("raw.events", "analytics.revenue")
+            >>> print(f"Path length: {len(path)}")
+        """
+        client = self._ensure_query_client()
+        return client.query_lineage_path(from_table, to_table, from_schema, to_schema)
+
+    def get_available_lineage_providers(self) -> List[str]:
+        """
+        Get list of available lineage providers.
+
+        Returns:
+            List of provider names that are currently available
+
+        Example:
+            >>> providers = client.get_available_lineage_providers()
+            >>> print(f"Available providers: {providers}")
+        """
+        try:
+            from .integrations.lineage import LineageProviderRegistry
+
+            registry = LineageProviderRegistry()
+            providers = registry.get_available_providers()
+            return [p.get_provider_name() for p in providers]
+        except Exception as e:
+            logger.debug(f"Could not get lineage providers: {e}")
+            return []
+
     def get_status(
         self, drift_only: bool = False, days: int = 7, limit: int = 10
     ) -> Dict[str, Any]:

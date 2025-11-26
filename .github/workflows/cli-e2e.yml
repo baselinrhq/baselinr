@@ -125,6 +125,60 @@ jobs:
               --days 7 \
               --format json
 
+      - name: Run lineage CLI commands
+        run: |
+          # Test lineage providers command (always works, no data needed)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage providers \
+              --config $BASELINR_CONFIG_PATH \
+              --format table
+
+          # Test lineage upstream command for downstream table (customer_summary depends on customers)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage upstream \
+              --config $BASELINR_CONFIG_PATH \
+              --table customer_summary \
+              --format json || echo "No upstream lineage found (expected if lineage not enabled)"
+
+          # Test lineage downstream command (customers should have downstream: customer_summary, customer_analytics)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage downstream \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format json || echo "No downstream lineage found (expected if lineage not enabled)"
+
+          # Test lineage path command
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage path \
+              --config $BASELINR_CONFIG_PATH \
+              --from customers \
+              --to customer_summary \
+              --format json || echo "No path found (expected if lineage not enabled)"
+
       - name: Run status command
         run: |
           # Test basic status command
