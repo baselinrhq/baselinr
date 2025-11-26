@@ -317,7 +317,7 @@ class LineageQueryClient:
         Get lineage filtered by provider.
 
         Args:
-            provider: Provider name (e.g., 'dbt', 'sql_parse')
+            provider: Provider name (e.g., 'dbt', 'sql_parser')
 
         Returns:
             Dictionary mapping downstream tables to lists of upstream tables

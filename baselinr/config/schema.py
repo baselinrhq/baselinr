@@ -1064,7 +1064,7 @@ class LineageConfig(BaseModel):
     providers: Optional[List[str]] = Field(
         None,
         description=(
-            "List of lineage providers to use (e.g., ['dbt', 'sql_parse']). "
+            "List of lineage providers to use (e.g., ['dbt', 'sql_parser']). "
             "If None, uses all available providers."
         ),
     )

@@ -352,8 +352,8 @@ class TestSQLLineageProvider:
         tables = provider.extract_table_references(sql)
 
         assert len(tables) == 2
-        assert ("schema1", "table1") in tables
-        assert ("schema2", "table2") in tables
+        assert ("schema1", "table1", None) in tables
+        assert ("schema2", "table2", None) in tables
 
     @pytest.mark.skipif(not SQLGLOT_AVAILABLE, reason="SQLGlot not available")
     def test_extract_table_references_no_schema(self):
@@ -364,8 +364,8 @@ class TestSQLLineageProvider:
         tables = provider.extract_table_references(sql)
 
         assert len(tables) == 2
-        assert (None, "table1") in tables or ("", "table1") in tables
-        assert (None, "table2") in tables or ("", "table2") in tables
+        assert (None, "table1", None) in tables or ("", "table1", None) in tables
+        assert (None, "table2", None) in tables or ("", "table2", None) in tables
 
     @pytest.mark.skipif(not SQLGLOT_AVAILABLE, reason="SQLGlot not available")
     def test_extract_lineage_from_sql(self):

@@ -20,7 +20,7 @@ class LineageEdge:
     downstream_database: Optional[str] = None
     upstream_database: Optional[str] = None
     lineage_type: str = "unknown"  # e.g., 'dbt_ref', 'dbt_source', 'sql_parsed', 'dagster_asset'
-    provider: str = "unknown"  # Provider name (e.g., 'dbt', 'sql_parse', 'dagster')
+    provider: str = "unknown"  # Provider name (e.g., 'dbt', 'sql_parser', 'dagster')
     confidence_score: float = 1.0  # 0.0 to 1.0
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -71,7 +71,7 @@ class LineageProvider(ABC):
         Get the name of this provider.
 
         Returns:
-            Provider name (e.g., 'dbt', 'sql_parse', 'dagster')
+            Provider name (e.g., 'dbt', 'sql_parser', 'dagster')
         """
         pass
 

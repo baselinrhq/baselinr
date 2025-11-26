@@ -31,7 +31,7 @@ class SQLLineageProvider(LineageProvider):
 
     def get_provider_name(self) -> str:
         """Get provider name."""
-        return "sql_parse"
+        return "sql_parser"
 
     def is_available(self) -> bool:
         """
@@ -141,7 +141,7 @@ class SQLLineageProvider(LineageProvider):
                 downstream_database=output_database,
                 upstream_database=input_database,
                 lineage_type="sql_parsed",
-                provider="sql_parse",
+                provider="sql_parser",
                 confidence_score=0.9,  # Slightly lower confidence for parsed SQL
                 metadata={"sql_preview": sql[:200] if len(sql) > 200 else sql},
             )
