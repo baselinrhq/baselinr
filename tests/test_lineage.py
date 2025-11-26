@@ -387,7 +387,7 @@ class TestSQLLineageProvider:
             assert edge.downstream_table == "output_table"
             assert edge.lineage_type == "sql_parsed"
             assert edge.provider == "sql_parser"
-            assert edge.confidence_score == 0.8
+            assert edge.confidence_score == 0.9
 
     @pytest.mark.skipif(not SQLGLOT_AVAILABLE, reason="SQLGlot not available")
     def test_extract_lineage_from_sql_self_reference(self):
