@@ -184,6 +184,30 @@ TODO: Add Docker Compose configuration for easy deployment
 
 ## 📈 Roadmap / Future Enhancements
 
+### 🔥 In Planning: Data Lineage Visualization
+Interactive data lineage graph showing table dependencies, root cause analysis, and impact assessment.
+
+**Status**: Planning complete, ready for implementation  
+**Timeline**: 4-6 weeks
+
+**📚 Complete Documentation**: [Lineage Docs Index](./LINEAGE_DOCS_INDEX.md) (7 docs, 50+ pages)
+
+**Quick Links**:
+- [📊 One-Pager](./LINEAGE_ONE_PAGER.md) - Visual summary for stakeholders
+- [📄 Dashboard Summary](./LINEAGE_DASHBOARD_SUMMARY.md) - Start here (5 min read)
+- [📋 Full Integration Plan](./LINEAGE_INTEGRATION_PLAN.md) - Complete design doc (20 min)
+- [✅ Implementation Checklist](./LINEAGE_IMPLEMENTATION_CHECKLIST.md) - Task-by-task guide
+- [🏗️ Architecture Diagram](./LINEAGE_ARCHITECTURE_DIAGRAM.md) - System architecture
+- [⚖️ CLI vs Dashboard](./LINEAGE_CLI_VS_DASHBOARD.md) - Feature comparison
+
+**Key Features**:
+- Interactive lineage graph (upstream/downstream dependencies)
+- Root cause analysis for drift alerts
+- Path finding between tables
+- Column-level lineage visualization
+- Provider-specific filtering (dbt, query history, SQL parser)
+
+### Other Planned Features
 - [ ] Real-time updates via WebSockets
 - [ ] Advanced filtering and saved views
 - [ ] Custom dashboards per user
