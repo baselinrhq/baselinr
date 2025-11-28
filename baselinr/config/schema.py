@@ -1151,6 +1151,62 @@ class LLMConfig(BaseModel):
         return v
 
 
+class VisualizationStylesConfig(BaseModel):
+    """Visualization styling configuration."""
+
+    node_colors: Dict[str, str] = Field(
+        default_factory=lambda: {
+            "healthy": "#4CAF50",
+            "warning": "#FFC107",
+            "drift": "#F44336",
+        }
+    )
+
+
+class VisualizationConfig(BaseModel):
+    """Lineage visualization configuration."""
+
+    enabled: bool = Field(True, description="Enable lineage visualization features")
+    max_depth: int = Field(3, ge=1, le=10, description="Default maximum depth for lineage traversal")
+    direction: str = Field("both", description="Default direction (upstream/downstream/both)")
+    confidence_threshold: float = Field(
+        0.5, ge=0.0, le=1.0, description="Default confidence threshold"
+    )
+    layout: str = Field("hierarchical", description="Default layout algorithm")
+    web_viewer_port: int = Field(8080, description="Default port for web viewer")
+    theme: str = Field("dark", description="Default theme (dark/light)")
+    styles: VisualizationStylesConfig = Field(
+        default_factory=lambda: VisualizationStylesConfig()  # type: ignore[call-arg]
+    )
+
+    @field_validator("direction")
+    @classmethod
+    def validate_direction(cls, v: str) -> str:
+        """Validate direction."""
+        valid = ["upstream", "downstream", "both"]
+        if v not in valid:
+            raise ValueError(f"Direction must be one of {valid}")
+        return v
+
+    @field_validator("layout")
+    @classmethod
+    def validate_layout(cls, v: str) -> str:
+        """Validate layout algorithm."""
+        valid = ["hierarchical", "circular", "force_directed", "grid"]
+        if v not in valid:
+            raise ValueError(f"Layout must be one of {valid}")
+        return v
+
+    @field_validator("theme")
+    @classmethod
+    def validate_theme(cls, v: str) -> str:
+        """Validate theme."""
+        valid = ["dark", "light"]
+        if v not in valid:
+            raise ValueError(f"Theme must be one of {valid}")
+        return v
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -1178,6 +1234,10 @@ class BaselinrConfig(BaseModel):
         default_factory=lambda: SchemaChangeConfig()  # type: ignore[call-arg]
     )
     lineage: Optional[LineageConfig] = Field(None, description="Lineage extraction configuration")
+    visualization: VisualizationConfig = Field(
+        default_factory=lambda: VisualizationConfig()  # type: ignore[call-arg],
+        description="Lineage visualization configuration",
+    )
     llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
 
     @field_validator("environment")
