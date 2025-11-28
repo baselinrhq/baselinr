@@ -105,7 +105,9 @@ class LineageGraph:
             referenced_node_ids.add(edge.target)
         
         # Filter nodes to only those still referenced
-        filtered_nodes = [n for n in self.nodes if n.id in referenced_node_ids or n.id == self.root_id]
+        filtered_nodes = [
+            n for n in self.nodes if n.id in referenced_node_ids or n.id == self.root_id
+        ]
         
         return LineageGraph(
             nodes=filtered_nodes,

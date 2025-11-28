@@ -1167,8 +1167,12 @@ class VisualizationConfig(BaseModel):
     """Lineage visualization configuration."""
 
     enabled: bool = Field(True, description="Enable lineage visualization features")
-    max_depth: int = Field(3, ge=1, le=10, description="Default maximum depth for lineage traversal")
-    direction: str = Field("both", description="Default direction (upstream/downstream/both)")
+    max_depth: int = Field(
+        3, ge=1, le=10, description="Default maximum depth for lineage traversal"
+    )
+    direction: str = Field(
+        "both", description="Default direction (upstream/downstream/both)"
+    )
     confidence_threshold: float = Field(
         0.5, ge=0.0, le=1.0, description="Default confidence threshold"
     )
