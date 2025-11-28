@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { Database, TrendingUp, AlertTriangle } from 'lucide-react'
 import { fetchTableMetrics } from '@/lib/api'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import LineageMiniGraph from '@/components/lineage/LineageMiniGraph'
 
 export default function TableMetricsPage() {
   const params = useParams()
@@ -64,6 +65,16 @@ export default function TableMetricsPage() {
           <p className="text-sm font-medium text-orange-800">Drift Events</p>
           <p className="text-2xl font-bold text-orange-900 mt-2">{metrics.drift_count}</p>
         </div>
+      </div>
+
+      {/* Lineage Mini Graph */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Lineage</h2>
+        <LineageMiniGraph 
+          table={metrics.table_name} 
+          schema={metrics.schema_name || undefined}
+          direction="both"
+        />
       </div>
 
       {/* Row Count Trend */}

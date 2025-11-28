@@ -1235,8 +1235,8 @@ class BaselinrConfig(BaseModel):
     )
     lineage: Optional[LineageConfig] = Field(None, description="Lineage extraction configuration")
     visualization: VisualizationConfig = Field(
-        default_factory=lambda: VisualizationConfig()  # type: ignore[call-arg],
-        description="Lineage visualization configuration",
+        default_factory=lambda: VisualizationConfig(),  # type: ignore[call-arg]
+        description="Lineage visualization configuration"
     )
     llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
 
