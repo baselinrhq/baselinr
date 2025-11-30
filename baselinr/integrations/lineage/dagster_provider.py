@@ -252,9 +252,21 @@ class DagsterLineageProvider(LineageProvider):
             try:
                 with self._metadata_db_engine.connect() as conn:
                     # Query asset_keys table to find matching asset
-                    result = conn.execute(
-                        text("SELECT asset_key FROM public.asset_keys")
-                    ).fetchall()
+                    # Try both schemas (consistent with other queries)
+                    result = None
+                    for table_variant in ["public.asset_keys", "asset_keys"]:
+                        try:
+                            result = conn.execute(
+                                text(f"SELECT asset_key FROM {table_variant}")
+                            ).fetchall()
+                            if result:
+                                break
+                        except Exception as e:
+                            logger.debug(f"Error querying {table_variant}: {e}")
+                            continue
+
+                    if not result:
+                        return None
 
                     for row in result:
                         asset_key_json: str = str(row[0])
@@ -297,11 +309,8 @@ class DagsterLineageProvider(LineageProvider):
             except Exception as e:
                 logger.debug(f"Error querying asset_keys for table {schema}.{table_name}: {e}")
 
-        # Try naming convention: AssetKey(["schema", "table"])
-        if schema:
-            return f"{schema}::{table_name}"
-        else:
-            return f"public::{table_name}"
+        # No asset found - return None as documented
+        return None
 
     def _map_asset_to_table(
         self, asset_key_str: str, asset_info: Optional[Dict[str, Any]] = None
@@ -729,9 +738,6 @@ class DagsterLineageProvider(LineageProvider):
 
         try:
             edges: List[ColumnLineageEdge] = []
-            if not self._metadata_db_engine:
-                return edges
-
             with self._metadata_db_engine.connect() as conn:
                 # Query for latest materialization with column lineage metadata
                 # Use event_logs table (not event_log_entries)
@@ -1004,9 +1010,6 @@ class DagsterLineageProvider(LineageProvider):
             return all_lineage
 
         try:
-            if not self._metadata_db_engine:
-                return all_lineage
-
             with self._metadata_db_engine.connect() as conn:
                 # Query all materialization events from event_logs
                 results = None
