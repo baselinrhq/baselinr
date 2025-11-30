@@ -293,9 +293,10 @@ class DagsterLineageProvider(LineageProvider):
 
                                 # Try exact match
                                 if asset_name == table_name:
+                                    table_id = f"{schema}.{table_name}" if schema else table_name
                                     logger.debug(
                                         f"Found Dagster asset {asset_key_json} for table "
-                                        f"{schema}.{table_name if schema else table_name}"
+                                        f"{table_id}"
                                     )
                                     return asset_key_json
 
@@ -310,7 +311,8 @@ class DagsterLineageProvider(LineageProvider):
                             logger.debug(f"Error parsing asset key {asset_key_json}: {e}")
                             continue
             except Exception as e:
-                logger.debug(f"Error querying asset_keys for table {schema}.{table_name}: {e}")
+                table_id = f"{schema}.{table_name}" if schema else table_name
+                logger.debug(f"Error querying asset_keys for table {table_id}: {e}")
 
         # No asset found - return None as documented
         return None
@@ -470,9 +472,9 @@ class DagsterLineageProvider(LineageProvider):
                 )
             return edges
         except Exception as e:
+            table_id = f"{schema}.{table_name}" if schema else table_name
             logger.debug(
-                f"Error extracting Dagster lineage from metadata DB for "
-                f"{schema}.{table_name}: {e}"
+                f"Error extracting Dagster lineage from metadata DB for {table_id}: {e}"
             )
             return []
 
@@ -674,7 +676,24 @@ class DagsterLineageProvider(LineageProvider):
                         )
 
                         for dep in asset_node["dependencies"]:
-                            dep_asset_key = "::".join(dep["asset"]["key"]["path"])
+                            # Validate dependency structure before accessing
+                            if (
+                                not isinstance(dep, dict)
+                                or "asset" not in dep
+                                or "key" not in dep["asset"]
+                                or "path" not in dep["asset"]["key"]
+                            ):
+                                logger.debug(
+                                    "Skipping invalid dependency structure in GraphQL response"
+                                )
+                                continue
+
+                            dep_path = dep["asset"]["key"]["path"]
+                            if not dep_path or not isinstance(dep_path, list):
+                                logger.debug("Skipping dependency with empty or invalid path")
+                                continue
+
+                            dep_asset_key = "::".join(dep_path)
                             upstream_schema, upstream_table = self._map_asset_to_table(
                                 dep_asset_key
                             )
@@ -698,9 +717,9 @@ class DagsterLineageProvider(LineageProvider):
                         return edges
 
         except Exception as e:
+            table_id = f"{schema}.{table_name}" if schema else table_name
             logger.warning(
-                f"Error extracting Dagster lineage from GraphQL API for "
-                f"{schema}.{table_name}: {e}"
+                f"Error extracting Dagster lineage from GraphQL API for {table_id}: {e}"
             )
 
         return []
@@ -810,9 +829,9 @@ class DagsterLineageProvider(LineageProvider):
                 )
             return edges
         except Exception as e:
+            table_id = f"{schema}.{table_name}" if schema else table_name
             logger.debug(
-                f"Error extracting Dagster column lineage from metadata DB for "
-                f"{schema}.{table_name}: {e}"
+                f"Error extracting Dagster column lineage from metadata DB for {table_id}: {e}"
             )
             return []
 
