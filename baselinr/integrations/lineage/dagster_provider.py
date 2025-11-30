@@ -341,14 +341,21 @@ class DagsterLineageProvider(LineageProvider):
         try:
             asset_key_parts = json.loads(asset_key_str)
             if isinstance(asset_key_parts, list) and len(asset_key_parts) > 0:
-                asset_name = asset_key_parts[-1]  # Last part is usually the table name
-                # Strip common prefixes like "baselinr_"
+                # If it has multiple parts, use last two as schema.table
+                # Check this BEFORE prefix stripping to preserve schema info
+                if len(asset_key_parts) >= 2:
+                    schema_part = asset_key_parts[-2] or "public"
+                    table_part = asset_key_parts[-1]
+                    # Strip prefix from table part if present
+                    if table_part.startswith("baselinr_"):
+                        table_part = table_part[9:]
+                    return (schema_part, table_part)
+
+                # Single part: strip common prefixes like "baselinr_"
+                asset_name = asset_key_parts[-1]
                 if asset_name.startswith("baselinr_"):
                     table_name = asset_name[9:]
                     return ("public", table_name)
-                # If it has multiple parts, use last two as schema.table
-                if len(asset_key_parts) >= 2:
-                    return (asset_key_parts[-2] or "public", asset_key_parts[-1])
                 return ("public", asset_name)
         except (json.JSONDecodeError, IndexError, AttributeError):
             pass
@@ -889,12 +896,14 @@ class DagsterLineageProvider(LineageProvider):
                             # Format as JSON string to match asset_key format
                             dep_key = json.dumps(lineage_item["path"])
                             dependencies.append(dep_key)
-                        elif "__class__" in lineage_item and "AssetKey" in lineage_item.get(
-                            "__class__", ""
+                        elif (
+                            "__class__" in lineage_item
+                            and "AssetKey" in lineage_item.get("__class__", "")
+                            and "path" in lineage_item
                         ):
-                            if "path" in lineage_item:
-                                dep_key = json.dumps(lineage_item["path"])
-                                dependencies.append(dep_key)
+                            # AssetKey object with path (check path here since it's in elif)
+                            dep_key = json.dumps(lineage_item["path"])
+                            dependencies.append(dep_key)
 
             # Check metadata for dependencies
             metadata = event_specific_data.get("metadata", {})
@@ -954,7 +963,7 @@ class DagsterLineageProvider(LineageProvider):
         """
         edges: List[ColumnLineageEdge] = []
         column_lineage = metadata.get("dagster/column_lineage")
-        if not column_lineage:
+        if not column_lineage or not isinstance(column_lineage, dict):
             return edges
 
         deps_by_column = column_lineage.get("deps_by_column", {})
@@ -962,6 +971,14 @@ class DagsterLineageProvider(LineageProvider):
         downstream_schema, downstream_table = self._map_asset_to_table(asset_key_str)
 
         for output_col, deps in deps_by_column.items():
+            # Validate deps is iterable (list)
+            if not isinstance(deps, list):
+                logger.debug(
+                    f"Skipping column {output_col}: deps is not a list "
+                    f"(type: {type(deps).__name__})"
+                )
+                continue
+
             for dep in deps:
                 dep_asset_key = "::".join(dep.get("asset_key", {}).get("path", []))
                 upstream_col = dep.get("column_name", "")
