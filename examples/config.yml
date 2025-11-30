@@ -411,12 +411,37 @@ hooks:
 lineage:
   enabled: true  # Enable lineage extraction
   extract_column_lineage: true  # Enable column-level lineage extraction
-  providers: [dbt, sql_parser, postgres_query_history]  # Enable dbt, SQL parser, and PostgreSQL query history
+  providers: [dbt, sql_parser, postgres_query_history, dagster]  # Enable dbt, SQL parser, PostgreSQL query history, and Dagster
   # If not specified, uses all available providers
   
   # dbt configuration (optional)
   dbt:
     manifest_path: dbt_package/target/manifest.json
+  
+  # Dagster configuration (optional)
+  dagster:
+    # Option 1: Metadata database (recommended for production)
+    # Using the same PostgreSQL instance - adjust database name if Dagster uses a different one
+    # Common options: "postgres", "dagster" (separate database), or "baselinr" (same database as Baselinr)
+    # NOTE: If your asset_keys table is in baselinr.public schema, use "baselinr" database
+    metadata_db_url: "postgresql://baselinr:baselinr@localhost:5433/baselinr"
+    auto_detect_metadata_db: true  # Also try to auto-detect from DAGSTER_POSTGRES_URL env var
+    
+    # Option 2: Code scanning (works without Dagster running)
+    # Uncomment if you want to scan code for asset definitions
+    # code_locations:
+    #   - "dagster_definitions/"
+    #   - "src/assets/"
+    
+    # Option 3: GraphQL API (requires Dagster UI running)
+    # Uncomment if you want to use GraphQL API instead
+    # graphql_url: "http://localhost:3000/graphql"
+    
+    # Optional: Explicit asset-to-table mapping
+    # Use this if Dagster asset keys don't match your table names directly
+    # asset_table_mapping:
+    #   "schema::table_name": ["schema", "table_name"]
+    #   "my_asset": ["public", "my_table"]
   
   # Query history lineage configuration
   query_history:

@@ -19,6 +19,12 @@ try:
     SQLGLOT_AVAILABLE = True
 except ImportError:
     SQLGLOT_AVAILABLE = False
+
+try:
+    from baselinr.integrations.lineage.dagster_provider import DagsterLineageProvider
+    DAGSTER_AVAILABLE = True
+except ImportError:
+    DAGSTER_AVAILABLE = False
 from baselinr.query.lineage_client import LineageQueryClient
 from baselinr.storage.writer import ResultWriter
 from baselinr.config.schema import (
@@ -399,6 +405,158 @@ class TestSQLLineageProvider:
 
         # Should not create self-referencing edge
         assert len(edges) == 0
+
+
+class TestDagsterLineageProvider:
+    """Tests for Dagster lineage provider."""
+
+    def test_provider_name(self):
+        """Test provider name."""
+        provider = DagsterLineageProvider()
+        assert provider.get_provider_name() == "dagster"
+
+    def test_not_available_when_dagster_not_installed(self, monkeypatch):
+        """Test provider returns False when Dagster is not installed."""
+        if DAGSTER_AVAILABLE:
+            # Mock ImportError
+            import sys
+            original_import = __import__
+
+            def mock_import(name, *args, **kwargs):
+                if name == "dagster":
+                    raise ImportError("No module named 'dagster'")
+                return original_import(name, *args, **kwargs)
+
+            monkeypatch.setattr("builtins.__import__", mock_import)
+            # Reload module to trigger ImportError
+            import importlib
+            import baselinr.integrations.lineage.dagster_provider
+            importlib.reload(baselinr.integrations.lineage.dagster_provider)
+            provider = baselinr.integrations.lineage.dagster_provider.DagsterLineageProvider()
+            assert not provider.is_available()
+        else:
+            # Dagster not installed, test should pass
+            provider = DagsterLineageProvider()
+            assert not provider.is_available()
+
+    def test_asset_to_table_mapping(self):
+        """Test asset key to table mapping."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        
+        # Test simple mapping
+        schema, table = provider._map_asset_to_table("schema::table")
+        assert schema == "schema"
+        assert table == "table"
+        
+        # Test with empty schema
+        schema, table = provider._map_asset_to_table("::table")
+        assert schema == "public"
+        assert table == "table"
+        
+        # Test single segment
+        schema, table = provider._map_asset_to_table("table")
+        assert schema == "public"
+        assert table == "table"
+
+    def test_asset_to_table_mapping_with_metadata(self):
+        """Test asset to table mapping with metadata."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        asset_info = {
+            "metadata": {
+                "table": "my_table",
+                "schema": "my_schema"
+            }
+        }
+        
+        schema, table = provider._map_asset_to_table("asset_key", asset_info)
+        assert schema == "my_schema"
+        assert table == "my_table"
+
+    def test_find_asset_for_table_with_mapping(self):
+        """Test finding asset for table using explicit mapping."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        config = {
+            "asset_table_mapping": {
+                "my_asset": ("my_schema", "my_table")
+            }
+        }
+        provider = DagsterLineageProvider(config=config)
+        
+        asset_key = provider._find_asset_for_table("my_table", "my_schema")
+        assert asset_key == "my_asset"
+
+    def test_extract_lineage_empty_when_not_available(self):
+        """Test extract_lineage returns empty list when provider not available."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        # Provider won't be available without config
+        edges = provider.extract_lineage("table", "schema")
+        assert edges == []
+
+    def test_extract_column_lineage_empty_when_not_available(self):
+        """Test extract_column_lineage returns empty list when provider not available."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        # Provider won't be available without config
+        edges = provider.extract_column_lineage("table", "schema")
+        assert edges == []
+
+    def test_get_all_lineage_empty_when_not_available(self):
+        """Test get_all_lineage returns empty dict when provider not available."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        # Provider won't be available without config
+        lineage = provider.get_all_lineage()
+        assert lineage == {}
+
+    def test_ast_to_asset_key(self):
+        """Test AST to AssetKey conversion."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        import ast
+        provider = DagsterLineageProvider()
+        
+        # Test constant string
+        node = ast.Constant(value="table")
+        assert provider._ast_to_asset_key(node) == "table"
+        
+        # Test list
+        node = ast.List(elts=[ast.Constant(value="schema"), ast.Constant(value="table")])
+        assert provider._ast_to_asset_key(node) == "schema::table"
+        
+        # Test AssetKey call
+        node = ast.Call(
+            func=ast.Name(id="AssetKey"),
+            args=[ast.Constant(value="table")]
+        )
+        assert provider._ast_to_asset_key(node) == "table"
+
+    def test_matches_table(self):
+        """Test table matching logic."""
+        if not DAGSTER_AVAILABLE:
+            pytest.skip("Dagster not installed")
+
+        provider = DagsterLineageProvider()
+        
+        assert provider._matches_table("schema::table", "table", "schema")
+        assert not provider._matches_table("schema::table", "other_table", "schema")
+        assert provider._matches_table("schema::table", "table", None)
+        assert not provider._matches_table("schema::table", "table", "other_schema")
 
 
 class TestLineageProviderRegistry:

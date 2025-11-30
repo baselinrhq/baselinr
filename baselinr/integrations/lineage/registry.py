@@ -61,6 +61,24 @@ class LineageProviderRegistry:
         except Exception as e:
             logger.debug(f"Could not register dbt provider: {e}")
 
+        # Register Dagster provider (optional)
+        try:
+            from .dagster_provider import DagsterLineageProvider
+
+            # Get Dagster config if available
+            dagster_config = None
+            if self.config and self.config.lineage and self.config.lineage.dagster:
+                dagster_config = self.config.lineage.dagster
+                if isinstance(dagster_config, dict):
+                    dagster_config = dagster_config
+                else:
+                    dagster_config = {}
+
+            dagster_provider = DagsterLineageProvider(config=dagster_config)
+            self.register_provider(dagster_provider)
+        except Exception as e:
+            logger.debug(f"Could not register Dagster provider: {e}")
+
         # Register query history providers (if enabled)
         if self.config and self.config.lineage and self.config.lineage.query_history:
             query_history_config = self.config.lineage.query_history

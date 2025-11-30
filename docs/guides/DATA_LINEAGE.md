@@ -27,7 +27,7 @@ Baselinr uses a provider-based architecture that supports multiple lineage sourc
 - **dbt Manifest**: Extract lineage from dbt `manifest.json` files
 - **SQL Parser**: Parse SQL queries and view definitions using SQLGlot
 - **Query History**: Extract lineage from warehouse query execution history (Snowflake, BigQuery, PostgreSQL, Redshift, MySQL)
-- **Future Providers**: Dagster, Airflow, and other orchestration tools
+- **Dagster**: Extract lineage from Dagster assets using metadata database, code scanning, or GraphQL API
 
 ## Quick Start
 
@@ -223,6 +223,109 @@ baselinr lineage cleanup --provider postgres_query_history
 - Data retention varies by warehouse (Redshift: 2-5 days, others: longer)
 - Requires appropriate permissions/extensions
 - PostgreSQL `pg_stat_statements` doesn't track individual query timestamps (aggregate stats only)
+
+### Dagster Provider
+
+The Dagster provider extracts lineage from Dagster assets using multiple data sources with intelligent fallback logic. It supports both table-level and column-level lineage extraction.
+
+**Data Sources (in priority order):**
+
+1. **Metadata Database**: Query Dagster's metadata database (PostgreSQL/SQLite) for asset dependencies and materialization events
+2. **Code Scanning**: Scan Python files for `@asset` decorators and extract dependencies from AST
+3. **GraphQL API**: Query Dagster's GraphQL API for asset lineage information
+
+**Configuration:**
+
+```yaml
+lineage:
+  enabled: true
+  extract_column_lineage: true
+  providers: [dbt, sql_parser, dagster]
+  dagster:
+    # Option 1: Metadata database (recommended for production)
+    metadata_db_url: "postgresql://user:pass@localhost:5432/dagster"
+    auto_detect_metadata_db: true  # Auto-detect from DAGSTER_POSTGRES_URL env var
+    
+    # Option 2: Code scanning (works without Dagster running)
+    code_locations:
+      - "dagster_definitions/"
+      - "src/assets/"
+    
+    # Option 3: GraphQL API (requires Dagster UI running)
+    graphql_url: "http://localhost:3000/graphql"
+    
+    # Optional: Explicit asset-to-table mapping
+    asset_table_mapping:
+      "schema::table_name": ["schema", "table_name"]
+      "my_asset": ["public", "my_table"]
+```
+
+**How it works:**
+
+1. **Metadata Database**: Queries `event_log_entries` table for asset dependencies and materialization events. Extracts column-level lineage from `MaterializeResult` metadata.
+2. **Code Scanning**: Parses Python files to find `@asset` decorators, extracts `deps` parameters, and maps assets to tables using naming conventions or metadata.
+3. **GraphQL API**: Queries Dagster's GraphQL endpoint for asset dependencies and metadata.
+
+**Asset-to-Table Mapping:**
+
+The provider uses multiple strategies to map Dagster assets to database tables:
+
+1. **Explicit Mapping**: Use `asset_table_mapping` in config for precise control
+2. **Metadata-based**: Check asset metadata for `table`, `schema`, `database` keys
+3. **Naming Convention**: Parse AssetKey segments (e.g., `AssetKey(["schema", "table"])` → `schema.table`)
+4. **Fallback**: If no mapping found, skip lineage extraction for that asset
+
+**Column-Level Lineage:**
+
+Dagster supports column-level lineage via `MaterializeResult` metadata:
+
+```python
+from dagster import asset, MaterializeResult, TableColumnLineage, TableColumnDep, AssetKey
+
+@asset
+def my_asset():
+    yield MaterializeResult(
+        metadata={
+            "dagster/column_lineage": TableColumnLineage(
+                deps_by_column={
+                    "output_col": [
+                        TableColumnDep(
+                            asset_key=AssetKey("source"),
+                            column_name="source_col"
+                        )
+                    ]
+                }
+            )
+        }
+    )
+```
+
+The provider extracts this metadata from:
+- Latest materialization events in metadata DB
+- Code analysis (if MaterializeResult is returned)
+- GraphQL API asset metadata
+
+**Requirements:**
+
+- Install with: `pip install baselinr[dagster]`
+- For metadata DB: Access to Dagster's metadata database
+- For code scanning: Read access to Python files with asset definitions
+- For GraphQL API: Dagster UI must be running and accessible
+
+**Benefits:**
+
+- Captures lineage from Dagster's first-class asset model
+- Supports multiple data sources with automatic fallback
+- High confidence (1.0) for metadata DB and GraphQL sources
+- Medium confidence (0.9) for code scanning
+- Supports column-level lineage when available
+
+**Limitations:**
+
+- Code scanning may miss dynamic dependencies
+- GraphQL API requires Dagster UI to be running
+- Metadata DB requires appropriate database permissions
+- Asset-to-table mapping may need manual configuration for complex setups
 
 ## Configuration
 
