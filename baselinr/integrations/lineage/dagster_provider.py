@@ -551,8 +551,6 @@ class DagsterLineageProvider(LineageProvider):
         """Convert AST node to AssetKey string."""
         if isinstance(node, ast.Constant):
             return str(node.value)
-        elif isinstance(node, ast.Str):  # Python < 3.8
-            return str(node.s)
         elif isinstance(node, ast.List):
             # AssetKey(["schema", "table"])
             parts = [self._ast_to_asset_key(elem) for elem in node.elts]
