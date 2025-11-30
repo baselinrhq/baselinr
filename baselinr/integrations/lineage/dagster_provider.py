@@ -282,9 +282,12 @@ class DagsterLineageProvider(LineageProvider):
                                 if asset_name.startswith("baselinr_"):
                                     stripped_name = asset_name[9:]
                                     if stripped_name == table_name:
+                                        table_id = (
+                                            f"{schema}.{table_name}" if schema else table_name
+                                        )
                                         logger.debug(
                                             f"Found Dagster asset {asset_key_json} for table "
-                                            f"{schema}.{table_name if schema else table_name}"
+                                            f"{table_id}"
                                         )
                                         return asset_key_json
 
@@ -453,9 +456,10 @@ class DagsterLineageProvider(LineageProvider):
                         logger.debug(f"Error parsing event JSON: {e}")
 
             if not edges:
+                table_id = f"{schema}.{table_name}" if schema else table_name
                 logger.debug(
                     f"No dependencies found in materialization event for asset {asset_key_str} "
-                    f"(table {schema}.{table_name if schema else table_name})"
+                    f"(table {table_id})"
                 )
             return edges
         except Exception as e:
@@ -713,9 +717,9 @@ class DagsterLineageProvider(LineageProvider):
         # Find asset that maps to this table
         asset_key = self._find_asset_for_table(table_name, schema)
         if not asset_key:
+            table_id = f"{schema}.{table_name}" if schema else table_name
             logger.debug(
-                f"Dagster provider: No asset found for column lineage of "
-                f"{schema}.{table_name if schema else table_name}"
+                f"Dagster provider: No asset found for column lineage of {table_id}"
             )
             return []
 
@@ -794,9 +798,10 @@ class DagsterLineageProvider(LineageProvider):
                         logger.debug(f"Error parsing event JSON for column lineage: {e}")
 
             if not event_found:
+                table_id = f"{schema}.{table_name}" if schema else table_name
                 logger.debug(
                     f"No materialization events found for asset {asset_key_str} "
-                    f"(table {schema}.{table_name if schema else table_name})"
+                    f"(table {table_id})"
                 )
             return edges
         except Exception as e:
@@ -963,7 +968,23 @@ class DagsterLineageProvider(LineageProvider):
                 dep_asset_key = "::".join(dep.get("asset_key", {}).get("path", []))
                 upstream_col = dep.get("column_name", "")
 
+                # Skip dependencies with missing or empty asset keys
+                if not dep_asset_key:
+                    logger.debug(
+                        f"Skipping column lineage dependency with missing asset_key "
+                        f"for column {output_col}"
+                    )
+                    continue
+
                 upstream_schema, upstream_table = self._map_asset_to_table(dep_asset_key)
+
+                # Skip if upstream table is empty (invalid mapping)
+                if not upstream_table:
+                    logger.debug(
+                        f"Skipping column lineage dependency with invalid asset_key "
+                        f"{dep_asset_key} for column {output_col}"
+                    )
+                    continue
 
                 edge = ColumnLineageEdge(
                     downstream_schema=downstream_schema,
