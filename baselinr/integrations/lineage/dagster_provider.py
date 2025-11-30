@@ -574,6 +574,35 @@ class DagsterLineageProvider(LineageProvider):
         asset_schema, asset_table = self._map_asset_to_table(asset_key_str)
         return asset_table == table_name and (schema is None or asset_schema == schema)
 
+    def _asset_key_to_path(self, asset_key_str: str) -> List[str]:
+        """
+        Convert asset key string to path array for GraphQL API.
+
+        Handles both formats:
+        - JSON format: '["baselinr_customer_analytics"]' -> ['baselinr_customer_analytics']
+        - :: format: 'schema::table' -> ['schema', 'table']
+
+        Args:
+            asset_key_str: Asset key as string
+
+        Returns:
+            List of path segments
+        """
+        # Try parsing as JSON first (most common from metadata DB)
+        try:
+            parsed = json.loads(asset_key_str)
+            if isinstance(parsed, list):
+                return [str(part) for part in parsed]
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            pass
+
+        # Fall back to :: format
+        if "::" in asset_key_str:
+            return asset_key_str.split("::")
+
+        # Single segment (just table name)
+        return [asset_key_str]
+
     def _extract_from_graphql(
         self, asset_key_str: str, table_name: str, schema: Optional[str] = None
     ) -> List[LineageEdge]:
@@ -602,7 +631,11 @@ class DagsterLineageProvider(LineageProvider):
             }
             """
 
-            variables = {"assetKey": {"path": asset_key_str.split("::")}}
+            # Convert asset_key_str to path array for GraphQL
+            # Handle both JSON format ('["baselinr_customer_analytics"]')
+            # and :: format ('schema::table')
+            asset_path = self._asset_key_to_path(asset_key_str)
+            variables = {"assetKey": {"path": asset_path}}
 
             response = requests.post(
                 self.graphql_url,
@@ -742,7 +775,9 @@ class DagsterLineageProvider(LineageProvider):
                         event_specific_data = dagster_event.get("event_specific_data", {})
                         metadata = event_specific_data.get("metadata", {})
 
-                        column_edges = self._extract_column_lineage_from_metadata(metadata)
+                        column_edges = self._extract_column_lineage_from_metadata(
+                            metadata, asset_key_str
+                        )
                         edges.extend(column_edges)
                         if not edges:
                             logger.debug(
@@ -885,7 +920,7 @@ class DagsterLineageProvider(LineageProvider):
         return dependencies
 
     def _extract_column_lineage_from_metadata(
-        self, metadata: Dict[str, Any]
+        self, metadata: Dict[str, Any], asset_key_str: str
     ) -> List[ColumnLineageEdge]:
         """
         Parse Dagster column lineage metadata.
@@ -903,6 +938,10 @@ class DagsterLineageProvider(LineageProvider):
                 }
             }
         }
+
+        Args:
+            metadata: Metadata dictionary from materialization event
+            asset_key_str: Asset key string for the downstream asset
         """
         edges: List[ColumnLineageEdge] = []
         column_lineage = metadata.get("dagster/column_lineage")
@@ -910,7 +949,8 @@ class DagsterLineageProvider(LineageProvider):
             return edges
 
         deps_by_column = column_lineage.get("deps_by_column", {})
-        downstream_schema, downstream_table = ("", "")  # Will be set from asset mapping
+        # Map the downstream asset key to table
+        downstream_schema, downstream_table = self._map_asset_to_table(asset_key_str)
 
         for output_col, deps in deps_by_column.items():
             for dep in deps:
