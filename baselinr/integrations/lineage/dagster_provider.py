@@ -718,9 +718,7 @@ class DagsterLineageProvider(LineageProvider):
         asset_key = self._find_asset_for_table(table_name, schema)
         if not asset_key:
             table_id = f"{schema}.{table_name}" if schema else table_name
-            logger.debug(
-                f"Dagster provider: No asset found for column lineage of {table_id}"
-            )
+            logger.debug(f"Dagster provider: No asset found for column lineage of {table_id}")
             return []
 
         # Extract column lineage based on available data source
