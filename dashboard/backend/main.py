@@ -31,6 +31,7 @@ from lineage_models import (
     DriftPathResponse,
 )
 from database import DatabaseClient
+import rca_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -50,6 +51,9 @@ app.add_middleware(
 
 # Initialize database client
 db_client = DatabaseClient()
+
+# Register RCA routes
+rca_routes.register_routes(app, db_client.engine)
 
 # Import baselinr visualization components
 # Add parent directory to path to import baselinr
