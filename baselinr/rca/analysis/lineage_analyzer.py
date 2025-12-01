@@ -46,6 +46,7 @@ class LineageAnalyzer:
     def find_upstream_anomalies(
         self,
         table_name: str,
+        database_name: Optional[str],
         schema_name: Optional[str],
         anomaly_timestamp: datetime,
         column_name: Optional[str] = None,
@@ -65,7 +66,7 @@ class LineageAnalyzer:
             List of UpstreamAnomalyCause objects
         """
         # Get upstream tables from lineage
-        upstream_tables = self._get_upstream_tables(table_name, schema_name)
+        upstream_tables = self._get_upstream_tables(table_name, database_name, schema_name)
 
         if not upstream_tables:
             logger.debug(f"No upstream tables found for {schema_name}.{table_name}")
@@ -159,6 +160,7 @@ class LineageAnalyzer:
     def calculate_impact_analysis(
         self,
         table_name: str,
+        database_name: Optional[str],
         schema_name: Optional[str],
     ) -> ImpactAnalysis:
         """
@@ -172,11 +174,11 @@ class LineageAnalyzer:
             ImpactAnalysis with upstream and downstream affected tables
         """
         # Get upstream tables
-        upstream_tables = self._get_upstream_tables(table_name, schema_name)
+        upstream_tables = self._get_upstream_tables(table_name, database_name, schema_name)
         upstream_affected = [table for table, _ in upstream_tables]
 
         # Get downstream tables
-        downstream_tables = self._get_downstream_tables(table_name, schema_name)
+        downstream_tables = self._get_downstream_tables(table_name, database_name, schema_name)
         downstream_affected = [table for table, _ in downstream_tables]
 
         # Calculate blast radius score
@@ -217,7 +219,7 @@ class LineageAnalyzer:
         all_upstream: List[Set[str]] = []
 
         for table_name in table_names:
-            upstream = self._get_upstream_tables(table_name, schema_name)
+            upstream = self._get_upstream_tables(table_name, None, schema_name)
             upstream_set = {table for table, _ in upstream}
             all_upstream.append(upstream_set)
 
@@ -234,7 +236,7 @@ class LineageAnalyzer:
         for table in common:
             min_distance = float("inf")
             for table_name in table_names:
-                upstream = self._get_upstream_tables(table_name, schema_name)
+                upstream = self._get_upstream_tables(table_name, None, schema_name)
                 for upstream_table, distance in upstream:
                     if upstream_table == table:
                         min_distance = min(min_distance, distance)
@@ -246,13 +248,17 @@ class LineageAnalyzer:
         return common_with_distance
 
     def _get_upstream_tables(
-        self, table_name: str, schema_name: Optional[str]
+        self,
+        table_name: str,
+        database_name: Optional[str],
+        schema_name: Optional[str],
     ) -> List[Tuple[str, int]]:
         """
         Get upstream tables from lineage (recursive).
 
         Args:
             table_name: Table name
+            database_name: Database name (optional, for future use)
             schema_name: Schema name
 
         Returns:
@@ -307,13 +313,17 @@ class LineageAnalyzer:
         return upstream
 
     def _get_downstream_tables(
-        self, table_name: str, schema_name: Optional[str]
+        self,
+        table_name: str,
+        database_name: Optional[str],
+        schema_name: Optional[str],
     ) -> List[Tuple[str, int]]:
         """
         Get downstream tables from lineage (recursive).
 
         Args:
             table_name: Table name
+            database_name: Database name (optional, for future use)
             schema_name: Schema name
 
         Returns:

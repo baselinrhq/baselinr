@@ -145,6 +145,7 @@ def up_migration(conn):
             CREATE TABLE IF NOT EXISTS baselinr_rca_results (
                 id INTEGER AUTOINCREMENT PRIMARY KEY,
                 anomaly_id VARCHAR(255) NOT NULL,
+                database_name VARCHAR(255),
                 table_name VARCHAR(255) NOT NULL,
                 schema_name VARCHAR(255),
                 column_name VARCHAR(255),
@@ -162,6 +163,7 @@ def up_migration(conn):
             CREATE TABLE IF NOT EXISTS baselinr_rca_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 anomaly_id VARCHAR(255) NOT NULL UNIQUE,
+                database_name VARCHAR(255),
                 table_name VARCHAR(255) NOT NULL,
                 schema_name VARCHAR(255),
                 column_name VARCHAR(255),
@@ -179,6 +181,7 @@ def up_migration(conn):
             CREATE TABLE IF NOT EXISTS baselinr_rca_results (
                 id SERIAL PRIMARY KEY,
                 anomaly_id VARCHAR(255) NOT NULL UNIQUE,
+                database_name VARCHAR(255),
                 table_name VARCHAR(255) NOT NULL,
                 schema_name VARCHAR(255),
                 column_name VARCHAR(255),

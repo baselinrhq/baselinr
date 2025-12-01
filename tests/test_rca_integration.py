@@ -56,6 +56,7 @@ def full_rca_engine():
             CREATE TABLE baselinr_rca_results (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 anomaly_id VARCHAR(255) NOT NULL UNIQUE,
+                database_name VARCHAR(255),
                 table_name VARCHAR(255) NOT NULL,
                 schema_name VARCHAR(255),
                 column_name VARCHAR(255),

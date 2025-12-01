@@ -2344,7 +2344,7 @@ def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
 def rca_command(args):
     """Execute RCA command."""
     from .cli_output import safe_print
-    from .connectors import create_connector
+    from .connectors.factory import create_connector
     from .rca.collectors import DagsterRunCollector, DbtRunCollector
     from .rca.service import RCAService
 
@@ -2364,6 +2364,8 @@ def rca_command(args):
             # Parse timestamp
             from datetime import datetime
 
+            from .rca.models import parse_fully_qualified_table
+
             if args.timestamp:
                 try:
                     anomaly_timestamp = datetime.fromisoformat(
@@ -2374,6 +2376,12 @@ def rca_command(args):
                     return 1
             else:
                 anomaly_timestamp = datetime.utcnow()
+
+            # Parse fully qualified table name (database.schema.table, schema.table, or table)
+            database_name, schema_name, table_name = parse_fully_qualified_table(args.table)
+            # Override with explicit args if provided (for backward compatibility)
+            if args.schema:
+                schema_name = args.schema
 
             # Initialize RCA service
             service = RCAService(
@@ -2389,9 +2397,10 @@ def rca_command(args):
             # Perform analysis
             result = service.analyze_anomaly(
                 anomaly_id=args.anomaly_id,
-                table_name=args.table,
+                table_name=table_name,
                 anomaly_timestamp=anomaly_timestamp,
-                schema_name=args.schema,
+                database_name=database_name,
+                schema_name=schema_name,
                 column_name=args.column,
                 metric_name=args.metric,
             )
@@ -2414,11 +2423,14 @@ def rca_command(args):
                 print(json.dumps(output, indent=2, default=str))
             else:
                 safe_print(f"\n📊 RCA Results for {result.anomaly_id}")
-                safe_print(
-                    f"Table: {result.schema_name}.{result.table_name}"
-                    if result.schema_name
-                    else f"Table: {result.table_name}"
-                )
+                table_display = result.table_name
+                if result.database_name and result.schema_name:
+                    table_display = (
+                        f"{result.database_name}.{result.schema_name}.{result.table_name}"
+                    )
+                elif result.schema_name:
+                    table_display = f"{result.schema_name}.{result.table_name}"
+                safe_print(f"Table: {table_display}")
                 if result.column_name:
                     safe_print(f"Column: {result.column_name}")
                 if result.metric_name:
@@ -2468,6 +2480,7 @@ def rca_command(args):
 
                 output = {
                     "anomaly_id": result.anomaly_id,
+                    "database_name": result.database_name,
                     "table_name": result.table_name,
                     "schema_name": result.schema_name,
                     "column_name": result.column_name,
@@ -2480,11 +2493,14 @@ def rca_command(args):
                 print(json.dumps(output, indent=2, default=str))
             else:
                 safe_print(f"\n📊 RCA Result for {result.anomaly_id}")
-                safe_print(
-                    f"Table: {result.schema_name}.{result.table_name}"
-                    if result.schema_name
-                    else f"Table: {result.table_name}"
-                )
+                table_display = result.table_name
+                if result.database_name and result.schema_name:
+                    table_display = (
+                        f"{result.database_name}.{result.schema_name}.{result.table_name}"
+                    )
+                elif result.schema_name:
+                    table_display = f"{result.schema_name}.{result.table_name}"
+                safe_print(f"Table: {table_display}")
                 safe_print(f"Status: {result.rca_status}")
                 safe_print(f"Causes: {len(result.probable_causes)}\n")
 
@@ -2923,8 +2939,14 @@ def main():
     analyze_parser = rca_subparsers.add_parser("analyze", help="Analyze an anomaly")
     analyze_parser.add_argument("--config", "-c", required=True, help="Configuration file")
     analyze_parser.add_argument("--anomaly-id", required=True, help="Anomaly ID to analyze")
-    analyze_parser.add_argument("--table", required=True, help="Table name")
-    analyze_parser.add_argument("--schema", help="Schema name")
+    analyze_parser.add_argument(
+        "--table",
+        required=True,
+        help="Fully qualified table name (database.schema.table, schema.table, or table)",
+    )
+    analyze_parser.add_argument(
+        "--schema", help="Schema name (optional, overrides schema from --table if provided)"
+    )
     analyze_parser.add_argument("--column", help="Column name")
     analyze_parser.add_argument("--metric", help="Metric name")
     analyze_parser.add_argument(

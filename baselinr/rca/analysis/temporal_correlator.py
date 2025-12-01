@@ -47,6 +47,7 @@ class TemporalCorrelator:
         self,
         anomaly_timestamp: datetime,
         table_name: str,
+        database_name: Optional[str] = None,
         schema_name: Optional[str] = None,
     ) -> List[PipelineCause]:
         """
@@ -193,6 +194,7 @@ class TemporalCorrelator:
         self,
         anomaly_timestamp: datetime,
         table_name: str,
+        database_name: Optional[str] = None,
         schema_name: Optional[str] = None,
     ) -> List[CodeChangeCause]:
         """
@@ -384,7 +386,11 @@ class TemporalCorrelator:
         return 0.4
 
     def find_all_correlated_events(
-        self, anomaly_timestamp: datetime, table_name: str, schema_name: Optional[str] = None
+        self,
+        anomaly_timestamp: datetime,
+        table_name: str,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
     ) -> Tuple[List[PipelineCause], List[CodeChangeCause]]:
         """
         Find all correlated events (pipelines and deployments).
@@ -392,17 +398,18 @@ class TemporalCorrelator:
         Args:
             anomaly_timestamp: When the anomaly occurred
             table_name: Name of affected table
+            database_name: Database name (if applicable)
             schema_name: Schema name (if applicable)
 
         Returns:
             Tuple of (pipeline_causes, deployment_causes)
         """
         pipeline_causes = self.find_correlated_pipeline_runs(
-            anomaly_timestamp, table_name, schema_name
+            anomaly_timestamp, table_name, database_name, schema_name
         )
 
         deployment_causes = self.find_correlated_deployments(
-            anomaly_timestamp, table_name, schema_name
+            anomaly_timestamp, table_name, database_name, schema_name
         )
 
         return pipeline_causes, deployment_causes

@@ -74,7 +74,7 @@ def test_get_upstream_tables(sqlite_engine_with_lineage):
     analyzer = LineageAnalyzer(sqlite_engine_with_lineage, max_depth=5)
     
     # Get upstream tables for sales_aggregate
-    upstream = analyzer._get_upstream_tables("sales_aggregate", "public")
+    upstream = analyzer._get_upstream_tables("sales_aggregate", None, "public")
     
     # Should find staging_data (distance=1) and raw_data (distance=2)
     upstream_names = [table for table, _ in upstream]
@@ -93,7 +93,7 @@ def test_get_downstream_tables(sqlite_engine_with_lineage):
     analyzer = LineageAnalyzer(sqlite_engine_with_lineage, max_depth=5)
     
     # Get downstream tables for raw_data
-    downstream = analyzer._get_downstream_tables("raw_data", "public")
+    downstream = analyzer._get_downstream_tables("raw_data", None, "public")
     
     # Should find staging_data (distance=1) and sales_aggregate (distance=2)
     downstream_names = [table for table, _ in downstream]
@@ -106,7 +106,7 @@ def test_calculate_impact_analysis(sqlite_engine_with_lineage):
     analyzer = LineageAnalyzer(sqlite_engine_with_lineage, max_depth=5)
     
     # Calculate impact for staging_data
-    impact = analyzer.calculate_impact_analysis("staging_data", "public")
+    impact = analyzer.calculate_impact_analysis("staging_data", None, "public")
     
     # Should have raw_data upstream and sales_aggregate downstream
     assert len(impact.upstream_affected) > 0

@@ -77,6 +77,7 @@ class RootCauseAnalyzer:
         anomaly_id: str,
         table_name: str,
         anomaly_timestamp: datetime,
+        database_name: Optional[str] = None,
         schema_name: Optional[str] = None,
         column_name: Optional[str] = None,
         metric_name: Optional[str] = None,
@@ -89,6 +90,7 @@ class RootCauseAnalyzer:
             anomaly_id: Unique identifier for the anomaly
             table_name: Table with the anomaly
             anomaly_timestamp: When the anomaly occurred
+            database_name: Database name (for multi-database warehouses)
             schema_name: Schema name
             column_name: Column with anomaly
             metric_name: Metric that is anomalous
@@ -97,8 +99,13 @@ class RootCauseAnalyzer:
         Returns:
             RCAResult with probable causes and impact analysis
         """
+        table_identifier = (
+            f"{database_name}.{schema_name}.{table_name}"
+            if database_name and schema_name
+            else f"{schema_name}.{table_name}" if schema_name else table_name
+        )
         logger.info(
-            f"Starting RCA for anomaly {anomaly_id} in {schema_name}.{table_name} "
+            f"Starting RCA for anomaly {anomaly_id} in {table_identifier} "
             f"at {anomaly_timestamp}"
         )
 
@@ -111,6 +118,7 @@ class RootCauseAnalyzer:
                 self.temporal_correlator.find_all_correlated_events(
                     anomaly_timestamp=anomaly_timestamp,
                     table_name=table_name,
+                    database_name=database_name,
                     schema_name=schema_name,
                 )
             )
@@ -132,6 +140,7 @@ class RootCauseAnalyzer:
         try:
             upstream_causes = self.lineage_analyzer.find_upstream_anomalies(
                 table_name=table_name,
+                database_name=database_name,
                 schema_name=schema_name,
                 anomaly_timestamp=anomaly_timestamp,
                 column_name=column_name,
@@ -168,7 +177,7 @@ class RootCauseAnalyzer:
         logger.debug("Calculating impact analysis...")
         try:
             impact_analysis = self.lineage_analyzer.calculate_impact_analysis(
-                table_name=table_name, schema_name=schema_name
+                table_name=table_name, database_name=database_name, schema_name=schema_name
             )
         except Exception as e:
             logger.error(f"Error calculating impact: {e}")
@@ -177,6 +186,7 @@ class RootCauseAnalyzer:
         # 6. Create RCA result
         result = RCAResult(
             anomaly_id=anomaly_id,
+            database_name=database_name,
             table_name=table_name,
             schema_name=schema_name,
             column_name=column_name,

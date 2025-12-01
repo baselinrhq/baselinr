@@ -243,11 +243,13 @@ class RCAStorage:
                 insert_query = text(
                     """
                     INSERT INTO baselinr_rca_results (
-                        anomaly_id, table_name, schema_name, column_name, metric_name,
-                        analyzed_at, rca_status, probable_causes, impact_analysis, metadata
+                        anomaly_id, database_name, table_name, schema_name,
+                        column_name, metric_name, analyzed_at, rca_status,
+                        probable_causes, impact_analysis, metadata
                     ) VALUES (
-                        :anomaly_id, :table_name, :schema_name, :column_name, :metric_name,
-                        :analyzed_at, :rca_status, :probable_causes, :impact_analysis, :metadata
+                        :anomaly_id, :database_name, :table_name, :schema_name,
+                        :column_name, :metric_name, :analyzed_at, :rca_status,
+                        :probable_causes, :impact_analysis, :metadata
                     )
                 """
                 )
@@ -255,6 +257,7 @@ class RCAStorage:
                     insert_query,
                     {
                         "anomaly_id": result.anomaly_id,
+                        "database_name": result.database_name,
                         "table_name": result.table_name,
                         "schema_name": result.schema_name,
                         "column_name": result.column_name,
@@ -436,9 +439,12 @@ class RCAStorage:
                 return None
 
             # Parse JSON fields
-            probable_causes = json.loads(row[7]) if row[7] else []
-            impact_analysis_dict = json.loads(row[8]) if row[8] else None
-            metadata = json.loads(row[9]) if row[9] else {}
+            # Column order: id(0), anomaly_id(1), database_name(2), table_name(3), schema_name(4),
+            # column_name(5), metric_name(6), analyzed_at(7), rca_status(8),
+            # probable_causes(9), impact_analysis(10), metadata(11)
+            probable_causes = json.loads(row[9]) if row[9] else []
+            impact_analysis_dict = json.loads(row[10]) if row[10] else None
+            metadata = json.loads(row[11]) if row[11] else {}
 
             # Reconstruct impact analysis
             from .models import ImpactAnalysis
@@ -453,12 +459,13 @@ class RCAStorage:
 
             rca_result = RCAResult(
                 anomaly_id=row[1],
-                table_name=row[2],
-                schema_name=row[3],
-                column_name=row[4],
-                metric_name=row[5],
-                analyzed_at=row[6],
-                rca_status=row[7],
+                database_name=row[2],
+                table_name=row[3],
+                schema_name=row[4],
+                column_name=row[5],
+                metric_name=row[6],
+                analyzed_at=row[7],
+                rca_status=row[8],
                 probable_causes=probable_causes,
                 impact_analysis=impact_analysis,
                 metadata=metadata,

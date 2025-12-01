@@ -103,6 +103,7 @@ class RCAService:
         anomaly_id: str,
         table_name: str,
         anomaly_timestamp: datetime,
+        database_name: Optional[str] = None,
         schema_name: Optional[str] = None,
         column_name: Optional[str] = None,
         metric_name: Optional[str] = None,
@@ -115,6 +116,7 @@ class RCAService:
             anomaly_id: Unique identifier for the anomaly
             table_name: Table with the anomaly
             anomaly_timestamp: When the anomaly occurred
+            database_name: Database name (for multi-database warehouses)
             schema_name: Schema name
             column_name: Column with anomaly
             metric_name: Metric that is anomalous
@@ -131,6 +133,7 @@ class RCAService:
                 anomaly_id=anomaly_id,
                 table_name=table_name,
                 anomaly_timestamp=anomaly_timestamp,
+                database_name=database_name,
                 schema_name=schema_name,
                 column_name=column_name,
                 metric_name=metric_name,

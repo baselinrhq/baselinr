@@ -4,7 +4,31 @@ Data models for Root Cause Analysis.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+
+def parse_fully_qualified_table(table_identifier: str) -> Tuple[Optional[str], Optional[str], str]:
+    """
+    Parse a fully qualified table identifier.
+
+    Supports formats:
+    - database.schema.table
+    - schema.table
+    - table
+
+    Args:
+        table_identifier: Table identifier string
+
+    Returns:
+        Tuple of (database_name, schema_name, table_name)
+    """
+    parts = table_identifier.split(".")
+    if len(parts) == 3:
+        return parts[0], parts[1], parts[2]
+    elif len(parts) == 2:
+        return None, parts[0], parts[1]
+    else:
+        return None, None, parts[0]
 
 
 @dataclass
@@ -184,6 +208,7 @@ class RCAResult:
     analyzed_at: datetime
     probable_causes: List[Dict[str, Any]] = field(default_factory=list)
     impact_analysis: Optional[ImpactAnalysis] = None
+    database_name: Optional[str] = None
     schema_name: Optional[str] = None
     column_name: Optional[str] = None
     metric_name: Optional[str] = None
@@ -195,6 +220,7 @@ class RCAResult:
         return {
             "anomaly_id": self.anomaly_id,
             "table_name": self.table_name,
+            "database_name": self.database_name,
             "schema_name": self.schema_name,
             "column_name": self.column_name,
             "metric_name": self.metric_name,
