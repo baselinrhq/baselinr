@@ -53,7 +53,10 @@ class PipelineRunCollector:
 
         try:
             if config:
-                return collector_class(engine=engine, config=config, **kwargs)
+                # Type ignore: subclasses may accept config parameter
+                return collector_class(  # type: ignore[call-arg]
+                    engine=engine, config=config, **kwargs
+                )
             else:
                 return collector_class(engine=engine, **kwargs)
         except Exception as e:

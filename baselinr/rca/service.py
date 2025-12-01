@@ -357,9 +357,9 @@ class RCAService:
 
                 try:
                     result = conn.execute(avg_query)
-                    row = result.fetchone()
-                    if row and row[0]:
-                        stats["avg_causes_per_anomaly"] = float(row[0])
+                    avg_row: Any = result.fetchone()  # type: ignore[assignment]
+                    if avg_row is not None and len(avg_row) > 0 and avg_row[0] is not None:
+                        stats["avg_causes_per_anomaly"] = float(avg_row[0])
                 except Exception:
                     # JSON_LENGTH may not be available
                     pass

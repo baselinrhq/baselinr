@@ -67,7 +67,7 @@ class DagsterRunCollector(BaseCollector):
         Returns:
             List of PipelineRun objects
         """
-        runs = []
+        runs: List[PipelineRun] = []
 
         if not DAGSTER_AVAILABLE:
             logger.warning("Dagster not available, skipping collection")
@@ -134,7 +134,7 @@ class DagsterRunCollector(BaseCollector):
             return []
 
         try:
-            import requests
+            import requests  # type: ignore[import-untyped]
 
             # GraphQL query to get recent runs
             query = """

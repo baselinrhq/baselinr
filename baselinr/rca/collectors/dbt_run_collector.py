@@ -91,7 +91,8 @@ class DbtRunCollector(BaseCollector):
                 return None
 
             with open(path, "r") as f:
-                return json.load(f)
+                data: Dict[str, Any] = json.load(f)  # type: ignore[assignment]
+                return data
 
         except Exception as e:
             logger.warning(f"Failed to load run_results.json: {e}")
@@ -106,7 +107,8 @@ class DbtRunCollector(BaseCollector):
                 return None
 
             with open(path, "r") as f:
-                return json.load(f)
+                data: Dict[str, Any] = json.load(f)  # type: ignore[assignment]
+                return data
 
         except Exception as e:
             logger.warning(f"Failed to load manifest.json: {e}")

@@ -56,8 +56,11 @@ class CodeChangeCollector:
             branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
 
             # Get commit info
-            head_commit = payload.get("head_commit", {})
+            head_commit = payload.get("head_commit", {}) or {}
             commit_sha = head_commit.get("id") or payload.get("after")
+            if not commit_sha:
+                logger.warning("No commit SHA found in GitHub webhook")
+                return None
 
             # Extract changed files from commits
             changed_files = set()
@@ -115,6 +118,9 @@ class CodeChangeCollector:
             branch = ref.replace("refs/heads/", "") if ref.startswith("refs/heads/") else ref
 
             commit_sha = payload.get("checkout_sha") or payload.get("after")
+            if not commit_sha:
+                logger.warning("No commit SHA found in GitLab webhook")
+                return None
 
             # Extract changed files from commits
             changed_files = set()

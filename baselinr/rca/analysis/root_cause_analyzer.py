@@ -63,14 +63,14 @@ class RootCauseAnalyzer:
             lookback_window_hours=lookback_window_hours,
         )
 
+        # Pattern matcher is optional
+        self.pattern_matcher: Optional[PatternMatcher] = None
         if enable_pattern_learning:
             self.pattern_matcher = PatternMatcher(
                 engine=engine,
                 min_pattern_occurrences=3,
                 historical_window_days=90,
             )
-        else:
-            self.pattern_matcher = None
 
     def analyze(
         self,
@@ -302,17 +302,18 @@ class RootCauseAnalyzer:
         Returns:
             Combined confidence score (0-1)
         """
-        evidence = cause.get("evidence", {})
+        evidence = cause.get("evidence", {}) or {}
 
         # Extract individual scores
-        temporal = evidence.get("temporal_proximity", 0.0)
-        lineage = evidence.get("distance_score", 0.0)
-        historical = evidence.get("historical_pattern", {}).get("confidence_boost", 0.0)
+        temporal = float(evidence.get("temporal_proximity", 0.0) or 0.0)
+        lineage = float(evidence.get("distance_score", 0.0) or 0.0)
+        historical_dict = evidence.get("historical_pattern", {}) or {}
+        historical = float(historical_dict.get("confidence_boost", 0.0) or 0.0)
 
         # Weighted combination
         score = (temporal * 0.4) + (lineage * 0.3) + (historical * 0.3)
 
-        return min(1.0, score)
+        return min(1.0, float(score))
 
     def get_rca_summary(self, result: RCAResult) -> str:
         """
