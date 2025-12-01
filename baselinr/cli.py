@@ -2127,19 +2127,18 @@ def migrate_command(args):
 def recommend_command(args):
     """Execute recommend command to generate smart table recommendations."""
     import json
-    from pathlib import Path
-    
+
     from .cli_output import safe_print
     from .connectors.factory import create_connector
     from .smart_selection import RecommendationEngine, SmartSelectionConfig
-    
+
     log_event(
         logger,
         "command_started",
         f"Loading configuration from: {args.config}",
         metadata={"config_path": args.config, "command": "recommend"},
     )
-    
+
     try:
         # Load configuration
         config = ConfigLoader.load_from_file(args.config)
@@ -2149,7 +2148,7 @@ def recommend_command(args):
             f"Configuration loaded for environment: {config.environment}",
             metadata={"environment": config.environment},
         )
-        
+
         # Get smart selection config or use defaults
         if hasattr(config, "smart_selection") and config.smart_selection:
             # Handle if it's a dict (from YAML) vs SmartSelectionConfig
@@ -2164,43 +2163,43 @@ def recommend_command(args):
                 mode="recommend",
             )
             logger.info("No smart_selection config found, using defaults")
-        
+
         # Override output file if specified
         output_file = args.output or smart_config.recommendations.output_file
-        
+
         # Create database connector
         connector = create_connector(config.source, config.retry, config.execution)
-        
-        safe_print(f"\n📊 Generating smart table recommendations...")
+
+        safe_print("\n📊 Generating smart table recommendations...")
         safe_print(f"   Database: {config.source.database} ({config.source.type})")
         if args.schema:
             safe_print(f"   Schema: {args.schema}")
         safe_print(f"   Lookback period: {smart_config.criteria.lookback_days} days")
         safe_print("")
-        
+
         # Create recommendation engine
         engine = RecommendationEngine(
             connection_config=config.source,
             smart_config=smart_config,
         )
-        
+
         # Get existing tables to avoid duplicates
         existing_tables = config.profiling.tables if config.profiling else []
-        
+
         # Generate recommendations
         report = engine.generate_recommendations(
             engine=connector.engine,
             schema=args.schema,
             existing_tables=existing_tables,
         )
-        
+
         # Display summary
-        safe_print(f"✅ Analysis complete!")
+        safe_print("✅ Analysis complete!")
         safe_print(f"   Tables analyzed: {report.total_tables_analyzed}")
         safe_print(f"   Recommended: {report.total_recommended}")
         safe_print(f"   Excluded: {report.total_excluded}")
         safe_print("")
-        
+
         # Show confidence distribution
         if report.confidence_distribution:
             safe_print("Confidence distribution:")
@@ -2208,38 +2207,38 @@ def recommend_command(args):
                 if count > 0:
                     safe_print(f"   {level}: {count} tables")
             safe_print("")
-        
+
         # Show recommendations if --explain flag
         if args.explain and report.recommended_tables:
             safe_print("Top recommendations:")
             safe_print("")
-            
+
             for i, rec in enumerate(report.recommended_tables[:10], 1):
                 safe_print(
                     f"{i}. {rec.schema}.{rec.table} "
                     f"(confidence: {rec.confidence:.2f}, score: {rec.score:.1f})"
                 )
-                
+
                 if rec.reasons:
                     for reason in rec.reasons:
                         safe_print(f"   • {reason}")
-                
+
                 if rec.suggested_checks:
                     safe_print(f"   Suggested checks: {', '.join(rec.suggested_checks)}")
-                
+
                 if rec.warnings:
                     for warning in rec.warnings:
                         safe_print(f"   ⚠️  {warning}")
-                
+
                 safe_print("")
-            
+
             if len(report.recommended_tables) > 10:
                 safe_print(
                     f"... and {len(report.recommended_tables) - 10} more "
                     "(see output file for full list)"
                 )
                 safe_print("")
-        
+
         # Save to file
         if args.format == "yaml":
             engine.save_recommendations(report, output_file)
@@ -2249,28 +2248,28 @@ def recommend_command(args):
             with open(json_file, "w") as f:
                 json.dump(report.to_yaml_dict(), f, indent=2, default=str)
             safe_print(f"💾 Saved recommendations to: {json_file}")
-        
+
         # Handle --apply flag
         if args.apply:
             safe_print("")
             safe_print("⚠️  Apply mode: This will modify your configuration file!")
             safe_print(f"   {len(report.recommended_tables)} tables will be added to {args.config}")
             safe_print("")
-            
+
             response = input("Do you want to continue? [y/N]: ")
             if response.lower() in ["y", "yes"]:
                 _apply_recommendations(args.config, report, config)
                 safe_print("✅ Configuration updated successfully!")
             else:
                 safe_print("❌ Apply cancelled.")
-        
+
         # Success message
         safe_print("")
         safe_print("✨ Next steps:")
         safe_print(f"   1. Review recommendations in: {output_file}")
         safe_print(f"   2. Apply with: baselinr recommend --config {args.config} --apply")
-        safe_print(f"   3. Or manually add tables to your config file")
-        
+        safe_print("   3. Or manually add tables to your config file")
+
         log_event(
             logger,
             "command_completed",
@@ -2280,9 +2279,9 @@ def recommend_command(args):
                 "excluded_count": report.total_excluded,
             },
         )
-        
+
         return 0
-        
+
     except Exception as e:
         log_event(
             logger,
@@ -2294,26 +2293,28 @@ def recommend_command(args):
         safe_print(f"\n❌ Error: {e}")
         if args.debug:
             import traceback
+
             traceback.print_exc()
         return 1
 
 
 def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
     """Apply recommendations by updating the configuration file."""
-    import yaml
     from pathlib import Path
-    
+
+    import yaml  # type: ignore
+
     # Load raw config file
     config_file = Path(config_path)
     with open(config_file, "r") as f:
         raw_config = yaml.safe_load(f)
-    
+
     # Ensure profiling.tables exists
     if "profiling" not in raw_config:
         raw_config["profiling"] = {}
     if "tables" not in raw_config["profiling"]:
         raw_config["profiling"]["tables"] = []
-    
+
     # Add recommended tables
     for rec in report.recommended_tables:
         table_entry = {
@@ -2322,20 +2323,19 @@ def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
         }
         if rec.database:
             table_entry["database"] = rec.database
-        
+
         # Add comment about recommendation
-        table_entry["_comment"] = (
-            f"Auto-recommended (confidence: {rec.confidence:.2f})"
-        )
-        
+        table_entry["_comment"] = f"Auto-recommended (confidence: {rec.confidence:.2f})"
+
         raw_config["profiling"]["tables"].append(table_entry)
-    
+
     # Backup original config
     backup_path = config_file.with_suffix(config_file.suffix + ".backup")
     import shutil
+
     shutil.copy(config_file, backup_path)
     logger.info(f"Created backup: {backup_path}")
-    
+
     # Write updated config
     with open(config_file, "w") as f:
         yaml.dump(raw_config, f, default_flow_style=False, sort_keys=False)

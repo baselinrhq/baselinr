@@ -25,37 +25,37 @@ class TableMetadata:
     database: str
     schema: str
     table: str
-    
+
     # Query statistics
     query_count: int = 0
     queries_per_day: float = 0.0
     last_query_time: Optional[datetime] = None
     days_since_last_query: Optional[int] = None
-    
+
     # Table characteristics
     row_count: Optional[int] = None
     size_bytes: Optional[int] = None
     last_modified_time: Optional[datetime] = None
     days_since_modified: Optional[int] = None
     created_time: Optional[datetime] = None
-    
+
     # Additional metadata
     table_type: Optional[str] = None  # table, view, materialized_view
     has_partitions: bool = False
     partition_key: Optional[str] = None
-    
+
     # Raw metadata for debugging
-    raw_metadata: Dict[str, Any] = None
-    
+    raw_metadata: Optional[Dict[str, Any]] = None
+
     def __post_init__(self):
         """Calculate derived fields."""
         if self.raw_metadata is None:
             self.raw_metadata = {}
-        
+
         # Calculate days since last query
         if self.last_query_time:
             self.days_since_last_query = (datetime.now() - self.last_query_time).days
-        
+
         # Calculate days since modified
         if self.last_modified_time:
             self.days_since_modified = (datetime.now() - self.last_modified_time).days
@@ -72,7 +72,7 @@ class MetadataCollector:
     ):
         """
         Initialize metadata collector.
-        
+
         Args:
             engine: SQLAlchemy engine for querying metadata
             database_type: Type of database (snowflake, bigquery, postgres, etc.)
@@ -81,7 +81,7 @@ class MetadataCollector:
         self.engine = engine
         self.database_type = database_type
         self.lookback_days = lookback_days
-        
+
         # Map database types to collection methods
         self._collectors = {
             DatabaseType.SNOWFLAKE: self._collect_snowflake,
@@ -91,7 +91,7 @@ class MetadataCollector:
             DatabaseType.MYSQL: self._collect_mysql,
             DatabaseType.SQLITE: self._collect_sqlite,
         }
-    
+
     def collect_metadata(
         self,
         schema: Optional[str] = None,
@@ -99,14 +99,14 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """
         Collect metadata for tables.
-        
+
         Args:
             schema: Optional schema filter
             tables: Optional list of specific tables to collect metadata for
-        
+
         Returns:
             List of TableMetadata objects
-        
+
         Raises:
             ValueError: If database type is not supported
         """
@@ -115,19 +115,18 @@ class MetadataCollector:
             raise ValueError(
                 f"Smart selection not supported for database type: {self.database_type}"
             )
-        
+
         logger.info(
-            f"Collecting metadata for {self.database_type} "
-            f"(lookback_days={self.lookback_days})"
+            f"Collecting metadata for {self.database_type} " f"(lookback_days={self.lookback_days})"
         )
-        
+
         try:
             return collector(schema=schema, tables=tables)
         except Exception as e:
             logger.error(f"Failed to collect metadata: {e}")
             # Return empty list on error - graceful degradation
             return []
-    
+
     def _collect_snowflake(
         self,
         schema: Optional[str] = None,
@@ -135,13 +134,14 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Collect metadata from Snowflake ACCOUNT_USAGE and INFORMATION_SCHEMA."""
         results = []
-        
+
         # Calculate lookback date
         lookback_date = datetime.now() - timedelta(days=self.lookback_days)
-        
+
         # Query for table metadata with usage statistics
         # Note: ACCOUNT_USAGE views require ACCOUNTADMIN or USAGE privileges
-        query = text("""
+        query = text(
+            """
         WITH query_stats AS (
             SELECT
                 qh.database_name,
@@ -182,26 +182,27 @@ class MetadataCollector:
             AND UPPER(qs.schema_name) = UPPER(ts.schema_name)
             AND UPPER(qs.table_name) = UPPER(ts.table_name)
         WHERE 1=1
-            AND (:schema IS NULL OR UPPER(COALESCE(qs.schema_name, ts.schema_name)) = UPPER(:schema))
+            AND (
+                :schema IS NULL OR
+                UPPER(COALESCE(qs.schema_name, ts.schema_name)) = UPPER(:schema)
+            )
         ORDER BY COALESCE(qs.query_count, 0) DESC
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query,
-                    {"lookback_date": lookback_date, "schema": schema}
-                )
-                
+                result = conn.execute(query, {"lookback_date": lookback_date, "schema": schema})
+
                 for row in result:
                     # Filter by table names if specified
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     queries_per_day = (
                         row.query_count / self.lookback_days if row.query_count else 0.0
                     )
-                    
+
                     metadata = TableMetadata(
                         database=row.database_name,
                         schema=row.schema_name,
@@ -214,9 +215,9 @@ class MetadataCollector:
                         last_modified_time=row.last_modified_time,
                     )
                     results.append(metadata)
-                
+
                 logger.info(f"Collected metadata for {len(results)} Snowflake tables")
-                
+
         except Exception as e:
             logger.warning(
                 f"Failed to query Snowflake ACCOUNT_USAGE (requires privileges): {e}. "
@@ -224,9 +225,9 @@ class MetadataCollector:
             )
             # Fallback to basic INFORMATION_SCHEMA
             results = self._collect_snowflake_fallback(schema, tables)
-        
+
         return results
-    
+
     def _collect_snowflake_fallback(
         self,
         schema: Optional[str] = None,
@@ -234,8 +235,9 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Fallback Snowflake collection using only INFORMATION_SCHEMA."""
         results = []
-        
-        query = text("""
+
+        query = text(
+            """
         SELECT
             table_catalog as database_name,
             table_schema as schema_name,
@@ -249,15 +251,16 @@ class MetadataCollector:
         WHERE table_schema != 'INFORMATION_SCHEMA'
             AND (:schema IS NULL OR UPPER(table_schema) = UPPER(:schema))
         ORDER BY row_count DESC NULLS LAST
-        """)
-        
+        """
+        )
+
         with self.engine.connect() as conn:
             result = conn.execute(query, {"schema": schema})
-            
+
             for row in result:
                 if tables and row.table_name not in tables:
                     continue
-                
+
                 metadata = TableMetadata(
                     database=row.database_name,
                     schema=row.schema_name,
@@ -269,76 +272,78 @@ class MetadataCollector:
                     table_type=row.table_type,
                 )
                 results.append(metadata)
-        
+
         logger.info(f"Collected fallback metadata for {len(results)} Snowflake tables")
         return results
-    
+
     def _collect_bigquery(
         self,
         schema: Optional[str] = None,
         tables: Optional[List[str]] = None,
     ) -> List[TableMetadata]:
         """Collect metadata from BigQuery INFORMATION_SCHEMA."""
-        results = []
-        
         # BigQuery uses project.dataset.table naming
         # schema parameter maps to dataset
-        lookback_date = datetime.now() - timedelta(days=self.lookback_days)
-        
-        # Query for table metadata with usage from JOBS_BY_PROJECT
-        # Note: This requires billing data access
-        query = text("""
-        WITH query_stats AS (
-            SELECT
-                referenced_tables.project_id as project_name,
-                referenced_tables.dataset_id as dataset_name,
-                referenced_tables.table_id as table_name,
-                COUNT(*) as query_count,
-                MAX(creation_time) as last_query_time
-            FROM `region-{region}.INFORMATION_SCHEMA.JOBS_BY_PROJECT`,
-                UNNEST(referenced_tables) as referenced_tables
-            WHERE creation_time >= @lookback_date
-                AND state = 'DONE'
-                AND error_result IS NULL
-            GROUP BY project_name, dataset_name, table_name
-        ),
-        table_storage AS (
-            SELECT
-                table_catalog as project_name,
-                table_schema as dataset_name,
-                table_name,
-                CAST(row_count AS INT64) as row_count,
-                size_bytes,
-                TIMESTAMP_MILLIS(creation_time) as created_time,
-                TIMESTAMP_MILLIS(COALESCE(
-                    GREATEST(last_modified_time, last_alter_time),
-                    last_modified_time,
-                    last_alter_time
-                )) as last_modified_time,
-                table_type
-            FROM `{project}.{dataset}.INFORMATION_SCHEMA.TABLES`
-            WHERE table_type IN ('BASE TABLE', 'VIEW', 'MATERIALIZED VIEW')
-        )
-        SELECT
-            COALESCE(qs.project_name, ts.project_name) as project_name,
-            COALESCE(qs.dataset_name, ts.dataset_name) as dataset_name,
-            COALESCE(qs.table_name, ts.table_name) as table_name,
-            COALESCE(qs.query_count, 0) as query_count,
-            qs.last_query_time,
-            ts.row_count,
-            ts.size_bytes,
-            ts.last_modified_time,
-            ts.created_time,
-            ts.table_type
-        FROM query_stats qs
-        FULL OUTER JOIN table_storage ts
-            ON qs.project_name = ts.project_name
-            AND qs.dataset_name = ts.dataset_name
-            AND qs.table_name = ts.table_name
-        WHERE (@schema IS NULL OR LOWER(COALESCE(qs.dataset_name, ts.dataset_name)) = LOWER(@schema))
-        ORDER BY COALESCE(qs.query_count, 0) DESC
-        """)
-        
+        # Note: This is a stub implementation - full BigQuery query logic
+        # would use lookback_date and query variables when implemented
+        # The query structure is preserved in comments for future implementation:
+        #
+        # lookback_date = datetime.now() - timedelta(days=self.lookback_days)
+        # query = text("""
+        #     WITH query_stats AS (
+        #         SELECT
+        #             referenced_tables.project_id as project_name,
+        #             referenced_tables.dataset_id as dataset_name,
+        #             referenced_tables.table_id as table_name,
+        #             COUNT(*) as query_count,
+        #             MAX(creation_time) as last_query_time
+        #         FROM `region-{region}.INFORMATION_SCHEMA.JOBS_BY_PROJECT`,
+        #             UNNEST(referenced_tables) as referenced_tables
+        #         WHERE creation_time >= @lookback_date
+        #             AND state = 'DONE'
+        #             AND error_result IS NULL
+        #         GROUP BY project_name, dataset_name, table_name
+        #     ),
+        #     table_storage AS (
+        #         SELECT
+        #             table_catalog as project_name,
+        #             table_schema as dataset_name,
+        #             table_name,
+        #             CAST(row_count AS INT64) as row_count,
+        #             size_bytes,
+        #             TIMESTAMP_MILLIS(creation_time) as created_time,
+        #             TIMESTAMP_MILLIS(COALESCE(
+        #                 GREATEST(last_modified_time, last_alter_time),
+        #                 last_modified_time,
+        #                 last_alter_time
+        #             )) as last_modified_time,
+        #             table_type
+        #         FROM `{project}.{dataset}.INFORMATION_SCHEMA.TABLES`
+        #         WHERE table_type IN ('BASE TABLE', 'VIEW', 'MATERIALIZED VIEW')
+        #     )
+        #     SELECT
+        #         COALESCE(qs.project_name, ts.project_name) as project_name,
+        #         COALESCE(qs.dataset_name, ts.dataset_name) as dataset_name,
+        #         COALESCE(qs.table_name, ts.table_name) as table_name,
+        #         COALESCE(qs.query_count, 0) as query_count,
+        #         qs.last_query_time,
+        #         ts.row_count,
+        #         ts.size_bytes,
+        #         ts.last_modified_time,
+        #         ts.created_time,
+        #         ts.table_type
+        #     FROM query_stats qs
+        #     FULL OUTER JOIN table_storage ts
+        #         ON qs.project_name = ts.project_name
+        #         AND qs.dataset_name = ts.dataset_name
+        #         AND qs.table_name = ts.table_name
+        #     WHERE (
+        #         @schema IS NULL OR
+        #         LOWER(COALESCE(qs.dataset_name, ts.dataset_name)) = LOWER(@schema)
+        #     )
+        #     ORDER BY COALESCE(qs.query_count, 0) DESC
+        # """)
+
         # BigQuery implementation would go here
         # For now, return empty list with a note
         logger.warning(
@@ -346,7 +351,7 @@ class MetadataCollector:
             "Using INFORMATION_SCHEMA fallback."
         )
         return self._collect_bigquery_fallback(schema, tables)
-    
+
     def _collect_bigquery_fallback(
         self,
         schema: Optional[str] = None,
@@ -354,9 +359,10 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Fallback BigQuery collection using INFORMATION_SCHEMA.TABLES."""
         results = []
-        
+
         # Use simpler query for basic table information
-        query = text("""
+        query = text(
+            """
         SELECT
             table_catalog as project_name,
             table_schema as dataset_name,
@@ -369,16 +375,17 @@ class MetadataCollector:
         WHERE table_type IN ('BASE TABLE', 'VIEW', 'MATERIALIZED VIEW')
             AND (:schema IS NULL OR LOWER(table_schema) = LOWER(:schema))
         ORDER BY row_count DESC NULLS LAST
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"schema": schema})
-                
+
                 for row in result:
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     metadata = TableMetadata(
                         database=row.project_name,
                         schema=row.dataset_name,
@@ -389,13 +396,13 @@ class MetadataCollector:
                         table_type=row.table_type,
                     )
                     results.append(metadata)
-            
+
             logger.info(f"Collected fallback metadata for {len(results)} BigQuery tables")
         except Exception as e:
             logger.error(f"Failed to collect BigQuery metadata: {e}")
-        
+
         return results
-    
+
     def _collect_postgres(
         self,
         schema: Optional[str] = None,
@@ -403,37 +410,47 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Collect metadata from PostgreSQL pg_stat_user_tables."""
         results = []
-        
-        query = text("""
+
+        query = text(
+            """
         SELECT
             current_database() as database_name,
             schemaname as schema_name,
             relname as table_name,
             -- Query statistics from pg_stat_user_tables
             seq_scan + idx_scan as total_scans,
-            GREATEST(last_vacuum, last_autovacuum, last_analyze, last_autoanalyze) as last_maintenance,
+            GREATEST(
+                last_vacuum, last_autovacuum, last_analyze, last_autoanalyze
+            ) as last_maintenance,
             n_tup_ins + n_tup_upd + n_tup_del as write_operations,
             -- Table size information
-            pg_total_relation_size(quote_ident(schemaname) || '.' || quote_ident(relname)) as size_bytes,
+            pg_total_relation_size(
+                quote_ident(schemaname) || '.' || quote_ident(relname)
+            ) as size_bytes,
             -- Row count estimate from pg_class
-            (SELECT reltuples::bigint FROM pg_class WHERE oid = (schemaname || '.' || relname)::regclass) as row_count
+            (
+                SELECT reltuples::bigint
+                FROM pg_class
+                WHERE oid = (schemaname || '.' || relname)::regclass
+            ) as row_count
         FROM pg_stat_user_tables
         WHERE (:schema IS NULL OR schemaname = :schema)
         ORDER BY total_scans DESC
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"schema": schema})
-                
+
                 for row in result:
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     # PostgreSQL doesn't track individual queries easily
                     # Use scan count as proxy for usage
                     query_count = row.total_scans or 0
-                    
+
                     metadata = TableMetadata(
                         database=row.database_name,
                         schema=row.schema_name,
@@ -448,13 +465,13 @@ class MetadataCollector:
                         },
                     )
                     results.append(metadata)
-            
+
             logger.info(f"Collected metadata for {len(results)} PostgreSQL tables")
         except Exception as e:
             logger.error(f"Failed to collect PostgreSQL metadata: {e}")
-        
+
         return results
-    
+
     def _collect_redshift(
         self,
         schema: Optional[str] = None,
@@ -462,10 +479,11 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Collect metadata from Redshift STL_QUERY and SVV_TABLE_INFO."""
         results = []
-        
+
         lookback_date = datetime.now() - timedelta(days=self.lookback_days)
-        
-        query = text("""
+
+        query = text(
+            """
         WITH query_stats AS (
             SELECT
                 database,
@@ -504,23 +522,21 @@ class MetadataCollector:
             AND qs."table" = ti."table"
         WHERE (:schema IS NULL OR LOWER(COALESCE(qs."schema", ti."schema")) = LOWER(:schema))
         ORDER BY COALESCE(qs.query_count, 0) DESC
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(
-                    query,
-                    {"lookback_date": lookback_date, "schema": schema}
-                )
-                
+                result = conn.execute(query, {"lookback_date": lookback_date, "schema": schema})
+
                 for row in result:
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     queries_per_day = (
                         row.query_count / self.lookback_days if row.query_count else 0.0
                     )
-                    
+
                     metadata = TableMetadata(
                         database=row.database_name,
                         schema=row.schema_name,
@@ -535,13 +551,13 @@ class MetadataCollector:
                         },
                     )
                     results.append(metadata)
-            
+
             logger.info(f"Collected metadata for {len(results)} Redshift tables")
         except Exception as e:
             logger.error(f"Failed to collect Redshift metadata: {e}")
-        
+
         return results
-    
+
     def _collect_mysql(
         self,
         schema: Optional[str] = None,
@@ -549,10 +565,11 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Collect metadata from MySQL INFORMATION_SCHEMA."""
         results = []
-        
+
         # MySQL doesn't have built-in query history tracking
         # Use table stats from INFORMATION_SCHEMA
-        query = text("""
+        query = text(
+            """
         SELECT
             table_schema as schema_name,
             table_name,
@@ -565,20 +582,21 @@ class MetadataCollector:
         WHERE table_schema NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
             AND (:schema IS NULL OR table_schema = :schema)
         ORDER BY table_rows DESC
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(query, {"schema": schema})
-                
+
                 for row in result:
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     # Get current database name
                     db_result = conn.execute(text("SELECT DATABASE()"))
                     database_name = db_result.scalar() or "unknown"
-                    
+
                     metadata = TableMetadata(
                         database=database_name,
                         schema=row.schema_name,
@@ -590,13 +608,13 @@ class MetadataCollector:
                         table_type=row.table_type,
                     )
                     results.append(metadata)
-            
+
             logger.info(f"Collected metadata for {len(results)} MySQL tables")
         except Exception as e:
             logger.error(f"Failed to collect MySQL metadata: {e}")
-        
+
         return results
-    
+
     def _collect_sqlite(
         self,
         schema: Optional[str] = None,
@@ -604,9 +622,10 @@ class MetadataCollector:
     ) -> List[TableMetadata]:
         """Collect metadata from SQLite sqlite_master."""
         results = []
-        
+
         # SQLite has very limited metadata
-        query = text("""
+        query = text(
+            """
         SELECT
             name as table_name,
             type as table_type
@@ -614,25 +633,24 @@ class MetadataCollector:
         WHERE type IN ('table', 'view')
             AND name NOT LIKE 'sqlite_%'
         ORDER BY name
-        """)
-        
+        """
+        )
+
         try:
             with self.engine.connect() as conn:
                 result = conn.execute(query)
-                
+
                 for row in result:
                     if tables and row.table_name not in tables:
                         continue
-                    
+
                     # Try to get row count
                     try:
-                        count_result = conn.execute(
-                            text(f"SELECT COUNT(*) FROM {row.table_name}")
-                        )
+                        count_result = conn.execute(text(f"SELECT COUNT(*) FROM {row.table_name}"))
                         row_count = count_result.scalar()
                     except Exception:
                         row_count = None
-                    
+
                     metadata = TableMetadata(
                         database="main",
                         schema="main",
@@ -641,9 +659,9 @@ class MetadataCollector:
                         table_type=row.table_type,
                     )
                     results.append(metadata)
-            
+
             logger.info(f"Collected metadata for {len(results)} SQLite tables")
         except Exception as e:
             logger.error(f"Failed to collect SQLite metadata: {e}")
-        
+
         return results

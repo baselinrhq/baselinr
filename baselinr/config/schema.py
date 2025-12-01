@@ -1242,7 +1242,8 @@ class BaselinrConfig(BaseModel):
     )
     llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
     smart_selection: Optional[Any] = Field(
-        None, description="Smart table selection configuration (imported lazily to avoid circular deps)"
+        None,
+        description="Smart table selection configuration (imported lazily to avoid circular deps)",
     )
 
     @field_validator("environment")

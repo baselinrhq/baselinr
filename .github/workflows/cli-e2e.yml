@@ -337,6 +337,58 @@ jobs:
               --format ascii \
               --no-color || echo "Column visualization failed (expected if no column lineage data)"
 
+      - name: Run recommend command
+        run: |
+          # Test basic recommend command (generate recommendations)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --format yaml || echo "Recommend failed (expected if smart_selection not configured or no tables found)"
+
+          # Test recommend with explain flag
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --explain \
+              --format yaml || echo "Recommend with explain failed (expected if smart_selection not configured or no tables found)"
+
+          # Test recommend with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --format json || echo "Recommend with JSON format failed (expected if smart_selection not configured or no tables found)"
+
+          # Test recommend with schema filter
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --schema public \
+              --format yaml || echo "Recommend with schema filter failed (expected if smart_selection not configured or no tables found)"
+
       - name: Run status command
         run: |
           # Test basic status command

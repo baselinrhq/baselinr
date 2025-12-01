@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from baselinr.config.schema import ConnectionConfig, DatabaseType
 from baselinr.connectors import SQLiteConnector
@@ -38,25 +39,25 @@ class TestSmartSelectionIntegration:
         # Create test tables
         with connector.engine.connect() as conn:
             # Table 1: Active table
-            conn.execute("CREATE TABLE users (id INTEGER, name TEXT, email TEXT)")
-            conn.execute("INSERT INTO users VALUES (1, 'Alice', 'alice@example.com')")
-            conn.execute("INSERT INTO users VALUES (2, 'Bob', 'bob@example.com')")
-            conn.execute("INSERT INTO users VALUES (3, 'Charlie', 'charlie@example.com')")
+            conn.execute(text("CREATE TABLE users (id INTEGER, name TEXT, email TEXT)"))
+            conn.execute(text("INSERT INTO users VALUES (1, 'Alice', 'alice@example.com')"))
+            conn.execute(text("INSERT INTO users VALUES (2, 'Bob', 'bob@example.com')"))
+            conn.execute(text("INSERT INTO users VALUES (3, 'Charlie', 'charlie@example.com')"))
             
             # Table 2: Small lookup table
-            conn.execute("CREATE TABLE config (key TEXT, value TEXT)")
-            conn.execute("INSERT INTO config VALUES ('version', '1.0')")
+            conn.execute(text("CREATE TABLE config (key TEXT, value TEXT)"))
+            conn.execute(text("INSERT INTO config VALUES ('version', '1.0')"))
             
             # Table 3: Large-ish table
-            conn.execute("CREATE TABLE events (id INTEGER, user_id INTEGER, event_type TEXT)")
+            conn.execute(text("CREATE TABLE events (id INTEGER, user_id INTEGER, event_type TEXT)"))
             for i in range(500):
                 conn.execute(
-                    f"INSERT INTO events VALUES ({i}, {i % 10}, 'event_type_{i % 5}')"
+                    text(f"INSERT INTO events VALUES ({i}, {i % 10}, 'event_type_{i % 5}')")
                 )
             
             # Table 4: Temp table (should be excluded if pattern exists)
-            conn.execute("CREATE TABLE temp_load (data TEXT)")
-            conn.execute("INSERT INTO temp_load VALUES ('temporary')")
+            conn.execute(text("CREATE TABLE temp_load (data TEXT)"))
+            conn.execute(text("INSERT INTO temp_load VALUES ('temporary')"))
             
             conn.commit()
         
@@ -343,8 +344,11 @@ class TestSmartSelectionIntegration:
         # Simulate existing table patterns
         from baselinr.config.schema import TablePattern
         
+        # SQLite returns schema="main" and database="main" (see metadata_collector._collect_sqlite)
         existing = [
-            TablePattern(schema_="main", table="users"),
+            TablePattern(
+                database="main", schema_="main", table="users"
+            ),  # type: ignore[call-arg]
         ]
         
         report = engine.generate_recommendations(
