@@ -6,7 +6,7 @@ Constructs graph data structures from lineage data stored in the database.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.engine import Engine
 
@@ -28,7 +28,7 @@ class LineageNode:
     database: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     metrics: Optional[Dict[str, float]] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -55,7 +55,7 @@ class LineageEdge:
     transformation: Optional[str] = None
     provider: str = "unknown"
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -77,7 +77,7 @@ class LineageGraph:
     edges: List[LineageEdge] = field(default_factory=list)
     root_id: Optional[str] = None
     direction: str = "both"  # 'upstream', 'downstream', or 'both'
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
@@ -86,29 +86,29 @@ class LineageGraph:
             "root_id": self.root_id,
             "direction": self.direction,
         }
-    
+
     def get_node_by_id(self, node_id: str) -> Optional[LineageNode]:
         """Get node by ID."""
         for node in self.nodes:
             if node.id == node_id:
                 return node
         return None
-    
+
     def filter_by_confidence(self, min_confidence: float) -> "LineageGraph":
         """Return a new graph with edges filtered by minimum confidence."""
         filtered_edges = [e for e in self.edges if e.confidence >= min_confidence]
-        
+
         # Get node IDs that are still referenced
         referenced_node_ids = set()
         for edge in filtered_edges:
             referenced_node_ids.add(edge.source)
             referenced_node_ids.add(edge.target)
-        
+
         # Filter nodes to only those still referenced
         filtered_nodes = [
             n for n in self.nodes if n.id in referenced_node_ids or n.id == self.root_id
         ]
-        
+
         return LineageGraph(
             nodes=filtered_nodes,
             edges=filtered_edges,
@@ -120,7 +120,7 @@ class LineageGraph:
 class LineageGraphBuilder:
     """
     Builder for constructing lineage graphs from database.
-    
+
     Queries lineage data and constructs graph structures with nodes and edges.
     """
 
@@ -171,7 +171,7 @@ class LineageGraphBuilder:
         """
         nodes_dict: Dict[str, LineageNode] = {}
         edges_list: List[LineageEdge] = []
-        
+
         # Create root node
         root_id = self._make_table_id(schema, root_table)
         nodes_dict[root_id] = LineageNode(
@@ -182,7 +182,7 @@ class LineageGraphBuilder:
             table=root_table,
             metadata={"is_root": True},
         )
-        
+
         # Get upstream dependencies
         if direction in ("upstream", "both"):
             upstream_data = self.client.get_upstream_tables(
@@ -191,7 +191,7 @@ class LineageGraphBuilder:
             self._process_table_lineage_data(
                 upstream_data, nodes_dict, edges_list, is_upstream=True
             )
-        
+
         # Get downstream dependencies
         if direction in ("downstream", "both"):
             downstream_data = self.client.get_downstream_tables(
@@ -200,18 +200,18 @@ class LineageGraphBuilder:
             self._process_table_lineage_data(
                 downstream_data, nodes_dict, edges_list, is_upstream=False
             )
-        
+
         graph = LineageGraph(
             nodes=list(nodes_dict.values()),
             edges=edges_list,
             root_id=root_id,
             direction=direction,
         )
-        
+
         # Filter by confidence if threshold > 0
         if confidence_threshold > 0:
             graph = graph.filter_by_confidence(confidence_threshold)
-        
+
         return graph
 
     def build_column_graph(
@@ -244,7 +244,7 @@ class LineageGraphBuilder:
         """
         nodes_dict: Dict[str, LineageNode] = {}
         edges_list: List[LineageEdge] = []
-        
+
         # Create root node
         root_id = self._make_column_id(schema, root_table, root_column)
         nodes_dict[root_id] = LineageNode(
@@ -256,7 +256,7 @@ class LineageGraphBuilder:
             column=root_column,
             metadata={"is_root": True},
         )
-        
+
         # Get upstream column dependencies
         if direction in ("upstream", "both"):
             upstream_data = self.client.get_upstream_columns(
@@ -265,7 +265,7 @@ class LineageGraphBuilder:
             self._process_column_lineage_data(
                 upstream_data, nodes_dict, edges_list, is_upstream=True
             )
-        
+
         # Get downstream column dependencies
         if direction in ("downstream", "both"):
             downstream_data = self.client.get_downstream_columns(
@@ -274,18 +274,18 @@ class LineageGraphBuilder:
             self._process_column_lineage_data(
                 downstream_data, nodes_dict, edges_list, is_upstream=False
             )
-        
+
         graph = LineageGraph(
             nodes=list(nodes_dict.values()),
             edges=edges_list,
             root_id=root_id,
             direction=direction,
         )
-        
+
         # Filter by confidence if threshold > 0
         if confidence_threshold > 0:
             graph = graph.filter_by_confidence(confidence_threshold)
-        
+
         return graph
 
     def add_drift_annotations(
@@ -318,30 +318,30 @@ class LineageGraphBuilder:
             FROM baselinr_events
             WHERE event_type = 'DriftDetected'
         """
-        
+
         if run_id:
             drift_query += " AND run_id = :run_id"
-        
+
         drift_query += " ORDER BY timestamp DESC"
-        
+
         with self.engine.connect() as conn:
             if run_id:
                 result = conn.execute(text(drift_query), {"run_id": run_id})
             else:
                 result = conn.execute(text(drift_query))
-            
+
             drift_data = {}
             for row in result:
                 table_name, severity = row
                 if table_name not in drift_data:
                     drift_data[table_name] = severity
-        
+
         # Annotate nodes with drift information
         for node in graph.nodes:
             if node.type == "table" and node.table in drift_data:
                 node.metadata["has_drift"] = True
                 node.metadata["drift_severity"] = drift_data[node.table]
-        
+
         return graph
 
     def _process_table_lineage_data(
@@ -356,10 +356,8 @@ class LineageGraphBuilder:
             schema_name = item.get("schema", "")
             table_name = item.get("table", "")
             depth = item.get("depth", 0)
-            lineage_type = item.get("lineage_type", "unknown")
             provider = item.get("provider", "unknown")
-            confidence = item.get("confidence_score", 1.0)
-            
+
             # Create node if not exists
             node_id = self._make_table_id(schema_name, table_name)
             if node_id not in nodes_dict:
@@ -375,7 +373,7 @@ class LineageGraphBuilder:
                         "is_stale": item.get("is_stale", False),
                     },
                 )
-            
+
             # Note: Edges are created during recursive traversal
             # We'll need to infer edges from the depth information
             # For now, we skip edge creation as the lineage client doesn't provide parent info
@@ -393,11 +391,9 @@ class LineageGraphBuilder:
             table_name = item.get("table", "")
             column_name = item.get("column", "")
             depth = item.get("depth", 0)
-            lineage_type = item.get("lineage_type", "unknown")
             provider = item.get("provider", "unknown")
-            confidence = item.get("confidence_score", 1.0)
             transformation = item.get("transformation_expression")
-            
+
             # Create node if not exists
             node_id = self._make_column_id(schema_name, table_name, column_name)
             if node_id not in nodes_dict:
@@ -427,7 +423,7 @@ class LineageGraphBuilder:
         if schema:
             return f"{schema}.{table}.{column}"
         return f"{table}.{column}"
-    
+
     def get_all_tables(self) -> List[Dict[str, str]]:
         """
         Get all tables with lineage data.
@@ -452,12 +448,9 @@ class LineageGraphBuilder:
             ORDER BY downstream_schema, downstream_table
         """
         )
-        
+
         with self.engine.connect() as conn:
             result = conn.execute(query)
-            tables = [
-                {"schema": row[0] or "", "table": row[1]}
-                for row in result
-            ]
-        
+            tables = [{"schema": row[0] or "", "table": row[1]} for row in result]
+
         return tables

@@ -4,29 +4,31 @@ ASCII art exporter for lineage graphs.
 Generates terminal-friendly tree visualizations using box-drawing characters.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Set
 
 from ..graph_builder import LineageGraph, LineageNode
 
 try:
     import colorama
     from colorama import Fore, Style
-    
+
     colorama.init()
     HAS_COLOR = True
 except ImportError:
     HAS_COLOR = False
-    
-    # Dummy color constants
-    class Fore:
-        RED = ""
-        YELLOW = ""
-        GREEN = ""
-        CYAN = ""
-        WHITE = ""
-    
-    class Style:
-        RESET_ALL = ""
+
+    # Dummy color constants for when colorama is not available
+    if not HAS_COLOR:
+
+        class Fore:  # type: ignore[no-redef]
+            RED = ""
+            YELLOW = ""
+            GREEN = ""
+            CYAN = ""
+            WHITE = ""
+
+        class Style:  # type: ignore[no-redef]
+            RESET_ALL = ""
 
 
 class ASCIIExporter:
@@ -71,29 +73,27 @@ class ASCIIExporter:
         """
         if not graph.nodes:
             return "Empty graph"
-        
+
         # Find root node
         root = None
         for node in graph.nodes:
             if node.metadata.get("is_root"):
                 root = node
                 break
-        
+
         if not root:
             # Use first node as root
             root = graph.nodes[0]
-        
+
         # Build adjacency map
         children_map = self._build_adjacency_map(graph)
-        
+
         # Generate tree
-        lines = []
+        lines: List[str] = []
         visited: Set[str] = set()
-        
-        self._render_node_tree(
-            root, graph, children_map, visited, lines, prefix="", is_last=True
-        )
-        
+
+        self._render_node_tree(root, graph, children_map, visited, lines, prefix="", is_last=True)
+
         return "\n".join(lines)
 
     def export_table(self, graph: LineageGraph) -> str:
@@ -108,19 +108,19 @@ class ASCIIExporter:
         """
         if not graph.nodes:
             return "Empty graph"
-        
+
         lines = []
-        
+
         # Header
         lines.append("=" * 80)
         lines.append("LINEAGE GRAPH")
         lines.append("=" * 80)
         lines.append("")
-        
+
         # Tables
         lines.append("NODES:")
         lines.append("-" * 80)
-        
+
         for node in graph.nodes:
             status = ""
             if self.use_color:
@@ -140,22 +140,21 @@ class ASCIIExporter:
                     status = f"[DRIFT: {severity.upper()}]"
                 elif node.metadata.get("is_root"):
                     status = "[ROOT]"
-            
+
             lines.append(f"  {node.label} ({node.type}) {status}")
-        
+
         lines.append("")
         lines.append("EDGES:")
         lines.append("-" * 80)
-        
+
         for edge in graph.edges:
             confidence_str = f"[{edge.confidence:.2f}]" if edge.confidence < 1.0 else ""
             lines.append(
-                f"  {edge.source} → {edge.target} "
-                f"({edge.relationship_type}) {confidence_str}"
+                f"  {edge.source} → {edge.target} " f"({edge.relationship_type}) {confidence_str}"
             )
-        
+
         lines.append("=" * 80)
-        
+
         return "\n".join(lines)
 
     def _render_node_tree(
@@ -173,7 +172,7 @@ class ASCIIExporter:
         if node.id in visited:
             return
         visited.add(node.id)
-        
+
         # Determine tree characters
         if prefix == "":
             # Root node
@@ -182,10 +181,10 @@ class ASCIIExporter:
         else:
             connector = "└── " if is_last else "├── "
             new_prefix = prefix + ("    " if is_last else "│   ")
-        
+
         # Format node label with color and metadata
         label = node.label
-        
+
         if self.use_color:
             if node.metadata.get("has_drift"):
                 severity = node.metadata.get("drift_severity", "low")
@@ -197,19 +196,19 @@ class ASCIIExporter:
                     label = f"{Fore.YELLOW}{label}{Style.RESET_ALL}"
             elif node.metadata.get("is_root"):
                 label = f"{Fore.CYAN}{label}{Style.RESET_ALL}"
-        
+
         # Add metadata annotations
         annotations = []
         if node.schema:
             annotations.append(f"schema: {node.schema}")
         if node.type == "column":
             annotations.append("column")
-        
+
         if annotations:
             label += f" ({', '.join(annotations)})"
-        
+
         lines.append(f"{prefix}{connector}{label}")
-        
+
         # Render children
         children = children_map.get(node.id, [])
         for i, child_id in enumerate(children):
@@ -228,7 +227,7 @@ class ASCIIExporter:
     def _build_adjacency_map(self, graph: LineageGraph) -> Dict[str, List[str]]:
         """Build map of node ID to list of child node IDs."""
         adjacency: Dict[str, List[str]] = {}
-        
+
         # Determine direction based on graph.direction
         if graph.direction == "downstream":
             # Source points to target (parent -> child)
@@ -236,14 +235,14 @@ class ASCIIExporter:
                 if edge.source not in adjacency:
                     adjacency[edge.source] = []
                 adjacency[edge.source].append(edge.target)
-        
+
         elif graph.direction == "upstream":
             # Target points to source (child -> parent, reversed for display)
             for edge in graph.edges:
                 if edge.target not in adjacency:
                     adjacency[edge.target] = []
                 adjacency[edge.target].append(edge.source)
-        
+
         else:  # both
             # Show both directions, prefer downstream from root
             for edge in graph.edges:
@@ -251,7 +250,7 @@ class ASCIIExporter:
                 if edge.source not in adjacency:
                     adjacency[edge.source] = []
                 adjacency[edge.source].append(edge.target)
-        
+
         return adjacency
 
     def export_simple(self, graph: LineageGraph) -> str:
@@ -265,13 +264,13 @@ class ASCIIExporter:
             Simple list as string
         """
         lines = []
-        
+
         for node in graph.nodes:
             indent_level = node.metadata.get("depth", 0)
             indent_str = "  " * indent_level
-            
+
             symbol = "●" if node.metadata.get("is_root") else "○"
-            
+
             lines.append(f"{indent_str}{symbol} {node.label}")
-        
+
         return "\n".join(lines)

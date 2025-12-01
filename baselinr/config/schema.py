@@ -1170,9 +1170,7 @@ class VisualizationConfig(BaseModel):
     max_depth: int = Field(
         3, ge=1, le=10, description="Default maximum depth for lineage traversal"
     )
-    direction: str = Field(
-        "both", description="Default direction (upstream/downstream/both)"
-    )
+    direction: str = Field("both", description="Default direction (upstream/downstream/both)")
     confidence_threshold: float = Field(
         0.5, ge=0.0, le=1.0, description="Default confidence threshold"
     )
@@ -1240,7 +1238,7 @@ class BaselinrConfig(BaseModel):
     lineage: Optional[LineageConfig] = Field(None, description="Lineage extraction configuration")
     visualization: VisualizationConfig = Field(
         default_factory=lambda: VisualizationConfig(),  # type: ignore[call-arg]
-        description="Lineage visualization configuration"
+        description="Lineage visualization configuration",
     )
     llm: Optional[LLMConfig] = Field(None, description="LLM configuration for explanations")
 
