@@ -8,6 +8,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getLineageGraph, getAllTables, searchTables } from '@/lib/api/lineage';
 import { LineageGraphResponse, TableInfoResponse } from '@/types/lineage';
+import LineageViewer from '@/components/lineage/LineageViewer';
 
 function LineageContent() {
   const searchParams = useSearchParams();
@@ -24,6 +25,7 @@ function LineageContent() {
   );
   const [depth, setDepth] = useState(Number(searchParams.get('depth')) || 3);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0);
+  const [layout, setLayout] = useState<'hierarchical' | 'circular' | 'force-directed'>('hierarchical');
 
   const [graph, setGraph] = useState<LineageGraphResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -216,6 +218,22 @@ function LineageContent() {
               </div>
             </div>
 
+            {/* Layout */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Layout
+              </label>
+              <select
+                value={layout}
+                onChange={(e) => setLayout(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="hierarchical">Hierarchical</option>
+                <option value="circular">Circular</option>
+                <option value="force-directed">Force-Directed</option>
+              </select>
+            </div>
+
             {/* Stats */}
             {graph && (
               <div className="pt-4 border-t border-gray-200">
@@ -258,79 +276,37 @@ function LineageContent() {
           )}
 
           {!loading && !error && graph && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6 h-full">
-              <div className="mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Lineage Graph
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {graph.nodes.length} nodes, {graph.edges.length} relationships
-                </p>
-              </div>
-
-              {/* Simple table-based visualization for now */}
-              <div className="space-y-4 overflow-y-auto max-h-[calc(100%-80px)]">
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Nodes</h3>
-                  <div className="space-y-2">
-                    {graph.nodes.map((node) => (
-                      <div
-                        key={node.id}
-                        className={`p-3 rounded border ${
-                          node.metadata?.is_root
-                            ? 'border-blue-300 bg-blue-50'
-                            : 'border-gray-200 bg-gray-50'
-                        }`}
-                      >
-                        <div className="font-medium text-gray-900">{node.label}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {node.type} {node.schema && `• ${node.schema}`}
-                        </div>
-                        {node.metadata?.has_drift && (
-                          <div className="mt-2 text-xs">
-                            <span
-                              className={`inline-flex px-2 py-1 rounded ${
-                                node.metadata.drift_severity === 'high'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}
-                            >
-                              Drift: {node.metadata.drift_severity}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+            <div className="h-full flex flex-col">
+              <div className="mb-4 bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Lineage Graph
+                    </h2>
+                    <p className="text-sm text-gray-600">
+                      {graph.nodes.length} nodes, {graph.edges.length} relationships
+                    </p>
+                  </div>
+                  <div className="flex gap-2 text-xs text-gray-500">
+                    <span>Zoom: Scroll wheel</span>
+                    <span>•</span>
+                    <span>Pan: Click & drag</span>
                   </div>
                 </div>
-
-                {graph.edges.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Relationships</h3>
-                    <div className="space-y-2">
-                      {graph.edges.map((edge, idx) => (
-                        <div key={idx} className="p-3 rounded border border-gray-200 bg-gray-50">
-                          <div className="text-sm">
-                            <span className="font-medium text-gray-900">{edge.source}</span>
-                            <span className="mx-2 text-gray-400">→</span>
-                            <span className="font-medium text-gray-900">{edge.target}</span>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {edge.relationship_type} • {edge.provider} • 
-                            confidence: {(edge.confidence * 100).toFixed(0)}%
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200 text-center text-sm text-gray-500">
-                <p>Interactive graph visualization with Cytoscape.js coming soon</p>
-                <p className="text-xs mt-1">
-                  For now, use the CLI: <code className="bg-gray-100 px-1 rounded">baselinr lineage visualize</code>
-                </p>
+              <div className="flex-1 min-h-0">
+                <LineageViewer
+                  graph={graph}
+                  loading={loading}
+                  layout={layout}
+                  onNodeClick={(nodeId) => {
+                    console.log('Node clicked:', nodeId);
+                  }}
+                  onEdgeClick={(edgeId) => {
+                    console.log('Edge clicked:', edgeId);
+                  }}
+                />
               </div>
             </div>
           )}
