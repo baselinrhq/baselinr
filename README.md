@@ -11,6 +11,7 @@
 
 ## 🚀 Features
 
+- **Smart Table Selection** ✨ **NEW**: Automatically recommend tables to monitor based on database usage patterns, query frequency, and metadata analysis - reduce configuration overhead with intelligent, usage-based table discovery
 - **Automated Profiling**: Profile tables with column-level metrics (count, null %, distinct values, mean, stddev, histograms, etc.)
 - **Drift Detection**: Compare profiling runs to detect schema and statistical drift with configurable strategies
 - **Type-Specific Thresholds**: Adjust drift sensitivity based on column data type (numeric, categorical, timestamp, boolean) to reduce false positives
