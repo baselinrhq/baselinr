@@ -340,7 +340,44 @@ def safe_print(*args, **kwargs) -> None:
         try:
             console.print(*args, **kwargs)
         except (UnicodeEncodeError, OSError):
-            # Fallback to plain print
-            print(*args, **kwargs)
+            # Fallback to plain print with Unicode handling
+            try:
+                import sys
+
+                # Try to print with UTF-8 encoding
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                print(*args, **kwargs)
+            except (UnicodeEncodeError, OSError):
+                # Last resort: remove emojis and print
+                import re
+
+                cleaned_args = [
+                    (
+                        re.sub(r"[\U0001F300-\U0001F9FF\U00002600-\U000027BF]", "", str(arg))
+                        if isinstance(arg, str)
+                        else arg
+                    )
+                    for arg in args
+                ]
+                print(*cleaned_args, **kwargs)
     else:
-        print(*args, **kwargs)
+        try:
+            import sys
+
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            print(*args, **kwargs)
+        except (UnicodeEncodeError, OSError):
+            # Last resort: remove emojis and print
+            import re
+
+            cleaned_args = [
+                (
+                    re.sub(r"[\U0001F300-\U0001F9FF\U00002600-\U000027BF]", "", str(arg))
+                    if isinstance(arg, str)
+                    else arg
+                )
+                for arg in args
+            ]
+            print(*cleaned_args, **kwargs)

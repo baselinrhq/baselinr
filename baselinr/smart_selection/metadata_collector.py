@@ -54,11 +54,21 @@ class TableMetadata:
 
         # Calculate days since last query
         if self.last_query_time:
-            self.days_since_last_query = (datetime.now() - self.last_query_time).days
+            # Normalize timezone-aware/naive datetime for comparison
+            query_time = self.last_query_time
+            if hasattr(query_time, "tzinfo") and query_time.tzinfo is not None:
+                query_time = query_time.replace(tzinfo=None)
+            now = datetime.now()
+            self.days_since_last_query = (now - query_time).days
 
         # Calculate days since modified
         if self.last_modified_time:
-            self.days_since_modified = (datetime.now() - self.last_modified_time).days
+            # Normalize timezone-aware/naive datetime for comparison
+            modified_time = self.last_modified_time
+            if hasattr(modified_time, "tzinfo") and modified_time.tzinfo is not None:
+                modified_time = modified_time.replace(tzinfo=None)
+            now = datetime.now()
+            self.days_since_modified = (now - modified_time).days
 
 
 class MetadataCollector:
@@ -415,26 +425,22 @@ class MetadataCollector:
             """
         SELECT
             current_database() as database_name,
-            schemaname as schema_name,
-            relname as table_name,
+            st.schemaname as schema_name,
+            st.relname as table_name,
             -- Query statistics from pg_stat_user_tables
-            seq_scan + idx_scan as total_scans,
+            st.seq_scan + st.idx_scan as total_scans,
             GREATEST(
-                last_vacuum, last_autovacuum, last_analyze, last_autoanalyze
+                st.last_vacuum, st.last_autovacuum,
+                st.last_analyze, st.last_autoanalyze
             ) as last_maintenance,
-            n_tup_ins + n_tup_upd + n_tup_del as write_operations,
+            st.n_tup_ins + st.n_tup_upd + st.n_tup_del as write_operations,
             -- Table size information
-            pg_total_relation_size(
-                quote_ident(schemaname) || '.' || quote_ident(relname)
-            ) as size_bytes,
-            -- Row count estimate from pg_class
-            (
-                SELECT reltuples::bigint
-                FROM pg_class
-                WHERE oid = (schemaname || '.' || relname)::regclass
-            ) as row_count
-        FROM pg_stat_user_tables
-        WHERE (:schema IS NULL OR schemaname = :schema)
+            pg_total_relation_size(st.relid) as size_bytes,
+            -- Row count estimate from pg_class (use relid to avoid regclass issues)
+            COALESCE(c.reltuples::bigint, 0) as row_count
+        FROM pg_stat_user_tables st
+        LEFT JOIN pg_class c ON c.oid = st.relid
+        WHERE (:schema IS NULL OR st.schemaname = :schema)
         ORDER BY total_scans DESC
         """
         )
@@ -451,6 +457,14 @@ class MetadataCollector:
                     # Use scan count as proxy for usage
                     query_count = row.total_scans or 0
 
+                    # Handle timezone-aware/naive datetime issues
+                    last_modified = row.last_maintenance
+                    if last_modified:
+                        # Make timezone-naive if needed for comparison
+                        if hasattr(last_modified, "tzinfo") and last_modified.tzinfo is not None:
+                            # Convert to naive (remove timezone info)
+                            last_modified = last_modified.replace(tzinfo=None)
+
                     metadata = TableMetadata(
                         database=row.database_name,
                         schema=row.schema_name,
@@ -459,7 +473,7 @@ class MetadataCollector:
                         queries_per_day=query_count / self.lookback_days if query_count else 0.0,
                         row_count=row.row_count,
                         size_bytes=row.size_bytes,
-                        last_modified_time=row.last_maintenance,
+                        last_modified_time=last_modified,
                         raw_metadata={
                             "write_operations": row.write_operations,
                         },
