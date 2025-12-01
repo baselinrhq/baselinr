@@ -1108,6 +1108,12 @@ class LineageConfig(BaseModel):
         None,
         description="dbt-specific configuration (e.g., manifest_path)",
     )
+    dagster: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Dagster-specific configuration " "(e.g., metadata_db_url, code_locations, graphql_url)"
+        ),
+    )
     query_history: Optional[QueryHistoryConfig] = Field(
         None,
         description="Query history lineage configuration",
