@@ -19,6 +19,7 @@
 - **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
 - **Expectation Learning**: Automatically learns expected metric ranges from historical profiling data, including control limits, distributions, and categorical frequencies for proactive anomaly detection
 - **Anomaly Detection**: Automatically detects outliers and seasonal anomalies using learned expectations with multiple detection methods (IQR, MAD, EWMA, trend/seasonality, regime shift)
+- **Root Cause Analysis** ✨ **NEW**: Automatically correlates anomalies with pipeline runs, code changes, and upstream data issues using temporal correlation, lineage analysis, and pattern matching
 - **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, anomalies, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets

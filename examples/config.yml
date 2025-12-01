@@ -538,3 +538,19 @@ llm:
 #   # model: llama2
 #   # Note: Ollama runs locally, no API key needed
 
+rca:
+  enabled: true
+  lookback_window_hours: 24
+  max_depth: 5
+  max_causes_to_return: 5
+  min_confidence_threshold: 0.3
+  auto_analyze: true
+  enable_pattern_learning: true
+  collectors:
+    dbt: true  # or false
+    manifest_path: ./dbt_package/target/manifest.json  # if using dbt
+    project_dir: ./dbt_package  # if using dbt
+    
+    dagster: false  # set to true if using Dagster
+    dagster_instance_path: /path/to/.dagster  # optional
+    dagster_graphql_url: http://localhost:3000/graphql  # optional

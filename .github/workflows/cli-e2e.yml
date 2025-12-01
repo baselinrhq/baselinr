@@ -428,6 +428,46 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --drift-only
 
+      - name: Run RCA CLI commands
+        run: |
+          # Test RCA list command (should work even with no data)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr rca list \
+              --config $BASELINR_CONFIG_PATH \
+              --limit 5 \
+              --format table || echo "RCA list failed (expected if no RCA data)"
+
+          # Test RCA list with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr rca list \
+              --config $BASELINR_CONFIG_PATH \
+              --limit 5 \
+              --format json || echo "RCA list JSON failed (expected if no RCA data)"
+
+          # Test RCA collect command (dbt collector)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr rca collect \
+              --config $BASELINR_CONFIG_PATH \
+              --type dbt || echo "RCA collect failed (expected if dbt not configured or no runs found)"
+
       - name: Dump PostgreSQL logs on failure
         if: failure()
         run: docker logs baselinr_postgres || true

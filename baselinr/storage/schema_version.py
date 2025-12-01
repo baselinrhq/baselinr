@@ -1,6 +1,6 @@
 """Schema version management for Baselinr storage layer."""
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 7
 
 # Version history
 VERSION_HISTORY = {
@@ -33,6 +33,22 @@ VERSION_HISTORY = {
             "from multiple providers with transformation expression support"
         ),
         "applied": "2025-11-26",
+        "breaking_changes": False,
+    },
+    6: {
+        "description": (
+            "Add RCA tables (pipeline_runs, code_deployments, rca_results) "
+            "for root cause analysis of data anomalies"
+        ),
+        "applied": "2025-12-01",
+        "breaking_changes": False,
+    },
+    7: {
+        "description": (
+            "Add database_name column to baselinr_rca_results table "
+            "to support fully qualified table names in modern warehouses"
+        ),
+        "applied": "2025-12-01",
         "breaking_changes": False,
     },
 }
