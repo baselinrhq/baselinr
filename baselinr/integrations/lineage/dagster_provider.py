@@ -302,9 +302,10 @@ class DagsterLineageProvider(LineageProvider):
 
                                 # Try with schema prefix
                                 if schema and asset_name == f"{schema}_{table_name}":
+                                    table_id = f"{schema}.{table_name}"
                                     logger.debug(
                                         f"Found Dagster asset {asset_key_json} for table "
-                                        f"{schema}.{table_name}"
+                                        f"{table_id}"
                                     )
                                     return asset_key_json
                         except (json.JSONDecodeError, IndexError) as e:
@@ -473,9 +474,7 @@ class DagsterLineageProvider(LineageProvider):
             return edges
         except Exception as e:
             table_id = f"{schema}.{table_name}" if schema else table_name
-            logger.debug(
-                f"Error extracting Dagster lineage from metadata DB for {table_id}: {e}"
-            )
+            logger.debug(f"Error extracting Dagster lineage from metadata DB for {table_id}: {e}")
             return []
 
     def _extract_from_code(
@@ -718,9 +717,7 @@ class DagsterLineageProvider(LineageProvider):
 
         except Exception as e:
             table_id = f"{schema}.{table_name}" if schema else table_name
-            logger.warning(
-                f"Error extracting Dagster lineage from GraphQL API for {table_id}: {e}"
-            )
+            logger.warning(f"Error extracting Dagster lineage from GraphQL API for {table_id}: {e}")
 
         return []
 
@@ -981,8 +978,19 @@ class DagsterLineageProvider(LineageProvider):
             asset_key_str: Asset key string for the downstream asset
         """
         edges: List[ColumnLineageEdge] = []
-        column_lineage = metadata.get("dagster/column_lineage")
-        if not column_lineage or not isinstance(column_lineage, dict):
+        column_lineage_metadata = metadata.get("dagster/column_lineage")
+        if not column_lineage_metadata or not isinstance(column_lineage_metadata, dict):
+            return edges
+
+        # Dagster metadata entries are wrapped in a "value" key
+        # Check for the value wrapper (consistent with dependency extraction)
+        if "value" in column_lineage_metadata:
+            column_lineage = column_lineage_metadata["value"]
+        else:
+            # Fallback: assume the metadata is directly the column lineage data
+            column_lineage = column_lineage_metadata
+
+        if not isinstance(column_lineage, dict):
             return edges
 
         deps_by_column = column_lineage.get("deps_by_column", {})
@@ -999,6 +1007,14 @@ class DagsterLineageProvider(LineageProvider):
                 continue
 
             for dep in deps:
+                # Validate dep is a dict before accessing properties
+                if not isinstance(dep, dict):
+                    logger.debug(
+                        f"Skipping column {output_col}: dep is not a dict "
+                        f"(type: {type(dep).__name__})"
+                    )
+                    continue
+
                 dep_asset_key = "::".join(dep.get("asset_key", {}).get("path", []))
                 upstream_col = dep.get("column_name", "")
 
