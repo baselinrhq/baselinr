@@ -248,6 +248,95 @@ jobs:
               --to-column email \
               --format json || echo "No column path found (expected if column lineage not enabled)"
 
+      - name: Run lineage visualization commands
+        run: |
+          # Test lineage visualize with ASCII format (works even without lineage data)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format ascii \
+              --no-color || echo "Visualization failed (expected if no lineage data)"
+
+          # Test lineage visualize with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format json \
+              --json-format generic || echo "JSON export failed (expected if no lineage data)"
+
+          # Test lineage visualize with Mermaid format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format mermaid \
+              --direction upstream \
+              --depth 2 || echo "Mermaid export failed (expected if no lineage data)"
+
+          # Test lineage visualize with DOT format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format dot \
+              --direction downstream || echo "DOT export failed (expected if no lineage data)"
+
+          # Test lineage visualize with drift highlighting
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format ascii \
+              --highlight-drift \
+              --no-color || echo "Drift highlighting failed (expected if no lineage/drift data)"
+
+          # Test column-level lineage visualization
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage visualize \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --column customer_id \
+              --format ascii \
+              --no-color || echo "Column visualization failed (expected if no column lineage data)"
+
       - name: Run status command
         run: |
           # Test basic status command

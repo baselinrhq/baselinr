@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
 from typing import List, Optional
 import os
+import sys
 
 from models import (
     RunHistoryResponse,
@@ -20,6 +21,14 @@ from models import (
     DriftAlertResponse,
     MetricsDashboardResponse,
     TableMetricsResponse
+)
+from lineage_models import (
+    LineageGraphResponse,
+    LineageNodeResponse,
+    LineageEdgeResponse,
+    NodeDetailsResponse,
+    TableInfoResponse,
+    DriftPathResponse,
 )
 from database import DatabaseClient
 
@@ -41,6 +50,19 @@ app.add_middleware(
 
 # Initialize database client
 db_client = DatabaseClient()
+
+# Import baselinr visualization components
+# Add parent directory to path to import baselinr
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
+try:
+    from baselinr.visualization import LineageGraphBuilder
+    from baselinr.visualization.exporters import JSONExporter
+    from baselinr.visualization.layout import HierarchicalLayout
+    LINEAGE_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Lineage visualization not available: {e}")
+    LINEAGE_AVAILABLE = False
 
 
 @app.get("/")
@@ -222,6 +244,332 @@ async def export_drift(
     )
     
     return data
+
+
+# ============================================================================
+# LINEAGE ENDPOINTS
+# ============================================================================
+
+@app.get("/api/lineage/graph", response_model=LineageGraphResponse)
+async def get_lineage_graph(
+    table: str = Query(..., description="Table name"),
+    schema: Optional[str] = Query(None, description="Schema name"),
+    direction: str = Query("both", pattern="^(upstream|downstream|both)$"),
+    depth: int = Query(3, ge=1, le=10, description="Maximum depth to traverse"),
+    confidence_threshold: float = Query(0.0, ge=0.0, le=1.0, description="Minimum confidence score"),
+):
+    """
+    Get lineage graph for a table.
+    
+    Returns nodes and edges representing the lineage relationships.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        builder = LineageGraphBuilder(db_client.engine)
+        graph = builder.build_table_graph(
+            root_table=table,
+            schema=schema,
+            direction=direction,
+            max_depth=depth,
+            confidence_threshold=confidence_threshold,
+        )
+        
+        # Convert to response model
+        nodes = [
+            LineageNodeResponse(**node.to_dict())
+            for node in graph.nodes
+        ]
+        edges = [
+            LineageEdgeResponse(**edge.to_dict())
+            for edge in graph.edges
+        ]
+        
+        return LineageGraphResponse(
+            nodes=nodes,
+            edges=edges,
+            root_id=graph.root_id,
+            direction=graph.direction,
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to build lineage graph: {str(e)}")
+
+
+@app.get("/api/lineage/column-graph", response_model=LineageGraphResponse)
+async def get_column_lineage_graph(
+    table: str = Query(..., description="Table name"),
+    column: str = Query(..., description="Column name"),
+    schema: Optional[str] = Query(None, description="Schema name"),
+    direction: str = Query("both", pattern="^(upstream|downstream|both)$"),
+    depth: int = Query(3, ge=1, le=10, description="Maximum depth to traverse"),
+    confidence_threshold: float = Query(0.0, ge=0.0, le=1.0, description="Minimum confidence score"),
+):
+    """
+    Get column-level lineage graph.
+    
+    Returns nodes and edges representing column-level dependencies.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        builder = LineageGraphBuilder(db_client.engine)
+        graph = builder.build_column_graph(
+            root_table=table,
+            root_column=column,
+            schema=schema,
+            direction=direction,
+            max_depth=depth,
+            confidence_threshold=confidence_threshold,
+        )
+        
+        # Convert to response model
+        nodes = [
+            LineageNodeResponse(**node.to_dict())
+            for node in graph.nodes
+        ]
+        edges = [
+            LineageEdgeResponse(**edge.to_dict())
+            for edge in graph.edges
+        ]
+        
+        return LineageGraphResponse(
+            nodes=nodes,
+            edges=edges,
+            root_id=graph.root_id,
+            direction=graph.direction,
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to build column lineage graph: {str(e)}")
+
+
+@app.get("/api/lineage/node/{node_id}", response_model=NodeDetailsResponse)
+async def get_node_details(node_id: str):
+    """
+    Get detailed information about a specific node.
+    
+    Includes upstream/downstream counts and provider information.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        from sqlalchemy import text
+        
+        # Parse node_id (format: "schema.table" or "schema.table.column")
+        parts = node_id.split(".")
+        
+        if len(parts) == 2:
+            # Table node
+            schema, table = parts
+            node_type = "table"
+            
+            # Count upstream/downstream tables
+            upstream_query = text("""
+                SELECT COUNT(DISTINCT upstream_table)
+                FROM baselinr_lineage
+                WHERE downstream_schema = :schema AND downstream_table = :table
+            """)
+            downstream_query = text("""
+                SELECT COUNT(DISTINCT downstream_table)
+                FROM baselinr_lineage
+                WHERE upstream_schema = :schema AND upstream_table = :table
+            """)
+            
+            # Get providers
+            providers_query = text("""
+                SELECT DISTINCT provider
+                FROM baselinr_lineage
+                WHERE (downstream_schema = :schema AND downstream_table = :table)
+                   OR (upstream_schema = :schema AND upstream_table = :table)
+            """)
+            
+            with db_client.engine.connect() as conn:
+                upstream_count = conn.execute(upstream_query, {"schema": schema, "table": table}).scalar() or 0
+                downstream_count = conn.execute(downstream_query, {"schema": schema, "table": table}).scalar() or 0
+                providers = [row[0] for row in conn.execute(providers_query, {"schema": schema, "table": table})]
+            
+            return NodeDetailsResponse(
+                id=node_id,
+                type=node_type,
+                label=table,
+                schema=schema,
+                table=table,
+                upstream_count=upstream_count,
+                downstream_count=downstream_count,
+                providers=providers,
+            )
+        
+        elif len(parts) == 3:
+            # Column node
+            schema, table, column = parts
+            node_type = "column"
+            
+            # Count upstream/downstream columns
+            upstream_query = text("""
+                SELECT COUNT(*)
+                FROM baselinr_column_lineage
+                WHERE downstream_schema = :schema 
+                  AND downstream_table = :table 
+                  AND downstream_column = :column
+            """)
+            downstream_query = text("""
+                SELECT COUNT(*)
+                FROM baselinr_column_lineage
+                WHERE upstream_schema = :schema 
+                  AND upstream_table = :table 
+                  AND upstream_column = :column
+            """)
+            
+            # Get providers
+            providers_query = text("""
+                SELECT DISTINCT provider
+                FROM baselinr_column_lineage
+                WHERE (downstream_schema = :schema AND downstream_table = :table AND downstream_column = :column)
+                   OR (upstream_schema = :schema AND upstream_table = :table AND upstream_column = :column)
+            """)
+            
+            with db_client.engine.connect() as conn:
+                upstream_count = conn.execute(upstream_query, {"schema": schema, "table": table, "column": column}).scalar() or 0
+                downstream_count = conn.execute(downstream_query, {"schema": schema, "table": table, "column": column}).scalar() or 0
+                providers = [row[0] for row in conn.execute(providers_query, {"schema": schema, "table": table, "column": column})]
+            
+            return NodeDetailsResponse(
+                id=node_id,
+                type=node_type,
+                label=f"{table}.{column}",
+                schema=schema,
+                table=table,
+                column=column,
+                upstream_count=upstream_count,
+                downstream_count=downstream_count,
+                providers=providers,
+            )
+        
+        else:
+            raise HTTPException(status_code=400, detail="Invalid node_id format")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get node details: {str(e)}")
+
+
+@app.get("/api/lineage/search", response_model=List[TableInfoResponse])
+async def search_lineage(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """
+    Search for tables in lineage data.
+    
+    Returns matching tables based on name pattern.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        builder = LineageGraphBuilder(db_client.engine)
+        all_tables = builder.get_all_tables()
+        
+        # Filter tables matching search query
+        search_lower = q.lower()
+        matching = [
+            TableInfoResponse(**t)
+            for t in all_tables
+            if search_lower in t["table"].lower() or search_lower in (t["schema"] or "").lower()
+        ]
+        
+        return matching[:limit]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
+
+@app.get("/api/lineage/tables", response_model=List[TableInfoResponse])
+async def get_all_lineage_tables(
+    limit: int = Query(100, ge=1, le=1000),
+):
+    """
+    Get all tables with lineage data.
+    
+    Returns list of tables that have lineage relationships.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        builder = LineageGraphBuilder(db_client.engine)
+        tables = builder.get_all_tables()
+        
+        return [TableInfoResponse(**t) for t in tables[:limit]]
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get tables: {str(e)}")
+
+
+@app.get("/api/lineage/drift-path", response_model=DriftPathResponse)
+async def get_drift_propagation(
+    table: str = Query(..., description="Table name"),
+    schema: Optional[str] = Query(None, description="Schema name"),
+    run_id: Optional[str] = Query(None, description="Optional run ID"),
+):
+    """
+    Get drift propagation path showing affected downstream tables.
+    
+    Identifies tables with drift and visualizes impact on downstream dependencies.
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        # Build lineage graph
+        builder = LineageGraphBuilder(db_client.engine)
+        graph = builder.build_table_graph(
+            root_table=table,
+            schema=schema,
+            direction="downstream",
+            max_depth=5,
+        )
+        
+        # Add drift annotations
+        graph = builder.add_drift_annotations(graph, run_id=run_id)
+        
+        # Check if root has drift
+        root_node = graph.get_node_by_id(graph.root_id or "")
+        has_drift = root_node and root_node.metadata.get("has_drift", False)
+        drift_severity = root_node.metadata.get("drift_severity") if root_node else None
+        
+        # Find affected downstream tables
+        affected = []
+        for node in graph.nodes:
+            if node.metadata.get("has_drift") and node.id != graph.root_id:
+                affected.append(TableInfoResponse(
+                    schema=node.schema or "",
+                    table=node.table or node.label,
+                ))
+        
+        # Convert graph to response
+        nodes = [LineageNodeResponse(**node.to_dict()) for node in graph.nodes]
+        edges = [LineageEdgeResponse(**edge.to_dict()) for edge in graph.edges]
+        
+        return DriftPathResponse(
+            table=table,
+            schema=schema,
+            has_drift=has_drift,
+            drift_severity=drift_severity,
+            affected_downstream=affected,
+            lineage_path=LineageGraphResponse(
+                nodes=nodes,
+                edges=edges,
+                root_id=graph.root_id,
+                direction=graph.direction,
+            ),
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get drift path: {str(e)}")
 
 
 if __name__ == "__main__":

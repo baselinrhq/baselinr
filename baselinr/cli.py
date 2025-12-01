@@ -895,6 +895,129 @@ COLUMN METRICS:
         return 1
 
 
+def lineage_visualize_command(args):
+    """Execute lineage visualize command."""
+    from .cli_output import safe_print
+
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        # Create connector and engine
+        from .connectors.factory import create_connector
+
+        connector = create_connector(config.storage.connection, config.retry)
+        engine = connector.engine
+
+        # Import visualization components
+        from .visualization import LineageGraphBuilder
+        from .visualization.exporters import (
+            ASCIIExporter,
+            GraphvizExporter,
+            JSONExporter,
+            MermaidExporter,
+        )
+
+        # Build graph
+        safe_print(f"Building lineage graph for {args.table}...")
+        builder = LineageGraphBuilder(engine)
+
+        if args.column:
+            # Column-level lineage
+            graph = builder.build_column_graph(
+                root_table=args.table,
+                root_column=args.column,
+                schema=args.schema,
+                direction=args.direction,
+                max_depth=args.depth,
+            )
+        else:
+            # Table-level lineage
+            graph = builder.build_table_graph(
+                root_table=args.table,
+                schema=args.schema,
+                direction=args.direction,
+                max_depth=args.depth,
+            )
+
+        # Add drift highlighting if requested
+        if args.highlight_drift:
+            graph = builder.add_drift_annotations(graph)
+
+        if not graph.nodes:
+            safe_print("No lineage data found for this table")
+            return 0
+
+        safe_print(f"Found {len(graph.nodes)} nodes and {len(graph.edges)} relationships\n")
+
+        # Export based on format
+        output_content = None
+
+        if args.format == "ascii":
+            exporter = ASCIIExporter(use_color=not args.no_color)
+            output_content = exporter.export(graph)
+
+        elif args.format == "mermaid":
+            exporter = MermaidExporter(direction="TD" if args.direction != "downstream" else "TD")
+            output_content = exporter.export(graph)
+            # Wrap in markdown code block if outputting to file
+            if args.output:
+                output_content = f"```mermaid\n{output_content}\n```"
+
+        elif args.format == "dot":
+            exporter = GraphvizExporter(rankdir="TB" if args.direction != "downstream" else "TB")
+            output_content = exporter.export_dot(graph)
+
+        elif args.format in ("svg", "png", "pdf"):
+            if not args.output:
+                safe_print(f"Error: --output is required for {args.format} format")
+                return 1
+
+            exporter = GraphvizExporter()
+            try:
+                success = exporter.export_image(graph, args.output, format=args.format)
+                if success:
+                    safe_print(f"Lineage diagram saved to: {args.output}")
+                    return 0
+            except RuntimeError as e:
+                safe_print(f"Error: {e}")
+                return 1
+
+        elif args.format == "json":
+            from .visualization.layout import HierarchicalLayout
+
+            layout = HierarchicalLayout() if args.layout else None
+            exporter = JSONExporter(layout=layout)
+
+            if args.json_format == "cytoscape":
+                output_content = exporter.export_cytoscape(graph)
+            elif args.json_format == "d3":
+                output_content = exporter.export_d3(graph)
+            else:
+                output_content = exporter.export_generic(graph)
+
+        else:
+            safe_print(f"Unknown format: {args.format}")
+            return 1
+
+        # Output result
+        if args.output and output_content:
+            from pathlib import Path
+
+            output_path = Path(args.output)
+            output_path.write_text(output_content)
+            safe_print(f"Lineage visualization saved to: {args.output}")
+        elif output_content:
+            safe_print(output_content)
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Lineage visualize command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
 def lineage_command(args):
     """Execute lineage command."""
     from .cli_output import safe_print
@@ -2266,6 +2389,50 @@ def main():
         "--expiration-days", type=int, help="Override expiration days from config"
     )
 
+    # lineage visualize
+    visualize_parser = lineage_subparsers.add_parser(
+        "visualize", help="Visualize lineage as diagram or export to various formats"
+    )
+    visualize_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    visualize_parser.add_argument("--table", required=True, help="Table name")
+    visualize_parser.add_argument("--schema", help="Schema name")
+    visualize_parser.add_argument("--column", help="Column name (for column-level lineage)")
+    visualize_parser.add_argument(
+        "--direction",
+        choices=["upstream", "downstream", "both"],
+        default="both",
+        help="Lineage direction to show (default: both)",
+    )
+    visualize_parser.add_argument(
+        "--depth", type=int, default=3, help="Maximum depth to traverse (default: 3)"
+    )
+    visualize_parser.add_argument(
+        "--format",
+        choices=["ascii", "mermaid", "dot", "json", "svg", "png", "pdf"],
+        default="ascii",
+        help="Output format (default: ascii)",
+    )
+    visualize_parser.add_argument(
+        "--json-format",
+        choices=["cytoscape", "d3", "generic"],
+        default="generic",
+        help="JSON export format (default: generic)",
+    )
+    visualize_parser.add_argument("--output", "-o", help="Output file path")
+    visualize_parser.add_argument(
+        "--no-color", action="store_true", help="Disable colored output (ASCII format)"
+    )
+    visualize_parser.add_argument(
+        "--highlight-drift",
+        action="store_true",
+        help="Highlight tables with drift",
+    )
+    visualize_parser.add_argument(
+        "--layout",
+        action="store_true",
+        help="Include layout positions in JSON export",
+    )
+
     # UI command
     ui_parser = subparsers.add_parser("ui", help="Start local dashboard")
     ui_parser.add_argument(
@@ -2327,6 +2494,9 @@ def main():
         if not args.lineage_command:
             lineage_parser.print_help()
             return 1
+        # Handle visualize subcommand separately
+        if args.lineage_command == "visualize":
+            return lineage_visualize_command(args)
         return lineage_command(args)
     elif args.command == "ui":
         return ui_command(args)

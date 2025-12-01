@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Runs', href: '/runs', icon: Activity },
   { name: 'Drift Detection', href: '/drift', icon: AlertTriangle },
+  { name: 'Lineage', href: '/lineage', icon: Database },
   { name: 'Metrics', href: '/metrics', icon: BarChart3 },
 ]
 
