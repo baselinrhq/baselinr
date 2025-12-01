@@ -2341,6 +2341,208 @@ def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
         yaml.dump(raw_config, f, default_flow_style=False, sort_keys=False)
 
 
+def rca_command(args):
+    """Execute RCA command."""
+    from .cli_output import safe_print
+    from .connectors import create_connector
+    from .rca.collectors import DagsterRunCollector, DbtRunCollector
+    from .rca.service import RCAService
+
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        if not config.rca.enabled:
+            safe_print("❌ RCA is disabled in configuration")
+            return 1
+
+        # Create storage connector
+        storage_connector = create_connector(config.storage.connection)
+        engine = storage_connector.engine
+
+        if args.rca_command == "analyze":
+            # Parse timestamp
+            from datetime import datetime
+
+            if args.timestamp:
+                try:
+                    anomaly_timestamp = datetime.fromisoformat(
+                        args.timestamp.replace("Z", "+00:00")
+                    )
+                except ValueError:
+                    safe_print(f"❌ Invalid timestamp format: {args.timestamp}")
+                    return 1
+            else:
+                anomaly_timestamp = datetime.utcnow()
+
+            # Initialize RCA service
+            service = RCAService(
+                engine=engine,
+                auto_analyze=False,
+                lookback_window_hours=config.rca.lookback_window_hours,
+                max_depth=config.rca.max_depth,
+                max_causes_to_return=config.rca.max_causes_to_return,
+                min_confidence_threshold=config.rca.min_confidence_threshold,
+                enable_pattern_learning=config.rca.enable_pattern_learning,
+            )
+
+            # Perform analysis
+            result = service.analyze_anomaly(
+                anomaly_id=args.anomaly_id,
+                table_name=args.table,
+                anomaly_timestamp=anomaly_timestamp,
+                schema_name=args.schema,
+                column_name=args.column,
+                metric_name=args.metric,
+            )
+
+            # Output results
+            if args.format == "json":
+                import json
+
+                output = {
+                    "anomaly_id": result.anomaly_id,
+                    "table_name": result.table_name,
+                    "schema_name": result.schema_name,
+                    "column_name": result.column_name,
+                    "metric_name": result.metric_name,
+                    "analyzed_at": result.analyzed_at.isoformat() if result.analyzed_at else None,
+                    "rca_status": result.rca_status,
+                    "probable_causes": result.probable_causes,
+                    "impact_analysis": result.impact_analysis,
+                }
+                print(json.dumps(output, indent=2, default=str))
+            else:
+                safe_print(f"\n📊 RCA Results for {result.anomaly_id}")
+                safe_print(
+                    f"Table: {result.schema_name}.{result.table_name}"
+                    if result.schema_name
+                    else f"Table: {result.table_name}"
+                )
+                if result.column_name:
+                    safe_print(f"Column: {result.column_name}")
+                if result.metric_name:
+                    safe_print(f"Metric: {result.metric_name}")
+                safe_print(f"Status: {result.rca_status}")
+                safe_print(f"\nFound {len(result.probable_causes)} probable causes:\n")
+
+                for i, cause in enumerate(result.probable_causes, 1):
+                    safe_print(f"{i}. {cause.get('description', 'Unknown cause')}")
+                    safe_print(f"   Confidence: {cause.get('confidence_score', 0):.2%}")
+                    safe_print(f"   Type: {cause.get('cause_type', 'unknown')}")
+                    if cause.get("suggested_action"):
+                        safe_print(f"   Action: {cause.get('suggested_action')}")
+                    safe_print("")
+
+            return 0
+
+        elif args.rca_command == "list":
+            service = RCAService(engine=engine, auto_analyze=False)
+            results = service.get_recent_rca_results(limit=args.limit)
+
+            if args.format == "json":
+                import json
+
+                print(json.dumps(results, indent=2, default=str))
+            else:
+                safe_print(f"\n📋 Recent RCA Results (showing {len(results)})\n")
+                for result in results:
+                    safe_print(f"Anomaly: {result['anomaly_id']}")
+                    safe_print(f"  Table: {result['table_name']}")
+                    safe_print(f"  Status: {result['rca_status']}")
+                    safe_print(f"  Causes: {result['num_causes']}")
+                    safe_print("")
+
+            return 0
+
+        elif args.rca_command == "get":
+            service = RCAService(engine=engine, auto_analyze=False)
+            result = service.get_rca_result(args.anomaly_id)
+
+            if not result:
+                safe_print(f"❌ No RCA result found for anomaly: {args.anomaly_id}")
+                return 1
+
+            if args.format == "json":
+                import json
+
+                output = {
+                    "anomaly_id": result.anomaly_id,
+                    "table_name": result.table_name,
+                    "schema_name": result.schema_name,
+                    "column_name": result.column_name,
+                    "metric_name": result.metric_name,
+                    "analyzed_at": result.analyzed_at.isoformat() if result.analyzed_at else None,
+                    "rca_status": result.rca_status,
+                    "probable_causes": result.probable_causes,
+                    "impact_analysis": result.impact_analysis,
+                }
+                print(json.dumps(output, indent=2, default=str))
+            else:
+                safe_print(f"\n📊 RCA Result for {result.anomaly_id}")
+                safe_print(
+                    f"Table: {result.schema_name}.{result.table_name}"
+                    if result.schema_name
+                    else f"Table: {result.table_name}"
+                )
+                safe_print(f"Status: {result.rca_status}")
+                safe_print(f"Causes: {len(result.probable_causes)}\n")
+
+                for i, cause in enumerate(result.probable_causes, 1):
+                    safe_print(f"{i}. {cause.get('description', 'Unknown cause')}")
+                    safe_print(f"   Confidence: {cause.get('confidence_score', 0):.2%}")
+                    safe_print("")
+
+            return 0
+
+        elif args.rca_command == "collect":
+            collectors_to_run = []
+            if args.type in ["dbt", "all"] and (
+                config.rca.collectors.dbt or config.rca.collectors.dbt is None
+            ):
+                collector = DbtRunCollector(
+                    engine=engine,
+                    manifest_path=config.rca.collectors.manifest_path,
+                    project_dir=config.rca.collectors.project_dir,
+                )
+                collectors_to_run.append(("dbt", collector))
+
+            if args.type in ["dagster", "all"] and config.rca.collectors.dagster:
+                collector = DagsterRunCollector(
+                    engine=engine,
+                    instance_path=config.rca.collectors.dagster_instance_path,
+                    graphql_url=config.rca.collectors.dagster_graphql_url,
+                )
+                collectors_to_run.append(("dagster", collector))
+
+            if not collectors_to_run:
+                safe_print("❌ No collectors enabled or configured")
+                return 1
+
+            total_collected = 0
+            for name, collector in collectors_to_run:
+                safe_print(f"Collecting {name} runs...")
+                count = collector.collect_and_store()
+                total_collected += count
+                safe_print(f"✅ Collected {count} {name} runs")
+
+            safe_print(f"\n✨ Total: {total_collected} runs collected")
+            return 0
+
+        else:
+            safe_print(f"❌ Unknown RCA command: {args.rca_command}")
+            return 1
+
+    except Exception as e:
+        logger.error(f"RCA command failed: {e}", exc_info=True)
+        safe_print(f"\n❌ Error: {e}")
+        if args.debug:
+            import traceback
+
+            traceback.print_exc()
+        return 1
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Baselinr - Data profiling and drift detection")
@@ -2713,6 +2915,52 @@ def main():
         help="Backend host (default: 0.0.0.0)",
     )
 
+    # RCA command
+    rca_parser = subparsers.add_parser("rca", help="Root Cause Analysis operations")
+    rca_subparsers = rca_parser.add_subparsers(dest="rca_command", help="RCA operation")
+
+    # rca analyze
+    analyze_parser = rca_subparsers.add_parser("analyze", help="Analyze an anomaly")
+    analyze_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    analyze_parser.add_argument("--anomaly-id", required=True, help="Anomaly ID to analyze")
+    analyze_parser.add_argument("--table", required=True, help="Table name")
+    analyze_parser.add_argument("--schema", help="Schema name")
+    analyze_parser.add_argument("--column", help="Column name")
+    analyze_parser.add_argument("--metric", help="Metric name")
+    analyze_parser.add_argument(
+        "--timestamp",
+        help="Anomaly timestamp (ISO format, default: now)",
+    )
+    analyze_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
+    # rca list
+    list_parser = rca_subparsers.add_parser("list", help="List recent RCA results")
+    list_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    list_parser.add_argument("--limit", type=int, default=10, help="Max results (default: 10)")
+    list_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
+    # rca get
+    get_parser = rca_subparsers.add_parser("get", help="Get specific RCA result")
+    get_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    get_parser.add_argument("--anomaly-id", required=True, help="Anomaly ID")
+    get_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
+    # rca collect
+    collect_parser = rca_subparsers.add_parser("collect", help="Collect pipeline runs")
+    collect_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    collect_parser.add_argument(
+        "--type",
+        choices=["dbt", "dagster", "all"],
+        default="all",
+        help="Collector type (default: all)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -2758,6 +3006,11 @@ def main():
         return ui_command(args)
     elif args.command == "recommend":
         return recommend_command(args)
+    elif args.command == "rca":
+        if not args.rca_command:
+            rca_parser.print_help()
+            return 1
+        return rca_command(args)
     else:
         parser.print_help()
         return 1

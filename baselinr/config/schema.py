@@ -1209,6 +1209,55 @@ class VisualizationConfig(BaseModel):
         return v
 
 
+class RCACollectorConfig(BaseModel):
+    """Configuration for RCA data collectors."""
+
+    dbt: Optional[bool] = Field(True, description="Enable dbt run collector")
+    manifest_path: Optional[str] = Field(None, description="Path to dbt manifest.json")
+    project_dir: Optional[str] = Field(None, description="DBT project directory")
+
+    dagster: Optional[bool] = Field(False, description="Enable Dagster run collector")
+    dagster_instance_path: Optional[str] = Field(
+        None, description="Path to Dagster instance directory"
+    )
+    dagster_graphql_url: Optional[str] = Field(None, description="Dagster GraphQL API URL")
+
+    airflow: Optional[bool] = Field(False, description="Enable Airflow run collector")
+    airflow_api_url: Optional[str] = Field(None, description="Airflow API URL")
+
+
+class RCAConfig(BaseModel):
+    """Configuration for Root Cause Analysis."""
+
+    enabled: bool = Field(True, description="Enable RCA features")
+    lookback_window_hours: int = Field(
+        24, ge=1, le=168, description="Time window for finding causes"
+    )
+    max_depth: int = Field(5, ge=1, le=10, description="Maximum depth for lineage traversal")
+    max_causes_to_return: int = Field(
+        5, ge=1, le=20, description="Maximum probable causes to return"
+    )
+    min_confidence_threshold: float = Field(
+        0.3, ge=0.0, le=1.0, description="Minimum confidence to include a cause"
+    )
+    auto_analyze: bool = Field(True, description="Automatically analyze anomalies when detected")
+    enable_pattern_learning: bool = Field(
+        True, description="Use historical patterns to improve RCA"
+    )
+    collectors: RCACollectorConfig = Field(
+        default_factory=lambda: RCACollectorConfig(),  # type: ignore[call-arg]
+        description="Configuration for pipeline run collectors",
+    )
+
+    @field_validator("lookback_window_hours")
+    @classmethod
+    def validate_lookback_window(cls, v: int) -> int:
+        """Validate lookback window is reasonable."""
+        if v > 168:  # 7 days
+            raise ValueError("lookback_window_hours should not exceed 168 (7 days)")
+        return v
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -1244,6 +1293,10 @@ class BaselinrConfig(BaseModel):
     smart_selection: Optional[Any] = Field(
         None,
         description="Smart table selection configuration (imported lazily to avoid circular deps)",
+    )
+    rca: RCAConfig = Field(
+        default_factory=lambda: RCAConfig(),  # type: ignore[call-arg]
+        description="Root Cause Analysis configuration",
     )
 
     @field_validator("environment")

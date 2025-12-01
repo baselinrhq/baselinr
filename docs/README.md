@@ -11,6 +11,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ### 📖 [Guides](guides/)
 - **[Smart Table Selection](guides/SMART_TABLE_SELECTION.md)** ✨ **NEW** - Automatically recommend tables to monitor based on usage patterns and database metadata
 - **[Smart Selection Quick Start](guides/SMART_SELECTION_QUICKSTART.md)** ✨ **NEW** - Get started with intelligent table selection in 5 minutes
+- **[Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)** ✨ **NEW** - Automatically correlate anomalies with pipeline runs, code changes, and upstream data issues
 - **[Python SDK](guides/PYTHON_SDK.md)** - Complete guide to the Python SDK for programmatic access to Baselinr
 - **[Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)** - Enhanced profiling metrics: null ratios, uniqueness, schema tracking, and data quality metrics
 - **[Column-Level Configurations](guides/COLUMN_LEVEL_CONFIGS.md)** - Fine-grained control over profiling, drift, and anomaly detection per column
@@ -72,6 +73,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 
 - **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
 - **Want automatic table discovery?** ✨ **NEW** → See [Smart Table Selection](guides/SMART_TABLE_SELECTION.md)
+- **Need root cause analysis?** ✨ **NEW** → See [Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)
 - **Using the Python SDK?** → See [Python SDK Guide](guides/PYTHON_SDK.md)
 - **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
