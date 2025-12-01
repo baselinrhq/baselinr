@@ -27,6 +27,58 @@ storage:
   runs_table: baselinr_runs
   create_tables: true
 
+# Smart Table Selection - NEW FEATURE
+smart_selection:
+  enabled: true
+  mode: "recommend"  # Options: recommend (generate suggestions), auto (apply automatically), disabled
+  
+  # Selection criteria
+  criteria:
+    # Query thresholds
+    min_query_count: 10          # At least 10 queries in lookback period
+    min_queries_per_day: 1.0     # Average at least 1 query per day
+    lookback_days: 30            # Analyze last 30 days
+    
+    # Exclude patterns (wildcards supported)
+    exclude_patterns:
+      - "temp_*"
+      - "*_backup"
+      - "*_archive"
+      - "staging_*"
+      - "test_*"
+    
+    # Size filters
+    min_rows: 100                # Skip very small tables
+    max_rows: null               # No upper limit (null = unlimited)
+    
+    # Recency filters
+    max_days_since_query: 60     # Only tables queried in last 60 days
+    max_days_since_modified: null  # No restriction on last modified
+    
+    # Scoring weights (must sum to ~1.0)
+    weights:
+      query_frequency: 0.40      # How often table is queried
+      query_recency: 0.25        # How recently queried
+      write_activity: 0.20       # How recently updated
+      table_size: 0.15           # Table size considerations
+  
+  # Recommendation generation settings
+  recommendations:
+    output_file: "recommendations.yaml"
+    auto_refresh_days: 7
+    include_explanations: true
+    include_suggested_checks: true
+  
+  # Auto-apply settings (for mode: auto)
+  auto_apply:
+    confidence_threshold: 0.8    # Only auto-apply high confidence tables
+    max_tables: 100              # Safety limit on auto-selections
+    skip_existing: true          # Don't duplicate explicit configs
+  
+  # Performance settings
+  cache_metadata: true
+  cache_ttl_seconds: 3600        # Cache for 1 hour
+
 # Profiling configuration
 profiling:
   # Tables to profile

@@ -1,0 +1,130 @@
+# Baselinr Configuration with Smart Table Selection
+# This example demonstrates usage-based intelligent table selection
+
+environment: production
+
+# Source database connection
+source:
+  type: snowflake
+  account: mycompany
+  database: prod_analytics
+  warehouse: compute_wh
+  username: baselinr_user
+  password: ${SNOWFLAKE_PASSWORD}
+  role: ANALYST
+  schema: analytics
+
+# Storage for profiling results
+storage:
+  connection:
+    type: postgres
+    host: metadata-db.internal
+    port: 5432
+    database: baselinr_metadata
+    username: baselinr
+    password: ${POSTGRES_PASSWORD}
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+
+# Profiling configuration
+profiling:
+  # Explicit tables (always included)
+  tables:
+    # Critical business tables
+    - schema: analytics
+      table: revenue_daily
+      partition:
+        key: date
+        strategy: recent_n
+        recent_n: 30
+    
+    - schema: core
+      table: customers
+  
+  # Global profiling settings
+  max_distinct_values: 1000
+  compute_histograms: true
+  histogram_bins: 10
+
+# Smart Table Selection - NEW FEATURE
+smart_selection:
+  enabled: true
+  mode: "recommend"  # Options: recommend, auto, disabled
+  
+  # Selection criteria
+  criteria:
+    # Query thresholds
+    min_query_count: 10          # At least 10 queries in lookback period
+    min_queries_per_day: 1.0     # Average at least 1 query per day
+    lookback_days: 30            # Analyze last 30 days
+    
+    # Exclude patterns (wildcards supported)
+    exclude_patterns:
+      - "temp_*"
+      - "*_backup"
+      - "*_archive"
+      - "staging_*"
+      - "test_*"
+    
+    # Size filters
+    min_rows: 100                # Skip very small tables
+    max_rows: null               # No upper limit (null = unlimited)
+    
+    # Recency filters
+    max_days_since_query: 60     # Only tables queried in last 60 days
+    max_days_since_modified: null  # No restriction on last modified
+    
+    # Scoring weights (must sum to ~1.0)
+    weights:
+      query_frequency: 0.40      # How often table is queried
+      query_recency: 0.25        # How recently queried
+      write_activity: 0.20       # How recently updated
+      table_size: 0.15           # Table size considerations
+  
+  # Recommendation generation settings
+  recommendations:
+    output_file: "recommendations.yaml"
+    auto_refresh_days: 7
+    include_explanations: true
+    include_suggested_checks: true
+  
+  # Auto-apply settings (for mode: auto)
+  auto_apply:
+    confidence_threshold: 0.8    # Only auto-apply high confidence tables
+    max_tables: 100              # Safety limit on auto-selections
+    skip_existing: true          # Don't duplicate explicit configs
+  
+  # Performance settings
+  cache_metadata: true
+  cache_ttl_seconds: 3600        # Cache for 1 hour
+
+# Drift detection
+drift_detection:
+  strategy: "statistical"
+  statistical:
+    tests:
+      - ks_test
+      - psi
+    sensitivity: "medium"
+
+# Event hooks (optional)
+hooks:
+  enabled: true
+  hooks:
+    - type: slack
+      enabled: true
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: "#data-quality"
+      min_severity: "medium"
+      alert_on_drift: true
+
+# Execution settings
+execution:
+  max_workers: 1  # Sequential execution by default
+  
+# Retry configuration
+retry:
+  enabled: true
+  retries: 3
+  backoff_strategy: exponential
