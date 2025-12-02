@@ -9,6 +9,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **[Installation Guide](getting-started/INSTALL.md)** - Detailed installation instructions
 
 ### 📖 [Guides](guides/)
+- **[Data Validation](guides/DATA_VALIDATION.md)** ✨ **NEW** - Rule-based data quality validation with format, range, enum, null, uniqueness, and referential integrity checks
 - **[Smart Table Selection](guides/SMART_TABLE_SELECTION.md)** ✨ **NEW** - Automatically recommend tables to monitor based on usage patterns and database metadata
 - **[Smart Selection Quick Start](guides/SMART_SELECTION_QUICKSTART.md)** ✨ **NEW** - Get started with intelligent table selection in 5 minutes
 - **[Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)** ✨ **NEW** - Automatically correlate anomalies with pipeline runs, code changes, and upstream data issues
@@ -72,6 +73,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ## 🔍 Finding What You Need
 
 - **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
+- **Need data validation?** ✨ **NEW** → See [Data Validation Guide](guides/DATA_VALIDATION.md)
 - **Want automatic table discovery?** ✨ **NEW** → See [Smart Table Selection](guides/SMART_TABLE_SELECTION.md)
 - **Need root cause analysis?** ✨ **NEW** → See [Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)
 - **Using the Python SDK?** → See [Python SDK Guide](guides/PYTHON_SDK.md)

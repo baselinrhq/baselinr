@@ -554,3 +554,52 @@ rca:
     dagster: false  # set to true if using Dagster
     dagster_instance_path: /path/to/.dagster  # optional
     dagster_graphql_url: http://localhost:3000/graphql  # optional
+
+# Validation configuration (optional)
+validation:
+  enabled: true
+  providers:
+    - type: builtin
+      rules:
+        # Format validation example - validates email format
+        - table: customers
+          column: email
+          type: format
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          severity: high
+        
+        # Not-null validation example - ensures customer_id is never null
+        - table: customers
+          column: customer_id
+          type: not_null
+          severity: high
+        
+        # Uniqueness validation example - ensures email is unique
+        - table: customers
+          column: email
+          type: unique
+          severity: high
+        
+        # Range validation example - validates total_amount is non-negative
+        - table: orders
+          column: total_amount
+          type: range
+          min_value: 0
+          max_value: 1000000
+          severity: medium
+        
+        # Enum validation example - validates status is in allowed list
+        - table: orders
+          column: status
+          type: enum
+          allowed_values: ["Delivered", "In Transit", "Processing"]
+          severity: high
+        
+        # Referential integrity example - validates customer_id references customers table
+        - table: orders
+          column: customer_id
+          type: referential
+          references:
+            table: customers
+            column: customer_id
+          severity: high

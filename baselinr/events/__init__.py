@@ -17,6 +17,7 @@ from .events import (
     ProfilingSkipped,
     ProfilingStarted,
     SchemaChangeDetected,
+    ValidationFailed,
 )
 from .hooks import AlertHook
 
@@ -29,6 +30,7 @@ __all__ = [
     "ProfilingCompleted",
     "ProfilingFailed",
     "ProfilingSkipped",
+    "ValidationFailed",
     "AlertHook",
     "EventBus",
     "LoggingAlertHook",

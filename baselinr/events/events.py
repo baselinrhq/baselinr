@@ -7,7 +7,7 @@ and can be handled by registered alert hooks.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -277,5 +277,40 @@ class AnomalyDetected(BaseEvent):
                 "severity": self.severity,
                 "detection_method": self.detection_method,
                 "explanation": self.explanation,
+            }
+        )
+
+
+@dataclass
+class ValidationFailed(BaseEvent):
+    """Event emitted when a validation rule fails."""
+
+    table: str
+    column: Optional[str]
+    rule_type: str
+    rule_config: Dict[str, Any]
+    failure_reason: str
+    sample_failures: List[Dict[str, Any]]  # Sample rows that failed
+    severity: str
+    total_failures: int
+    total_rows: int
+    failure_rate: float
+
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update(
+            {
+                "table": self.table,
+                "column": self.column,
+                "rule_type": self.rule_type,
+                "rule_config": self.rule_config,
+                "failure_reason": self.failure_reason,
+                "sample_failures": self.sample_failures,
+                "severity": self.severity,
+                "total_failures": self.total_failures,
+                "total_rows": self.total_rows,
+                "failure_rate": self.failure_rate,
             }
         )
