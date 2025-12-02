@@ -245,8 +245,7 @@ class ValidationExecutor:
                     )
                 """
                 index_sqls = [
-                    "CREATE INDEX idx_validation_run_id "
-                    "ON baselinr_validation_results (run_id)",
+                    "CREATE INDEX idx_validation_run_id " "ON baselinr_validation_results (run_id)",
                     "CREATE INDEX idx_validation_table "
                     "ON baselinr_validation_results (table_name, schema_name)",
                     "CREATE INDEX idx_validation_column "
