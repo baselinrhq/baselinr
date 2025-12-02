@@ -1760,6 +1760,21 @@ def ui_command(args):
         return 1
 
 
+def chat_command(args):
+    """Execute chat command - interactive data quality investigation."""
+    try:
+        from .chat.cli import run_chat_command
+
+        return run_chat_command(args)
+    except KeyboardInterrupt:
+        logger.info("Chat command interrupted by user")
+        return 0
+    except Exception as e:
+        logger.error(f"Chat command failed: {e}", exc_info=True)
+        print(f"\nError: {e}")
+        return 1
+
+
 def status_command(args):
     """Execute status command."""
     try:
@@ -3110,6 +3125,47 @@ def main():
         help="Collector type (default: all)",
     )
 
+    # Chat command
+    chat_parser = subparsers.add_parser(
+        "chat",
+        help="Start interactive chat session for data quality investigation",
+    )
+    chat_parser.add_argument(
+        "--config",
+        "-c",
+        required=True,
+        help="Path to configuration file (YAML or JSON)",
+    )
+    chat_parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=5,
+        help="Maximum tool-calling iterations (default: 5)",
+    )
+    chat_parser.add_argument(
+        "--max-history",
+        type=int,
+        default=20,
+        help="Maximum messages to keep in context (default: 20)",
+    )
+    chat_parser.add_argument(
+        "--tool-timeout",
+        type=int,
+        default=30,
+        help="Tool execution timeout in seconds (default: 30)",
+    )
+    chat_parser.add_argument(
+        "--show-tools",
+        action="store_true",
+        help="Show tool calls in output",
+    )
+    chat_parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose output",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -3162,6 +3218,8 @@ def main():
             rca_parser.print_help()
             return 1
         return rca_command(args)
+    elif args.command == "chat":
+        return chat_command(args)
     else:
         parser.print_help()
         return 1
