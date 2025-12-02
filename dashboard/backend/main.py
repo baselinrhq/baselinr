@@ -4,7 +4,7 @@ Baselinr Dashboard Backend API
 FastAPI server that provides endpoints for:
 - Run history
 - Profiling results
-- Drift detection alerts  
+- Drift detection alerts
 - Metrics and KPIs
 """
 
@@ -32,6 +32,7 @@ from lineage_models import (
 )
 from database import DatabaseClient
 import rca_routes
+import chat_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -43,7 +44,12 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js default port
+    allow_origins=[
+        "http://localhost:3000",  # Next.js default port
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,14 +61,59 @@ db_client = DatabaseClient()
 # Register RCA routes
 rca_routes.register_routes(app, db_client.engine)
 
+
+# Load config for chat (from environment or default)
+def _load_chat_config():
+    """Load chat configuration from environment or config file."""
+    import yaml
+
+    config = {
+        "llm": {
+            "enabled": os.getenv("LLM_ENABLED", "false").lower() == "true",
+            "provider": os.getenv("LLM_PROVIDER", "openai"),
+            "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            "api_key": os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"),
+            "chat": {
+                "max_iterations": int(os.getenv("CHAT_MAX_ITERATIONS", "5")),
+                "max_history_messages": int(os.getenv("CHAT_MAX_HISTORY", "20")),
+                "tool_timeout": int(os.getenv("CHAT_TOOL_TIMEOUT", "30")),
+            }
+        },
+        "storage": {
+            "runs_table": os.getenv("BASELINR_RUNS_TABLE", "baselinr_runs"),
+            "results_table": os.getenv("BASELINR_RESULTS_TABLE", "baselinr_results"),
+        }
+    }
+
+    # Try to load from config file if specified
+    config_path = os.getenv("BASELINR_CONFIG")
+    if config_path and os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                file_config = yaml.safe_load(f)
+                if file_config:
+                    # Merge llm config
+                    if "llm" in file_config:
+                        config["llm"].update(file_config["llm"])
+                    if "storage" in file_config:
+                        config["storage"].update(file_config["storage"])
+        except Exception as e:
+            print(f"Warning: Could not load config from {config_path}: {e}")
+
+    return config
+
+
+chat_config = _load_chat_config()
+
+# Register Chat routes
+chat_routes.register_chat_routes(app, db_client.engine, chat_config)
+
 # Import baselinr visualization components
 # Add parent directory to path to import baselinr
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 try:
     from baselinr.visualization import LineageGraphBuilder
-    from baselinr.visualization.exporters import JSONExporter
-    from baselinr.visualization.layout import HierarchicalLayout
     LINEAGE_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Lineage visualization not available: {e}")

@@ -37,3 +37,49 @@ body {
   background: #555;
 }
 
+/* Chat-specific styles */
+.chat-markdown pre {
+  background-color: #1f2937;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.chat-markdown code {
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.chat-markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.chat-markdown th {
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
+/* Bounce animation for chat typing indicator */
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 1.4s infinite ease-in-out;
+}
+

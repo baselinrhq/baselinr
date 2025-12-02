@@ -11,6 +11,7 @@ Internal dashboard MVP for Baselinr data profiling and drift detection. This das
 - **Metrics Dashboard**: Aggregate KPIs and trends
 - **Multi-Warehouse Support**: PostgreSQL, Snowflake, MySQL, BigQuery, Redshift, SQLite
 - **Export Functionality**: Export data in JSON/CSV formats
+- **AI Chat Assistant**: Conversational interface for data quality investigation
 
 ### Technical Stack
 
@@ -36,6 +37,8 @@ dashboard/
 │   ├── main.py                # API endpoints
 │   ├── models.py              # Pydantic models
 │   ├── database.py            # Database client
+│   ├── chat_models.py         # Chat API models
+│   ├── chat_routes.py         # Chat API routes
 │   ├── requirements.txt       # Python dependencies
 │   └── sample_data_generator.py
 ├── frontend/                   # Next.js frontend
@@ -44,13 +47,21 @@ dashboard/
 │   │   ├── runs/              # Run history page
 │   │   ├── drift/             # Drift alerts page
 │   │   ├── tables/            # Table details page
+│   │   ├── chat/              # AI Chat page
 │   │   └── metrics/           # Metrics page
 │   ├── components/            # Reusable components
 │   │   ├── Sidebar.tsx
 │   │   ├── KPICard.tsx
 │   │   ├── RunsTable.tsx
 │   │   ├── DriftAlertsTable.tsx
-│   │   └── FilterPanel.tsx
+│   │   ├── FilterPanel.tsx
+│   │   └── chat/             # Chat components
+│   │       ├── ChatContainer.tsx
+│   │       ├── ChatInput.tsx
+│   │       └── ChatMessage.tsx
+│   ├── types/                 # TypeScript types
+│   │   ├── lineage.ts
+│   │   └── chat.ts
 │   ├── lib/                   # Utilities
 │   │   └── api.ts             # API client
 │   └── package.json
@@ -133,6 +144,14 @@ Frontend will be available at: `http://localhost:3000`
 - `GET /api/export/runs?format=json&warehouse=&days=30` - Export runs
 - `GET /api/export/drift?format=json&warehouse=&days=30` - Export drift
 
+### Chat (AI Assistant)
+- `GET /api/chat/config` - Get chat configuration status
+- `POST /api/chat/message` - Send a message to the chat agent
+- `GET /api/chat/history/{session_id}` - Get chat history for a session
+- `DELETE /api/chat/session/{session_id}` - Clear a chat session
+- `GET /api/chat/tools` - List available chat tools
+- `GET /api/chat/sessions` - List active chat sessions
+
 ## 📊 Sample Data
 
 To populate the dashboard with sample data for testing:
@@ -206,6 +225,19 @@ BASELINR_DB_URL=postgresql://user:password@host:port/database
 API_HOST=0.0.0.0
 API_PORT=8000
 CORS_ORIGINS=http://localhost:3000
+
+# Chat/AI Configuration (optional)
+LLM_ENABLED=true
+LLM_PROVIDER=openai  # or "anthropic"
+LLM_MODEL=gpt-4o-mini  # or "claude-3-5-sonnet-20241022"
+OPENAI_API_KEY=sk-your-api-key
+# ANTHROPIC_API_KEY=sk-ant-your-api-key  # if using Anthropic
+CHAT_MAX_ITERATIONS=5
+CHAT_MAX_HISTORY=20
+CHAT_TOOL_TIMEOUT=30
+
+# Or use a config file
+BASELINR_CONFIG=/path/to/config.yml
 ```
 
 ### Frontend (.env.local)
@@ -213,6 +245,35 @@ CORS_ORIGINS=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NODE_ENV=development
 ```
+
+## 💬 Chat Feature
+
+The dashboard includes an AI-powered chat assistant for data quality investigation.
+
+### Enabling Chat
+
+1. Set `LLM_ENABLED=true` in your environment
+2. Configure your LLM provider (OpenAI or Anthropic)
+3. Provide the appropriate API key
+
+### Chat Capabilities
+
+The chat assistant can:
+- Query recent profiling runs
+- Investigate drift events and anomalies
+- Get table profiles and column statistics
+- Compare runs and analyze trends
+- Explore data lineage relationships
+- Search across tables
+
+### Example Queries
+
+- "What tables have been profiled recently?"
+- "Show me high severity drift events"
+- "Are there any anomalies I should investigate?"
+- "Compare the last two runs for the customers table"
+- "What's the trend for null rate in the email column?"
+- "What are the upstream sources for orders table?"
 
 ## 🛠️ Development
 

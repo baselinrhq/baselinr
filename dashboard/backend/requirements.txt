@@ -18,6 +18,9 @@ python-dateutil>=2.8.2
 # Environment
 python-dotenv>=1.0.0
 
+# Config parsing
+pyyaml>=6.0.0
+
 # Optional: WebSockets for real-time updates
 # websockets>=12.0
 
