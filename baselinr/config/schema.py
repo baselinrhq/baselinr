@@ -1258,6 +1258,59 @@ class RCAConfig(BaseModel):
         return v
 
 
+class ValidationRuleConfig(BaseModel):
+    """Configuration for a single validation rule."""
+
+    type: str = Field(
+        ..., description="Rule type: format, range, enum, not_null, unique, referential"
+    )
+    table: Optional[str] = Field(
+        None, description="Table name (optional, can be specified at provider level)"
+    )
+    column: Optional[str] = Field(None, description="Column name (None for table-level rules)")
+    pattern: Optional[str] = Field(None, description="Regex pattern for format validation")
+    min_value: Optional[float] = Field(None, description="Minimum value for range validation")
+    max_value: Optional[float] = Field(None, description="Maximum value for range validation")
+    allowed_values: Optional[List[Any]] = Field(
+        None, description="Allowed values for enum validation"
+    )
+    references: Optional[Dict[str, str]] = Field(
+        None, description="Reference config for referential validation: {table, column}"
+    )
+    severity: str = Field("medium", description="Severity level: low, medium, high")
+    enabled: bool = Field(True, description="Whether this rule is enabled")
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        """Validate rule type."""
+        valid_types = ["format", "range", "enum", "not_null", "unique", "referential"]
+        if v not in valid_types:
+            raise ValueError(f"Rule type must be one of {valid_types}")
+        return v
+
+    @field_validator("severity")
+    @classmethod
+    def validate_severity(cls, v: str) -> str:
+        """Validate severity level."""
+        valid_severities = ["low", "medium", "high"]
+        if v not in valid_severities:
+            raise ValueError(f"Severity must be one of {valid_severities}")
+        return v
+
+
+class ValidationConfig(BaseModel):
+    """Validation configuration."""
+
+    enabled: bool = Field(True, description="Enable validation")
+    providers: List[Dict[str, Any]] = Field(
+        default_factory=list, description="List of validation provider configurations"
+    )
+    rules: List[ValidationRuleConfig] = Field(
+        default_factory=list, description="List of validation rules"
+    )
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -1297,6 +1350,9 @@ class BaselinrConfig(BaseModel):
     rca: RCAConfig = Field(
         default_factory=lambda: RCAConfig(),  # type: ignore[call-arg]
         description="Root Cause Analysis configuration",
+    )
+    validation: Optional["ValidationConfig"] = Field(
+        None, description="Data validation configuration"
     )
 
     @field_validator("environment")

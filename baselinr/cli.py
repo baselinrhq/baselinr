@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 from .config.loader import ConfigLoader
 from .config.schema import BaselinrConfig, HookConfig, SamplingConfig, TablePattern
+from .connectors.factory import create_connector
 from .drift.detector import DriftDetector
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
 from .incremental import IncrementalPlan, TableState, TableStateStore
@@ -25,6 +26,7 @@ from .planner import PlanBuilder, print_plan
 from .profiling.core import ProfileEngine
 from .storage.writer import ResultWriter
 from .utils.logging import RunContext, log_event
+from .validation.executor import ValidationExecutor
 
 # Setup fallback logging (will be replaced by structured logging per command)
 logging.basicConfig(
@@ -732,6 +734,123 @@ def plan_command(args):
     except Exception as e:
         logger.error(f"Plan generation failed: {e}", exc_info=True)
         print(f"\nError: Plan generation failed: {e}")
+        return 1
+
+
+def validate_command(args):
+    """Execute validation command."""
+    from rich.panel import Panel
+    from rich.table import Table as RichTable
+
+    from .cli_output import get_status_indicator, safe_print
+
+    status_indicator = get_status_indicator("validation")
+    safe_print(f"{status_indicator} Loading configuration...")
+    logger.info(f"Loading configuration from: {args.config}")
+
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        if not config.validation or not config.validation.enabled:
+            safe_print("[yellow]Validation is disabled in configuration[/yellow]")
+            return 0
+
+        # Create event bus and register hooks
+        event_bus = create_event_bus(config)
+        if event_bus:
+            logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
+
+        # Create connectors
+        source_connector = create_connector(config.source, config.retry)
+        storage_connector = create_connector(config.storage.connection, config.retry)
+
+        # Create validation executor
+        executor = ValidationExecutor(
+            config=config,
+            source_engine=source_connector.engine,
+            storage_engine=storage_connector.engine,
+            event_bus=event_bus,
+        )
+
+        safe_print(f"{status_indicator} Executing validation rules...")
+
+        # Execute validation
+        results = executor.execute_validation(table_filter=args.table)
+
+        if not results:
+            safe_print("[yellow]No validation rules configured or no rules matched filter[/yellow]")
+            return 0
+
+        # Display results
+        passed_count = sum(1 for r in results if r.passed)
+        failed_count = len(results) - passed_count
+
+        if args.output:
+            # Write results to JSON file
+            import json
+
+            output_data = {
+                "summary": {
+                    "total_rules": len(results),
+                    "passed": passed_count,
+                    "failed": failed_count,
+                },
+                "results": [r.to_dict() for r in results],
+            }
+            with open(args.output, "w") as f:
+                json.dump(output_data, f, indent=2, default=str)
+            safe_print(f"[green]Results written to {args.output}[/green]")
+        else:
+            # Display results in table format
+            table = RichTable(
+                title="Validation Results", show_header=True, header_style="bold magenta"
+            )
+            table.add_column("Table", style="cyan")
+            table.add_column("Column", style="dim")
+            table.add_column("Rule Type", style="blue")
+            table.add_column("Status", justify="center")
+            table.add_column("Failed Rows", justify="right")
+            table.add_column("Failure Rate", justify="right")
+            table.add_column("Severity", justify="center")
+
+            for result in results:
+                status = "[green]✓ PASS[/green]" if result.passed else "[red]✗ FAIL[/red]"
+                failed_rows_str = f"{result.failed_rows:,}" if result.failed_rows > 0 else "-"
+                failure_rate_str = f"{result.failure_rate:.2f}%" if result.failure_rate > 0 else "-"
+                severity = result.rule.severity.upper()
+
+                table.add_row(
+                    result.rule.table,
+                    result.rule.column or "[dim]-[/dim]",
+                    result.rule.rule_type,
+                    status,
+                    failed_rows_str,
+                    failure_rate_str,
+                    severity,
+                )
+
+            safe_print("\n")
+            safe_print(table)
+
+            # Summary panel
+            summary_text = f"[bold]Total Rules:[/bold] {len(results)}\n"
+            summary_text += f"[green]Passed:[/green] {passed_count}\n"
+            summary_text += f"[red]Failed:[/red] {failed_count}"
+
+            summary_panel = Panel(summary_text, title="Summary", border_style="blue")
+            safe_print("\n")
+            safe_print(summary_panel)
+
+        # Exit with error code if any validations failed
+        if failed_count > 0:
+            return 1
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Validation failed: {e}", exc_info=True)
+        safe_print(f"[red]Validation failed: {e}[/red]")
         return 1
 
 
@@ -2619,6 +2738,14 @@ def main():
         help="Exit with error code if critical drift detected",
     )
 
+    # Validate command
+    validate_parser = subparsers.add_parser("validate", help="Execute data validation rules")
+    validate_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
+    )
+    validate_parser.add_argument("--table", help="Filter validation to specific table")
+    validate_parser.add_argument("--output", "-o", help="Output file for results (JSON)")
+
     # Migrate command
     migrate_parser = subparsers.add_parser("migrate", help="Manage schema migrations")
     migrate_subparsers = migrate_parser.add_subparsers(
@@ -3004,6 +3131,8 @@ def main():
         return profile_command(args)
     elif args.command == "drift":
         return drift_command(args)
+    elif args.command == "validate":
+        return validate_command(args)
     elif args.command == "migrate":
         if not args.migrate_command:
             migrate_parser.print_help()

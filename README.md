@@ -19,8 +19,9 @@
 - **Advanced Statistical Tests**: Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square, Entropy, and more for rigorous drift detection
 - **Expectation Learning**: Automatically learns expected metric ranges from historical profiling data, including control limits, distributions, and categorical frequencies for proactive anomaly detection
 - **Anomaly Detection**: Automatically detects outliers and seasonal anomalies using learned expectations with multiple detection methods (IQR, MAD, EWMA, trend/seasonality, regime shift)
+- **Data Validation** ✨ **NEW**: Rule-based data quality validation with built-in validators for format, range, enum, null checks, uniqueness, and referential integrity
 - **Root Cause Analysis** ✨ **NEW**: Automatically correlates anomalies with pipeline runs, code changes, and upstream data issues using temporal correlation, lineage analysis, and pattern matching
-- **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, anomalies, and profiling lifecycle events
+- **Event & Alert Hooks**: Pluggable event system for real-time alerts and notifications on drift, schema changes, anomalies, validation failures, and profiling lifecycle events
 - **Partition-Aware Profiling**: Intelligent partition handling with strategies for latest, recent_n, or sample partitions
 - **Adaptive Sampling**: Multiple sampling methods (random, stratified, top-k) for efficient profiling of large datasets
 - **Multi-Database Support**: Works with PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, and Redshift
@@ -191,7 +192,22 @@ After running profiling multiple times:
 baselinr drift --config config.yml --dataset customers
 ```
 
-### 5. Query Profiling Metadata
+### 5. Run Data Validation
+
+Execute validation rules to check data quality:
+
+```bash
+# Run all validation rules
+baselinr validate --config config.yml
+
+# Validate specific table
+baselinr validate --config config.yml --table customers
+
+# Save results to JSON file
+baselinr validate --config config.yml --output validation_results.json
+```
+
+### 6. Query Profiling Metadata
 
 Query your profiling history and drift events:
 
@@ -209,7 +225,7 @@ baselinr query run --config config.yml --run-id <run-id>
 baselinr query table --config config.yml --table customers --days 30
 ```
 
-### 6. Check System Status
+### 7. Check System Status
 
 Get a quick overview of recent runs and active drift:
 
@@ -227,7 +243,7 @@ baselinr status --config config.yml --watch
 baselinr status --config config.yml --json
 ```
 
-### 7. Start Dashboard UI
+### 8. Start Dashboard UI
 
 Launch the web dashboard to view profiling runs, drift alerts, and metrics:
 
@@ -244,7 +260,7 @@ baselinr ui --config config.yml --host 127.0.0.1
 
 Press `Ctrl+C` to stop the dashboard. See [docs/schemas/UI_COMMAND.md](docs/schemas/UI_COMMAND.md) for more details.
 
-### 8. Manage Schema Migrations
+### 9. Manage Schema Migrations
 
 Check and apply schema migrations:
 
@@ -484,10 +500,11 @@ For complete SDK documentation including all methods, parameters, and advanced p
 ## 🎯 Use Cases
 
 - **Data Quality Monitoring**: Track data quality metrics over time
+- **Data Validation**: Enforce data quality rules with format, range, enum, and referential integrity checks
 - **Schema Change Detection**: Automatically detect schema changes
 - **Statistical Drift Detection**: Identify statistical anomalies in your data
 - **Data Documentation**: Generate up-to-date metadata about your datasets
-- **CI/CD Integration**: Fail builds when critical drift is detected
+- **CI/CD Integration**: Fail builds when critical drift or validation failures are detected
 
 ## 📁 Project Structure
 
