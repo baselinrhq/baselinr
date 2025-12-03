@@ -1,0 +1,53 @@
+FROM apache/airflow:2.8.0-python3.10
+
+USER root
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+USER airflow
+
+WORKDIR /app
+
+# Copy only necessary files for installation (better caching)
+# Note: Build context is parent directory (..), so paths are relative to baselinr root
+COPY pyproject.toml ./
+COPY baselinr/ ./baselinr/
+# README.md is needed by pyproject.toml for the readme field
+# If it's missing, we'll handle it in the install step
+COPY README.md ./README.md
+
+# Install Baselinr in development mode
+# Airflow is already in the base image, so we don't need the [airflow] extra
+# We skip requirements.txt to avoid conflicts with Airflow's pinned dependencies
+# Install with --no-deps first, then install missing dependencies
+# This avoids conflicts with Airflow's existing packages (like SQLAlchemy)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -e . --no-deps && \
+    pip install --no-cache-dir \
+        "pydantic>=2.0.0" \
+        "pyyaml>=6.0.0" \
+        "prometheus_client>=0.19.0" \
+        "rich>=13.0.0" \
+        "openai>=1.0.0" \
+        "anthropic>=0.18.0" \
+        "httpx>=0.24.0" \
+        "tenacity>=8.0.0" \
+        "sqlglot>=23.0.0" \
+        "colorama>=0.4.6" \
+        "networkx>=3.1" \
+        "psycopg2-binary>=2.9.0"
+
+# Copy rest of the code (for runtime access to examples, etc.)
+COPY . .
+
+# Set working directory for DAGs
+WORKDIR /opt/airflow
+
+# Create DAGs directory
+RUN mkdir -p /opt/airflow/dags
+

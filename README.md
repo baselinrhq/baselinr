@@ -28,6 +28,7 @@
 - **Schema Versioning & Migrations**: Built-in schema version management with migration system for safe database schema evolution
 - **Metadata Querying**: Powerful CLI and API for querying profiling runs, drift events, and table history
 - **Dagster Integration**: Built-in orchestration support with Dagster assets and schedules
+- **Airflow Integration**: Operators and sensors for Apache Airflow 2.x workflows
 - **Configuration-Driven**: Simple YAML/JSON configuration for defining profiling targets
 - **Historical Tracking**: Store profiling results over time for trend analysis
 - **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, schema management, and dashboard UI
@@ -59,6 +60,11 @@ pip install baselinr[snowflake]
 **Dagster Integration:**
 ```bash
 pip install baselinr[dagster]
+```
+
+**Airflow Integration:**
+```bash
+pip install baselinr[airflow]
 ```
 
 **All Features:**
@@ -445,6 +451,40 @@ profiling:
 > **Note**: dbt hooks can only execute SQL, not Python scripts. Run profiling after `dbt run` using an orchestrator or manually.
 
 See [dbt Integration Guide](docs/guides/DBT_INTEGRATION.md) for complete documentation.
+
+## 🪂 Airflow Integration
+
+Baselinr provides comprehensive integration with Apache Airflow 2.x for orchestration and scheduling.
+
+### Quick Start
+
+```python
+from airflow import DAG
+from baselinr.integrations.airflow import BaselinrProfileOperator
+
+dag = DAG("baselinr_profiling", ...)
+
+profile_task = BaselinrProfileOperator(
+    task_id="profile_tables",
+    config_path="/path/to/config.yml",
+    dag=dag,
+)
+```
+
+### Operators
+
+- **BaselinrProfileOperator**: Run profiling and return results via XCom
+- **BaselinrDriftOperator**: Detect drift with optional DAG failure on drift
+- **BaselinrQueryOperator**: Query Baselinr metadata (runs, drift, table history)
+
+### Features
+
+- Automatic XCom integration for passing results between tasks
+- RCA collector for automatic DAG run metadata collection
+- Support for Airflow REST API (v1/v2) and metadata database
+- Fail on drift for CI/CD pipelines
+
+See [Airflow Integration Guide](docs/guides/AIRFLOW_INTEGRATION.md) and [Quick Start](docs/guides/AIRFLOW_QUICKSTART.md) for complete documentation.
 
 ## 🐍 Python SDK
 

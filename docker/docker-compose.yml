@@ -106,9 +106,118 @@ services:
     depends_on:
       - prometheus
 
+  # Airflow PostgreSQL database
+  airflow_postgres:
+    image: postgres:15
+    container_name: baselinr_airflow_db
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5434:5432"
+    volumes:
+      - airflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Airflow Redis (for CeleryExecutor, optional but included for future use)
+  airflow_redis:
+    image: redis:7-alpine
+    container_name: baselinr_airflow_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Airflow webserver
+  airflow_webserver:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: baselinr_airflow_webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow_postgres:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=v2CAwgDNX4RLhSuk44_4c96cdhaRI4jY917gV2kynFM=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      - AIRFLOW__API__AUTH_BACKENDS=airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=true
+      - AIRFLOW__WEBSERVER__SECRET_KEY=oNCuFCMl32pfHth7GmWuWz70Z6wB7nmpnNvH7qmFM54
+      # Baselinr config overrides for Docker
+      - BASELINR_SOURCE__HOST=postgres
+      - BASELINR_SOURCE__PORT=5432
+      - BASELINR_STORAGE__CONNECTION__HOST=postgres
+      - BASELINR_STORAGE__CONNECTION__PORT=5432
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../:/app
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./airflow_test_dag.py:/opt/airflow/dags/airflow_test_dag.py:ro
+    depends_on:
+      airflow_postgres:
+        condition: service_healthy
+      airflow_redis:
+        condition: service_healthy
+    command: >
+      bash -c "
+        airflow db init &&
+        (airflow users list | grep -q admin || airflow users create --username admin --firstname Admin --lastname User --role Admin --email admin@example.com --password admin) &&
+        airflow webserver
+      "
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # Airflow scheduler
+  airflow_scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.airflow
+    container_name: baselinr_airflow_scheduler
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@airflow_postgres:5432/airflow
+      - AIRFLOW__CORE__FERNET_KEY=v2CAwgDNX4RLhSuk44_4c96cdhaRI4jY917gV2kynFM=
+      - AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION=true
+      - AIRFLOW__CORE__LOAD_EXAMPLES=false
+      # Baselinr config overrides for Docker
+      - BASELINR_SOURCE__HOST=postgres
+      - BASELINR_SOURCE__PORT=5432
+      - BASELINR_STORAGE__CONNECTION__HOST=postgres
+      - BASELINR_STORAGE__CONNECTION__PORT=5432
+    volumes:
+      - ../:/app
+      - airflow_dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - airflow_plugins:/opt/airflow/plugins
+      - ./airflow_test_dag.py:/opt/airflow/dags/airflow_test_dag.py:ro
+    depends_on:
+      airflow_postgres:
+        condition: service_healthy
+      airflow_redis:
+        condition: service_healthy
+    command: airflow scheduler
+
 volumes:
   postgres_data:
   dagster_home:
   prometheus_data:
   grafana_data:
+  airflow_postgres_data:
+  airflow_dags:
+  airflow_logs:
+  airflow_plugins:
 
