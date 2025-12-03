@@ -2259,7 +2259,7 @@ def migrate_command(args):
 
 
 def recommend_command(args):
-    """Execute recommend command to generate smart table recommendations."""
+    """Execute recommend command to generate smart table and column recommendations."""
     import json
 
     from .cli_output import safe_print
@@ -2301,21 +2301,79 @@ def recommend_command(args):
         # Override output file if specified
         output_file = args.output or smart_config.recommendations.output_file
 
+        # Determine if we're doing column recommendations
+        include_columns = getattr(args, "columns", False)
+        specific_table = getattr(args, "table", None)
+
         # Create database connector
         connector = create_connector(config.source, config.retry, config.execution)
 
-        safe_print("\n📊 Generating smart table recommendations...")
+        # Create storage connector if storage config exists (for column profiling data)
+        storage_engine = None
+        if hasattr(config, "storage") and config.storage:
+            try:
+                from .connectors.factory import create_connector as create_storage_connector
+
+                storage_connector = create_storage_connector(
+                    config.storage.connection, config.retry, config.execution
+                )
+                storage_engine = storage_connector.engine
+            except Exception as e:
+                logger.warning(f"Could not create storage connector: {e}")
+
+        if include_columns:
+            safe_print("\n📊 Generating smart table and column recommendations...")
+        else:
+            safe_print("\n📊 Generating smart table recommendations...")
+
         safe_print(f"   Database: {config.source.database} ({config.source.type})")
         if args.schema:
             safe_print(f"   Schema: {args.schema}")
+        if specific_table:
+            safe_print(f"   Table: {specific_table}")
         safe_print(f"   Lookback period: {smart_config.criteria.lookback_days} days")
+        if include_columns:
+            safe_print(f"   Column analysis: enabled")
         safe_print("")
 
-        # Create recommendation engine
+        # Create recommendation engine with storage engine
         engine = RecommendationEngine(
             connection_config=config.source,
             smart_config=smart_config,
+            storage_engine=storage_engine,
         )
+
+        # Handle single table column recommendations
+        if specific_table:
+            safe_print(f"Analyzing columns in {args.schema or 'default'}.{specific_table}...")
+            col_recs = engine.generate_column_recommendations(
+                engine=connector.engine,
+                table_name=specific_table,
+                schema=args.schema,
+            )
+
+            safe_print(f"✅ Found {len(col_recs)} column check recommendations")
+            safe_print("")
+
+            if args.explain and col_recs:
+                _display_column_recommendations(col_recs, safe_print)
+
+            # Save to file
+            if args.format == "yaml":
+                import yaml as yaml_lib
+
+                with open(output_file, "w") as f:
+                    f.write(f"# Column Recommendations for {args.schema or 'default'}.{specific_table}\n")
+                    f.write(f"# Generated: {__import__('datetime').datetime.now().isoformat()}\n\n")
+                    yaml_lib.dump(
+                        {"column_recommendations": [r.to_dict() for r in col_recs]},
+                        f,
+                        default_flow_style=False,
+                        sort_keys=False,
+                    )
+                safe_print(f"💾 Saved recommendations to: {output_file}")
+
+            return 0
 
         # Get existing tables to avoid duplicates
         existing_tables = config.profiling.tables if config.profiling else []
@@ -2325,6 +2383,7 @@ def recommend_command(args):
             engine=connector.engine,
             schema=args.schema,
             existing_tables=existing_tables,
+            include_columns=include_columns,
         )
 
         # Display summary
@@ -2332,11 +2391,22 @@ def recommend_command(args):
         safe_print(f"   Tables analyzed: {report.total_tables_analyzed}")
         safe_print(f"   Recommended: {report.total_recommended}")
         safe_print(f"   Excluded: {report.total_excluded}")
+
+        if include_columns and report.total_columns_analyzed > 0:
+            safe_print("")
+            safe_print(f"   Columns analyzed: {report.total_columns_analyzed}")
+            safe_print(f"   Column checks recommended: {report.total_column_checks_recommended}")
+            if report.column_confidence_distribution:
+                high = report.column_confidence_distribution.get("high (0.8+)", 0)
+                med = report.column_confidence_distribution.get("medium (0.5-0.8)", 0)
+                low = report.column_confidence_distribution.get("low (<0.5)", 0)
+                safe_print(f"   Column confidence: {high} high, {med} medium, {low} low")
+
         safe_print("")
 
-        # Show confidence distribution
+        # Show table confidence distribution
         if report.confidence_distribution:
-            safe_print("Confidence distribution:")
+            safe_print("Table confidence distribution:")
             for level, count in report.confidence_distribution.items():
                 if count > 0:
                     safe_print(f"   {level}: {count} tables")
@@ -2364,6 +2434,19 @@ def recommend_command(args):
                     for warning in rec.warnings:
                         safe_print(f"   ⚠️  {warning}")
 
+                # Show column recommendations if available
+                if include_columns and rec.column_recommendations:
+                    safe_print("")
+                    safe_print(f"   Column recommendations ({len(rec.column_recommendations)} columns):")
+                    for col_rec in rec.column_recommendations[:5]:
+                        checks = [c["type"] for c in col_rec.suggested_checks[:3]]
+                        safe_print(
+                            f"      • {col_rec.column} ({col_rec.data_type}): "
+                            f"{', '.join(checks)} (conf: {col_rec.confidence:.2f})"
+                        )
+                    if len(rec.column_recommendations) > 5:
+                        safe_print(f"      ... and {len(rec.column_recommendations) - 5} more columns")
+
                 safe_print("")
 
             if len(report.recommended_tables) > 10:
@@ -2388,21 +2471,35 @@ def recommend_command(args):
             safe_print("")
             safe_print("⚠️  Apply mode: This will modify your configuration file!")
             safe_print(f"   {len(report.recommended_tables)} tables will be added to {args.config}")
+            if include_columns:
+                safe_print(
+                    f"   {report.total_column_checks_recommended} column checks will be configured"
+                )
             safe_print("")
 
             response = input("Do you want to continue? [y/N]: ")
             if response.lower() in ["y", "yes"]:
-                _apply_recommendations(args.config, report, config)
+                _apply_recommendations(args.config, report, config, include_columns=include_columns)
                 safe_print("✅ Configuration updated successfully!")
             else:
                 safe_print("❌ Apply cancelled.")
+
+        # Dry run mode
+        if getattr(args, "dry_run", False):
+            safe_print("")
+            safe_print("🔍 Dry run mode - no changes applied")
+            safe_print("   The above recommendations would be applied with --apply")
 
         # Success message
         safe_print("")
         safe_print("✨ Next steps:")
         safe_print(f"   1. Review recommendations in: {output_file}")
-        safe_print(f"   2. Apply with: baselinr recommend --config {args.config} --apply")
-        safe_print("   3. Or manually add tables to your config file")
+        if include_columns:
+            safe_print(f"   2. Apply with: baselinr recommend --columns --config {args.config} --apply")
+        else:
+            safe_print(f"   2. Apply with: baselinr recommend --config {args.config} --apply")
+            safe_print(f"   3. Add column checks: baselinr recommend --columns --config {args.config}")
+        safe_print("   4. Or manually add tables to your config file")
 
         log_event(
             logger,
@@ -2411,6 +2508,7 @@ def recommend_command(args):
             metadata={
                 "recommended_count": report.total_recommended,
                 "excluded_count": report.total_excluded,
+                "column_checks_count": report.total_column_checks_recommended,
             },
         )
 
@@ -2432,7 +2530,50 @@ def recommend_command(args):
         return 1
 
 
-def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
+def _display_column_recommendations(col_recs, safe_print):
+    """Display column recommendations in a readable format."""
+    high_conf = [r for r in col_recs if r.confidence >= 0.8]
+    medium_conf = [r for r in col_recs if 0.5 <= r.confidence < 0.8]
+    low_conf = [r for r in col_recs if r.confidence < 0.5]
+
+    if high_conf:
+        safe_print("HIGH CONFIDENCE RECOMMENDATIONS:")
+        safe_print("")
+        for rec in high_conf:
+            safe_print(f"✓ {rec.column} ({rec.data_type})")
+            for check in rec.suggested_checks:
+                safe_print(f"  → {check['type']} (confidence: {check.get('confidence', 'N/A')})")
+                if check.get("config"):
+                    for key, val in check["config"].items():
+                        if key != "note":
+                            safe_print(f"    {key}: {val}")
+                if check.get("note"):
+                    safe_print(f"    Note: {check['note']}")
+            if rec.signals:
+                safe_print(f"  Signals: {', '.join(rec.signals[:3])}")
+            safe_print("")
+
+    if medium_conf:
+        safe_print("MEDIUM CONFIDENCE RECOMMENDATIONS:")
+        safe_print("")
+        for rec in medium_conf:
+            safe_print(f"? {rec.column} ({rec.data_type}) - confidence: {rec.confidence:.2f}")
+            checks = [c["type"] for c in rec.suggested_checks]
+            safe_print(f"  Suggested: {', '.join(checks)}")
+        safe_print("")
+
+    if low_conf:
+        safe_print("LOW CONFIDENCE SUGGESTIONS:")
+        safe_print("")
+        for rec in low_conf:
+            safe_print(f"○ {rec.column} ({rec.data_type}) - confidence: {rec.confidence:.2f}")
+            safe_print("  Consider manual inspection")
+        safe_print("")
+
+
+def _apply_recommendations(
+    config_path: str, report, config: BaselinrConfig, include_columns: bool = False
+):
     """Apply recommendations by updating the configuration file."""
     from pathlib import Path
 
@@ -2449,7 +2590,7 @@ def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
     if "tables" not in raw_config["profiling"]:
         raw_config["profiling"]["tables"] = []
 
-    # Add recommended tables
+    # Add recommended tables (with optional column recommendations)
     for rec in report.recommended_tables:
         table_entry = {
             "schema": rec.schema,
@@ -2460,6 +2601,24 @@ def _apply_recommendations(config_path: str, report, config: BaselinrConfig):
 
         # Add comment about recommendation
         table_entry["_comment"] = f"Auto-recommended (confidence: {rec.confidence:.2f})"
+
+        # Add column-level checks if enabled and recommendations exist
+        if include_columns and hasattr(rec, "column_recommendations") and rec.column_recommendations:
+            columns_config = []
+            for col_rec in rec.column_recommendations:
+                col_entry = {
+                    "name": col_rec.column,
+                    "_comment": f"confidence: {col_rec.confidence:.2f}",
+                }
+                # Add validation rules as checks if available
+                if col_rec.suggested_checks:
+                    # Just add a note about suggested checks
+                    checks_summary = [c["type"] for c in col_rec.suggested_checks]
+                    col_entry["_suggested_checks"] = checks_summary
+                columns_config.append(col_entry)
+
+            if columns_config:
+                table_entry["columns"] = columns_config
 
         raw_config["profiling"]["tables"].append(table_entry)
 
@@ -3012,7 +3171,8 @@ def main():
 
     # Recommend command
     recommend_parser = subparsers.add_parser(
-        "recommend", help="Generate smart table recommendations based on usage patterns"
+        "recommend",
+        help="Generate smart table and column check recommendations based on usage patterns",
     )
     recommend_parser.add_argument(
         "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
@@ -3028,6 +3188,16 @@ def main():
         help="Limit recommendations to specific schema",
     )
     recommend_parser.add_argument(
+        "--table",
+        "-t",
+        help="Recommend checks for a specific table (use with --columns)",
+    )
+    recommend_parser.add_argument(
+        "--columns",
+        action="store_true",
+        help="Include column-level check recommendations",
+    )
+    recommend_parser.add_argument(
         "--explain",
         action="store_true",
         help="Show detailed explanations for recommendations",
@@ -3036,6 +3206,11 @@ def main():
         "--apply",
         action="store_true",
         help="Apply recommendations by merging into config file (prompt for confirmation)",
+    )
+    recommend_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what checks would be added without applying",
     )
     recommend_parser.add_argument(
         "--refresh",
