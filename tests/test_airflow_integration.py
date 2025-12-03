@@ -5,6 +5,7 @@ Tests operators and RCA collector with mocked Airflow dependencies.
 """
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -365,23 +366,26 @@ class TestAirflowRunCollector:
             api_version="v1",
         )
 
-        # Mock API response - patch requests inside the method
-        with patch("requests.get") as mock_get:
-            mock_response = MagicMock()
-            mock_response.json.return_value = {
-                "dag_runs": [
-                    {
-                        "dag_id": "test_dag",
-                        "dag_run_id": "test_run_123",
-                        "state": "success",
-                        "execution_date": "2024-01-01T00:00:00Z",
-                        "end_date": "2024-01-01T00:05:00Z",
-                    }
-                ]
-            }
-            mock_response.raise_for_status = MagicMock()
-            mock_get.return_value = mock_response
+        # Mock requests module in sys.modules to avoid ImportError when requests is not installed
+        # This allows the import inside _collect_from_api to work
+        mock_requests_module = MagicMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "dag_runs": [
+                {
+                    "dag_id": "test_dag",
+                    "dag_run_id": "test_run_123",
+                    "state": "success",
+                    "execution_date": "2024-01-01T00:00:00Z",
+                    "end_date": "2024-01-01T00:05:00Z",
+                }
+            ]
+        }
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_module.get.return_value = mock_response
 
+        # Patch requests in sys.modules so the import inside _collect_from_api works
+        with patch.dict(sys.modules, {"requests": mock_requests_module}):
             runs = collector._collect_from_api()
 
             assert len(runs) == 1
