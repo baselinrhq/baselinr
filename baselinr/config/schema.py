@@ -1224,6 +1224,15 @@ class RCACollectorConfig(BaseModel):
 
     airflow: Optional[bool] = Field(False, description="Enable Airflow run collector")
     airflow_api_url: Optional[str] = Field(None, description="Airflow API URL")
+    airflow_api_version: Optional[str] = Field("v1", description="Airflow API version (v1 or v2)")
+    airflow_username: Optional[str] = Field(None, description="Username for Airflow API auth")
+    airflow_password: Optional[str] = Field(None, description="Password for Airflow API auth")
+    airflow_metadata_db_connection: Optional[str] = Field(
+        None, description="Connection string for direct Airflow metadata DB access"
+    )
+    airflow_dag_ids: Optional[List[str]] = Field(
+        None, description="Optional list of DAG IDs to collect (None = all DAGs)"
+    )
 
 
 class RCAConfig(BaseModel):

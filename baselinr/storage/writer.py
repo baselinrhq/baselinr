@@ -97,9 +97,8 @@ class ResultWriter:
         )
 
         # Create tables
-        with self.engine.connect() as conn:
-            metadata.create_all(self.engine)
-            conn.commit()
+        # Note: create_all() auto-commits in SQLAlchemy 2.0, no need for explicit commit
+        metadata.create_all(self.engine)
 
         logger.info("Storage tables created successfully")
 
@@ -134,7 +133,8 @@ class ResultWriter:
         """
         if self.engine is None:
             raise RuntimeError("Engine is not initialized")
-        with self.engine.connect() as conn:
+        # Use begin() for transaction management (SQLAlchemy 2.0)
+        with self.engine.begin() as conn:
             for result in results:
                 # Write run metadata
                 self._write_run(conn, result, environment)
@@ -162,7 +162,7 @@ class ResultWriter:
                 if self.baselinr_config and self.baselinr_config.profiling.extract_lineage:
                     self._extract_and_write_lineage(result)
 
-            conn.commit()
+            # Transaction auto-commits when exiting 'with' block
 
         logger.info(f"Wrote {len(results)} profiling results to storage")
 
@@ -315,11 +315,11 @@ class ResultWriter:
         """Initialize or verify schema version."""
         from .schema_version import CURRENT_SCHEMA_VERSION, get_version_table_ddl
 
-        # Create version table if it doesn't exist
+        # Create version table if it doesn't exist (DDL auto-commits in SQLAlchemy 2.0)
         with self.engine.connect() as conn:
             dialect = "snowflake" if "snowflake" in str(self.engine.url) else "generic"
             conn.execute(text(get_version_table_ddl(dialect)))
-            conn.commit()
+            # DDL auto-commits, no need for explicit commit
 
             # Check current version
             version_query = text(
@@ -331,23 +331,23 @@ class ResultWriter:
             result = conn.execute(version_query).fetchone()
 
             if result is None:
-                # First time - insert initial version
-                insert_query = text(
+                # First time - insert initial version (use begin() for DML transaction)
+                with self.engine.begin() as trans_conn:
+                    insert_query = text(
+                        """
+                        INSERT INTO baselinr_schema_version
+                        (version, description, migration_script)
+                        VALUES (:version, :description, :script)
                     """
-                    INSERT INTO baselinr_schema_version
-                    (version, description, migration_script)
-                    VALUES (:version, :description, :script)
-                """
-                )
-                conn.execute(
-                    insert_query,
-                    {
-                        "version": CURRENT_SCHEMA_VERSION,
-                        "description": "Initial schema version",
-                        "script": "schema.sql",
-                    },
-                )
-                conn.commit()
+                    )
+                    trans_conn.execute(
+                        insert_query,
+                        {
+                            "version": CURRENT_SCHEMA_VERSION,
+                            "description": "Initial schema version",
+                            "script": "schema.sql",
+                        },
+                    )
                 logger.info(f"Initialized schema version: {CURRENT_SCHEMA_VERSION}")
             else:
                 current_version = result[0]
@@ -439,7 +439,7 @@ class ResultWriter:
 
             with self.engine.connect() as conn:
                 conn.execute(create_table_sql)
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             # Create indexes
             indexes = [
@@ -468,7 +468,7 @@ class ResultWriter:
                         conn.execute(text(index_sql))
                     except Exception:
                         pass  # Index might already exist
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             logger.debug("Events table created successfully")
         except Exception as e:
@@ -527,7 +527,7 @@ class ResultWriter:
 
             with self.engine.connect() as conn:
                 conn.execute(create_table_sql)
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             # Create indexes
             indexes = [
@@ -555,7 +555,7 @@ class ResultWriter:
                         conn.execute(text(index_sql))
                     except Exception:
                         pass  # Index might already exist
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             logger.debug("Schema registry table created successfully")
         except Exception as e:
@@ -690,7 +690,7 @@ class ResultWriter:
                                     """
                                 )
                             )
-                        conn.commit()
+                        # DDL auto-commits in SQLAlchemy 2.0
                         logger.info("Successfully added database columns to baselinr_lineage table")
                     except Exception as e:
                         logger.warning(
@@ -779,7 +779,7 @@ class ResultWriter:
 
             with self.engine.connect() as conn:
                 conn.execute(create_table_sql)
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             # Create indexes
             indexes = [
@@ -807,7 +807,7 @@ class ResultWriter:
                         conn.execute(text(index_sql))
                     except Exception:
                         pass  # Index might already exist
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             logger.debug("Lineage table created successfully")
         except Exception as e:
@@ -910,7 +910,7 @@ class ResultWriter:
 
             with self.engine.connect() as conn:
                 conn.execute(create_table_sql)
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             # Create indexes
             indexes = [
@@ -940,7 +940,7 @@ class ResultWriter:
                         conn.execute(text(index_sql))
                     except Exception:
                         pass  # Index might already exist
-                conn.commit()
+                # DDL auto-commits in SQLAlchemy 2.0
 
             logger.debug("Column lineage table created successfully")
         except Exception as e:
@@ -964,7 +964,8 @@ class ResultWriter:
         is_snowflake = "snowflake" in str(self.engine.url).lower()
         is_sqlite = "sqlite" in str(self.engine.url).lower()
 
-        with self.engine.connect() as conn:
+        # Use begin() for transaction management (SQLAlchemy 2.0)
+        with self.engine.begin() as conn:
             for edge in edges:
                 # Serialize metadata
                 if is_snowflake:
@@ -1088,8 +1089,8 @@ class ResultWriter:
                     except Exception:
                         pass  # Ignore rollback errors
 
-                    # Use a fresh connection for the fallback
-                    with self.engine.connect() as fallback_conn:
+                    # Use a fresh transaction for the fallback
+                    with self.engine.begin() as fallback_conn:
                         check_sql = text(
                             """
                             SELECT id FROM baselinr_lineage
@@ -1139,7 +1140,7 @@ class ResultWriter:
                                     "metadata": metadata_str,
                                 },
                             )
-                            fallback_conn.commit()
+                            # Transaction auto-commits when exiting 'with' block
                         else:
                             # Insert new
                             insert_sql = text(
@@ -1174,11 +1175,11 @@ class ResultWriter:
                                     "metadata": metadata_str,
                                 },
                             )
-                            fallback_conn.commit()
-                    # If we used fallback, skip the main conn.commit() since we already committed
+                            # Transaction auto-commits when exiting 'with' block
+                    # If we used fallback, skip the main transaction since we already committed
                     continue
 
-            conn.commit()
+            # Transaction auto-commits when exiting 'with' block
             logger.debug(f"Wrote {len(edges)} lineage edges to storage")
 
     def write_column_lineage(self, edges: List) -> None:
@@ -1199,7 +1200,8 @@ class ResultWriter:
         is_snowflake = "snowflake" in str(self.engine.url).lower()
         is_sqlite = "sqlite" in str(self.engine.url).lower()
 
-        with self.engine.connect() as conn:
+        # Use begin() for transaction management (SQLAlchemy 2.0)
+        with self.engine.begin() as conn:
             for edge in edges:
                 # Serialize metadata
                 if is_snowflake:
@@ -1339,8 +1341,8 @@ class ResultWriter:
                     except Exception:
                         pass  # Ignore rollback errors
 
-                    # Use a fresh connection for the fallback
-                    with self.engine.connect() as fallback_conn:
+                    # Use a fresh transaction for the fallback
+                    with self.engine.begin() as fallback_conn:
                         check_sql = text(
                             """
                             SELECT id FROM baselinr_column_lineage
@@ -1396,7 +1398,7 @@ class ResultWriter:
                                     "metadata": metadata_str,
                                 },
                             )
-                            fallback_conn.commit()
+                            # Transaction auto-commits when exiting 'with' block
                         else:
                             # Insert new
                             insert_sql = text(
@@ -1436,11 +1438,11 @@ class ResultWriter:
                                     "metadata": metadata_str,
                                 },
                             )
-                            fallback_conn.commit()
-                    # If we used fallback, skip the main conn.commit() since we already committed
+                            # Transaction auto-commits when exiting 'with' block
+                    # If we used fallback, skip the main transaction since we already committed
                     continue
 
-            conn.commit()
+            # Transaction auto-commits when exiting 'with' block
             logger.debug(f"Wrote {len(edges)} column lineage edges to storage")
 
     def _extract_and_write_lineage(self, result: ProfilingResult):
