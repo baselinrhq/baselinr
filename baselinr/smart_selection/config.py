@@ -1,10 +1,11 @@
 """
-Configuration schema for smart table selection.
+Configuration schema for smart table and column selection.
 
-Defines Pydantic models for smart selection configuration.
+Defines Pydantic models for smart selection configuration
+including table-level and column-level recommendations.
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -83,10 +84,141 @@ class SmartSelectionAutoApply(BaseModel):
     skip_existing: bool = Field(True, description="Skip tables already in explicit configuration")
 
 
-class SmartSelectionConfig(BaseModel):
-    """Smart table selection configuration."""
+class ColumnInferenceConfig(BaseModel):
+    """Configuration for column check inference."""
 
-    enabled: bool = Field(False, description="Enable smart table selection")
+    use_profiling_data: bool = Field(
+        True, description="Use existing profile stats for inference if available"
+    )
+    confidence_threshold: float = Field(
+        0.7,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence score to recommend a check",
+    )
+    max_checks_per_column: int = Field(
+        5, ge=1, le=20, description="Maximum number of checks to recommend per column"
+    )
+
+    # Column prioritization settings
+    prioritize_primary_keys: bool = Field(
+        True, description="Give higher priority to primary key columns"
+    )
+    prioritize_foreign_keys: bool = Field(
+        True, description="Give higher priority to foreign key columns"
+    )
+    prioritize_timestamp_columns: bool = Field(
+        True, description="Give higher priority to timestamp columns"
+    )
+    deprioritize_high_cardinality_strings: bool = Field(
+        False, description="Lower priority for high-cardinality string columns (can be noisy)"
+    )
+
+    # Check type preferences
+    preferred_checks: List[str] = Field(
+        default_factory=lambda: ["completeness", "freshness", "uniqueness"],
+        description="Check types to prefer in recommendations",
+    )
+    avoided_checks: List[str] = Field(
+        default_factory=list,
+        description="Check types to avoid recommending (e.g., 'custom_sql')",
+    )
+
+    @field_validator("preferred_checks", "avoided_checks")
+    @classmethod
+    def validate_check_types(cls, v: List[str]) -> List[str]:
+        """Validate check type names."""
+        valid_checks = {
+            "completeness",
+            "freshness",
+            "uniqueness",
+            "not_null",
+            "format_email",
+            "format_phone",
+            "format_url",
+            "format_uuid",
+            "range",
+            "non_negative",
+            "allowed_values",
+            "valid_date_range",
+            "distribution",
+            "referential_integrity",
+            "valid_json",
+            "custom_sql",
+        }
+        invalid = [c for c in v if c not in valid_checks]
+        if invalid:
+            # Allow custom check types, just warn
+            pass
+        return v
+
+
+class ColumnPatternConfig(BaseModel):
+    """Configuration for a custom column pattern override."""
+
+    match: str = Field(..., description="Column name pattern (supports wildcards: *, ?)")
+    pattern_type: str = Field("wildcard", description="Pattern type: 'wildcard' or 'regex'")
+    checks: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description=(
+            "List of checks to apply. Each check has 'type' and " "optional 'confidence', 'config'."
+        ),
+    )
+
+    @field_validator("pattern_type")
+    @classmethod
+    def validate_pattern_type(cls, v: str) -> str:
+        """Validate pattern type."""
+        if v not in ("wildcard", "regex"):
+            raise ValueError("pattern_type must be 'wildcard' or 'regex'")
+        return v
+
+
+class ColumnSelectionConfig(BaseModel):
+    """Configuration for column-level smart selection."""
+
+    enabled: bool = Field(True, description="Enable column-level check recommendations")
+    mode: str = Field(
+        "recommend",
+        description=(
+            "Mode: 'recommend' (generate suggestions), "
+            "'auto' (apply automatically), or 'disabled'"
+        ),
+    )
+
+    inference: ColumnInferenceConfig = Field(
+        default_factory=lambda: ColumnInferenceConfig(),  # type: ignore[call-arg]
+        description="Check inference settings",
+    )
+
+    # Custom pattern overrides
+    patterns: List[ColumnPatternConfig] = Field(
+        default_factory=list,
+        description="Custom pattern rules that override default inference",
+    )
+
+    # Learning settings
+    learn_from_config: bool = Field(
+        True, description="Learn patterns from existing column configurations"
+    )
+    learned_patterns_file: Optional[str] = Field(
+        None, description="File to store/load learned patterns"
+    )
+
+    @field_validator("mode")
+    @classmethod
+    def validate_mode(cls, v: str) -> str:
+        """Validate mode."""
+        valid_modes = ["recommend", "auto", "disabled"]
+        if v not in valid_modes:
+            raise ValueError(f"mode must be one of {valid_modes}")
+        return v
+
+
+class SmartSelectionConfig(BaseModel):
+    """Smart table and column selection configuration."""
+
+    enabled: bool = Field(False, description="Enable smart selection")
     mode: str = Field(
         "recommend",
         description=(
@@ -95,9 +227,10 @@ class SmartSelectionConfig(BaseModel):
         ),
     )
 
+    # Table selection (Phase 1)
     criteria: SmartSelectionCriteria = Field(
         default_factory=lambda: SmartSelectionCriteria(),  # type: ignore[call-arg]
-        description="Selection criteria",
+        description="Table selection criteria",
     )
 
     recommendations: SmartSelectionRecommendations = Field(
@@ -108,6 +241,12 @@ class SmartSelectionConfig(BaseModel):
     auto_apply: SmartSelectionAutoApply = Field(
         default_factory=lambda: SmartSelectionAutoApply(),  # type: ignore[call-arg]
         description="Auto-apply settings",
+    )
+
+    # Column selection (Phase 2)
+    columns: ColumnSelectionConfig = Field(
+        default_factory=lambda: ColumnSelectionConfig(),  # type: ignore[call-arg]
+        description="Column-level check recommendation settings",
     )
 
     # Cache settings
