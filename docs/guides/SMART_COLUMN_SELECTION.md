@@ -1,179 +1,315 @@
 # Smart Column Selection and Check Type Recommendations
 
-> **Phase 2 of Intelligent Selection for Baselinr**
-
-This document describes the Smart Column Selection feature, which automatically suggests appropriate data quality checks based on column characteristics.
-
 ## Overview
 
-Building on Phase 1's usage-based table selection, Phase 2 adds column-level intelligence that:
+Smart Column Selection (Phase 2) extends baselinr's intelligent selection capabilities to the column level. Building on Phase 1's usage-based table selection, this feature automatically analyzes column characteristics and recommends appropriate data quality checks.
 
-1. **Analyzes column metadata and statistical properties** to infer appropriate checks
-2. **Generates specific, actionable check recommendations** per column
-3. **Learns from existing column naming patterns** and data characteristics
-4. **Allows users to review and approve suggestions** before applying
-5. **Avoids over-monitoring** by recommending only high-value checks
+## Key Features
 
-## Quick Start
+- **Automatic Check Inference**: Analyzes column metadata and statistics to suggest appropriate checks
+- **Pattern-Based Recognition**: Identifies common column naming patterns (timestamps, IDs, emails, etc.)
+- **Confidence Scoring**: Assigns confidence levels to recommendations based on signal strength
+- **Pattern Learning**: Learns from existing configurations to improve future recommendations
+- **Customizable Rules**: Supports user-defined patterns and check preferences
 
-```bash
-# Generate column-level check recommendations
-baselinr recommend --columns --config config.yaml
+## Architecture
 
-# Recommend for a specific table
-baselinr recommend --columns --table analytics.user_events
+### Module Structure
 
-# Show detailed reasoning for recommendations
-baselinr recommend --columns --explain
-
-# Preview changes without applying
-baselinr recommend --columns --dry-run
-
-# Apply recommendations to config
-baselinr recommend --columns --apply
 ```
+baselinr/smart_selection/
+├── column_analysis/
+│   ├── __init__.py
+│   ├── metadata_analyzer.py    # Extract column metadata signals
+│   ├── statistical_analyzer.py # Analyze profiling statistics
+│   ├── pattern_matcher.py      # Match naming patterns
+│   └── check_inferencer.py     # Infer appropriate checks
+├── scoring/
+│   ├── __init__.py
+│   ├── confidence_scorer.py    # Calculate confidence scores
+│   └── check_prioritizer.py    # Rank and filter checks
+├── learning/
+│   ├── __init__.py
+│   ├── pattern_learner.py      # Learn from existing configs
+│   └── pattern_store.py        # Persist learned patterns
+├── config.py                   # Extended configuration schema
+└── recommender.py              # Recommendation engine
+```
+
+### Components
+
+#### 1. Metadata Analyzer (`metadata_analyzer.py`)
+
+Extracts static metadata signals from database columns using SQLAlchemy inspection:
+
+- Column name and naming patterns
+- Data type (with precision/scale for numerics)
+- Nullability constraints
+- Primary key / foreign key status
+- Column position
+- Default values and comments
+
+```python
+from baselinr.smart_selection.column_analysis import MetadataAnalyzer, ColumnMetadata
+
+analyzer = MetadataAnalyzer(engine)
+columns = analyzer.analyze_table("users", schema="public")
+# Returns List[ColumnMetadata] with inferred semantic types
+```
+
+#### 2. Statistical Analyzer (`statistical_analyzer.py`)
+
+Analyzes historical profiling data to derive dynamic column properties:
+
+- Row count and null percentage
+- Distinct value count and uniqueness ratio
+- Min/max values for numerics
+- Value distribution for categoricals
+- String length patterns
+- Temporal patterns for timestamps
+
+```python
+from baselinr.smart_selection.column_analysis import StatisticalAnalyzer
+
+analyzer = StatisticalAnalyzer(storage_engine)
+stats = analyzer.analyze_column("users", "email", lookback_days=30)
+# Returns ColumnStatistics with cardinality, patterns, stability info
+```
+
+#### 3. Pattern Matcher (`pattern_matcher.py`)
+
+Matches column names against predefined and custom patterns:
+
+**Built-in Patterns:**
+- Timestamps: `*_at`, `*_date`, `*_time`, `created`, `updated`
+- Identifiers: `*_id`, `*_key`, `uuid`, `guid`
+- Contact: `email`, `phone`, `address`
+- Monetary: `amount`, `price`, `total`, `revenue`
+- Boolean: `is_*`, `has_*`, `*_flag`
+- Status: `status`, `state`, `type`
+
+```python
+from baselinr.smart_selection.column_analysis import PatternMatcher
+
+matcher = PatternMatcher()
+matches = matcher.match_column("created_at")
+# Returns [PatternMatch(pattern_name="timestamp", confidence=0.9, ...)]
+```
+
+#### 4. Check Inferencer (`check_inferencer.py`)
+
+Maps column characteristics to appropriate data quality checks:
+
+| Column Type | Suggested Checks |
+|-------------|-----------------|
+| Timestamp | freshness, completeness, valid_range |
+| Identifier (PK) | uniqueness, completeness |
+| Identifier (FK) | referential_integrity, completeness |
+| Email | format_email, completeness |
+| Numeric (monetary) | non_negative, range, distribution |
+| Categorical | allowed_values, completeness |
+| Boolean | completeness |
+| JSON | valid_json |
+
+```python
+from baselinr.smart_selection.column_analysis import CheckInferencer
+
+inferencer = CheckInferencer()
+result = inferencer.infer_checks(metadata, statistics)
+# Returns ColumnRecommendation with suggested checks and confidence
+```
+
+#### 5. Confidence Scorer (`confidence_scorer.py`)
+
+Calculates confidence scores based on:
+
+- Number and strength of signals
+- Primary/foreign key status (boosts confidence)
+- Availability of statistical data
+- Pattern match quality
+
+**Confidence Levels:**
+- **High (0.8-1.0)**: Strong signals, safe to auto-apply
+- **Medium (0.5-0.8)**: Reasonable signals, review recommended
+- **Low (0.3-0.5)**: Weak signals, manual verification needed
+
+#### 6. Check Prioritizer (`check_prioritizer.py`)
+
+Ranks and filters recommendations to avoid over-monitoring:
+
+- Filters by minimum confidence threshold
+- Limits checks per column (default: 5)
+- Limits total checks per table (default: 50)
+- Boosts preferred check types
+- Filters avoided check types
+- Prioritizes key columns
+
+#### 7. Pattern Learner (`pattern_learner.py`)
+
+Learns from existing configurations:
+
+- Identifies suffix patterns (`*_at` → freshness)
+- Identifies prefix patterns (`is_*` → completeness)
+- Tracks which checks are commonly applied together
+- Builds confidence from repeated observations
+
+#### 8. Pattern Store (`pattern_store.py`)
+
+Persists learned patterns for reuse:
+
+- Stores patterns in `.baselinr_patterns.yaml`
+- Merges new patterns with existing ones
+- Exports patterns to config format
+- Supports confidence boosting over time
 
 ## Configuration
 
-Add column-level settings to your `smart_selection` configuration:
+### Column Selection Settings
 
 ```yaml
 smart_selection:
   enabled: true
-
+  
   # Table selection (Phase 1)
   tables:
     mode: "recommend"
-    # ... existing table selection config
-
+    # ... existing settings
+  
   # Column selection (Phase 2) - NEW
   columns:
     enabled: true
-    mode: "recommend"  # Options: recommend | auto | disabled
-
-    # Inference settings
+    mode: "recommend"  # Options: recommend, auto, disabled
+    
     inference:
-      use_profiling_data: true      # Use existing profile stats if available
-      confidence_threshold: 0.7      # Minimum confidence to recommend
-      max_checks_per_column: 3       # Avoid over-monitoring
-
+      use_profiling_data: true      # Use existing profile stats
+      confidence_threshold: 0.7     # Minimum confidence to recommend
+      max_checks_per_column: 3      # Avoid over-monitoring
+      
       # Column prioritization
       prioritize:
         primary_keys: true
         foreign_keys: true
         timestamp_columns: true
-        high_cardinality_strings: false  # Might be noisy
-
+        high_cardinality_strings: false
+      
       # Check type preferences
       preferred_checks:
         - completeness
         - freshness
         - uniqueness
-
+      
       avoided_checks:
         - custom_sql  # Don't auto-generate complex checks
-
-    # Pattern overrides (teach the system your conventions)
+    
+    # Custom pattern overrides
     patterns:
       - match: "*_email"
         checks:
           - type: format_email
             confidence: 0.95
-
+      
       - match: "revenue_*"
         checks:
           - type: non_negative
             confidence: 0.9
           - type: distribution
             confidence: 0.8
-
-    # Learning settings
+    
+    # Pattern learning settings
     learning:
       enabled: true
       min_occurrences: 2
-      storage_path: ".baselinr_patterns.yaml"
+      store_path: ".baselinr_patterns.yaml"
 ```
 
-## How It Works
+## CLI Usage
 
-### 1. Column Analysis
+### Generate Column Recommendations
 
-The system extracts two types of signals from each column:
+```bash
+# Recommend checks for all columns in recommended tables
+baselinr recommend --columns --config config.yaml
 
-**Metadata Signals:**
-- Column name and naming patterns (e.g., `created_at`, `user_id`, `email_address`)
-- Data type (timestamp, numeric, string, boolean, JSON)
-- Nullability constraints
-- Primary key / foreign key status
-- Column position (early columns often more important)
-- Comments/descriptions if available
+# Recommend for specific table
+baselinr recommend --columns --table analytics.user_events
 
-**Statistical Signals (from profiling data):**
-- Cardinality (distinct value count)
-- Null percentage
-- Min/max values for numerics and timestamps
-- Common value distribution
-- String length patterns
-- Format patterns (email, phone, UUID)
-- Temporal patterns for timestamp columns
+# Show detailed reasoning
+baselinr recommend --columns --explain
 
-### 2. Check Type Inference
+# Preview changes without applying
+baselinr recommend --columns --dry-run
 
-The system uses rule-based inference to map column characteristics to appropriate checks:
-
-| Column Type | Signals | Suggested Checks |
-|-------------|---------|------------------|
-| **Timestamp** | `*_at`, `*_date`, `timestamp`, `created`, `updated` | Freshness, Completeness, Valid Range |
-| **Identifier** | `*_id`, `*_key`, `uuid`, Primary Key | Uniqueness, Completeness, Format |
-| **Numeric** | `amount`, `price`, `quantity`, `count` | Range, Distribution, Non-negative |
-| **Email** | `email`, `*_email` | Format (email regex), Completeness |
-| **Phone** | `phone`, `*_phone`, `mobile` | Format (phone pattern), Completeness |
-| **Boolean** | `is_*`, `has_*`, `*_flag`, `active` | Completeness, Value Distribution |
-| **Categorical** | Low cardinality strings, `status`, `type` | Allowed Values, Completeness |
-| **JSON** | JSON/JSONB columns | Valid JSON, Schema Validation |
-
-### 3. Confidence Scoring
-
-Each recommendation receives a confidence score based on:
-
-| Level | Score Range | Description |
-|-------|-------------|-------------|
-| **High** | 0.8 - 1.0 | Strong signals, low risk of false positive |
-| **Medium** | 0.5 - 0.8 | Reasonable signals, might need validation |
-| **Low** | 0.3 - 0.5 | Weak signals, suggest but don't auto-apply |
-
-Confidence is boosted by:
-- Multiple supporting signals (name + type + stats)
-- Primary key or foreign key status
-- Strong pattern matches
-- Statistical confirmation
-
-### 4. Pattern Learning
-
-The system learns from your existing configurations:
-
-```yaml
-# Learned patterns (auto-generated)
-learned_patterns:
-  - pattern: "*_at"
-    type: suffix
-    suggested_checks: [freshness, completeness]
-    confidence: 0.95
-    source_columns: [created_at, updated_at, deleted_at]
-
-  - pattern: "is_*"
-    type: prefix
-    suggested_checks: [completeness]
-    confidence: 0.88
-    source_columns: [is_active, is_verified, is_deleted]
+# Apply high-confidence recommendations
+baselinr recommend --columns --apply
 ```
 
-## Output Format
+### Example Output
 
-### Recommendation Report
+```
+Analyzing 15 recommended tables...
+Analyzing columns in analytics.user_events (45 columns)...
+Analyzing columns in analytics.transactions (32 columns)...
+...
+
+Generated 247 column check recommendations across 15 tables
+  - High confidence: 156 (63%)
+  - Medium confidence: 71 (29%)
+  - Low confidence: 20 (8%)
+
+Output saved to: recommendations.yaml
+
+Review recommendations with: baselinr recommend --columns --explain
+Apply recommendations with: baselinr recommend --columns --apply
+```
+
+### Detailed Explain Output
+
+```
+Table: analytics.user_events
+45 columns analyzed, 23 checks recommended
+
+HIGH CONFIDENCE RECOMMENDATIONS:
+✓ event_id (varchar)
+  → uniqueness check (confidence: 0.98)
+    Reason: Primary key pattern, 100% distinct values
+  → completeness check (confidence: 0.95)
+    Reason: Critical identifier field
+
+✓ event_timestamp (timestamp)
+  → freshness check (confidence: 0.98)
+    Reason: Timestamp column, updated continuously
+  → completeness check (confidence: 0.95)
+    Reason: Required temporal marker
+
+MEDIUM CONFIDENCE RECOMMENDATIONS:
+○ user_agent (varchar)
+  → completeness check (confidence: 0.65)
+    Reason: Standard HTTP field
+
+LOW CONFIDENCE SUGGESTIONS:
+? metadata_json (json)
+  → valid_json check (confidence: 0.45)
+    Reason: JSON column detected, schema unknown
+```
+
+## Recommendation Output Format
+
+The `recommendations.yaml` file includes column-level recommendations:
 
 ```yaml
 # Generated: 2025-01-15
+
+metadata:
+  generated_at: "2025-01-15T10:30:00"
+  lookback_days: 30
+  database_type: postgresql
+  column_summary:
+    total_columns_analyzed: 247
+    total_checks_recommended: 389
+    confidence_distribution:
+      high: 156
+      medium: 71
+      low: 20
 
 recommended_tables:
   - schema: analytics
@@ -181,7 +317,7 @@ recommended_tables:
     confidence: 0.95
     reasons:
       - "Queried 1,247 times in last 30 days"
-
+    
     column_recommendations:
       - column: event_id
         data_type: varchar
@@ -218,246 +354,210 @@ low_confidence_suggestions:
   - schema: analytics
     table: user_events
     column: metadata_json
+    data_type: json
     confidence: 0.45
     signals:
       - "JSON column detected"
     suggested_checks:
       - type: valid_json
         confidence: 0.60
-    note: "Consider manual inspection"
-```
-
-## CLI Usage Examples
-
-### Basic Recommendations
-
-```bash
-# Recommend checks for all columns in recommended tables
-baselinr recommend --columns --config config.yaml
-
-# Output:
-# Analyzing 15 recommended tables...
-# Generated 247 column check recommendations
-#   - High confidence: 156 (63%)
-#   - Medium confidence: 71 (29%)
-#   - Low confidence: 20 (8%)
-```
-
-### Detailed Explanation
-
-```bash
-baselinr recommend --columns --explain --table analytics.user_events
-
-# Output:
-# Table: analytics.user_events
-# 45 columns analyzed, 23 checks recommended
-#
-# HIGH CONFIDENCE RECOMMENDATIONS:
-# ✓ event_id (varchar)
-#   → uniqueness check (confidence: 0.98)
-#     Reason: Primary key pattern, 100% distinct values
-#   → completeness check (confidence: 0.95)
-#     Reason: Critical identifier field
-#
-# ✓ event_timestamp (timestamp)
-#   → freshness check (confidence: 0.98)
-#     Reason: Timestamp column, updated continuously
-```
-
-### Apply Recommendations
-
-```bash
-# Preview changes first
-baselinr recommend --columns --dry-run
-
-# Apply to configuration
-baselinr recommend --columns --apply
-```
-
-## Architecture
-
-### Module Structure
-
-```
-baselinr/smart_selection/
-├── column_analysis/
-│   ├── __init__.py
-│   ├── metadata_analyzer.py    # Extract column metadata signals
-│   ├── statistical_analyzer.py # Analyze profiling statistics
-│   ├── pattern_matcher.py      # Match naming patterns
-│   └── check_inferencer.py     # Map signals to check types
-├── scoring/
-│   ├── __init__.py
-│   ├── confidence_scorer.py    # Calculate confidence scores
-│   └── check_prioritizer.py    # Rank and filter recommendations
-├── learning/
-│   ├── __init__.py
-│   ├── pattern_learner.py      # Learn from existing configs
-│   └── pattern_store.py        # Persist learned patterns
-├── config.py                   # Configuration schemas
-├── recommender.py              # Orchestration engine
-└── __init__.py
-```
-
-### Key Classes
-
-| Class | Purpose |
-|-------|---------|
-| `MetadataAnalyzer` | Extracts column metadata from database schema |
-| `StatisticalAnalyzer` | Analyzes profiling data for statistical signals |
-| `PatternMatcher` | Matches column names against pattern rules |
-| `CheckInferencer` | Maps column characteristics to check types |
-| `ConfidenceScorer` | Calculates confidence scores for recommendations |
-| `CheckPrioritizer` | Ranks and filters checks to avoid over-monitoring |
-| `PatternLearner` | Learns patterns from existing configurations |
-| `PatternStore` | Persists and manages learned patterns |
-| `ColumnRecommendationEngine` | Orchestrates the column analysis pipeline |
-
-### Data Flow
-
-```
-┌─────────────────┐
-│  Database       │
-│  Schema         │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Metadata        │     │ Statistical     │
-│ Analyzer        │     │ Analyzer        │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────────────────────────────┐
-│           Pattern Matcher               │
-│    (name patterns, type patterns)       │
-└────────────────┬────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────┐
-│           Check Inferencer              │
-│    (rules engine, check mapping)        │
-└────────────────┬────────────────────────┘
-                 │
-                 ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Confidence      │     │ Check           │
-│ Scorer          │     │ Prioritizer     │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────────────────────────────┐
-│        Recommendation Report            │
-└─────────────────────────────────────────┘
+    note: "Consider manual inspection to define schema"
 ```
 
 ## Supported Check Types
 
-| Check Type | Description | Typical Columns |
-|------------|-------------|-----------------|
-| `completeness` | Non-null ratio | All columns |
-| `uniqueness` | Distinct value ratio | IDs, keys |
-| `freshness` | Data recency | Timestamps |
-| `format_email` | Email format validation | Email columns |
-| `format_phone` | Phone format validation | Phone columns |
-| `format_uuid` | UUID format validation | UUID columns |
-| `non_negative` | Values >= 0 | Amounts, counts |
-| `range` | Min/max bounds | Numeric columns |
-| `distribution` | Statistical distribution | Metrics |
-| `allowed_values` | Enum validation | Status, type columns |
-| `valid_json` | JSON structure validation | JSON columns |
-| `referential_integrity` | Foreign key validation | FK columns |
+| Check Type | Description | Common Signals |
+|------------|-------------|----------------|
+| `completeness` | Validates non-null values | Required fields, identifiers |
+| `uniqueness` | Validates distinct values | Primary keys, IDs |
+| `freshness` | Validates data recency | Timestamp columns |
+| `format_email` | Validates email format | Email columns |
+| `format_phone` | Validates phone format | Phone columns |
+| `format_url` | Validates URL format | URL columns |
+| `format_uuid` | Validates UUID format | UUID columns |
+| `non_negative` | Validates >= 0 | Counts, amounts, prices |
+| `range` | Validates min/max bounds | Numeric columns with stats |
+| `distribution` | Monitors value distribution | Numeric columns |
+| `allowed_values` | Validates against enum | Categorical columns |
+| `referential_integrity` | Validates FK references | Foreign key columns |
+| `valid_json` | Validates JSON structure | JSON columns |
+| `valid_date_range` | Validates date bounds | Date/timestamp columns |
 
-## Best Practices
+## Pattern Learning
 
-### 1. Start Conservative
-
-Begin with high confidence threshold (0.8+) and gradually lower it as you validate recommendations:
+The system learns from your existing configurations to improve recommendations:
 
 ```yaml
-columns:
-  inference:
-    confidence_threshold: 0.8  # Start high
+# Learned patterns (stored in .baselinr_patterns.yaml)
+learned_patterns:
+  - pattern: "*_at"
+    pattern_type: suffix
+    suggested_checks: [freshness, completeness]
+    confidence: 0.92
+    occurrence_count: 15
+    
+  - pattern: "is_*"
+    pattern_type: prefix
+    suggested_checks: [completeness]
+    confidence: 0.88
+    occurrence_count: 8
 ```
 
-### 2. Use Explain Mode
+To trigger learning from existing config:
 
-Always review recommendations before applying:
+```python
+from baselinr.smart_selection.learning import PatternLearner, PatternStore
+
+learner = PatternLearner()
+patterns = learner.learn_from_config(existing_config)
+
+store = PatternStore(".baselinr_patterns.yaml")
+store.add_patterns(patterns)
+store.save()
+```
+
+## Integration with Existing Features
+
+### Phase 1 Table Selection
+
+Column recommendations work seamlessly with table recommendations:
 
 ```bash
-baselinr recommend --columns --explain
+# First, get table recommendations
+baselinr recommend --config config.yaml
+
+# Then, add column recommendations to recommended tables
+baselinr recommend --columns --config config.yaml
 ```
 
-### 3. Teach the System
+### Profiling Integration
 
-Add pattern overrides for your specific conventions:
+When profiling data is available, the system uses it for better recommendations:
 
-```yaml
-columns:
-  patterns:
-    - match: "*_cents"  # Your monetary convention
-      checks:
-        - type: non_negative
-        - type: range
-          config:
-            min: 0
-            max: 100000000  # $1M in cents
+- Cardinality analysis for uniqueness checks
+- Value distribution for allowed_values checks
+- Stability analysis for distribution monitoring
+- Pattern detection for format validation
+
+### Configuration Merging
+
+When applying recommendations:
+
+- Existing explicit configs take precedence
+- New recommendations merge with existing column configs
+- Conflicts are warned but not overwritten
+- `exclude_from_recommendations: true` respected
+
+## Performance Considerations
+
+- **Wide Tables**: For tables with 100+ columns, analysis is batched
+- **Profiling Data**: Statistical analysis uses cached profile results
+- **Pattern Compilation**: Regex patterns are compiled once and reused
+- **Incremental Analysis**: Only new columns analyzed when possible
+
+## Testing
+
+The implementation includes comprehensive tests:
+
+```bash
+# Run column analysis tests
+pytest tests/test_column_analysis.py -v
+
+# Run scoring tests
+pytest tests/test_column_scoring.py -v
+
+# Run learning tests  
+pytest tests/test_column_learning.py -v
+
+# Run integration tests
+pytest tests/test_column_recommendation_integration.py -v
 ```
 
-### 4. Avoid Over-Monitoring
+## API Reference
 
-Limit checks per column to prevent alert fatigue:
+### Key Classes
 
-```yaml
-columns:
-  inference:
-    max_checks_per_column: 3
+```python
+from baselinr.smart_selection import (
+    # Main engines
+    ColumnRecommendationEngine,
+    RecommendationEngine,
+    
+    # Output types
+    ColumnCheckRecommendation,
+    RecommendationReport,
+)
+
+from baselinr.smart_selection.column_analysis import (
+    # Analyzers
+    MetadataAnalyzer,
+    StatisticalAnalyzer,
+    PatternMatcher,
+    CheckInferencer,
+    
+    # Data types
+    ColumnMetadata,
+    ColumnStatistics,
+    PatternMatch,
+    InferredCheck,
+)
+
+from baselinr.smart_selection.scoring import (
+    ConfidenceScorer,
+    CheckPrioritizer,
+    PrioritizationConfig,
+)
+
+from baselinr.smart_selection.learning import (
+    PatternLearner,
+    PatternStore,
+    LearnedPattern,
+)
 ```
 
-### 5. Prioritize Key Columns
+### Programmatic Usage
 
-Focus on primary keys and foreign keys first:
+```python
+from sqlalchemy import create_engine
+from baselinr.smart_selection import ColumnRecommendationEngine
+from baselinr.smart_selection.config import SmartSelectionConfig
 
-```yaml
-columns:
-  inference:
-    prioritize:
-      primary_keys: true
-      foreign_keys: true
+# Create engine
+source_engine = create_engine("postgresql://...")
+storage_engine = create_engine("postgresql://...")
+
+# Create recommendation engine
+config = SmartSelectionConfig(columns={"enabled": True})
+rec_engine = ColumnRecommendationEngine(
+    source_engine=source_engine,
+    storage_engine=storage_engine,
+    smart_config=config,
+)
+
+# Generate recommendations for a table
+recommendations = rec_engine.generate_column_recommendations(
+    table_name="user_events",
+    schema="analytics",
+)
+
+for rec in recommendations:
+    print(f"{rec.column_name}: {len(rec.suggested_checks)} checks")
+    for check in rec.suggested_checks:
+        print(f"  - {check.check_type}: {check.confidence:.2f}")
 ```
 
-## Troubleshooting
+## Changelog
 
-### No Recommendations Generated
+### Version 1.0.0 (Phase 2)
 
-1. Ensure `smart_selection.columns.enabled: true`
-2. Check that tables exist in recommendations
-3. Verify database connection has schema access
-
-### Low Confidence Scores
-
-1. Run profiling to collect statistical data
-2. Add pattern overrides for custom naming conventions
-3. Check for unusual column naming patterns
-
-### Too Many Recommendations
-
-1. Increase `confidence_threshold`
-2. Decrease `max_checks_per_column`
-3. Add patterns to `avoided_checks`
-
-## Integration with Existing Config
-
-Column recommendations integrate seamlessly:
-
-- **Explicit configs take precedence**: User-defined column checks are never overwritten
-- **Merge mode**: Recommendations add to existing checks, don't replace
-- **Exclusion support**: Use `exclude_from_recommendations` to skip columns
-- **Partial acceptance**: Accept some recommendations, reject others
-
-## Related Documentation
-
-- [Smart Table Selection](SMART_TABLE_SELECTION.md) - Phase 1 table selection
-- [Data Validation](DATA_VALIDATION.md) - Manual check configuration
-- [Column Level Configs](COLUMN_LEVEL_CONFIGS.md) - Column-specific settings
-- [Profiling Enrichment](PROFILING_ENRICHMENT.md) - Statistical data collection
+- Initial implementation of column-level recommendations
+- Metadata analyzer with semantic type inference
+- Statistical analyzer for profiling data integration
+- Pattern matcher with 20+ built-in patterns
+- Check inferencer supporting 14 check types
+- Confidence scorer with configurable weights
+- Check prioritizer with preference/avoidance support
+- Pattern learner for configuration-based learning
+- Pattern store for persistence
+- CLI integration with `--columns` flag
+- Comprehensive test coverage (76 new tests)
