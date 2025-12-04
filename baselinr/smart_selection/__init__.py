@@ -7,6 +7,7 @@ to reduce configuration overhead.
 
 Phase 1: Table-level selection based on usage patterns
 Phase 2: Column-level check recommendations based on metadata and statistics
+Phase 3: Lineage-aware prioritization based on dependency relationships
 """
 
 # Column analysis submodule exports
@@ -24,11 +25,23 @@ from .config import (
     ColumnInferenceConfig,
     ColumnPatternConfig,
     ColumnSelectionConfig,
+    LineageConfig,
     SmartSelectionConfig,
 )
 
 # Learning submodule exports
 from .learning import LearnedPattern, PatternLearner, PatternStore
+
+# Lineage submodule exports (Phase 3)
+from .lineage import (
+    BlastRadius,
+    ImpactScore,
+    ImpactScorer,
+    LineageAdapter,
+    LineageAwareScorer,
+    LineageGraph,
+    LineageNode,
+)
 from .metadata_collector import MetadataCollector, TableMetadata
 from .recommender import (
     ColumnCheckRecommendation,
@@ -48,6 +61,7 @@ __all__ = [
     "ColumnSelectionConfig",
     "ColumnInferenceConfig",
     "ColumnPatternConfig",
+    "LineageConfig",
     # Table-level (Phase 1)
     "MetadataCollector",
     "TableMetadata",
@@ -74,4 +88,12 @@ __all__ = [
     "PatternLearner",
     "LearnedPattern",
     "PatternStore",
+    # Lineage (Phase 3)
+    "LineageAdapter",
+    "LineageGraph",
+    "LineageNode",
+    "ImpactScorer",
+    "ImpactScore",
+    "BlastRadius",
+    "LineageAwareScorer",
 ]

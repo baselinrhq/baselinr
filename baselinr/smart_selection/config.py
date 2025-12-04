@@ -215,6 +215,213 @@ class ColumnSelectionConfig(BaseModel):
         return v
 
 
+class LineageQueryConfig(BaseModel):
+    """Configuration for lineage query operations."""
+
+    cache_ttl_hours: int = Field(
+        24, ge=1, le=168, description="Cache TTL in hours for lineage data"
+    )
+    max_depth: int = Field(
+        10, ge=1, le=50, description="Maximum depth for recursive lineage queries"
+    )
+    include_column_lineage: bool = Field(
+        False, description="Include column-level lineage (future enhancement)"
+    )
+
+
+class LineageScoringWeightsConfig(BaseModel):
+    """Weights for lineage impact scoring components."""
+
+    downstream_count: float = Field(
+        0.4, ge=0.0, le=1.0, description="Weight for downstream dependency count"
+    )
+    criticality: float = Field(
+        0.3, ge=0.0, le=1.0, description="Weight for criticality of downstream assets"
+    )
+    depth_position: float = Field(
+        0.2, ge=0.0, le=1.0, description="Weight for position in lineage (closer to source = higher)"
+    )
+    fanout: float = Field(
+        0.1, ge=0.0, le=1.0, description="Weight for fanout factor (branching)"
+    )
+
+    @field_validator("fanout")
+    @classmethod
+    def validate_weights_sum(cls, v: float, info) -> float:
+        """Validate that all weights sum to approximately 1.0."""
+        data = info.data
+        total = (
+            data.get("downstream_count", 0.4)
+            + data.get("criticality", 0.3)
+            + data.get("depth_position", 0.2)
+            + v
+        )
+        if not (0.95 <= total <= 1.05):
+            raise ValueError(f"Lineage scoring weights should sum to 1.0, got {total:.3f}")
+        return v
+
+
+class LineageBoostsConfig(BaseModel):
+    """Boost factors for different table types based on lineage position."""
+
+    root_tables: float = Field(
+        1.25, ge=1.0, le=2.0, description="Score boost for root/source tables"
+    )
+    critical_path: float = Field(
+        1.20, ge=1.0, le=2.0, description="Score boost for tables on critical paths"
+    )
+    high_fanout: float = Field(
+        1.15, ge=1.0, le=2.0, description="Score boost for high-fanout tables"
+    )
+
+
+class LineagePenaltiesConfig(BaseModel):
+    """Penalty factors for different table types based on lineage position."""
+
+    leaf_tables: float = Field(
+        0.60, ge=0.1, le=1.0, description="Score penalty for leaf tables with no downstream"
+    )
+    orphaned_tables: float = Field(
+        0.50, ge=0.1, le=1.0, description="Score penalty for orphaned tables"
+    )
+
+
+class LineageScoringConfig(BaseModel):
+    """Configuration for lineage-based impact scoring."""
+
+    weights: LineageScoringWeightsConfig = Field(
+        default_factory=lambda: LineageScoringWeightsConfig(),  # type: ignore[call-arg]
+        description="Component weights for impact scoring",
+    )
+    boosts: LineageBoostsConfig = Field(
+        default_factory=lambda: LineageBoostsConfig(),  # type: ignore[call-arg]
+        description="Boost factors for prioritized table types",
+    )
+    penalties: LineagePenaltiesConfig = Field(
+        default_factory=lambda: LineagePenaltiesConfig(),  # type: ignore[call-arg]
+        description="Penalty factors for deprioritized table types",
+    )
+
+
+class LineageCheckAdjustmentConfig(BaseModel):
+    """Check adjustments based on lineage position."""
+
+    prioritize_checks: List[str] = Field(
+        default_factory=list,
+        description="Checks to prioritize for this table type",
+    )
+    severity: Optional[str] = Field(
+        None, description="Default severity level (low, medium, high, critical)"
+    )
+    min_confidence_threshold: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Minimum confidence for check recommendations"
+    )
+    check_frequency: Optional[str] = Field(
+        None, description="Check frequency (low, medium, high)"
+    )
+
+    @field_validator("severity")
+    @classmethod
+    def validate_severity(cls, v: Optional[str]) -> Optional[str]:
+        """Validate severity level."""
+        if v is not None:
+            valid = ["low", "medium", "high", "critical"]
+            if v not in valid:
+                raise ValueError(f"severity must be one of {valid}")
+        return v
+
+    @field_validator("check_frequency")
+    @classmethod
+    def validate_frequency(cls, v: Optional[str]) -> Optional[str]:
+        """Validate check frequency."""
+        if v is not None:
+            valid = ["low", "medium", "high"]
+            if v not in valid:
+                raise ValueError(f"check_frequency must be one of {valid}")
+        return v
+
+
+class LineageCheckAdjustmentsConfig(BaseModel):
+    """Configuration for check adjustments based on lineage position."""
+
+    root_tables: LineageCheckAdjustmentConfig = Field(
+        default_factory=lambda: LineageCheckAdjustmentConfig(
+            prioritize_checks=["freshness", "completeness", "schema_validation"],
+            severity="critical",
+        ),
+        description="Check adjustments for root/source tables",
+    )
+    high_impact: LineageCheckAdjustmentConfig = Field(
+        default_factory=lambda: LineageCheckAdjustmentConfig(
+            min_confidence_threshold=0.6,
+            check_frequency="high",
+        ),
+        description="Check adjustments for high-impact tables",
+    )
+    leaf_tables: LineageCheckAdjustmentConfig = Field(
+        default_factory=lambda: LineageCheckAdjustmentConfig(
+            min_confidence_threshold=0.8,
+            check_frequency="medium",
+        ),
+        description="Check adjustments for leaf tables",
+    )
+
+
+class LineageReportingConfig(BaseModel):
+    """Configuration for lineage visualization and reporting."""
+
+    generate_lineage_diagram: bool = Field(
+        True, description="Generate lineage diagram in output"
+    )
+    output_path: str = Field(
+        "lineage_graph.html", description="Output path for lineage diagram"
+    )
+    highlight_critical_paths: bool = Field(
+        True, description="Highlight critical paths in visualization"
+    )
+    show_blast_radius: bool = Field(
+        True, description="Show blast radius information in recommendations"
+    )
+
+
+class LineageConfig(BaseModel):
+    """Configuration for lineage-aware prioritization (Phase 3)."""
+
+    enabled: bool = Field(True, description="Enable lineage-aware prioritization")
+
+    # Lineage weight in final scoring
+    lineage_weight: float = Field(
+        0.4,
+        ge=0.0,
+        le=1.0,
+        description="Weight for lineage score in final table score (rest is usage-based)",
+    )
+
+    # Lineage query configuration
+    query: LineageQueryConfig = Field(
+        default_factory=lambda: LineageQueryConfig(),  # type: ignore[call-arg]
+        description="Lineage query settings",
+    )
+
+    # Impact scoring configuration
+    scoring: LineageScoringConfig = Field(
+        default_factory=lambda: LineageScoringConfig(),  # type: ignore[call-arg]
+        description="Impact scoring configuration",
+    )
+
+    # Check adjustments based on lineage
+    check_adjustments: LineageCheckAdjustmentsConfig = Field(
+        default_factory=lambda: LineageCheckAdjustmentsConfig(),  # type: ignore[call-arg]
+        description="Check adjustments based on lineage position",
+    )
+
+    # Visualization and reporting
+    reporting: LineageReportingConfig = Field(
+        default_factory=lambda: LineageReportingConfig(),  # type: ignore[call-arg]
+        description="Lineage visualization and reporting settings",
+    )
+
+
 class SmartSelectionConfig(BaseModel):
     """Smart table and column selection configuration."""
 
@@ -247,6 +454,12 @@ class SmartSelectionConfig(BaseModel):
     columns: ColumnSelectionConfig = Field(
         default_factory=lambda: ColumnSelectionConfig(),  # type: ignore[call-arg]
         description="Column-level check recommendation settings",
+    )
+
+    # Lineage-aware prioritization (Phase 3)
+    lineage: LineageConfig = Field(
+        default_factory=lambda: LineageConfig(),  # type: ignore[call-arg]
+        description="Lineage-aware prioritization settings",
     )
 
     # Cache settings

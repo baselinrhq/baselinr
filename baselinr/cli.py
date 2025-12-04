@@ -1642,6 +1642,282 @@ def lineage_command(args):
             if not args.dry_run:
                 safe_print(f"\nSync complete: {total_edges} edges extracted")
 
+        elif args.lineage_command == "show":
+            # Phase 3: Show lineage with impact scoring
+            from .smart_selection.lineage import LineageAdapter, LineageGraph, ImpactScorer
+
+            # Create lineage adapter
+            adapter = LineageAdapter(
+                engine=connector.engine,
+                lineage_table="baselinr_lineage",
+                cache_ttl_hours=24,
+                max_depth=10,
+            )
+
+            # Build graph and compute impact score
+            graph = LineageGraph.build_from_adapter(adapter)
+            scorer = ImpactScorer(graph)
+
+            node = graph.get_node(args.table, args.schema)
+            if not node:
+                safe_print(f"Table {args.schema or ''}.{args.table} not found in lineage graph")
+                return 0
+
+            impact_score = scorer.score_table(args.table, args.schema)
+
+            if args.format == "json":
+                import json
+
+                result = {
+                    "table": args.table,
+                    "schema": args.schema or "",
+                    "node": node.to_dict() if node else {},
+                    "impact_score": impact_score.to_dict() if impact_score else {},
+                    "upstream_tables": node.upstream[:20] if node else [],
+                    "downstream_tables": node.downstream[:20] if node else [],
+                }
+                output = json.dumps(result, indent=2, default=str)
+                safe_print(output)
+            else:
+                from rich.panel import Panel
+                from rich.table import Table as RichTable
+
+                from .cli_output import get_console
+
+                console = get_console()
+                if console:
+                    # Node info
+                    table_ref = f"{args.schema}.{args.table}" if args.schema else args.table
+                    safe_print()
+                    safe_print(f"[bold cyan]Lineage for {table_ref}[/bold cyan]")
+                    safe_print()
+
+                    # Position and type
+                    safe_print(f"  Node Type: {node.node_type}")
+                    safe_print(f"  Position: {impact_score.position if impact_score else 'unknown'}")
+                    safe_print(f"  Depth: {node.depth}")
+                    safe_print(f"  Critical Path: {'Yes' if node.critical_path_member else 'No'}")
+                    safe_print()
+
+                    # Impact score
+                    if impact_score:
+                        safe_print("[bold]Impact Score:[/bold]")
+                        safe_print(f"  Total Score: {impact_score.total_score:.4f}")
+                        safe_print(f"  Downstream Score: {impact_score.downstream_score:.4f}")
+                        safe_print(f"  Depth Score: {impact_score.depth_score:.4f}")
+                        safe_print(f"  Criticality Score: {impact_score.criticality_score:.4f}")
+                        safe_print(f"  Fanout Score: {impact_score.fanout_score:.4f}")
+                        safe_print()
+
+                        # Blast radius
+                        br = impact_score.blast_radius
+                        safe_print("[bold]Blast Radius:[/bold]")
+                        safe_print(f"  Immediate Downstream: {br.immediate_downstream}")
+                        safe_print(f"  Total Affected: {br.total_affected}")
+                        safe_print(f"  Critical Assets: {br.critical_assets_affected}")
+                        safe_print(f"  User Impact: {br.estimated_user_impact}")
+                        safe_print()
+
+                        # Reasoning
+                        safe_print("[bold]Reasoning:[/bold]")
+                        for reason in impact_score.reasoning:
+                            safe_print(f"  • {reason}")
+                        safe_print()
+
+                    # Dependencies
+                    if node.upstream:
+                        safe_print(f"[bold]Upstream Dependencies ({len(node.upstream)}):[/bold]")
+                        for dep in node.upstream[:10]:
+                            safe_print(f"  ← {dep}")
+                        if len(node.upstream) > 10:
+                            safe_print(f"  ... and {len(node.upstream) - 10} more")
+                        safe_print()
+
+                    if node.downstream:
+                        safe_print(f"[bold]Downstream Dependencies ({len(node.downstream)}):[/bold]")
+                        for dep in node.downstream[:10]:
+                            safe_print(f"  → {dep}")
+                        if len(node.downstream) > 10:
+                            safe_print(f"  ... and {len(node.downstream) - 10} more")
+                        safe_print()
+                else:
+                    # Plain text fallback
+                    safe_print(f"\nLineage for {args.schema or ''}.{args.table}:")
+                    safe_print("=" * 60)
+                    if node:
+                        safe_print(f"  Type: {node.node_type}")
+                        safe_print(f"  Depth: {node.depth}")
+                        safe_print(f"  Upstream: {node.upstream_count}")
+                        safe_print(f"  Downstream: {node.downstream_count}")
+                    if impact_score:
+                        safe_print(f"  Impact Score: {impact_score.total_score:.4f}")
+                        safe_print(f"  User Impact: {impact_score.blast_radius.estimated_user_impact}")
+
+            if args.output:
+                with open(args.output, "w") as f:
+                    import json
+
+                    result = {
+                        "table": args.table,
+                        "schema": args.schema or "",
+                        "node": node.to_dict() if node else {},
+                        "impact_score": impact_score.to_dict() if impact_score else {},
+                    }
+                    f.write(json.dumps(result, indent=2, default=str))
+                logger.info(f"Results saved to: {args.output}")
+
+        elif args.lineage_command == "impact":
+            # Phase 3: Show blast radius for a table
+            from .smart_selection.lineage import LineageAdapter, LineageGraph, ImpactScorer
+
+            adapter = LineageAdapter(
+                engine=connector.engine,
+                lineage_table="baselinr_lineage",
+            )
+
+            graph = LineageGraph.build_from_adapter(adapter)
+            scorer = ImpactScorer(graph)
+            impact_score = scorer.score_table(args.table, args.schema)
+
+            if not impact_score:
+                safe_print(f"Table {args.schema or ''}.{args.table} not found in lineage graph")
+                return 0
+
+            if args.format == "json":
+                import json
+
+                output = json.dumps(impact_score.to_dict(), indent=2, default=str)
+                safe_print(output)
+            else:
+                from .cli_output import get_console
+
+                console = get_console()
+                br = impact_score.blast_radius
+
+                if console:
+                    safe_print()
+                    table_ref = f"{args.schema}.{args.table}" if args.schema else args.table
+                    safe_print(f"[bold cyan]Blast Radius for {table_ref}[/bold cyan]")
+                    safe_print()
+                    safe_print(f"  [bold]User Impact Level:[/bold] {br.estimated_user_impact}")
+                    safe_print()
+                    safe_print(f"  Immediate Downstream: {br.immediate_downstream} tables")
+                    safe_print(f"  Total Affected: {br.total_affected} tables")
+                    safe_print(f"  Critical Assets Affected: {br.critical_assets_affected}")
+                    safe_print()
+
+                    if br.affected_exposures:
+                        safe_print("[bold]Affected Exposures:[/bold]")
+                        for exp in br.affected_exposures[:10]:
+                            safe_print(f"  • {exp}")
+                        if len(br.affected_exposures) > 10:
+                            safe_print(f"  ... and {len(br.affected_exposures) - 10} more")
+                        safe_print()
+
+                    if br.affected_tables:
+                        safe_print(f"[bold]Affected Tables ({len(br.affected_tables)}):[/bold]")
+                        for t in br.affected_tables[:15]:
+                            safe_print(f"  • {t}")
+                        if len(br.affected_tables) > 15:
+                            safe_print(f"  ... and {len(br.affected_tables) - 15} more")
+                        safe_print()
+                else:
+                    safe_print(f"\nBlast Radius for {args.schema or ''}.{args.table}:")
+                    safe_print("=" * 60)
+                    safe_print(f"  User Impact: {br.estimated_user_impact}")
+                    safe_print(f"  Immediate Downstream: {br.immediate_downstream}")
+                    safe_print(f"  Total Affected: {br.total_affected}")
+                    safe_print(f"  Critical Assets: {br.critical_assets_affected}")
+
+            if args.output:
+                with open(args.output, "w") as f:
+                    import json
+
+                    f.write(json.dumps(impact_score.to_dict(), indent=2, default=str))
+                logger.info(f"Results saved to: {args.output}")
+
+        elif args.lineage_command == "validate":
+            # Phase 3: Validate lineage availability and graph structure
+            from .smart_selection.lineage import LineageAdapter, LineageGraph
+
+            adapter = LineageAdapter(
+                engine=connector.engine,
+                lineage_table="baselinr_lineage",
+            )
+
+            # Check if lineage data exists
+            stats = adapter.get_lineage_stats()
+
+            if stats.get("total_edges", 0) == 0:
+                safe_print("❌ No lineage data found in the database.")
+                safe_print("   Run 'baselinr lineage sync' to populate lineage data.")
+                return 1
+
+            # Build graph
+            graph = LineageGraph.build_from_adapter(adapter)
+            graph_stats = graph.get_stats()
+
+            if args.format == "json":
+                import json
+
+                result = {
+                    "valid": True,
+                    "lineage_stats": stats,
+                    "graph_stats": graph_stats,
+                }
+                output = json.dumps(result, indent=2, default=str)
+                safe_print(output)
+            else:
+                from .cli_output import get_console
+
+                console = get_console()
+                if console:
+                    safe_print()
+                    safe_print("[bold green]✓ Lineage Validation Passed[/bold green]")
+                    safe_print()
+                    safe_print("[bold]Lineage Data:[/bold]")
+                    safe_print(f"  Total Edges: {stats.get('total_edges', 0)}")
+                    safe_print(f"  Total Tables: {stats.get('total_tables', 0)}")
+                    if stats.get("edges_by_provider"):
+                        safe_print("  Edges by Provider:")
+                        for provider, count in stats["edges_by_provider"].items():
+                            safe_print(f"    - {provider}: {count}")
+                    safe_print()
+
+                    safe_print("[bold]Graph Structure:[/bold]")
+                    safe_print(f"  Total Nodes: {graph_stats.get('total_nodes', 0)}")
+                    safe_print(f"  Root Tables (Sources): {graph_stats.get('total_roots', 0)}")
+                    safe_print(f"  Leaf Tables (Outputs): {graph_stats.get('total_leaves', 0)}")
+                    safe_print(f"  Orphaned Tables: {graph_stats.get('total_orphans', 0)}")
+                    safe_print(f"  Max Depth: {graph_stats.get('max_depth', 0)}")
+                    safe_print(f"  Critical Paths: {graph_stats.get('critical_paths_count', 0)}")
+
+                    if graph_stats.get("node_type_distribution"):
+                        safe_print()
+                        safe_print("[bold]Node Type Distribution:[/bold]")
+                        for node_type, count in graph_stats["node_type_distribution"].items():
+                            safe_print(f"  - {node_type}: {count}")
+                    safe_print()
+                else:
+                    safe_print("\n✓ Lineage Validation Passed")
+                    safe_print("=" * 60)
+                    safe_print(f"  Total Edges: {stats.get('total_edges', 0)}")
+                    safe_print(f"  Total Nodes: {graph_stats.get('total_nodes', 0)}")
+                    safe_print(f"  Roots: {graph_stats.get('total_roots', 0)}")
+                    safe_print(f"  Leaves: {graph_stats.get('total_leaves', 0)}")
+                    safe_print(f"  Max Depth: {graph_stats.get('max_depth', 0)}")
+
+        elif args.lineage_command == "refresh-cache":
+            # Phase 3: Refresh lineage cache
+            from .smart_selection.lineage import LineageAdapter
+
+            adapter = LineageAdapter(
+                engine=connector.engine,
+                lineage_table="baselinr_lineage",
+            )
+            adapter.refresh_cache()
+            safe_print("✓ Lineage cache refreshed")
+
         elif args.lineage_command == "cleanup":
             from datetime import datetime, timedelta
 
@@ -2321,6 +2597,10 @@ def recommend_command(args):
             except Exception as e:
                 logger.warning(f"Could not create storage connector: {e}")
 
+        # Check for lineage options
+        with_lineage = getattr(args, "with_lineage", False)
+        explain_lineage = getattr(args, "explain_lineage", False)
+
         if include_columns:
             safe_print("\n📊 Generating smart table and column recommendations...")
         else:
@@ -2334,7 +2614,85 @@ def recommend_command(args):
         safe_print(f"   Lookback period: {smart_config.criteria.lookback_days} days")
         if include_columns:
             safe_print("   Column analysis: enabled")
+        if with_lineage:
+            safe_print("   Lineage-aware scoring: enabled")
         safe_print("")
+
+        # Handle explain-lineage mode for specific table
+        if explain_lineage and specific_table and storage_engine:
+            from .smart_selection.lineage import LineageAdapter, LineageGraph, ImpactScorer
+
+            safe_print(f"📊 Lineage explanation for {args.schema or 'default'}.{specific_table}...")
+            safe_print("")
+
+            adapter = LineageAdapter(
+                engine=storage_engine,
+                lineage_table="baselinr_lineage",
+            )
+
+            # Check if lineage data exists
+            if not adapter.has_lineage_data(specific_table, args.schema):
+                safe_print("⚠️  No lineage data found for this table.")
+                safe_print("   Run 'baselinr lineage sync' to populate lineage data.")
+                return 0
+
+            graph = LineageGraph.build_from_adapter(adapter)
+            scorer = ImpactScorer(graph)
+            impact_score = scorer.score_table(specific_table, args.schema)
+
+            if impact_score:
+                safe_print(f"[bold]Impact Score:[/bold] {impact_score.total_score:.4f}")
+                safe_print(f"[bold]Position:[/bold] {impact_score.position}")
+                safe_print(f"[bold]Node Type:[/bold] {impact_score.node_type}")
+                safe_print(f"[bold]Critical Path:[/bold] {'Yes' if impact_score.is_critical_path else 'No'}")
+                safe_print("")
+
+                safe_print("[bold]Score Components:[/bold]")
+                safe_print(f"  Downstream: {impact_score.downstream_score:.4f}")
+                safe_print(f"  Depth: {impact_score.depth_score:.4f}")
+                safe_print(f"  Criticality: {impact_score.criticality_score:.4f}")
+                safe_print(f"  Fanout: {impact_score.fanout_score:.4f}")
+                safe_print("")
+
+                br = impact_score.blast_radius
+                safe_print("[bold]Blast Radius:[/bold]")
+                safe_print(f"  Immediate Downstream: {br.immediate_downstream}")
+                safe_print(f"  Total Affected: {br.total_affected}")
+                safe_print(f"  Critical Assets: {br.critical_assets_affected}")
+                safe_print(f"  User Impact: {br.estimated_user_impact}")
+                safe_print("")
+
+                safe_print("[bold]Reasoning:[/bold]")
+                for reason in impact_score.reasoning:
+                    safe_print(f"  • {reason}")
+                safe_print("")
+
+                # Show check adjustments
+                check_adjustments = smart_config.lineage.check_adjustments
+                if impact_score.position == "root":
+                    adj = check_adjustments.root_tables
+                    if adj.prioritize_checks:
+                        safe_print("[bold]Recommended Check Priority (Root Table):[/bold]")
+                        for check in adj.prioritize_checks:
+                            safe_print(f"  • {check} (severity: {adj.severity or 'default'})")
+                elif impact_score.total_score >= 0.7:
+                    adj = check_adjustments.high_impact
+                    safe_print(f"[bold]High Impact Table Adjustments:[/bold]")
+                    if adj.min_confidence_threshold:
+                        safe_print(f"  Min confidence threshold: {adj.min_confidence_threshold}")
+                    if adj.check_frequency:
+                        safe_print(f"  Check frequency: {adj.check_frequency}")
+                elif impact_score.position == "leaf":
+                    adj = check_adjustments.leaf_tables
+                    safe_print(f"[bold]Leaf Table Adjustments:[/bold]")
+                    if adj.min_confidence_threshold:
+                        safe_print(f"  Min confidence threshold: {adj.min_confidence_threshold}")
+                    if adj.check_frequency:
+                        safe_print(f"  Check frequency: {adj.check_frequency}")
+            else:
+                safe_print("❌ Could not compute impact score for this table")
+
+            return 0
 
         # Create recommendation engine with storage engine
         engine = RecommendationEngine(
@@ -2386,6 +2744,70 @@ def recommend_command(args):
             existing_tables=existing_tables,
             include_columns=include_columns,
         )
+
+        # Enhance with lineage scoring if enabled
+        lineage_stats = None
+        if with_lineage and storage_engine:
+            try:
+                from .smart_selection.lineage import LineageAdapter, LineageGraph, ImpactScorer
+
+                safe_print("📊 Adding lineage-aware scoring...")
+                adapter = LineageAdapter(
+                    engine=storage_engine,
+                    lineage_table="baselinr_lineage",
+                )
+                lineage_stats = adapter.get_lineage_stats()
+
+                if lineage_stats.get("total_edges", 0) > 0:
+                    graph = LineageGraph.build_from_adapter(adapter)
+                    scorer = ImpactScorer(graph)
+
+                    # Enhance each recommendation with lineage data
+                    lineage_weight = smart_config.lineage.lineage_weight
+
+                    for rec in report.recommended_tables:
+                        impact_score = scorer.score_table(rec.table, rec.schema)
+                        if impact_score:
+                            # Store lineage info
+                            rec.lineage_score = impact_score.total_score
+                            rec.lineage_context = {
+                                "node_type": impact_score.node_type,
+                                "position": impact_score.position,
+                                "is_critical_path": impact_score.is_critical_path,
+                                "downstream_dependencies": {
+                                    "immediate": impact_score.blast_radius.immediate_downstream,
+                                    "total": impact_score.blast_radius.total_affected,
+                                },
+                                "blast_radius": {
+                                    "affected_tables": impact_score.blast_radius.total_affected,
+                                    "affected_exposures": len(impact_score.blast_radius.affected_exposures),
+                                    "critical_dashboards": impact_score.blast_radius.affected_exposures[:5],
+                                    "estimated_user_impact": impact_score.blast_radius.estimated_user_impact,
+                                },
+                                "reasoning": impact_score.reasoning,
+                            }
+
+                            # Recalculate score with lineage weight
+                            usage_weight = 1.0 - lineage_weight
+                            usage_score = rec.score / 100.0 if rec.score else 0.0
+                            combined = usage_weight * usage_score + lineage_weight * impact_score.total_score
+                            rec.score = combined * 100.0
+
+                            # Add lineage-based reasons
+                            rec.reasons.extend(impact_score.reasoning)
+
+                    # Re-sort by new scores
+                    report.recommended_tables.sort(key=lambda r: r.score, reverse=True)
+
+                    safe_print(f"   Lineage graph: {lineage_stats.get('total_tables', 0)} tables, "
+                              f"{lineage_stats.get('total_edges', 0)} dependencies")
+                else:
+                    safe_print("   ⚠️  No lineage data found - scoring based on usage only")
+            except Exception as e:
+                logger.warning(f"Could not enhance with lineage scoring: {e}")
+                safe_print(f"   ⚠️  Lineage scoring unavailable: {e}")
+
+        safe_print("")
 
         # Display summary
         safe_print("✅ Analysis complete!")
@@ -3182,6 +3604,45 @@ def main():
         help="Include layout positions in JSON export",
     )
 
+    # lineage show (NEW - Phase 3)
+    show_parser = lineage_subparsers.add_parser(
+        "show", help="Show lineage for a table with impact scoring"
+    )
+    show_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    show_parser.add_argument("--table", required=True, help="Table name")
+    show_parser.add_argument("--schema", help="Schema name")
+    show_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    show_parser.add_argument("--output", "-o", help="Output file path")
+
+    # lineage impact (NEW - Phase 3)
+    impact_parser = lineage_subparsers.add_parser(
+        "impact", help="Show blast radius for a table"
+    )
+    impact_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    impact_parser.add_argument("--table", required=True, help="Table name")
+    impact_parser.add_argument("--schema", help="Schema name")
+    impact_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+    impact_parser.add_argument("--output", "-o", help="Output file path")
+
+    # lineage validate (NEW - Phase 3)
+    validate_parser = lineage_subparsers.add_parser(
+        "validate", help="Validate lineage availability and graph structure"
+    )
+    validate_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+    validate_parser.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format"
+    )
+
+    # lineage refresh-cache (NEW - Phase 3)
+    refresh_parser = lineage_subparsers.add_parser(
+        "refresh-cache", help="Refresh lineage cache"
+    )
+    refresh_parser.add_argument("--config", "-c", required=True, help="Configuration file")
+
     # Recommend command
     recommend_parser = subparsers.add_parser(
         "recommend",
@@ -3235,6 +3696,21 @@ def main():
         choices=["yaml", "json"],
         default="yaml",
         help="Output format (default: yaml)",
+    )
+    recommend_parser.add_argument(
+        "--with-lineage",
+        action="store_true",
+        help="Include lineage-aware scoring in recommendations",
+    )
+    recommend_parser.add_argument(
+        "--explain-lineage",
+        action="store_true",
+        help="Show detailed lineage explanation for a specific table",
+    )
+    recommend_parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output",
     )
 
     # UI command
