@@ -4,10 +4,11 @@ Azure OpenAI provider implementation for LLM explanations.
 Supports GPT models via Azure OpenAI API.
 """
 
+import json
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from ..base import LLMConfig
@@ -238,3 +239,96 @@ class AzureOpenAIProvider(LLMProvider):
         output_cost = (output_tokens / 1_000_000) * costs["output"]
 
         return input_cost + output_cost
+
+    @retry(
+        retry=retry_if_exception_type((APIError,)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def generate_with_tools(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> LLMResponse:
+        """
+        Generate completion with tool calling support.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+            tools: Optional list of tool definitions in OpenAI format
+            temperature: Sampling temperature (uses config default if not specified)
+            max_tokens: Maximum tokens to generate (uses config default if not specified)
+
+        Returns:
+            LLMResponse with generated text, tool calls, and metadata
+
+        Raises:
+            LLMAPIError: If API call fails
+            LLMTimeoutError: If request times out
+        """
+        start_time = time.time()
+
+        # Use config defaults if not specified
+        temp = temperature if temperature is not None else self.config.temperature
+        max_toks = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        try:
+            # Build kwargs for API call
+            api_kwargs: Dict[str, Any] = {
+                "model": self.model,
+                "messages": messages,  # type: ignore[arg-type]
+                "temperature": temp,
+                "max_tokens": max_toks,
+                "timeout": self.config.timeout,  # type: ignore[arg-type]
+            }
+
+            # Only add tools and tool_choice if tools are provided
+            if tools:
+                api_kwargs["tools"] = tools  # type: ignore[arg-type]
+                api_kwargs["tool_choice"] = "auto"  # type: ignore[arg-type]
+
+            response = self.client.chat.completions.create(**api_kwargs)
+
+            latency_ms = (time.time() - start_time) * 1000
+
+            # Extract response
+            message = response.choices[0].message
+            content = message.content or ""
+            tokens_used = response.usage.total_tokens if response.usage else None
+
+            # Extract tool calls
+            tool_calls = []
+            if message.tool_calls:
+                for tc in message.tool_calls:
+                    tool_calls.append(
+                        {
+                            "id": tc.id,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": json.loads(tc.function.arguments),
+                            },
+                        }
+                    )
+
+            # Estimate cost
+            cost_usd = self._estimate_cost(tokens_used, self.model) if tokens_used else None
+
+            return LLMResponse(
+                text=content,
+                model=self.model,
+                provider="azure",
+                tokens_used=tokens_used,
+                cost_usd=cost_usd,
+                latency_ms=latency_ms,
+                tool_calls=tool_calls if tool_calls else None,
+            )
+
+        except APITimeoutError as e:
+            raise LLMTimeoutError(f"Azure OpenAI API request timed out: {e}") from e
+        except APIError as e:
+            raise LLMAPIError(f"Azure OpenAI API error: {e}") from e
+        except Exception as e:
+            raise LLMAPIError(f"Unexpected error calling Azure OpenAI API: {e}") from e

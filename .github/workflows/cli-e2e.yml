@@ -505,6 +505,35 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --output /tmp/validation_results.json || echo "Validation output failed (expected if validation disabled or no rules)"
 
+      - name: Run chat CLI commands (error handling tests)
+        run: |
+          # Test chat help command (validates CLI structure)
+          docker run --rm \
+            $DOCKER_IMAGE_NAME \
+            baselinr chat --help
+
+          # Test chat with LLM disabled (should error before starting interactive loop)
+          # This validates error handling without requiring API keys
+          # Exit code 1 is expected when LLM is not configured
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            -e BASELINR_LLM__ENABLED=false \
+            $DOCKER_IMAGE_NAME \
+            baselinr chat --config $BASELINR_CONFIG_PATH || echo "Chat validation test: LLM not configured (expected)"
+
+          # Test chat with invalid config file (should error gracefully)
+          docker run --rm \
+            $DOCKER_IMAGE_NAME \
+            baselinr chat --config /nonexistent/config.yml || echo "Chat validation test: Invalid config (expected)"
+
+          # Note: Full E2E chat testing requires API keys and is interactive,
+          # so we only test error handling paths here. The chat command will
+          # also fail if API keys are missing, which is expected behavior.
+
       - name: Dump PostgreSQL logs on failure
         if: failure()
         run: docker logs baselinr_postgres || true

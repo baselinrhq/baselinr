@@ -4,7 +4,7 @@ Baselinr Dashboard Backend API
 FastAPI server that provides endpoints for:
 - Run history
 - Profiling results
-- Drift detection alerts  
+- Drift detection alerts
 - Metrics and KPIs
 """
 
@@ -32,6 +32,7 @@ from lineage_models import (
 )
 from database import DatabaseClient
 import rca_routes
+import chat_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -43,7 +44,12 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js default port
+    allow_origins=[
+        "http://localhost:3000",  # Next.js default port
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,14 +61,122 @@ db_client = DatabaseClient()
 # Register RCA routes
 rca_routes.register_routes(app, db_client.engine)
 
+
+# Load config for chat (from environment or default)
+def _load_chat_config():
+    """Load chat configuration from environment or config file."""
+    import yaml
+
+    config = {
+        "llm": {
+            "enabled": os.getenv("LLM_ENABLED", "false").lower() == "true",
+            "provider": os.getenv("LLM_PROVIDER", "openai"),
+            "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            "api_key": os.getenv("OPENAI_API_KEY") or os.getenv("ANTHROPIC_API_KEY"),
+            "chat": {
+                "max_iterations": int(os.getenv("CHAT_MAX_ITERATIONS", "5")),
+                "max_history_messages": int(os.getenv("CHAT_MAX_HISTORY", "20")),
+                "tool_timeout": int(os.getenv("CHAT_TOOL_TIMEOUT", "30")),
+            }
+        },
+        "storage": {
+            "runs_table": os.getenv("BASELINR_RUNS_TABLE", "baselinr_runs"),
+            "results_table": os.getenv("BASELINR_RESULTS_TABLE", "baselinr_results"),
+        }
+    }
+
+    # Try to find config file
+    config_path = os.getenv("BASELINR_CONFIG")
+    
+    # If not set, try common locations
+    if not config_path:
+        # Get the project root (assuming backend is in dashboard/backend/)
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(backend_dir, "../../"))
+        
+        # Try common config file locations
+        possible_paths = [
+            os.path.join(project_root, "examples", "config.yml"),
+            os.path.join(project_root, "config.yml"),
+            os.path.join(project_root, "baselinr", "examples", "config.yml"),
+            "examples/config.yml",
+            "config.yml",
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                config_path = path
+                print(f"Found config file at: {config_path}")
+                break
+    
+    # Load from config file if found
+    if config_path and os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as f:
+                file_config = yaml.safe_load(f)
+                if file_config:
+                    # Deep merge llm config (including nested chat config)
+                    if "llm" in file_config:
+                        llm_file = file_config["llm"]
+                        # Update top-level llm settings
+                        if "enabled" in llm_file:
+                            # Ensure boolean conversion (handle string "true"/"false")
+                            enabled_val = llm_file["enabled"]
+                            if isinstance(enabled_val, str):
+                                config["llm"]["enabled"] = enabled_val.lower() in ("true", "1", "yes")
+                            else:
+                                config["llm"]["enabled"] = bool(enabled_val)
+                        if "provider" in llm_file:
+                            config["llm"]["provider"] = llm_file["provider"]
+                        if "model" in llm_file:
+                            config["llm"]["model"] = llm_file["model"]
+                        if "api_key" in llm_file:
+                            # Support environment variable expansion
+                            api_key = llm_file["api_key"]
+                            if isinstance(api_key, str) and api_key.startswith("${") and api_key.endswith("}"):
+                                env_var = api_key[2:-1]
+                                config["llm"]["api_key"] = os.getenv(env_var) or api_key
+                            else:
+                                config["llm"]["api_key"] = api_key
+                        # Merge chat config if present
+                        if "chat" in llm_file:
+                            chat_file = llm_file["chat"]
+                            if isinstance(chat_file, dict):
+                                # Handle boolean conversion for chat.enabled if present
+                                if "enabled" in chat_file:
+                                    chat_enabled = chat_file["enabled"]
+                                    if isinstance(chat_enabled, str):
+                                        chat_file["enabled"] = chat_enabled.lower() in ("true", "1", "yes")
+                                    else:
+                                        chat_file["enabled"] = bool(chat_enabled)
+                                config["llm"]["chat"].update(chat_file)
+                    
+                    # Merge storage config
+                    if "storage" in file_config:
+                        storage_file = file_config["storage"]
+                        if "runs_table" in storage_file:
+                            config["storage"]["runs_table"] = storage_file["runs_table"]
+                        if "results_table" in storage_file:
+                            config["storage"]["results_table"] = storage_file["results_table"]
+                    
+                    print(f"Loaded LLM config: enabled={config['llm']['enabled']}, provider={config['llm']['provider']}, has_api_key={bool(config['llm']['api_key'])}")
+        except Exception as e:
+            print(f"Warning: Could not load config from {config_path}: {e}")
+
+    return config
+
+
+chat_config = _load_chat_config()
+
+# Register Chat routes
+chat_routes.register_chat_routes(app, db_client.engine, chat_config)
+
 # Import baselinr visualization components
 # Add parent directory to path to import baselinr
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 try:
     from baselinr.visualization import LineageGraphBuilder
-    from baselinr.visualization.exporters import JSONExporter
-    from baselinr.visualization.layout import HierarchicalLayout
     LINEAGE_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Lineage visualization not available: {e}")
