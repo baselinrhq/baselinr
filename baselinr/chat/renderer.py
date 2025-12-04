@@ -39,13 +39,14 @@ try:
     )
 except ImportError:
     RICH_AVAILABLE = False
-    Console = None
-    Markdown = None
-    Panel = None
-    Table = None
-    Text = None
-    Theme = None
-    BASELINR_THEME = None
+    # Type stubs for when rich is not available
+    Console = None  # type: ignore[assignment,misc]
+    Markdown = None  # type: ignore[assignment,misc]
+    Panel = None  # type: ignore[assignment,misc]
+    Table = None  # type: ignore[assignment,misc]
+    Text = None  # type: ignore[assignment,misc]
+    Theme = None  # type: ignore[assignment,misc]
+    BASELINR_THEME = None  # type: ignore[assignment]
 
 
 @dataclass

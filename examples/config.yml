@@ -591,8 +591,8 @@ validation:
         - table: orders
           column: total_amount
           type: range
-          min: 0
-          max: 1000000
+          min_value: 0
+          max_value: 1000000
           severity: medium
         
         # Enum validation example - validates status is in allowed list

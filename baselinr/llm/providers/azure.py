@@ -276,15 +276,21 @@ class AzureOpenAIProvider(LLMProvider):
         max_toks = max_tokens if max_tokens is not None else self.config.max_tokens
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,  # type: ignore[arg-type]
-                tools=tools if tools else None,  # type: ignore[arg-type]
-                tool_choice="auto" if tools else None,
-                temperature=temp,
-                max_tokens=max_toks,
-                timeout=self.config.timeout,
-            )
+            # Build kwargs for API call
+            api_kwargs: Dict[str, Any] = {
+                "model": self.model,
+                "messages": messages,  # type: ignore[arg-type]
+                "temperature": temp,
+                "max_tokens": max_toks,
+                "timeout": self.config.timeout,  # type: ignore[arg-type]
+            }
+
+            # Only add tools and tool_choice if tools are provided
+            if tools:
+                api_kwargs["tools"] = tools  # type: ignore[arg-type]
+                api_kwargs["tool_choice"] = "auto"  # type: ignore[arg-type]
+
+            response = self.client.chat.completions.create(**api_kwargs)
 
             latency_ms = (time.time() - start_time) * 1000
 
