@@ -10,6 +10,7 @@ import pytest
 from baselinr.chat.agent import AgentConfig, ChatAgent, ToolCallResult
 from baselinr.chat.session import ChatSession
 from baselinr.chat.tools import Tool, ToolRegistry
+from baselinr.llm.base import LLMResponse
 
 
 class MockLLMProvider:
@@ -34,6 +35,19 @@ class MockLLMProvider:
         mock_response.usage = MagicMock(total_tokens=100)
 
         self.client.chat.completions.create = MagicMock(return_value=mock_response)
+
+    def generate_with_tools(
+        self, messages, tools=None, temperature=None, max_tokens=None
+    ):
+        """Mock generate_with_tools method."""
+        self.call_count += 1
+        return LLMResponse(
+            text="This is a test response.",
+            model=self.model,
+            provider="test",
+            tokens_used=100,
+            tool_calls=None,
+        )
 
 
 class TestAgentConfig:

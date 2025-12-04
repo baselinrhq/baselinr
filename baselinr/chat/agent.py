@@ -19,9 +19,11 @@ from baselinr.chat.tools import ToolRegistry
 logger = logging.getLogger(__name__)
 
 # System prompt for the chat agent
-SYSTEM_PROMPT = """You are Baselinr Assistant, an AI data quality expert helping users understand and investigate their data monitoring results.
+SYSTEM_PROMPT = """You are Baselinr Assistant, an AI data quality expert helping users \
+understand and investigate their data monitoring results.
 
-You have access to tools that let you query profiling runs, drift events, anomalies, and historical trends from the Baselinr monitoring system.
+You have access to tools that let you query profiling runs, drift events, anomalies, \
+and historical trends from the Baselinr monitoring system.
 
 When answering questions:
 1. Use the appropriate tools to retrieve relevant data
@@ -36,7 +38,8 @@ Available tools:
 {tool_descriptions}
 
 Key concepts:
-- **Profiling runs**: Regular scans of tables to collect metrics (row count, null rates, distributions, etc.)
+- **Profiling runs**: Regular scans of tables to collect metrics \
+(row count, null rates, distributions, etc.)
 - **Drift**: Significant changes in data distribution or metrics compared to baseline
 - **Anomalies**: Statistically unusual values that may indicate data quality issues
 - **Lineage**: Upstream sources and downstream dependents of a table
@@ -207,16 +210,14 @@ class ChatAgent:
                         session.add_message(
                             "tool",
                             result.output,
-                            tool_results=[
-                                {"id": result.tool_call_id, "output": result.output}
-                            ],
+                            tool_results=[{"id": result.tool_call_id, "output": result.output}],
                         )
 
                     # Continue loop - LLM will process tool results
                     continue
                 else:
                     # LLM generated final response
-                    final_response = response.get("content", "")
+                    final_response: str = str(response.get("content", ""))
 
                     # Add final response to session
                     session.add_message(
@@ -259,7 +260,7 @@ class ChatAgent:
 
     async def _call_llm_with_tools(self, messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Call the LLM with tools enabled.
+        Call the LLM with tools enabled using the LLMProvider interface.
 
         Args:
             messages: Formatted messages for the LLM
@@ -273,131 +274,32 @@ class ChatAgent:
         else:
             tools = self.tools.to_openai_format()
 
-        # Call LLM based on provider type
-        if self._provider_type == "anthropic":
-            return await self._call_anthropic(messages, tools)
-        else:
-            return await self._call_openai(messages, tools)
+        # Call LLM using the provider's generate_with_tools method
+        # Wrap in executor since it's a synchronous call
+        loop = asyncio.get_event_loop()
 
-    async def _call_openai(
-        self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """Call OpenAI-compatible API with tools."""
+        def _call():
+            return self.llm.generate_with_tools(
+                messages=messages,
+                tools=tools if tools else None,
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
+
         try:
-            # Import OpenAI client from provider
-            client = self.llm.client
-            model = self.llm.model
-
-            # Make synchronous call (wrap in executor for async)
-            loop = asyncio.get_event_loop()
-
-            def _call():
-                return client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    tools=tools if tools else None,
-                    tool_choice="auto" if tools else None,
-                    temperature=self.config.temperature,
-                    max_tokens=self.config.max_tokens,
-                )
-
             response = await loop.run_in_executor(None, _call)
 
-            # Parse response
-            message = response.choices[0].message
-            content = message.content or ""
-            tokens_used = response.usage.total_tokens if response.usage else None
-
-            # Extract tool calls
-            tool_calls = []
-            if message.tool_calls:
-                for tc in message.tool_calls:
-                    tool_calls.append(
-                        {
-                            "id": tc.id,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": json.loads(tc.function.arguments),
-                            },
-                        }
-                    )
-
+            # Convert LLMResponse to dict format expected by chat agent
             return {
-                "content": content,
-                "tool_calls": tool_calls,
-                "tokens_used": tokens_used,
+                "content": response.text,
+                "tool_calls": response.tool_calls or [],
+                "tokens_used": response.tokens_used,
             }
-
         except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
+            logger.error(f"LLM API error: {e}")
             raise
 
-    async def _call_anthropic(
-        self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """Call Anthropic API with tools."""
-        try:
-            client = self.llm.client
-            model = self.llm.model
-
-            # Extract system message
-            system_content = None
-            filtered_messages = []
-            for msg in messages:
-                if msg["role"] == "system":
-                    system_content = msg["content"]
-                else:
-                    filtered_messages.append(msg)
-
-            # Make synchronous call
-            loop = asyncio.get_event_loop()
-
-            def _call():
-                return client.messages.create(
-                    model=model,
-                    max_tokens=self.config.max_tokens,
-                    system=system_content,
-                    messages=filtered_messages,
-                    tools=tools if tools else None,
-                )
-
-            response = await loop.run_in_executor(None, _call)
-
-            # Parse response
-            content = ""
-            tool_calls = []
-
-            for block in response.content:
-                if hasattr(block, "text"):
-                    content += block.text
-                elif hasattr(block, "type") and block.type == "tool_use":
-                    tool_calls.append(
-                        {
-                            "id": block.id,
-                            "function": {
-                                "name": block.name,
-                                "arguments": block.input,
-                            },
-                        }
-                    )
-
-            tokens_used = None
-            if response.usage:
-                tokens_used = response.usage.input_tokens + response.usage.output_tokens
-
-            return {
-                "content": content,
-                "tool_calls": tool_calls,
-                "tokens_used": tokens_used,
-            }
-
-        except Exception as e:
-            logger.error(f"Anthropic API error: {e}")
-            raise
-
-    async def _execute_tools(
-        self, tool_calls: List[Dict[str, Any]]
-    ) -> List[ToolCallResult]:
+    async def _execute_tools(self, tool_calls: List[Dict[str, Any]]) -> List[ToolCallResult]:
         """
         Execute tool calls and return results.
 
@@ -542,8 +444,8 @@ def create_agent(
         Configured ChatAgent instance
     """
     from baselinr.chat.tools import ToolRegistry, setup_tools
-    from baselinr.llm.providers.factory import create_provider
     from baselinr.config.schema import LLMConfig
+    from baselinr.llm.providers.factory import create_provider
 
     # Create LLM provider
     llm_config_obj = LLMConfig(**llm_config)

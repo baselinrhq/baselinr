@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 # Check for prompt_toolkit availability
 try:
     from prompt_toolkit import PromptSession
-    from prompt_toolkit.history import InMemoryHistory
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+    from prompt_toolkit.history import InMemoryHistory
 
     PROMPT_TOOLKIT_AVAILABLE = True
 except ImportError:
@@ -41,7 +41,7 @@ def run_chat_command(args) -> int:
 
     # Load configuration
     try:
-        config = ConfigLoader.load(args.config)
+        config = ConfigLoader.load_from_file(args.config)
     except Exception as e:
         print(f"Error loading config: {e}")
         return 1
@@ -50,13 +50,15 @@ def run_chat_command(args) -> int:
     if not config.llm or not config.llm.enabled:
         print("Error: LLM is not configured or not enabled.")
         print("Please configure the 'llm' section in your config file:")
-        print("""
+        print(
+            """
 llm:
   enabled: true
   provider: openai  # or anthropic, azure, ollama
   model: gpt-4o-mini
   # api_key: ${OPENAI_API_KEY}  # Optional, uses env var by default
-""")
+"""
+        )
         return 1
 
     # Create storage connection

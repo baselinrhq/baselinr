@@ -174,3 +174,25 @@ class OllamaProvider(LLMProvider):
             raise LLMAPIError(f"Ollama API error: {e}") from e
         except Exception as e:
             raise LLMAPIError(f"Unexpected error calling Ollama API: {e}") from e
+
+    def generate_with_tools(
+        self,
+        messages: list,
+        tools: Optional[list] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> LLMResponse:
+        """
+        Generate completion with tool calling support.
+
+        Note: Ollama does not support standardized tool calling.
+        This method raises NotImplementedError.
+
+        Raises:
+            NotImplementedError: Ollama does not support tool calling
+        """
+        raise NotImplementedError(
+            "Ollama provider does not support tool calling. "
+            "Use generate() for simple text generation, or use OpenAI/Anthropic "
+            "providers for tool calling."
+        )

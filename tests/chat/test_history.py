@@ -91,11 +91,21 @@ class TestConversationHistory:
 
         formatted = history.get_messages_for_llm(provider="openai")
 
-        assert formatted[0]["tool_calls"] == tool_calls
+        # Tool calls should have the 'type' field added
+        assert len(formatted[0]["tool_calls"]) == 1
+        assert formatted[0]["tool_calls"][0]["id"] == "1"
+        assert formatted[0]["tool_calls"][0]["type"] == "function"
+        assert formatted[0]["tool_calls"][0]["function"]["name"] == "test"
 
     def test_format_tool_result_for_openai(self):
         """Test formatting tool results for OpenAI."""
         history = ConversationHistory()
+
+        # Tool messages must follow an assistant message with tool_calls
+        tool_calls = [{"id": "call_1", "function": {"name": "test", "arguments": {}}}]
+        history.add(
+            Message(role="assistant", content="Let me check", tool_calls=tool_calls)
+        )
 
         tool_results = [{"id": "call_1", "output": '{"result": "success"}'}]
         history.add(
@@ -104,7 +114,11 @@ class TestConversationHistory:
 
         formatted = history.get_messages_for_llm(provider="openai")
 
-        assert formatted[0]["tool_call_id"] == "call_1"
+        # Should have assistant message and tool message
+        assert len(formatted) == 2
+        assert formatted[0]["role"] == "assistant"
+        assert formatted[1]["role"] == "tool"
+        assert formatted[1]["tool_call_id"] == "call_1"
 
     def test_get_summary(self):
         """Test getting conversation summary."""

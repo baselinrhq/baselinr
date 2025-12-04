@@ -20,6 +20,23 @@ try:
     from rich.theme import Theme
 
     RICH_AVAILABLE = True
+
+    # Custom theme for Baselinr
+    BASELINR_THEME = Theme(
+        {
+            "info": "cyan",
+            "warning": "yellow",
+            "error": "red bold",
+            "success": "green",
+            "metric": "blue",
+            "table_name": "magenta bold",
+            "column_name": "cyan",
+            "value": "white",
+            "user": "green bold",
+            "assistant": "cyan bold",
+            "tool": "yellow",
+        }
+    )
 except ImportError:
     RICH_AVAILABLE = False
     Console = None
@@ -27,24 +44,8 @@ except ImportError:
     Panel = None
     Table = None
     Text = None
-
-
-# Custom theme for Baselinr
-BASELINR_THEME = Theme(
-    {
-        "info": "cyan",
-        "warning": "yellow",
-        "error": "red bold",
-        "success": "green",
-        "metric": "blue",
-        "table_name": "magenta bold",
-        "column_name": "cyan",
-        "value": "white",
-        "user": "green bold",
-        "assistant": "cyan bold",
-        "tool": "yellow",
-    }
-)
+    Theme = None
+    BASELINR_THEME = None
 
 
 @dataclass
@@ -56,8 +57,10 @@ class ChatRenderer:
     verbose: bool = False
 
     def __post_init__(self):
-        if RICH_AVAILABLE and self.console is None:
+        if RICH_AVAILABLE and self.console is None and BASELINR_THEME is not None:
             self.console = Console(theme=BASELINR_THEME)
+        elif RICH_AVAILABLE and self.console is None:
+            self.console = Console()
 
     def render_welcome(self) -> None:
         """Render welcome message."""
@@ -332,7 +335,9 @@ def format_drift_summary(events: List[Dict[str, Any]]) -> str:
     if high:
         lines.append(f"🔴 **High Severity:** {len(high)} events")
         for e in high[:3]:
-            lines.append(f"  - {e.get('table_name')}.{e.get('column_name')}: {e.get('metric_name')}")
+            lines.append(
+                f"  - {e.get('table_name')}.{e.get('column_name')}: {e.get('metric_name')}"
+            )
 
     if medium:
         lines.append(f"🟡 **Medium Severity:** {len(medium)} events")
@@ -352,7 +357,11 @@ def format_table_profile(profile: Dict[str, Any]) -> str:
         f"**Table:** {profile.get('dataset_name', 'Unknown')}",
         f"**Schema:** {profile.get('schema_name', 'N/A')}",
         f"**Last Profiled:** {profile.get('profiled_at', 'N/A')}",
-        f"**Row Count:** {profile.get('row_count', 'N/A'):,}" if profile.get('row_count') else "**Row Count:** N/A",
+        (
+            f"**Row Count:** {profile.get('row_count', 'N/A'):,}"
+            if profile.get("row_count")
+            else "**Row Count:** N/A"
+        ),
         f"**Columns:** {profile.get('column_count', 'N/A')}",
         "",
         "**Column Summary:**",
@@ -396,7 +405,11 @@ def format_trend_summary(trend_data: Dict[str, Any]) -> str:
     if "mean" in summary:
         lines.append(f"- Mean: {summary['mean']:.4f}")
     if "trend" in summary:
-        trend_emoji = "📈" if summary["trend"] == "increasing" else "📉" if summary["trend"] == "decreasing" else "➡️"
+        trend_emoji = (
+            "📈"
+            if summary["trend"] == "increasing"
+            else "📉" if summary["trend"] == "decreasing" else "➡️"
+        )
         lines.append(f"- Trend: {trend_emoji} {summary['trend']}")
         if "trend_percent" in summary:
             lines.append(f"- Change: {summary['trend_percent']:.1f}%")

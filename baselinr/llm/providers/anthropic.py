@@ -7,7 +7,7 @@ Supports Claude models via Anthropic API.
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from ..base import LLMConfig
@@ -206,3 +206,102 @@ class AnthropicProvider(LLMProvider):
         output_cost = (output_tokens / 1_000_000) * costs["output"]
 
         return input_cost + output_cost
+
+    @retry(
+        retry=retry_if_exception_type((anthropic.APIError, anthropic.APIConnectionError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        reraise=True,
+    )
+    def generate_with_tools(
+        self,
+        messages: List[Dict[str, str]],
+        tools: Optional[List[Dict[str, Any]]] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> LLMResponse:
+        """
+        Generate completion with tool calling support.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys
+            tools: Optional list of tool definitions in Anthropic format
+            temperature: Sampling temperature (uses config default if not specified)
+            max_tokens: Maximum tokens to generate (uses config default if not specified)
+
+        Returns:
+            LLMResponse with generated text, tool calls, and metadata
+
+        Raises:
+            LLMAPIError: If API call fails
+            LLMTimeoutError: If request times out
+        """
+        start_time = time.time()
+
+        # Use config defaults if not specified
+        temp = temperature if temperature is not None else self.config.temperature
+        max_toks = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        try:
+            # Extract system message (Anthropic uses separate system parameter)
+            system_content = None
+            filtered_messages = []
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_content = msg["content"]
+                else:
+                    filtered_messages.append(msg)
+
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_toks,
+                temperature=temp,
+                system=system_content,  # type: ignore[arg-type]
+                messages=filtered_messages,  # type: ignore[arg-type]
+                tools=tools if tools else None,  # type: ignore[arg-type]
+                timeout=self.config.timeout,
+            )
+
+            latency_ms = (time.time() - start_time) * 1000
+
+            # Extract response
+            content = ""
+            tool_calls = []
+
+            for block in response.content:
+                if hasattr(block, "text"):
+                    content += block.text
+                elif hasattr(block, "type") and block.type == "tool_use":
+                    tool_calls.append(
+                        {
+                            "id": block.id,
+                            "function": {
+                                "name": block.name,
+                                "arguments": block.input,
+                            },
+                        }
+                    )
+
+            tokens_used = None
+            if response.usage:
+                tokens_used = response.usage.input_tokens + response.usage.output_tokens
+
+            # Estimate cost
+            cost_usd = self._estimate_cost(tokens_used, self.model) if tokens_used else None
+
+            return LLMResponse(
+                text=content,
+                model=self.model,
+                provider="anthropic",
+                tokens_used=tokens_used,
+                cost_usd=cost_usd,
+                latency_ms=latency_ms,
+                tool_calls=tool_calls if tool_calls else None,
+            )
+
+        except anthropic.APITimeoutError as e:
+            raise LLMTimeoutError(f"Anthropic API request timed out: {e}") from e
+        except (anthropic.APIError, anthropic.APIConnectionError) as e:
+            raise LLMAPIError(f"Anthropic API error: {e}") from e
+        except Exception as e:
+            raise LLMAPIError(f"Unexpected error calling Anthropic API: {e}") from e

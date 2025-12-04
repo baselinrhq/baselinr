@@ -513,14 +513,21 @@ lineage:
 # LLM configuration for human-readable explanations (optional)
 # This feature is opt-in and disabled by default
 llm:
-  enabled: false  # Set to true to enable LLM explanations
+  enabled: true  # Set to true to enable LLM explanations
   provider: openai  # Options: openai | anthropic | azure | ollama
   api_key: ${OPENAI_API_KEY}  # Supports environment variable expansion
-  model: gpt-4o-mini  # Provider-specific model name
+  model: gpt-4o-mini  # Provider-specific model name (better free tier limits than gpt-4o-mini)
   temperature: 0.3  # Low temperature for consistent explanations
-  max_tokens: 500  # Reasonable limit for single explanations
+  max_tokens: 1500  # Reasonable limit for single explanations
   timeout: 30  # API timeout in seconds
   fallback_to_template: true  # Use templates if LLM fails
+  chat:
+    enabled: true  # Enable conversational chat interface
+    max_history_messages: 20  # Maximum conversation history to keep
+    max_iterations: 5  # Maximum tool-calling iterations per query
+    tool_timeout: 30  # Timeout for tool execution in seconds
+    cache_tool_results: true  # Cache tool results for performance
+    enable_context_enhancement: true  # Enhance responses with context
 #
 #   # Example: Anthropic provider
 #   # provider: anthropic
@@ -584,8 +591,8 @@ validation:
         - table: orders
           column: total_amount
           type: range
-          min_value: 0
-          max_value: 1000000
+          min: 0
+          max: 1000000
           severity: medium
         
         # Enum validation example - validates status is in allowed list

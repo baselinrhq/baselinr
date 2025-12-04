@@ -372,7 +372,7 @@ def _register_get_table_profile_tool(registry: ToolRegistry, client) -> None:
             if not result:
                 return {"error": f"No profile found for table '{table}'"}
 
-            return result
+            return dict(result)  # type: ignore[arg-type]
         except Exception as e:
             logger.error(f"Error getting table profile: {e}")
             return {"error": str(e)}
@@ -423,7 +423,7 @@ def _register_get_column_history_tool(
         column: str,
         metric: str,
         days: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """Get historical trend for a specific column metric."""
         try:
             start_date = datetime.utcnow() - timedelta(days=days)
@@ -479,7 +479,7 @@ def _register_get_column_history_tool(
             if numeric_values:
                 import statistics
 
-                summary = {
+                summary: Dict[str, Any] = {
                     "count": len(numeric_values),
                     "min": min(numeric_values),
                     "max": max(numeric_values),
@@ -496,7 +496,9 @@ def _register_get_column_history_tool(
                             trend_pct = ((recent_avg - historical_avg) / abs(historical_avg)) * 100
                             summary["trend_percent"] = round(trend_pct, 2)
                             summary["trend"] = (
-                                "increasing" if trend_pct > 5 else "decreasing" if trend_pct < -5 else "stable"
+                                "increasing"
+                                if trend_pct > 5
+                                else "decreasing" if trend_pct < -5 else "stable"
                             )
                         else:
                             summary["trend"] = "stable"
@@ -580,7 +582,7 @@ def _register_compare_runs_tool(registry: ToolRegistry, client) -> None:
                 return {"error": "Could not retrieve run details"}
 
             # Compare
-            comparison = {
+            comparison: Dict[str, Any] = {
                 "run_1": {
                     "run_id": run1["run_id"],
                     "profiled_at": run1.get("profiled_at"),
@@ -644,7 +646,9 @@ def _register_compare_runs_tool(registry: ToolRegistry, client) -> None:
                             )
 
             # Sort differences by absolute change percent
-            comparison["differences"].sort(key=lambda x: abs(x.get("change_percent", 0)), reverse=True)
+            comparison["differences"].sort(
+                key=lambda x: abs(x.get("change_percent", 0)), reverse=True
+            )
 
             return comparison
 
@@ -792,7 +796,7 @@ def _register_get_lineage_tool(registry: ToolRegistry, client) -> None:
     ) -> Dict[str, Any]:
         """Get lineage information for a table."""
         try:
-            result = {
+            result: Dict[str, Any] = {
                 "table": table,
                 "schema": schema,
                 "upstream": [],

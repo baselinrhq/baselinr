@@ -278,7 +278,7 @@ class ContextEnhancer:
         issues = []
         warnings = []
 
-        total_null_ratio = 0
+        total_null_ratio = 0.0
         columns_with_high_nulls = 0
         columns_with_low_distinct = 0
 
@@ -295,7 +295,9 @@ class ContextEnhancer:
                         issues.append(f"High null rate ({null_ratio:.1%}) in {col['column_name']}")
                         columns_with_high_nulls += 1
                     elif null_ratio > 0.2:
-                        warnings.append(f"Elevated null rate ({null_ratio:.1%}) in {col['column_name']}")
+                        warnings.append(
+                            f"Elevated null rate ({null_ratio:.1%}) in {col['column_name']}"
+                        )
                 except (ValueError, TypeError):
                     pass
 
@@ -305,7 +307,9 @@ class ContextEnhancer:
                 try:
                     unique_ratio = float(unique_ratio)
                     if unique_ratio < 0.01 and unique_ratio > 0:
-                        warnings.append(f"Low uniqueness ({unique_ratio:.2%}) in {col['column_name']}")
+                        warnings.append(
+                            f"Low uniqueness ({unique_ratio:.2%}) in {col['column_name']}"
+                        )
                         columns_with_low_distinct += 1
                 except (ValueError, TypeError):
                     pass

@@ -1130,12 +1130,8 @@ class ChatConfig(BaseModel):
     max_iterations: int = Field(
         5, ge=1, le=20, description="Maximum tool-calling iterations per query"
     )
-    tool_timeout: int = Field(
-        30, gt=0, le=300, description="Tool execution timeout in seconds"
-    )
-    cache_tool_results: bool = Field(
-        True, description="Cache tool results within a session"
-    )
+    tool_timeout: int = Field(30, gt=0, le=300, description="Tool execution timeout in seconds")
+    cache_tool_results: bool = Field(True, description="Cache tool results within a session")
     enable_context_enhancement: bool = Field(
         True, description="Enhance tool results with additional context"
     )

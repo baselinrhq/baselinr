@@ -47,25 +47,74 @@ class ConversationHistory:
         """
         formatted = []
 
-        for msg in self.messages:
-            if provider == "anthropic":
+        if provider == "openai":
+            # For OpenAI, ensure proper pairing of assistant messages with tool_calls
+            # and their corresponding tool messages
+            # Tool messages MUST immediately follow an assistant message with tool_calls
+            i = 0
+            while i < len(self.messages):
+                msg = self.messages[i]
+
+                # Check if this is an assistant message with tool_calls
+                if msg.role == "assistant" and msg.tool_calls:
+                    # Add the assistant message
+                    formatted.append(self._format_for_openai(msg))
+                    i += 1
+
+                    # Add all following tool messages until we hit a non-tool message
+                    # Only include tool messages with valid tool_call_ids
+                    while i < len(self.messages) and self.messages[i].role == "tool":
+                        tool_msg = self.messages[i]
+                        # Validate tool message has a valid tool_call_id
+                        if tool_msg.tool_results and len(tool_msg.tool_results) > 0:
+                            tool_call_id = tool_msg.tool_results[0].get("id", "")
+                            if tool_call_id:
+                                formatted.append(self._format_for_openai(tool_msg))
+                        i += 1
+                elif msg.role == "tool":
+                    # Skip orphaned tool messages
+                    # (not immediately following assistant with tool_calls)
+                    # This can happen if messages get out of order or history is filtered
+                    i += 1
+                    continue
+                else:
+                    # Regular message (user, system, or assistant without tool_calls)
+                    formatted.append(self._format_for_openai(msg))
+                    i += 1
+        else:
+            # For Anthropic, just format all messages
+            for msg in self.messages:
                 formatted.append(self._format_for_anthropic(msg))
-            else:
-                formatted.append(self._format_for_openai(msg))
 
         return formatted
 
     def _format_for_openai(self, msg: Message) -> Dict[str, Any]:
         """Format message for OpenAI API."""
-        base = {"role": msg.role, "content": msg.content}
+        base: Dict[str, Any] = {"role": msg.role, "content": msg.content}
 
         if msg.tool_calls:
-            base["tool_calls"] = msg.tool_calls
+            # Ensure each tool call has the required 'type' field
+            formatted_tool_calls = []
+            for call in msg.tool_calls:
+                formatted_call = dict(call)  # Make a copy
+                # Always set type to "function" for OpenAI API compatibility
+                formatted_call["type"] = "function"
+                formatted_tool_calls.append(formatted_call)
+            base["tool_calls"] = formatted_tool_calls
 
-        if msg.role == "tool" and msg.tool_results:
+        if msg.role == "tool":
             # Tool responses need special handling
-            base["tool_call_id"] = msg.tool_results[0].get("id", "")
-            base["content"] = msg.tool_results[0].get("output", msg.content)
+            if msg.tool_results and len(msg.tool_results) > 0:
+                tool_call_id = msg.tool_results[0].get("id", "")
+                if not tool_call_id:
+                    # Fallback: try to get from content if structured differently
+                    tool_call_id = ""
+                base["tool_call_id"] = tool_call_id
+                base["content"] = msg.tool_results[0].get("output", msg.content)
+            else:
+                # Tool message without tool_results - use content as-is
+                base["tool_call_id"] = ""
+                base["content"] = msg.content or ""
 
         return base
 
@@ -75,13 +124,11 @@ class ConversationHistory:
             # Anthropic handles system messages differently
             return {"role": "user", "content": f"[System]: {msg.content}"}
 
-        base = {"role": msg.role, "content": msg.content}
+        base: Dict[str, Any] = {"role": msg.role, "content": msg.content}
 
         if msg.tool_calls:
             # Anthropic uses tool_use content blocks
-            base["content"] = [
-                {"type": "text", "text": msg.content or ""}
-            ] + [
+            base["content"] = [{"type": "text", "text": msg.content or ""}] + [
                 {
                     "type": "tool_use",
                     "id": call.get("id"),
