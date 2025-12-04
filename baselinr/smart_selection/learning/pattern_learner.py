@@ -6,10 +6,9 @@ future check recommendations.
 """
 
 import logging
-import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,9 @@ class LearnedPattern:
         """Convert to config file format."""
         return {
             "match": self.pattern,
-            "checks": [{"type": c, "confidence": round(self.confidence, 2)} for c in self.suggested_checks],
+            "checks": [
+                {"type": c, "confidence": round(self.confidence, 2)} for c in self.suggested_checks
+            ],
         }
 
 
@@ -288,18 +289,14 @@ class PatternLearner:
     ) -> Optional[LearnedPattern]:
         """Create a pattern from suffix occurrences."""
         # Count check type frequencies
-        check_counts = Counter()
+        check_counts: Counter[str] = Counter()
         for _, checks in occurrences:
             for check in checks:
                 check_counts[check] += 1
 
         # Get common checks (appear in majority of occurrences)
         total = len(occurrences)
-        common_checks = [
-            check
-            for check, count in check_counts.items()
-            if count / total >= 0.5
-        ]
+        common_checks = [check for check, count in check_counts.items() if count / total >= 0.5]
 
         if not common_checks:
             return None
@@ -327,17 +324,13 @@ class PatternLearner:
         occurrences: List[Tuple[str, List[str]]],
     ) -> Optional[LearnedPattern]:
         """Create a pattern from prefix occurrences."""
-        check_counts = Counter()
+        check_counts: Counter[str] = Counter()
         for _, checks in occurrences:
             for check in checks:
                 check_counts[check] += 1
 
         total = len(occurrences)
-        common_checks = [
-            check
-            for check, count in check_counts.items()
-            if count / total >= 0.5
-        ]
+        common_checks = [check for check, count in check_counts.items() if count / total >= 0.5]
 
         if not common_checks:
             return None

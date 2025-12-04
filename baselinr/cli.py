@@ -2333,7 +2333,7 @@ def recommend_command(args):
             safe_print(f"   Table: {specific_table}")
         safe_print(f"   Lookback period: {smart_config.criteria.lookback_days} days")
         if include_columns:
-            safe_print(f"   Column analysis: enabled")
+            safe_print("   Column analysis: enabled")
         safe_print("")
 
         # Create recommendation engine with storage engine
@@ -2360,10 +2360,11 @@ def recommend_command(args):
 
             # Save to file
             if args.format == "yaml":
-                import yaml as yaml_lib
+                import yaml as yaml_lib  # type: ignore[import-untyped]
 
                 with open(output_file, "w") as f:
-                    f.write(f"# Column Recommendations for {args.schema or 'default'}.{specific_table}\n")
+                    table_ref = f"{args.schema or 'default'}.{specific_table}"
+                    f.write(f"# Column Recommendations for {table_ref}\n")
                     f.write(f"# Generated: {__import__('datetime').datetime.now().isoformat()}\n\n")
                     yaml_lib.dump(
                         {"column_recommendations": [r.to_dict() for r in col_recs]},
@@ -2437,7 +2438,9 @@ def recommend_command(args):
                 # Show column recommendations if available
                 if include_columns and rec.column_recommendations:
                     safe_print("")
-                    safe_print(f"   Column recommendations ({len(rec.column_recommendations)} columns):")
+                    safe_print(
+                        f"   Column recommendations ({len(rec.column_recommendations)} columns):"
+                    )
                     for col_rec in rec.column_recommendations[:5]:
                         checks = [c["type"] for c in col_rec.suggested_checks[:3]]
                         safe_print(
@@ -2445,7 +2448,9 @@ def recommend_command(args):
                             f"{', '.join(checks)} (conf: {col_rec.confidence:.2f})"
                         )
                     if len(rec.column_recommendations) > 5:
-                        safe_print(f"      ... and {len(rec.column_recommendations) - 5} more columns")
+                        safe_print(
+                            f"      ... and {len(rec.column_recommendations) - 5} more columns"
+                        )
 
                 safe_print("")
 
@@ -2495,10 +2500,14 @@ def recommend_command(args):
         safe_print("✨ Next steps:")
         safe_print(f"   1. Review recommendations in: {output_file}")
         if include_columns:
-            safe_print(f"   2. Apply with: baselinr recommend --columns --config {args.config} --apply")
+            safe_print(
+                f"   2. Apply with: baselinr recommend --columns --config {args.config} --apply"
+            )
         else:
             safe_print(f"   2. Apply with: baselinr recommend --config {args.config} --apply")
-            safe_print(f"   3. Add column checks: baselinr recommend --columns --config {args.config}")
+            safe_print(
+                f"   3. Add column checks: baselinr recommend --columns --config {args.config}"
+            )
         safe_print("   4. Or manually add tables to your config file")
 
         log_event(
@@ -2603,7 +2612,11 @@ def _apply_recommendations(
         table_entry["_comment"] = f"Auto-recommended (confidence: {rec.confidence:.2f})"
 
         # Add column-level checks if enabled and recommendations exist
-        if include_columns and hasattr(rec, "column_recommendations") and rec.column_recommendations:
+        if (
+            include_columns
+            and hasattr(rec, "column_recommendations")
+            and rec.column_recommendations
+        ):
             columns_config = []
             for col_rec in rec.column_recommendations:
                 col_entry = {

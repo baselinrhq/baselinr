@@ -7,7 +7,7 @@ to determine the reliability of check recommendations.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from ..column_analysis.check_inferencer import ColumnRecommendation, InferredCheck
 from ..column_analysis.metadata_analyzer import ColumnMetadata, InferredColumnType

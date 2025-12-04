@@ -246,9 +246,15 @@ class ColumnRecommendationEngine:
             min_confidence=inference_config.confidence_threshold if inference_config else 0.5,
             preferred_checks=inference_config.preferred_checks if inference_config else [],
             avoided_checks=inference_config.avoided_checks if inference_config else [],
-            prioritize_primary_keys=inference_config.prioritize_primary_keys if inference_config else True,
-            prioritize_foreign_keys=inference_config.prioritize_foreign_keys if inference_config else True,
-            prioritize_timestamps=inference_config.prioritize_timestamp_columns if inference_config else True,
+            prioritize_primary_keys=(
+                inference_config.prioritize_primary_keys if inference_config else True
+            ),
+            prioritize_foreign_keys=(
+                inference_config.prioritize_foreign_keys if inference_config else True
+            ),
+            prioritize_timestamps=(
+                inference_config.prioritize_timestamp_columns if inference_config else True
+            ),
         )
         self.prioritizer = CheckPrioritizer(config=prioritization_config)
 
@@ -435,15 +441,17 @@ class RecommendationEngine:
         # Calculate column-level summary
         total_columns = 0
         total_checks = 0
-        column_conf_dist: Dict[str, int] = {"high (0.8+)": 0, "medium (0.5-0.8)": 0, "low (<0.5)": 0}
+        column_conf_dist: Dict[str, int] = {
+            "high (0.8+)": 0,
+            "medium (0.5-0.8)": 0,
+            "low (<0.5)": 0,
+        }
         low_confidence_suggestions = []
 
         if include_columns:
             for rec in recommendations:
                 total_columns += len(rec.column_recommendations) + len(rec.low_confidence_columns)
-                total_checks += sum(
-                    len(col.suggested_checks) for col in rec.column_recommendations
-                )
+                total_checks += sum(len(col.suggested_checks) for col in rec.column_recommendations)
 
                 for col in rec.column_recommendations:
                     if col.confidence >= 0.8:
@@ -455,16 +463,18 @@ class RecommendationEngine:
 
                 # Collect low confidence suggestions
                 for col in rec.low_confidence_columns:
-                    low_confidence_suggestions.append({
-                        "schema": rec.schema,
-                        "table": rec.table,
-                        "column": col.column,
-                        "data_type": col.data_type,
-                        "confidence": col.confidence,
-                        "signals": col.signals,
-                        "suggested_checks": col.suggested_checks,
-                        "note": "Consider manual inspection to define validation",
-                    })
+                    low_confidence_suggestions.append(
+                        {
+                            "schema": rec.schema,
+                            "table": rec.table,
+                            "column": col.column,
+                            "data_type": col.data_type,
+                            "confidence": col.confidence,
+                            "signals": col.signals,
+                            "suggested_checks": col.suggested_checks,
+                            "note": "Consider manual inspection to define validation",
+                        }
+                    )
 
         # Generate report
         report = RecommendationReport(
@@ -526,10 +536,7 @@ class RecommendationEngine:
             use_profiling_data=use_profiling,
         )
 
-        return [
-            column_engine.to_column_check_recommendation(rec)
-            for rec in recommendations
-        ]
+        return [column_engine.to_column_check_recommendation(rec) for rec in recommendations]
 
     def save_recommendations(
         self,

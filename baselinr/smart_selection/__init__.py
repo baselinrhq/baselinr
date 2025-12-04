@@ -9,22 +9,6 @@ Phase 1: Table-level selection based on usage patterns
 Phase 2: Column-level check recommendations based on metadata and statistics
 """
 
-from .config import (
-    ColumnInferenceConfig,
-    ColumnPatternConfig,
-    ColumnSelectionConfig,
-    SmartSelectionConfig,
-)
-from .metadata_collector import MetadataCollector, TableMetadata
-from .recommender import (
-    ColumnCheckRecommendation,
-    ColumnRecommendationEngine,
-    RecommendationEngine,
-    RecommendationReport,
-    TableRecommendation,
-)
-from .scorer import TableScorer
-
 # Column analysis submodule exports
 from .column_analysis import (
     CheckInferencer,
@@ -36,12 +20,27 @@ from .column_analysis import (
     PatternMatcher,
     StatisticalAnalyzer,
 )
-
-# Scoring submodule exports
-from .scoring import CheckPrioritizer, ConfidenceScorer
+from .config import (
+    ColumnInferenceConfig,
+    ColumnPatternConfig,
+    ColumnSelectionConfig,
+    SmartSelectionConfig,
+)
 
 # Learning submodule exports
 from .learning import LearnedPattern, PatternLearner, PatternStore
+from .metadata_collector import MetadataCollector, TableMetadata
+from .recommender import (
+    ColumnCheckRecommendation,
+    ColumnRecommendationEngine,
+    RecommendationEngine,
+    RecommendationReport,
+    TableRecommendation,
+)
+from .scorer import TableScorer
+
+# Scoring submodule exports
+from .scoring import CheckPrioritizer, ConfidenceScorer
 
 __all__ = [
     # Config

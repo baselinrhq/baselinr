@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from .pattern_learner import LearnedPattern
 
@@ -278,9 +278,7 @@ class PatternStore:
         Returns:
             Dictionary suitable for config file 'patterns' section
         """
-        return {
-            "patterns": [p.to_config_format() for p in self._patterns.values()]
-        }
+        return {"patterns": [p.to_config_format() for p in self._patterns.values()]}
 
     def import_from_config(self, config: Dict[str, Any]) -> int:
         """

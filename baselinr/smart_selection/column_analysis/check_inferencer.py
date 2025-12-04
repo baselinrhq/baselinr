@@ -8,7 +8,7 @@ based on metadata signals, statistical properties, and patterns.
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from .metadata_analyzer import ColumnMetadata, InferredColumnType
 from .pattern_matcher import PatternMatch, PatternMatcher
@@ -181,7 +181,9 @@ class CheckInferencer:
         if metadata.is_primary_key:
             signals.append("Column is a primary key")
         if metadata.is_foreign_key:
-            signals.append(f"Column is a foreign key (references: {metadata.foreign_key_references})")
+            signals.append(
+                f"Column is a foreign key (references: {metadata.foreign_key_references})"
+            )
         if not metadata.nullable:
             signals.append("Column is NOT NULL")
 
@@ -301,7 +303,7 @@ class CheckInferencer:
                 InferredCheck(
                     check_type=CheckType.FRESHNESS,
                     confidence=0.95,
-                    signals=[f"Timestamp column name suggests freshness monitoring"],
+                    signals=["Timestamp column name suggests freshness monitoring"],
                     config=config,
                     priority=self.CHECK_PRIORITIES[CheckType.FRESHNESS],
                 )
@@ -421,7 +423,7 @@ class CheckInferencer:
                 InferredCheck(
                     check_type=CheckType.NON_NEGATIVE,
                     confidence=0.90,
-                    signals=[f"Column name suggests non-negative values"],
+                    signals=["Column name suggests non-negative values"],
                     config={"allow_null": metadata.nullable},
                     priority=self.CHECK_PRIORITIES[CheckType.NON_NEGATIVE],
                 )
@@ -438,7 +440,10 @@ class CheckInferencer:
                     check_type=CheckType.RANGE,
                     confidence=0.70,
                     signals=[
-                        f"Historical range: {statistics.min_value:.2f} to {statistics.max_value:.2f}"
+                        (
+                            f"Historical range: {statistics.min_value:.2f} to "
+                            f"{statistics.max_value:.2f}"
+                        )
                     ],
                     config={
                         "min": statistics.min_value - buffer,
@@ -561,7 +566,7 @@ class CheckInferencer:
                     else:
                         continue
 
-                config = {}
+                config: Dict[str, Any] = {}
 
                 # Add format-specific config
                 if check_type == CheckType.FORMAT_EMAIL:
@@ -571,9 +576,17 @@ class CheckInferencer:
                 elif check_type == CheckType.FORMAT_URL:
                     config["pattern"] = "url"
                 elif check_name == "range_0_100":
-                    config = {"min": 0, "max": 100, "note": "Percentage values (0-100)"}
+                    config = {
+                        "min": 0,
+                        "max": 100,
+                        "note": "Percentage values (0-100)",
+                    }
                 elif check_name == "range_0_1":
-                    config = {"min": 0, "max": 1, "note": "Ratio values (0-1)"}
+                    config = {
+                        "min": 0,
+                        "max": 1,
+                        "note": "Ratio values (0-1)",
+                    }
 
                 checks.append(
                     InferredCheck(
@@ -673,9 +686,7 @@ class CheckInferencer:
                     InferredCheck(
                         check_type=CheckType.ALLOWED_VALUES,
                         confidence=0.80,
-                        signals=[
-                            f"Low cardinality ({statistics.distinct_count} distinct values)"
-                        ],
+                        signals=[f"Low cardinality ({statistics.distinct_count} distinct values)"],
                         config={
                             "values": list(statistics.value_distribution.keys()),
                             "note": "Based on observed values",

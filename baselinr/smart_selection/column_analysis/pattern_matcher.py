@@ -430,7 +430,9 @@ class PatternMatcher:
             # Convert simple match to regex
             if "*" in match_pattern or "?" in match_pattern:
                 # Wildcard pattern - convert to regex
-                regex_pattern = match_pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".")
+                regex_pattern = (
+                    match_pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".")
+                )
                 regex_pattern = f"^{regex_pattern}$"
             else:
                 regex_pattern = f"^{re.escape(match_pattern)}$"

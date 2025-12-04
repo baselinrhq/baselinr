@@ -157,12 +157,12 @@ class ColumnPatternConfig(BaseModel):
     """Configuration for a custom column pattern override."""
 
     match: str = Field(..., description="Column name pattern (supports wildcards: *, ?)")
-    pattern_type: str = Field(
-        "wildcard", description="Pattern type: 'wildcard' or 'regex'"
-    )
+    pattern_type: str = Field("wildcard", description="Pattern type: 'wildcard' or 'regex'")
     checks: List[Dict[str, Any]] = Field(
         default_factory=list,
-        description="List of checks to apply. Each check has 'type' and optional 'confidence', 'config'.",
+        description=(
+            "List of checks to apply. Each check has 'type' and " "optional 'confidence', 'config'."
+        ),
     )
 
     @field_validator("pattern_type")

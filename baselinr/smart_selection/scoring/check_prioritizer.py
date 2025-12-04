@@ -7,7 +7,7 @@ valuable suggestions without overwhelming users.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from ..column_analysis.check_inferencer import CheckType, ColumnRecommendation, InferredCheck
 from ..column_analysis.metadata_analyzer import ColumnMetadata
@@ -181,7 +181,9 @@ class CheckPrioritizer:
         scored_checks.sort(key=lambda x: x[0], reverse=True)
 
         # Apply per-column limit
-        prioritized_checks = [check for _, check in scored_checks[: self.config.max_checks_per_column]]
+        prioritized_checks = [
+            check for _, check in scored_checks[: self.config.max_checks_per_column]
+        ]
 
         # Update recommendation
         recommendation.suggested_checks = prioritized_checks
@@ -203,7 +205,7 @@ class CheckPrioritizer:
         Returns:
             Filtered list of checks
         """
-        filtered = []
+        filtered: List[InferredCheck] = []
 
         for check in checks:
             # Skip low confidence
@@ -360,10 +362,7 @@ class CheckPrioritizer:
         """
         total_checks = sum(len(r.suggested_checks) for r in column_recommendations)
         high_conf_checks = sum(
-            1
-            for r in column_recommendations
-            for c in r.suggested_checks
-            if c.confidence >= 0.8
+            1 for r in column_recommendations for c in r.suggested_checks if c.confidence >= 0.8
         )
         medium_conf_checks = sum(
             1
