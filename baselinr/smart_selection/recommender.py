@@ -73,6 +73,10 @@ class TableRecommendation:
     last_query_days_ago: Optional[int] = None
     column_count: int = 0
 
+    # Lineage-aware scoring (Phase 3)
+    lineage_score: float = 0.0
+    lineage_context: Optional[Dict[str, Any]] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML export."""
         result: Dict[str, Any] = {
@@ -89,6 +93,12 @@ class TableRecommendation:
 
         if self.suggested_checks:
             result["suggested_checks"] = self.suggested_checks
+
+        # Add lineage context if available (Phase 3)
+        if self.lineage_score > 0:
+            result["lineage_score"] = round(self.lineage_score, 4)
+        if self.lineage_context:
+            result["lineage_context"] = self.lineage_context
 
         if self.warnings:
             result["warnings"] = self.warnings

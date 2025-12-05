@@ -248,6 +248,93 @@ jobs:
               --to-column email \
               --format json || echo "No column path found (expected if column lineage not enabled)"
 
+          # Test lineage validate command (Phase 3 - validates lineage availability)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage validate \
+              --config $BASELINR_CONFIG_PATH \
+              --format table || echo "Lineage validate failed (expected if lineage table doesn't exist)"
+
+          # Test lineage validate with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage validate \
+              --config $BASELINR_CONFIG_PATH \
+              --format json || echo "Lineage validate JSON failed (expected if lineage table doesn't exist)"
+
+          # Test lineage show command (Phase 3 - shows lineage with impact scoring)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage show \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format table || echo "Lineage show failed (expected if table not in lineage graph)"
+
+          # Test lineage show with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage show \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format json || echo "Lineage show JSON failed (expected if table not in lineage graph)"
+
+          # Test lineage impact command (Phase 3 - shows blast radius)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage impact \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format table || echo "Lineage impact failed (expected if table not in lineage graph)"
+
+          # Test lineage impact with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage impact \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format json || echo "Lineage impact JSON failed (expected if table not in lineage graph)"
+
+          # Test lineage refresh-cache command (Phase 3 - refreshes lineage cache)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr lineage refresh-cache \
+              --config $BASELINR_CONFIG_PATH || echo "Lineage refresh-cache failed (expected if lineage table doesn't exist)"
+
       - name: Run lineage visualization commands
         run: |
           # Test lineage visualize with ASCII format (works even without lineage data)
@@ -388,6 +475,33 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --schema public \
               --format yaml || echo "Recommend with schema filter failed (expected if smart_selection not configured or no tables found)"
+
+          # Test recommend with lineage-aware prioritization (Phase 3)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --with-lineage \
+              --format yaml || echo "Recommend with lineage failed (expected if lineage not configured or no lineage data)"
+
+          # Test recommend with explain-lineage flag (Phase 3)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr recommend \
+              --config $BASELINR_CONFIG_PATH \
+              --explain-lineage \
+              --table customers \
+              --format yaml || echo "Recommend explain-lineage failed (expected if table not in lineage graph or lineage not configured)"
 
       - name: Run status command
         run: |
