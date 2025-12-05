@@ -287,7 +287,7 @@ class LineageAwareScorer:
             usage_score = base_score.total_score / 100.0  # Assuming 0-100 scale
 
             # Combined score
-            combined_score = (usage_weight * usage_score + lineage_weight * impact_score.total_score)
+            combined_score = usage_weight * usage_score + lineage_weight * impact_score.total_score
 
             # Scale back to original range (0-100)
             total_score = combined_score * 100.0
@@ -323,9 +323,7 @@ class LineageAwareScorer:
             check_adjustments=check_adjustments,
         )
 
-    def _get_impact_score(
-        self, table: str, schema: Optional[str] = None
-    ) -> Optional[ImpactScore]:
+    def _get_impact_score(self, table: str, schema: Optional[str] = None) -> Optional[ImpactScore]:
         """Get pre-computed impact score for a table."""
         if not self._impact_scores:
             return None
@@ -407,9 +405,7 @@ class LineageAwareScorer:
             return {"error": "Lineage graph not initialized"}
         return self._lineage_graph.get_stats()
 
-    def explain_table_lineage(
-        self, table: str, schema: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def explain_table_lineage(self, table: str, schema: Optional[str] = None) -> Dict[str, Any]:
         """
         Get detailed lineage explanation for a table.
 

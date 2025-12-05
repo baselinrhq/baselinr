@@ -239,11 +239,12 @@ class LineageScoringWeightsConfig(BaseModel):
         0.3, ge=0.0, le=1.0, description="Weight for criticality of downstream assets"
     )
     depth_position: float = Field(
-        0.2, ge=0.0, le=1.0, description="Weight for position in lineage (closer to source = higher)"
+        0.2,
+        ge=0.0,
+        le=1.0,
+        description="Weight for position in lineage (closer to source = higher)",
     )
-    fanout: float = Field(
-        0.1, ge=0.0, le=1.0, description="Weight for fanout factor (branching)"
-    )
+    fanout: float = Field(0.1, ge=0.0, le=1.0, description="Weight for fanout factor (branching)")
 
     @field_validator("fanout")
     @classmethod
@@ -316,9 +317,7 @@ class LineageCheckAdjustmentConfig(BaseModel):
     min_confidence_threshold: Optional[float] = Field(
         None, ge=0.0, le=1.0, description="Minimum confidence for check recommendations"
     )
-    check_frequency: Optional[str] = Field(
-        None, description="Check frequency (low, medium, high)"
-    )
+    check_frequency: Optional[str] = Field(None, description="Check frequency (low, medium, high)")
 
     @field_validator("severity")
     @classmethod
@@ -348,11 +347,15 @@ class LineageCheckAdjustmentsConfig(BaseModel):
         default_factory=lambda: LineageCheckAdjustmentConfig(
             prioritize_checks=["freshness", "completeness", "schema_validation"],
             severity="critical",
+            min_confidence_threshold=None,
+            check_frequency=None,
         ),
         description="Check adjustments for root/source tables",
     )
     high_impact: LineageCheckAdjustmentConfig = Field(
         default_factory=lambda: LineageCheckAdjustmentConfig(
+            prioritize_checks=[],
+            severity=None,
             min_confidence_threshold=0.6,
             check_frequency="high",
         ),
@@ -360,6 +363,8 @@ class LineageCheckAdjustmentsConfig(BaseModel):
     )
     leaf_tables: LineageCheckAdjustmentConfig = Field(
         default_factory=lambda: LineageCheckAdjustmentConfig(
+            prioritize_checks=[],
+            severity=None,
             min_confidence_threshold=0.8,
             check_frequency="medium",
         ),
@@ -370,12 +375,8 @@ class LineageCheckAdjustmentsConfig(BaseModel):
 class LineageReportingConfig(BaseModel):
     """Configuration for lineage visualization and reporting."""
 
-    generate_lineage_diagram: bool = Field(
-        True, description="Generate lineage diagram in output"
-    )
-    output_path: str = Field(
-        "lineage_graph.html", description="Output path for lineage diagram"
-    )
+    generate_lineage_diagram: bool = Field(True, description="Generate lineage diagram in output")
+    output_path: str = Field("lineage_graph.html", description="Output path for lineage diagram")
     highlight_critical_paths: bool = Field(
         True, description="Highlight critical paths in visualization"
     )

@@ -291,8 +291,7 @@ class LineageGraph:
                 # Check for exposure-like names
                 name_lower = node.table.lower()
                 if any(
-                    kw in name_lower
-                    for kw in ["report", "dashboard", "export", "output", "mart"]
+                    kw in name_lower for kw in ["report", "dashboard", "export", "output", "mart"]
                 ):
                     node.node_type = "mart"
                 else:
@@ -423,19 +422,19 @@ class LineageGraph:
         """Get all transitive upstream nodes."""
         if visited is None:
             visited = set()
-        
+
         result: Set[str] = set()
-        
+
         def traverse(current_key: str):
             if current_key not in self.nodes or current_key in visited:
                 return
             visited.add(current_key)
-            
+
             for upstream_key in self.nodes[current_key].upstream:
                 if upstream_key not in visited:
                     result.add(upstream_key)
                     traverse(upstream_key)
-        
+
         traverse(key)
         return result
 
@@ -443,19 +442,19 @@ class LineageGraph:
         """Get all transitive downstream nodes."""
         if visited is None:
             visited = set()
-        
+
         result: Set[str] = set()
-        
+
         def traverse(current_key: str):
             if current_key not in self.nodes or current_key in visited:
                 return
             visited.add(current_key)
-            
+
             for downstream_key in self.nodes[current_key].downstream:
                 if downstream_key not in visited:
                     result.add(downstream_key)
                     traverse(downstream_key)
-        
+
         traverse(key)
         return result
 
@@ -590,7 +589,7 @@ class LineageGraph:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics about the graph."""
-        node_types = {}
+        node_types: Dict[str, int] = {}
         for node in self.nodes.values():
             node_types[node.node_type] = node_types.get(node.node_type, 0) + 1
 

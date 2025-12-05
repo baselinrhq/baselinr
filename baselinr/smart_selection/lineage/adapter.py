@@ -5,6 +5,7 @@ Provides a clean interface for querying lineage data and building
 dependency graphs for impact analysis.
 """
 
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,28 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_metadata(metadata: Any) -> Dict[str, Any]:
+    """
+    Parse metadata from database, handling both JSON strings and dicts.
+
+    Args:
+        metadata: Metadata value from database (can be str, dict, or None)
+
+    Returns:
+        Parsed metadata as dict, or empty dict if parsing fails
+    """
+    if metadata is None:
+        return {}
+    if isinstance(metadata, dict):
+        return metadata
+    if isinstance(metadata, str):
+        try:
+            return json.loads(metadata) if metadata else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    return {}
 
 
 @dataclass
@@ -221,7 +244,7 @@ class LineageAdapter:
                         "lineage_type": row[3],
                         "provider": row[4],
                         "confidence_score": float(row[5]) if row[5] else 1.0,
-                        "metadata": row[6] or {},
+                        "metadata": _parse_metadata(row[6]),
                         "depth": 0,
                     }
                 )
@@ -311,7 +334,7 @@ class LineageAdapter:
                         "lineage_type": row[3],
                         "provider": row[4],
                         "confidence_score": float(row[5]) if row[5] else 1.0,
-                        "metadata": row[6] or {},
+                        "metadata": _parse_metadata(row[6]),
                         "depth": 0,
                     }
                 )
@@ -391,7 +414,8 @@ class LineageAdapter:
         """
         cache_key = "all_tables_with_lineage"
         if self._is_cache_valid() and cache_key in self._cache:
-            return self._cache[cache_key]
+            result: List[Dict[str, Any]] = self._cache[cache_key]
+            return result
 
         query = text(
             f"""
@@ -560,7 +584,8 @@ class LineageAdapter:
         """
         cache_key = "all_edges"
         if self._is_cache_valid() and cache_key in self._cache:
-            return self._cache[cache_key]
+            result: List[Dict[str, Any]] = self._cache[cache_key]
+            return result
 
         query = text(
             f"""
@@ -588,7 +613,7 @@ class LineageAdapter:
                         "lineage_type": row[6],
                         "provider": row[7],
                         "confidence_score": float(row[8]) if row[8] else 1.0,
-                        "metadata": row[9] or {},
+                        "metadata": _parse_metadata(row[9]),
                     }
                 )
 
@@ -611,7 +636,8 @@ class LineageAdapter:
         """
         cache_key = "lineage_stats"
         if self._is_cache_valid() and cache_key in self._cache:
-            return self._cache[cache_key]
+            cached_stats: Dict[str, Any] = self._cache[cache_key]
+            return cached_stats
 
         # Count edges
         edge_query = text(f"SELECT COUNT(*) FROM {self.lineage_table}")

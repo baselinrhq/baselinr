@@ -164,8 +164,8 @@ class ImpactScorer:
         self.weights.validate()
 
         # Precompute graph-wide metrics for normalization
-        self._max_downstream = 1
-        self._max_fanout = 1
+        self._max_downstream: float = 1.0
+        self._max_fanout: float = 1.0
         self._exposure_node_types = {"exposure", "dashboard", "report", "notebook", "ml_model"}
 
         self._compute_normalization_factors()
@@ -174,9 +174,9 @@ class ImpactScorer:
         """Compute factors needed for score normalization."""
         for node in self.graph.nodes.values():
             if node.total_downstream > self._max_downstream:
-                self._max_downstream = node.total_downstream
+                self._max_downstream = float(node.total_downstream)
             if node.fanout_factor > self._max_fanout:
-                self._max_fanout = node.fanout_factor
+                self._max_fanout = float(node.fanout_factor)
 
     def score_table(
         self,
@@ -302,14 +302,14 @@ class ImpactScorer:
             return 0.0
 
         # Count critical downstream nodes
-        critical_count = 0
+        critical_count: float = 0.0
         downstream_keys = self._get_all_downstream_keys(node)
 
         for key in downstream_keys:
             downstream_node = self.graph.nodes.get(key)
             if downstream_node:
                 if downstream_node.node_type in self._exposure_node_types:
-                    critical_count += 1
+                    critical_count += 1.0
                 # Also count marts as somewhat critical
                 elif downstream_node.node_type == "mart":
                     critical_count += 0.5
@@ -443,7 +443,8 @@ class ImpactScorer:
 
         # Blast radius
         if blast_radius.estimated_user_impact in ["HIGH", "CRITICAL"]:
-            reasons.append(f"{blast_radius.estimated_user_impact} blast radius - issues affect many downstream assets")
+            impact = blast_radius.estimated_user_impact
+            reasons.append(f"{impact} blast radius - issues affect many downstream assets")
 
         # Boost factors applied
         if boost_factor > 1.0:
