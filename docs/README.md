@@ -75,6 +75,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ## 🔍 Finding What You Need
 
 - **New to Baselinr?** → Start with [Getting Started](getting-started/QUICKSTART.md)
+- **Want automated setup?** ✨ **NEW** → See [Smart Selection Quick Start](guides/SMART_SELECTION_QUICKSTART.md) for zero-touch configuration
 - **Need data validation?** ✨ **NEW** → See [Data Validation Guide](guides/DATA_VALIDATION.md)
 - **Want automatic table discovery?** ✨ **NEW** → See [Smart Table Selection](guides/SMART_TABLE_SELECTION.md)
 - **Need root cause analysis?** ✨ **NEW** → See [Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)

@@ -63,7 +63,7 @@ storage:
 
 - **`ewma_lambda`** (float, default: `0.2`)
   - Exponentially Weighted Moving Average smoothing parameter
-  - Range: 0 < lambda <= 1
+  - Range: 0 &lt; lambda &lt;= 1
   - Lower values (e.g., 0.1) give more weight to older data (smoother)
   - Higher values (e.g., 0.3) give more weight to recent data (more reactive)
   - Used for computing EWMA-based expectations

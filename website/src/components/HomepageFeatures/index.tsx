@@ -11,32 +11,33 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Automated Data Profiling',
+    title: 'Automated Setup',
     Svg: require('@site/static/img/undraw_docusaurus_profiling.svg').default,
     description: (
       <>
-        Automatically profile your data sources and detect data quality issues,
-        schema changes, and statistical anomalies with minimal configuration.
+        Zero-touch configuration—automatically recommends tables and columns to monitor,
+        suggests data quality checks, and can auto-apply configurations. Or configure
+        everything manually with full control—your choice.
       </>
     ),
   },
   {
-    title: 'Drift Detection',
+    title: 'Comprehensive Monitoring',
     Svg: require('@site/static/img/undraw_docusaurus_drift.svg').default,
     description: (
       <>
-        Continuously monitor your data for statistical drift and changes over time.
-        Get alerted when data quality degrades or unexpected patterns emerge.
+        Profile your data, detect schema and statistical drift, identify anomalies,
+        validate data quality rules, and perform root cause analysis—all in one platform.
       </>
     ),
   },
   {
-    title: 'Python-First',
+    title: 'Developer-First',
     Svg: require('@site/static/img/undraw_docusaurus_python.svg').default,
     description: (
       <>
-        Built for Python data teams. Easy integration with SQLAlchemy
-        and popular data orchestration tools like Dagster and dbt.
+        Built for data engineers who want transparency and control. CLI-first with Python SDK,
+        YAML/JSON configuration, and native integrations with dbt, Dagster, and Airflow.
       </>
     ),
   },

@@ -7,11 +7,15 @@
 
 **🌐 [Visit our website →](https://baselinr.io/)**
 
-**Baselinr** is a modern, open-source data profiling and drift detection framework for SQL-based data warehouses. It automatically profiles datasets, stores metadata and statistics, and detects drift over time.
+**Baselinr** is an open-source data quality and observability platform for SQL data warehouses. It automatically recommends which tables and columns to monitor, sets up data quality checks, profiles your data, detects drift and anomalies, and provides AI-powered root cause analysis—all with a self-improving feedback loop that learns from your data patterns. Use automation for zero-touch setup, or configure everything manually—you have full control and transparency.
 
 ## 🚀 Features
 
-- **Smart Table Selection** ✨ **NEW**: Automatically recommend tables to monitor based on database usage patterns, query frequency, and metadata analysis - reduce configuration overhead with intelligent, usage-based table discovery
+- **Automated Setup** ✨ **NEW**: Zero-touch configuration—automatically recommends tables and columns to monitor, suggests data quality checks, and can auto-apply configurations to set up complete monitoring in minutes. Or configure everything manually with full control—automation is optional, not required
+- **Smart Table Selection**: Automatically recommend tables to monitor based on database usage patterns, query frequency, and metadata analysis - reduce configuration overhead with intelligent, usage-based table discovery
+- **Intelligent Column Recommendations**: Analyzes column characteristics to automatically suggest appropriate data quality checks (uniqueness, format validation, range checks, etc.) with confidence scoring
+- **Self-Improving Feedback Loop**: Learns from your data patterns, existing configurations, and monitoring results to continuously improve recommendations (when using automation)
+- **Full Manual Control**: Complete YAML/JSON configuration with control over every aspect—use automation when helpful, configure manually when you need full control
 - **Automated Profiling**: Profile tables with column-level metrics (count, null %, distinct values, mean, stddev, histograms, etc.)
 - **Drift Detection**: Compare profiling runs to detect schema and statistical drift with configurable strategies
 - **Type-Specific Thresholds**: Adjust drift sensitivity based on column data type (numeric, categorical, timestamp, boolean) to reduce false positives
