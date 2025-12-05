@@ -250,7 +250,7 @@ Anomalies are automatically categorized by type:
 **Scenario**: A previously unique column suddenly has many duplicates.
 
 **Detection**:
-- Detects if unique_ratio drops significantly (<50% of expected)
+- Detects if unique_ratio drops significantly (&lt;50% of expected)
 - Automatically categorized as `uniqueness_drop`
 
 **Action**: Investigate data quality, duplicate insertion, or schema issues.

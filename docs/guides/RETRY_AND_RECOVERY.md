@@ -421,7 +421,7 @@ except Exception as e:
 
 - **Success case:** ~0.1ms overhead (negligible)
 - **Retry case:** Adds backoff delay (0.5s - 8.0s per retry)
-- **Memory:** Minimal (<1KB per operation)
+- **Memory:** Minimal (&lt;1KB per operation)
 
 ### Recommended Settings
 

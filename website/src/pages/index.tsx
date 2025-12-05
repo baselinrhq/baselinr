@@ -41,7 +41,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title={siteConfig.title}
-      description="Modern data profiling and drift detection framework for Python. Automatically detect data quality issues, schema changes, and statistical anomalies.">
+      description="Open-source data quality and observability platform for SQL data warehouses. Automatically set up monitoring, profile your data, detect drift and anomalies, and investigate root causes with AI-powered chat.">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

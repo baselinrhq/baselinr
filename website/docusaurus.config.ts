@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Baselinr',
-  tagline: 'Modern data profiling and drift detection framework',
+  tagline: 'Open-source data quality and observability platform for SQL data warehouses',
   favicon: 'img/favicon.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -40,6 +40,7 @@ const config: Config = {
       'classic',
       {
         docs: {
+          path: '../docs',
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/baselinrhq/baselinr/tree/main/docs/',
           routeBasePath: 'docs',
