@@ -1,0 +1,349 @@
+'use client'
+
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { ChevronDown, X, Check, Search } from 'lucide-react'
+import { cn, generateId } from '@/lib/utils'
+
+export interface SelectOption {
+  value: string
+  label: string
+  group?: string
+}
+
+export interface SelectProps {
+  options: SelectOption[]
+  value?: string
+  onChange: (value: string) => void
+  placeholder?: string
+  searchable?: boolean
+  disabled?: boolean
+  label?: string
+  error?: string
+  helperText?: string
+  clearable?: boolean
+  loading?: boolean
+  className?: string
+}
+
+export function Select({
+  options,
+  value,
+  onChange,
+  placeholder = 'Select an option',
+  searchable = false,
+  disabled = false,
+  label,
+  error,
+  helperText,
+  clearable = false,
+  loading = false,
+  className,
+}: SelectProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  
+  const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
+  const id = useRef(generateId('select')).current
+
+  // Filter options based on search query
+  const filteredOptions = searchable && searchQuery
+    ? options.filter(option =>
+        option.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : options
+
+  // Group options if they have group property
+  const groupedOptions = filteredOptions.reduce<Record<string, SelectOption[]>>(
+    (acc, option) => {
+      const group = option.group || ''
+      if (!acc[group]) acc[group] = []
+      acc[group].push(option)
+      return acc
+    },
+    {}
+  )
+
+  const selectedOption = options.find(o => o.value === value)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false)
+        setSearchQuery('')
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Reset highlighted index when options change
+  useEffect(() => {
+    setHighlightedIndex(-1)
+  }, [searchQuery])
+
+  // Scroll highlighted option into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && listRef.current) {
+      const items = listRef.current.querySelectorAll('[role="option"]')
+      items[highlightedIndex]?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [highlightedIndex])
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (disabled) return
+
+      switch (event.key) {
+        case 'Enter':
+          event.preventDefault()
+          if (isOpen && highlightedIndex >= 0) {
+            const option = filteredOptions[highlightedIndex]
+            if (option) {
+              onChange(option.value)
+              setIsOpen(false)
+              setSearchQuery('')
+            }
+          } else if (!isOpen) {
+            setIsOpen(true)
+          }
+          break
+        case 'Escape':
+          setIsOpen(false)
+          setSearchQuery('')
+          break
+        case 'ArrowDown':
+          event.preventDefault()
+          if (!isOpen) {
+            setIsOpen(true)
+          } else {
+            setHighlightedIndex(prev =>
+              prev < filteredOptions.length - 1 ? prev + 1 : 0
+            )
+          }
+          break
+        case 'ArrowUp':
+          event.preventDefault()
+          if (!isOpen) {
+            setIsOpen(true)
+          } else {
+            setHighlightedIndex(prev =>
+              prev > 0 ? prev - 1 : filteredOptions.length - 1
+            )
+          }
+          break
+      }
+    },
+    [disabled, isOpen, highlightedIndex, filteredOptions, onChange]
+  )
+
+  const handleSelectOption = (option: SelectOption) => {
+    onChange(option.value)
+    setIsOpen(false)
+    setSearchQuery('')
+  }
+
+  const handleClear = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    onChange('')
+  }
+
+  return (
+    <div className={cn('w-full', className)} ref={containerRef}>
+      {label && (
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-gray-700 mb-2"
+        >
+          {label}
+        </label>
+      )}
+
+      <div className="relative">
+        <button
+          type="button"
+          id={id}
+          onClick={() => {
+            if (!disabled) {
+              setIsOpen(!isOpen)
+              if (!isOpen && searchable) {
+                setTimeout(() => inputRef.current?.focus(), 0)
+              }
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          className={cn(
+            'w-full flex items-center justify-between gap-2 px-3 py-2 border rounded-lg',
+            'text-left transition-colors',
+            'focus:outline-none focus:ring-2',
+            disabled
+              ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200'
+              : error
+              ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
+            isOpen && 'ring-2 ring-primary-500 border-primary-500'
+          )}
+          aria-haspopup="listbox"
+          aria-expanded={isOpen}
+          aria-labelledby={label ? id : undefined}
+        >
+          <span
+            className={cn(
+              'flex-1 truncate',
+              !selectedOption && 'text-gray-500'
+            )}
+          >
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+
+          <div className="flex items-center gap-1">
+            {loading && (
+              <svg
+                className="w-4 h-4 animate-spin text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+            )}
+            
+            {clearable && selectedOption && !disabled && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                aria-label="Clear selection"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            
+            <ChevronDown
+              className={cn(
+                'w-4 h-4 text-gray-400 transition-transform',
+                isOpen && 'rotate-180'
+              )}
+            />
+          </div>
+        </button>
+
+        {isOpen && (
+          <div className="select-dropdown entering">
+            {searchable && (
+              <div className="p-2 border-b border-gray-100">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Search..."
+                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            <ul
+              ref={listRef}
+              role="listbox"
+              aria-labelledby={label ? id : undefined}
+              className="py-1"
+            >
+              {filteredOptions.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-gray-500">
+                  No options found
+                </li>
+              ) : Object.keys(groupedOptions).length === 1 &&
+                !Object.keys(groupedOptions)[0] ? (
+                // No groups
+                filteredOptions.map((option, index) => (
+                  <li
+                    key={option.value}
+                    role="option"
+                    aria-selected={option.value === value}
+                    onClick={() => handleSelectOption(option)}
+                    className={cn(
+                      'select-option flex items-center justify-between',
+                      option.value === value && 'selected',
+                      index === highlightedIndex && 'highlighted'
+                    )}
+                  >
+                    <span>{option.label}</span>
+                    {option.value === value && (
+                      <Check className="w-4 h-4 text-primary-600" />
+                    )}
+                  </li>
+                ))
+              ) : (
+                // With groups
+                Object.entries(groupedOptions).map(([group, groupOptions]) => (
+                  <li key={group || 'default'}>
+                    {group && (
+                      <div className="select-group-label">{group}</div>
+                    )}
+                    <ul>
+                      {groupOptions.map((option, index) => {
+                        const flatIndex = filteredOptions.indexOf(option)
+                        return (
+                          <li
+                            key={option.value}
+                            role="option"
+                            aria-selected={option.value === value}
+                            onClick={() => handleSelectOption(option)}
+                            className={cn(
+                              'select-option flex items-center justify-between',
+                              option.value === value && 'selected',
+                              flatIndex === highlightedIndex && 'highlighted'
+                            )}
+                          >
+                            <span>{option.label}</span>
+                            {option.value === value && (
+                              <Check className="w-4 h-4 text-primary-600" />
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p className="mt-1.5 text-sm text-red-600">{error}</p>
+      )}
+
+      {helperText && !error && (
+        <p className="mt-1.5 text-sm text-gray-500">{helperText}</p>
+      )}
+    </div>
+  )
+}
+
+export default Select
