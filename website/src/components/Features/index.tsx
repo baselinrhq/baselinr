@@ -11,13 +11,22 @@ type FeatureItem = {
 
 const CoreFeatures: FeatureItem[] = [
   {
-    Svg: require('@site/static/img/undraw_statistical_tests.svg').default,
-    title: 'Advanced Statistical Tests',
+    Svg: require('@site/static/img/undraw_docusaurus_profiling.svg').default,
+    title: 'Automated Profiling',
     description: (
       <>
-        Kolmogorov-Smirnov (KS) test, Population Stability Index (PSI), Chi-square,
-        Entropy, and more for rigorous drift detection. Type-specific thresholds reduce
-        false positives.
+        Continuously profile your data warehouse with column-level metrics, distributions,
+        and schema tracking. Intelligent table discovery reduces configuration overhead.
+      </>
+    ),
+  },
+  {
+    Svg: require('@site/static/img/undraw_docusaurus_drift.svg').default,
+    title: 'Drift Detection',
+    description: (
+      <>
+        Detect schema and statistical drift using multiple strategies with type-specific
+        thresholds. Advanced statistical tests (KS, PSI, Chi-square) for rigorous detection.
       </>
     ),
   },
@@ -32,32 +41,32 @@ const CoreFeatures: FeatureItem[] = [
     ),
   },
   {
+    Svg: require('@site/static/img/undraw_data_quality_monitoring.svg').default,
+    title: 'Data Validation',
+    description: (
+      <>
+        Rule-based data quality validation with built-in validators for format, range, enum,
+        null checks, uniqueness, and referential integrity. Custom validators supported.
+      </>
+    ),
+  },
+  {
+    Svg: require('@site/static/img/undraw_statistical_tests.svg').default,
+    title: 'Root Cause Analysis',
+    description: (
+      <>
+        Automatically correlate anomalies with pipeline runs, code changes, and upstream data
+        issues using temporal correlation, lineage analysis, and pattern matching.
+      </>
+    ),
+  },
+  {
     Svg: require('@site/static/img/undraw_multi_database.svg').default,
     title: 'Multi-Database Support',
     description: (
       <>
         Works seamlessly with PostgreSQL, Snowflake, SQLite, MySQL, BigQuery, and Redshift.
         Unified API across all supported databases.
-      </>
-    ),
-  },
-  {
-    Svg: require('@site/static/img/undraw_web_dashboard.svg').default,
-    title: 'Web Dashboard',
-    description: (
-      <>
-        Lightweight local web dashboard (FastAPI + Next.js) for visualizing profiling runs
-        and drift detection. Get insights at a glance.
-      </>
-    ),
-  },
-  {
-    Svg: require('@site/static/img/undraw_cli_api.svg').default,
-    title: 'CLI & API',
-    description: (
-      <>
-        Comprehensive command-line interface and powerful querying API for profiling runs,
-        drift events, and table history. Perfect for automation and integration.
       </>
     ),
   },
@@ -72,6 +81,26 @@ const ProductionFeatures: FeatureItem[] = [
         Automatically learns expected metric ranges from historical profiling data,
         including control limits, distributions, and categorical frequencies for proactive
         anomaly detection.
+      </>
+    ),
+  },
+  {
+    Svg: require('@site/static/img/undraw_web_dashboard.svg').default,
+    title: 'Web Dashboard & AI Chat',
+    description: (
+      <>
+        Interactive web dashboard for visualizing profiling runs and drift detection.
+        AI-powered chat interface for natural language data quality investigation.
+      </>
+    ),
+  },
+  {
+    Svg: require('@site/static/img/undraw_cli_api.svg').default,
+    title: 'CLI & Python SDK',
+    description: (
+      <>
+        Comprehensive command-line interface and powerful Python SDK for programmatic access.
+        Perfect for automation, integration, and custom workflows.
       </>
     ),
   },
@@ -96,36 +125,46 @@ const ProductionFeatures: FeatureItem[] = [
       </>
     ),
   },
+  {
+    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+    title: 'Data Lineage',
+    description: (
+      <>
+        Multi-source lineage extraction from dbt, Dagster, SQL parsing, and query history.
+        Visual lineage graphs with interactive exploration and drift impact analysis.
+      </>
+    ),
+  },
 ];
 
 const UseCases: FeatureItem[] = [
   {
     Svg: require('@site/static/img/undraw_data_quality_monitoring.svg').default,
-    title: 'Data Quality Monitoring',
+    title: 'Automated Data Quality Setup',
     description: (
       <>
-        Track data quality metrics over time and automatically detect when data quality
-        degrades. Set up alerts for critical drift events.
+        Turn on comprehensive data quality monitoring with minimal effort. System automatically
+        recommends tables and columns, suggests checks, and can auto-apply configurations.
       </>
     ),
   },
   {
     Svg: require('@site/static/img/undraw_schema_change.svg').default,
-    title: 'Schema Change Detection',
+    title: 'Root Cause Investigation',
     description: (
       <>
-        Automatically detect schema changes in your databases. Get notified when columns
-        are added, removed, or modified.
+        When anomalies occur, automatically correlate with pipeline runs, code changes, and
+        upstream data issues to identify root causes. AI-powered chat for interactive investigation.
       </>
     ),
   },
   {
     Svg: require('@site/static/img/undraw_statistical_drift_use_case.svg').default,
-    title: 'Statistical Drift Detection',
+    title: 'Pipeline Integration',
     description: (
       <>
-        Identify statistical anomalies in your data using advanced tests. Detect distribution
-        shifts, value range changes, and frequency variations.
+        Integrate with Airflow, Dagster, and dbt to validate data quality in your pipelines.
+        Fail builds when critical issues are detected. Native orchestration support.
       </>
     ),
   },
@@ -163,9 +202,13 @@ type FeaturesSectionProps = {
   title: string;
   description: string;
   features: FeatureItem[];
+  showHeader?: boolean;
+  alternateBackground?: boolean;
+  leftAligned?: boolean;
+  extraPadding?: boolean;
 };
 
-function FeaturesSection({title, description, features, showHeader = true, alternateBackground = false, leftAligned = false, extraPadding = false}: FeaturesSectionProps & {showHeader?: boolean; alternateBackground?: boolean; leftAligned?: boolean; extraPadding?: boolean}) {
+function FeaturesSection({title, description, features, showHeader = true, alternateBackground = false, leftAligned = false, extraPadding = false}: FeaturesSectionProps) {
   return (
     <section 
       className={clsx(styles.features, alternateBackground && styles.featuresAlternate, extraPadding && styles.featuresExtraPadding)}>
@@ -205,8 +248,8 @@ export default function Features(): ReactNode {
         alternateBackground={true}
       />
       <FeaturesSection
-        title="Built for Production"
-        description="Every feature is designed to meet the demands of production workloads and enterprise requirements."
+        title="Production-Ready Features"
+        description="Every feature is designed to meet the demands of production workloads with enterprise-grade capabilities."
         features={ProductionFeatures}
         leftAligned={true}
         extraPadding={true}

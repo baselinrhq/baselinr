@@ -11,15 +11,15 @@ export default function FeaturesPage(): ReactNode {
   return (
     <Layout
       title="Features"
-      description="Powerful features for data quality monitoring. Automated profiling, drift detection, anomaly detection, and more.">
+      description="Comprehensive data quality and observability features. Automated setup, profiling, drift detection, anomaly detection, validation, root cause analysis, and AI-powered investigation.">
       <header className={clsx('hero hero--primary', styles.heroBanner)}>
         <div className="container">
           <Heading as="h1" className="hero__title">
             Powerful Features for Data Quality
           </Heading>
           <p className="hero__subtitle">
-            Everything you need to profile, monitor, and detect drift in your SQL databases.
-            From automated profiling to advanced statistical tests, Baselinr has you covered.
+            Everything you need for data quality and observability in your SQL data warehouses.
+            From automated setup to AI-powered root cause analysis, Baselinr has you covered.
           </p>
           <div className={styles.buttons}>
             <Link
