@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { cn, generateId } from '@/lib/utils'
 
 export interface Tab {
@@ -37,7 +37,6 @@ export function Tabs({
   const activeTab = isControlled ? controlledActiveTab : internalActiveTab
   
   const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-  const [focusedIndex, setFocusedIndex] = useState(-1)
 
   // Handle tab selection
   const handleTabClick = useCallback(

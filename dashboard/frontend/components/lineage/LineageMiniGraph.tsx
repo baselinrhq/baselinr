@@ -39,8 +39,8 @@ export default function LineageMiniGraph({
           depth: 1, // Only immediate connections for mini graph
         });
         setGraph(data);
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch lineage');
         console.error('Failed to fetch lineage:', err);
       } finally {
         setLoading(false);

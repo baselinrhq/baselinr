@@ -1,6 +1,6 @@
 interface FilterPanelProps {
-  filters: any
-  onChange: (filters: any) => void
+  filters: Record<string, string>
+  onChange: (filters: Record<string, string>) => void
   type?: 'runs' | 'drift'
 }
 

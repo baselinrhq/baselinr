@@ -46,7 +46,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
               <ReactMarkdown
                 components={{
                   // Style code blocks
-                  code: ({ node, className, children, ...props }) => {
+                  code: ({ className, children, ...props }) => {
                     const isInline = !className
                     return isInline ? (
                       <code className="bg-gray-200 px-1 py-0.5 rounded text-sm" {...props}>

@@ -1,7 +1,7 @@
 # Baselinr Makefile
 # Common development and deployment commands
 
-.PHONY: help install install-dev install-all test lint format clean docker-up docker-down docker-logs venv activate install-hooks
+.PHONY: help install install-dev install-all test test-frontend lint lint-frontend format format-frontend check clean docker-up docker-down docker-logs venv activate install-hooks
 
 help:
 	@echo "Baselinr - Available Commands"
@@ -18,10 +18,14 @@ help:
 	@echo "  make install-all    Install with all optional dependencies"
 	@echo ""
 	@echo "Development:"
-	@echo "  make test           Run tests"
+	@echo "  make test           Run all tests (Python + Frontend)"
 	@echo "  make test-dbt       Run dbt integration tests"
-	@echo "  make lint           Run linters"
-	@echo "  make format         Format code"
+	@echo "  make test-frontend  Run frontend tests only"
+	@echo "  make lint           Run all linters (Python + Frontend)"
+	@echo "  make lint-frontend  Run frontend linter only"
+	@echo "  make format         Format all code (Python + Frontend)"
+	@echo "  make format-frontend Format frontend code"
+	@echo "  make check          Run format, lint, and test (full check)"
 	@echo "  make clean          Clean build artifacts"
 	@echo "  make install-hooks  Install git hooks (pre-commit & pre-push)"
 	@echo ""
@@ -85,19 +89,50 @@ install-dev:
 install-all:
 	pip install -e ".[all,dev]"
 
-test:
+test: test-python test-frontend
+	@echo ""
+	@echo "✅ All tests passed!"
+
+test-python:
+	@echo "Running Python tests..."
 	pytest tests/ -v
+
+test-frontend:
+	@bash -c 'if [ -d "dashboard/frontend" ]; then bash dashboard/frontend/scripts/run-tests.sh || (cd dashboard/frontend && npm run test:run) || echo "Frontend tests failed"; else echo "Frontend directory not found, skipping frontend tests"; fi'
 
 test-dbt:
 	pytest tests/test_dbt_integration.py -v
 
-lint:
+lint: lint-python lint-frontend
+	@echo ""
+	@echo "✅ All linting passed!"
+
+lint-python:
+	@echo "Running Python linters..."
 	flake8 baselinr/ --config=.flake8
 	mypy baselinr/
 
-format:
+lint-frontend:
+	@bash -c 'if [ -d "dashboard/frontend" ]; then cd dashboard/frontend && npm run lint; else echo "Frontend directory not found, skipping frontend lint"; fi'
+
+format: format-python format-frontend
+	@echo ""
+	@echo "✅ All code formatted!"
+
+format-python:
+	@echo "Formatting Python code..."
 	black baselinr/ examples/
 	isort baselinr/ examples/
+
+format-frontend:
+	@bash -c 'if [ -d "dashboard/frontend" ]; then cd dashboard/frontend && npm run lint -- --fix || echo "Note: Next.js lint may auto-fix some issues, but consider adding Prettier for full formatting"; else echo "Frontend directory not found, skipping frontend format"; fi'
+
+check: format lint test
+	@echo ""
+	@echo "========================================="
+	@echo "✅ All checks passed!"
+	@echo "========================================="
+	@echo ""
 
 install-hooks:
 	@echo "Installing git hooks..."

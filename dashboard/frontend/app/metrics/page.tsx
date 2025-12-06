@@ -44,7 +44,7 @@ export default function MetricsPage() {
 
       {/* KPI Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {metrics.kpis.map((kpi: any) => (
+        {metrics.kpis.map((kpi: { name: string; value: string | number }) => (
           <div key={kpi.name} className="bg-white rounded-lg shadow p-6">
             <p className="text-sm font-medium text-gray-600">{kpi.name}</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">

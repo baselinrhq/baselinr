@@ -2,9 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'next/navigation'
-import { Database, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Database, TrendingUp } from 'lucide-react'
 import { fetchTableMetrics } from '@/lib/api'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import LineageMiniGraph from '@/components/lineage/LineageMiniGraph'
 
 export default function TableMetricsPage() {
@@ -29,7 +29,7 @@ export default function TableMetricsPage() {
       <div className="text-center py-12">
         <Database className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900">Table not found</h2>
-        <p className="text-gray-600 mt-2">The table "{tableName}" does not exist or has not been profiled yet.</p>
+        <p className="text-gray-600 mt-2">The table &quot;{tableName}&quot; does not exist or has not been profiled yet.</p>
       </div>
     )
   }

@@ -14,7 +14,7 @@ import {
   Tabs,
 } from '@/components/ui'
 import { useState } from 'react'
-import { CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import {
   fetchConfig,
@@ -30,12 +30,15 @@ import {
 import type {
   BaselinrConfig,
   ConnectionConfig,
+  DatabaseType,
   ConfigResponse,
   ConfigValidationResponse,
   ConnectionTestResponse,
   ConfigHistoryResponse,
   ConfigVersionResponse,
 } from '@/types/config'
+import { useConfig } from '@/hooks/useConfig'
+import { useConfigSave } from '@/hooks/useConfigSave'
 
 export default function AdminTestPage() {
   const [activeTab, setActiveTab] = useState('config-api')
@@ -221,6 +224,7 @@ export default function AdminTestPage() {
           <Tabs
             tabs={[
               { id: 'config-api', label: 'Config API' },
+              { id: 'config-state', label: 'Config State' },
               { id: 'ui-components', label: 'UI Components' },
             ]}
             activeTab={activeTab}
@@ -343,7 +347,7 @@ export default function AdminTestPage() {
                   <select
                     className="w-full p-2 border border-gray-300 rounded-lg"
                     value={connectionForm.type}
-                    onChange={(e) => setConnectionForm({ ...connectionForm, type: e.target.value as any })}
+                    onChange={(e) => setConnectionForm({ ...connectionForm, type: e.target.value as DatabaseType })}
                   >
                     <option value="postgres">PostgreSQL</option>
                     <option value="snowflake">Snowflake</option>
@@ -507,6 +511,9 @@ export default function AdminTestPage() {
         </div>
       )}
 
+      {/* Config State Testing */}
+      {activeTab === 'config-state' && <ConfigStateTestTab />}
+
       {/* UI Components Link */}
       {activeTab === 'ui-components' && (
         <Card>
@@ -524,6 +531,293 @@ export default function AdminTestPage() {
           </CardBody>
         </Card>
       )}
+    </div>
+  )
+}
+
+// Config State Test Tab Component
+function ConfigStateTestTab() {
+  const {
+    modifiedConfig,
+    originalConfig,
+    isDirty,
+    isLoading,
+    error,
+    validationErrors,
+    validationWarnings,
+    lastSaved,
+    loadConfig,
+    updateConfigPath,
+    resetConfig,
+    validateConfig,
+    clearError,
+    hasChanges,
+    canSave,
+  } = useConfig()
+
+  const { saveConfig, isSaving } = useConfigSave()
+
+  const [pathInput, setPathInput] = useState('')
+  const [valueInput, setValueInput] = useState('')
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null)
+  const [configViewTab, setConfigViewTab] = useState('merged')
+
+  const handleLoadConfig = async () => {
+    try {
+      await loadConfig()
+      setUpdateSuccess('Configuration loaded successfully')
+    } catch {
+      // Error handled by store
+    }
+  }
+
+  const handleUpdatePath = () => {
+    if (!pathInput.trim()) {
+      setUpdateSuccess(null)
+      return
+    }
+
+    try {
+      const path = pathInput.split('.').filter(Boolean)
+      let value: unknown = valueInput
+
+      // Try to parse as JSON if it looks like JSON
+      if (valueInput.trim().startsWith('{') || valueInput.trim().startsWith('[')) {
+        try {
+          value = JSON.parse(valueInput)
+        } catch {
+          // Keep as string if JSON parse fails
+        }
+      } else if (valueInput === 'true' || valueInput === 'false') {
+        value = valueInput === 'true'
+      } else if (!isNaN(Number(valueInput)) && valueInput.trim() !== '') {
+        value = Number(valueInput)
+      }
+
+      updateConfigPath(path, value)
+      setUpdateSuccess(`Updated path: ${pathInput}`)
+      setPathInput('')
+      setValueInput('')
+    } catch (err) {
+      setUpdateSuccess(err instanceof Error ? err.message : 'Failed to update')
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      await saveConfig()
+      setUpdateSuccess('Configuration saved successfully')
+    } catch {
+      // Error handled by store
+    }
+  }
+
+  const handleValidate = async () => {
+    try {
+      const isValid = await validateConfig()
+      setUpdateSuccess(isValid ? 'Configuration is valid' : 'Configuration has validation errors')
+    } catch {
+      // Error handled by store
+    }
+  }
+
+  const handleReset = () => {
+    resetConfig()
+    setUpdateSuccess('Configuration reset to original')
+  }
+
+  // Get merged config for display
+  const getMergedConfig = () => {
+    if (!originalConfig) return null
+    if (!modifiedConfig) return originalConfig
+    
+    // Simple merge for display
+    return { ...originalConfig, ...modifiedConfig }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Status Messages */}
+      {(error || updateSuccess) && (
+        <Card>
+          <CardBody>
+            {error && (
+              <div className="flex items-center gap-2 text-red-600">
+                <XCircle className="w-5 h-5" />
+                <pre className="whitespace-pre-wrap text-sm">{error}</pre>
+                <Button size="sm" variant="ghost" onClick={clearError}>
+                  Clear
+                </Button>
+              </div>
+            )}
+            {updateSuccess && (
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="w-5 h-5" />
+                <span>{updateSuccess}</span>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      )}
+
+      {/* State Display Panel */}
+      <Card>
+        <CardHeader>
+          <CardTitle>State Display</CardTitle>
+          <CardDescription>Real-time view of all store state values</CardDescription>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Dirty State</p>
+              {isDirty ? (
+                <Badge variant="error">Dirty (unsaved changes)</Badge>
+              ) : (
+                <Badge variant="success">Clean (no changes)</Badge>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Loading</p>
+              {isLoading || isSaving ? (
+                <Badge variant="info">
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  {isSaving ? 'Saving...' : 'Loading...'}
+                </Badge>
+              ) : (
+                <Badge>Idle</Badge>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Has Changes</p>
+              <Badge variant={hasChanges ? 'warning' : 'success'}>
+                {hasChanges ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Can Save</p>
+              <Badge variant={canSave ? 'success' : 'error'}>
+                {canSave ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+            {lastSaved && (
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Last Saved</p>
+                <p className="text-sm text-gray-600">{new Date(lastSaved).toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+
+          {validationErrors.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-red-700 mb-2">Validation Errors</p>
+              <ul className="list-disc list-inside text-sm text-red-600">
+                {validationErrors.map((err, idx) => (
+                  <li key={idx}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {validationWarnings.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-yellow-700 mb-2">Validation Warnings</p>
+              <ul className="list-disc list-inside text-sm text-yellow-600">
+                {validationWarnings.map((warn, idx) => (
+                  <li key={idx}>{warn}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Actions</CardTitle>
+          <CardDescription>Test store actions</CardDescription>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleLoadConfig} disabled={isLoading}>
+              {isLoading ? <LoadingSpinner size="sm" /> : 'Load Config'}
+            </Button>
+            <Button onClick={handleValidate} disabled={isLoading || !originalConfig}>
+              {isLoading ? <LoadingSpinner size="sm" /> : 'Validate Config'}
+            </Button>
+            <Button onClick={handleSave} disabled={!canSave || isSaving}>
+              {isSaving ? <LoadingSpinner size="sm" /> : 'Save Config'}
+            </Button>
+            <Button onClick={handleReset} disabled={!isDirty || isLoading} variant="secondary">
+              Reset Config
+            </Button>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Update Config */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Update Config</CardTitle>
+          <CardDescription>Update configuration values</CardDescription>
+        </CardHeader>
+        <CardBody className="space-y-4">
+          <FormField label="Config Path (dot notation)" hint="e.g., source.database or profiling.metrics">
+            <Input
+              value={pathInput}
+              onChange={(e) => setPathInput(e.target.value)}
+              placeholder="source.database"
+            />
+          </FormField>
+          <FormField label="Value" hint="Enter value (strings, numbers, booleans, or JSON)">
+            <Input
+              value={valueInput}
+              onChange={(e) => setValueInput(e.target.value)}
+              placeholder="my_database or ['count', 'null_count']"
+            />
+          </FormField>
+          <Button onClick={handleUpdatePath} disabled={!pathInput.trim() || !originalConfig}>
+            Update Path
+          </Button>
+          {updateSuccess && (
+            <p className="text-sm text-green-600">{updateSuccess}</p>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Config JSON Display */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Configuration JSON</CardTitle>
+          <CardDescription>View current, modified, and original configs</CardDescription>
+        </CardHeader>
+        <CardBody>
+          <div className="mb-4">
+            <Tabs
+              tabs={[
+                { id: 'merged', label: 'Merged (Current)' },
+                { id: 'modified', label: 'Modified' },
+                { id: 'original', label: 'Original' },
+              ]}
+              activeTab={configViewTab}
+              onChange={setConfigViewTab}
+            />
+          </div>
+          <div className="mt-4">
+            <pre className="bg-gray-50 p-4 rounded-lg text-xs overflow-auto max-h-96">
+              {JSON.stringify(
+                configViewTab === 'merged'
+                  ? getMergedConfig() || {}
+                  : configViewTab === 'modified'
+                  ? modifiedConfig || {}
+                  : originalConfig || {},
+                null,
+                2
+              )}
+            </pre>
+          </div>
+        </CardBody>
+      </Card>
     </div>
   )
 }
