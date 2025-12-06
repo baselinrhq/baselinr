@@ -67,6 +67,8 @@ dagster_home/
 
 # Output files
 *.json
+!package-lock.json
+!package.json
 results/
 output/
 
