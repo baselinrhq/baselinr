@@ -98,7 +98,7 @@ test-python:
 	pytest tests/ -v
 
 test-frontend:
-	@bash -c 'if [ -d "dashboard/frontend" ]; then bash dashboard/frontend/scripts/run-tests.sh || (cd dashboard/frontend && npm run test:run) || echo "Frontend tests failed"; else echo "Frontend directory not found, skipping frontend tests"; fi'
+	@python scripts/run-frontend-cmd.py test
 
 test-dbt:
 	pytest tests/test_dbt_integration.py -v
@@ -113,7 +113,7 @@ lint-python:
 	mypy baselinr/
 
 lint-frontend:
-	@bash -c 'if [ -d "dashboard/frontend" ]; then cd dashboard/frontend && npm run lint; else echo "Frontend directory not found, skipping frontend lint"; fi'
+	@python scripts/run-frontend-cmd.py lint
 
 format: format-python format-frontend
 	@echo ""
@@ -125,7 +125,7 @@ format-python:
 	isort baselinr/ examples/
 
 format-frontend:
-	@bash -c 'if [ -d "dashboard/frontend" ]; then cd dashboard/frontend && npm run lint -- --fix || echo "Note: Next.js lint may auto-fix some issues, but consider adding Prettier for full formatting"; else echo "Frontend directory not found, skipping frontend format"; fi'
+	@python scripts/run-frontend-cmd.py format || echo "Note: Next.js lint may auto-fix some issues, but consider adding Prettier for full formatting"
 
 check: format lint test
 	@echo ""
