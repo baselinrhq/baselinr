@@ -14,14 +14,14 @@ function LineageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [tables, setTables] = useState<TableInfoResponse[]>([]);
+  const [, setTables] = useState<TableInfoResponse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TableInfoResponse[]>([]);
   
   const [selectedTable, setSelectedTable] = useState(searchParams.get('table') || '');
   const [selectedSchema, setSelectedSchema] = useState(searchParams.get('schema') || '');
   const [direction, setDirection] = useState<'upstream' | 'downstream' | 'both'>(
-    (searchParams.get('direction') as any) || 'both'
+    (searchParams.get('direction') as 'upstream' | 'downstream' | 'both') || 'both'
   );
   const [depth, setDepth] = useState(Number(searchParams.get('depth')) || 3);
   const [confidenceThreshold, setConfidenceThreshold] = useState(0);
@@ -91,8 +91,8 @@ function LineageContent() {
           depth: String(depth),
         });
         router.replace(`/lineage?${params}`, { scroll: false });
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch lineage');
         setGraph(null);
       } finally {
         setLoading(false);
@@ -170,7 +170,7 @@ function LineageContent() {
               </label>
               <select
                 value={direction}
-                onChange={(e) => setDirection(e.target.value as any)}
+                onChange={(e) => setDirection(e.target.value as 'upstream' | 'downstream' | 'both')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="both">Both</option>
@@ -225,7 +225,7 @@ function LineageContent() {
               </label>
               <select
                 value={layout}
-                onChange={(e) => setLayout(e.target.value as any)}
+                onChange={(e) => setLayout(e.target.value as 'hierarchical' | 'circular' | 'force-directed')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="hierarchical">Hierarchical</option>

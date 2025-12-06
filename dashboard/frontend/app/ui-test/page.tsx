@@ -17,14 +17,12 @@ import {
   ModalFooter,
   Tooltip,
   Tabs,
-  TabsWithContent,
-  TabPanel,
   SearchInput,
   LoadingSpinner,
   FormField,
 } from '@/components/ui'
 import { useState } from 'react'
-import { CheckCircle, AlertCircle, Info, XCircle } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 
 export default function UITestPage() {
   const [modalOpen, setModalOpen] = useState(false)

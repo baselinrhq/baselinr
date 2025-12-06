@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { MessageCircle, Trash2, Info, Sparkles, AlertCircle } from 'lucide-react'
+import { MessageCircle, Trash2, Sparkles, AlertCircle } from 'lucide-react'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
 import { ChatMessage as ChatMessageType, ChatConfig, ChatResponse } from '@/types/chat'
@@ -22,7 +22,7 @@ export default function ChatContainer() {
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [config, setConfig] = useState<ChatConfig | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -228,7 +228,7 @@ OPENAI_API_KEY=your-api-key`}
                     transition-colors text-sm
                   "
                 >
-                  "{question}"
+                  &quot;{question}&quot;
                 </button>
               ))}
             </div>

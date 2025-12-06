@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { cn, generateId } from '@/lib/utils'
 
 export interface ToggleProps {

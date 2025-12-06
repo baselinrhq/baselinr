@@ -26,7 +26,7 @@ interface TooltipPosition {
   left: number
 }
 
-const ARROW_SIZE = 6
+// const ARROW_SIZE = 6
 const OFFSET = 8
 
 export function Tooltip({
@@ -212,7 +212,7 @@ export function Tooltip({
           // @ts-expect-error - ref merging
           triggerRef.current = node
           // Handle existing ref
-          const originalRef = (children as any).ref
+          const originalRef = (children as React.ReactElement).ref
           if (typeof originalRef === 'function') {
             originalRef(node)
           } else if (originalRef) {
@@ -224,28 +224,28 @@ export function Tooltip({
           ? {
               onMouseEnter: (e: React.MouseEvent) => {
                 show()
-                ;(children.props as any)?.onMouseEnter?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseEnter?.(e)
               },
               onMouseLeave: (e: React.MouseEvent) => {
                 hide()
-                ;(children.props as any)?.onMouseLeave?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseLeave?.(e)
               },
               onFocus: (e: React.FocusEvent) => {
                 show()
-                ;(children.props as any)?.onFocus?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onFocus?.(e)
               },
               onBlur: (e: React.FocusEvent) => {
                 hide()
-                ;(children.props as any)?.onBlur?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onBlur?.(e)
               },
             }
           : {
               onClick: (e: React.MouseEvent) => {
                 toggle()
-                ;(children.props as any)?.onClick?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onClick?.(e)
               },
             }),
-      } as any)
+      } as React.ReactElement)
     : children
 
   // Arrow class based on position

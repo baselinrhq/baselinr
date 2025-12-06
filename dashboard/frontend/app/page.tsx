@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Activity, Database, AlertTriangle, BarChart3, TrendingUp } from 'lucide-react'
+import { Activity, Database, AlertTriangle, BarChart3 } from 'lucide-react'
 import { fetchDashboardMetrics } from '@/lib/api'
 import KPICard from '@/components/KPICard'
 import RunsTable from '@/components/RunsTable'

@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
-import clsx from 'clsx'
 
 interface Run {
   run_id: string

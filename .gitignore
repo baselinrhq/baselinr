@@ -12,6 +12,7 @@ eggs/
 .eggs/
 lib/
 lib64/
+!dashboard/frontend/lib/
 parts/
 sdist/
 var/
@@ -67,6 +68,9 @@ dagster_home/
 
 # Output files
 *.json
+!package-lock.json
+!package.json
+!.eslintrc.json
 results/
 output/
 

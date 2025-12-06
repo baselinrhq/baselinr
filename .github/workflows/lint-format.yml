@@ -46,3 +46,16 @@ jobs:
           mypy baselinr/
         continue-on-error: false
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install frontend dependencies
+        working-directory: dashboard/frontend
+        run: npm ci
+
+      - name: Run frontend linter
+        working-directory: dashboard/frontend
+        run: npm run lint
+

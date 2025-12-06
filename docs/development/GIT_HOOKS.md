@@ -19,9 +19,10 @@ Runs automatically before each commit:
 
 Runs automatically before pushing to remote:
 - **Full test suite** with `pytest`
+- **Frontend tests** with `vitest` (if dashboard/frontend exists)
 - Excludes Dagster integration tests (known compatibility issues)
 
-**Time**: ~30-60 seconds (depending on test count)
+**Time**: ~30-60 seconds (Python tests) + ~2-5 seconds (frontend tests)
 
 **Purpose**: Ensure all tests pass before code reaches the remote repository.
 
@@ -137,6 +138,31 @@ Modify pre-push hook to run different tests:
 # Run only specific tests
 $PYTHON -m pytest tests/test_drift_strategies.py -v
 ```
+
+### Add Frontend Tests
+
+Frontend tests are automatically included if you add the test runner script to your pre-push hook.
+
+**Bash version** (add to `.git/hooks/pre-push`):
+```bash
+# Run frontend tests
+if [ -d "dashboard/frontend" ]; then
+    echo "Running frontend tests..."
+    bash dashboard/frontend/scripts/run-tests.sh || exit 1
+fi
+```
+
+**PowerShell version** (add to `.git/hooks/pre-push.ps1`):
+```powershell
+# Run frontend tests
+if (Test-Path "dashboard/frontend") {
+    Write-Host "Running frontend tests..." -ForegroundColor Cyan
+    & "dashboard/frontend/scripts/run-tests.ps1"
+    if ($LASTEXITCODE -ne 0) { exit 1 }
+}
+```
+
+See `dashboard/frontend/scripts/README.md` for more details.
 
 ## Best Practices
 

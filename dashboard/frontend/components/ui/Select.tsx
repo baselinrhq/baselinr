@@ -305,7 +305,7 @@ export function Select({
                       <div className="select-group-label">{group}</div>
                     )}
                     <ul>
-                      {groupOptions.map((option, index) => {
+                      {groupOptions.map((option) => {
                         const flatIndex = filteredOptions.indexOf(option)
                         return (
                           <li
