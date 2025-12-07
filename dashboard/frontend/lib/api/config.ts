@@ -201,7 +201,7 @@ export async function testConnection(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(connectionConfig),
+      body: JSON.stringify({ connection: connectionConfig }),
     })
 
     if (!response.ok) {

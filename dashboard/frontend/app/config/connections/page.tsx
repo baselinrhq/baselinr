@@ -158,21 +158,29 @@ export default function ConnectionsPage() {
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <div className="font-medium text-yellow-900">Backend API Not Available</div>
+            <div className="font-medium text-yellow-900">Connection Error</div>
             <div className="text-sm text-yellow-700 mt-1">
-              {error instanceof Error && error.message.includes('Not Found') ? (
-                <>
-                  The connection management API endpoints are not yet implemented. 
-                  You can still test the connection wizard UI, but saving connections requires 
-                  the backend endpoints from <strong>Plan 23</strong> to be implemented.
-                </>
+              {error instanceof Error ? (
+                error.message.includes('NetworkError') || error.message.includes('Failed to fetch') ? (
+                  <>
+                    Unable to connect to the backend API. Please ensure:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>The backend server is running on <code className="bg-yellow-100 px-1 rounded">http://localhost:8000</code></li>
+                      <li>Check the browser console for more details</li>
+                      <li>Verify CORS settings if running on a different port</li>
+                    </ul>
+                  </>
+                ) : error.message.includes('Not Found') ? (
+                  <>
+                    The API endpoint was not found. This may indicate the backend routes are not properly registered.
+                    Check that the backend server is running and includes the connection routes from Plan 23.
+                  </>
+                ) : (
+                  error.message
+                )
               ) : (
-                error instanceof Error ? error.message : 'Unknown error'
+                'Unknown error occurred'
               )}
-            </div>
-            <div className="mt-3 text-xs text-yellow-600">
-              <strong>Note:</strong> The wizard UI is fully functional for testing. 
-              API calls will fail until the backend is implemented.
             </div>
           </div>
         </div>
