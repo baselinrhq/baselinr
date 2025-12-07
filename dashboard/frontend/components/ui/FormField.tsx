@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { cn, generateId } from '@/lib/utils'
 
 export interface FormFieldProps {
@@ -23,6 +24,29 @@ export function FormField({
 }: FormFieldProps) {
   const id = htmlFor || generateId('field')
   
+  // Clone children to pass id prop if it's a React element
+  const childrenWithId = React.Children.map(children, (child) => {
+    if (React.isValidElement(child)) {
+      // For Input and other components that accept id, pass it
+      // Select component generates its own id, so we don't override it
+      const childType = child.type
+      if (childType && typeof childType !== 'string') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const componentName = (childType as { displayName?: string; name?: string }).displayName || 
+                             (childType as { displayName?: string; name?: string }).name
+        // Only pass id to components that need it (Input, but not Select)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (componentName !== 'Select' && 'id' in (child.props as Record<string, unknown>)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          return React.cloneElement(child, { id, ...child.props } as Record<string, unknown>)
+        }
+      }
+      // For string elements or components that don't need id, return as-is
+      return child
+    }
+    return child
+  })
+  
   return (
     <div className={cn('w-full', className)}>
       {label && (
@@ -39,7 +63,7 @@ export function FormField({
         </label>
       )}
       
-      {children}
+      {childrenWithId}
       
       {error && (
         <p
