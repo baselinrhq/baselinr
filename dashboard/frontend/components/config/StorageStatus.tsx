@@ -1,0 +1,174 @@
+'use client'
+
+import { RefreshCw, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+import { StorageStatusResponse } from '@/types/config'
+
+export interface StorageStatusProps {
+  status?: StorageStatusResponse
+  isLoading?: boolean
+  error?: string | null
+  onRefresh?: () => void
+}
+
+export function StorageStatus({
+  status,
+  isLoading = false,
+  error,
+  onRefresh,
+}: StorageStatusProps) {
+  const getConnectionStatusBadge = () => {
+    if (!status) {
+      return <Badge variant="default">Unknown</Badge>
+    }
+
+    switch (status.connection_status) {
+      case 'connected':
+        return (
+          <Badge variant="success" icon={<CheckCircle className="w-3 h-3" />}>
+            Connected
+          </Badge>
+        )
+      case 'disconnected':
+        return (
+          <Badge variant="error" icon={<XCircle className="w-3 h-3" />}>
+            Disconnected
+          </Badge>
+        )
+      case 'error':
+        return (
+          <Badge variant="error" icon={<AlertCircle className="w-3 h-3" />}>
+            Error
+          </Badge>
+        )
+      default:
+        return <Badge variant="default">Unknown</Badge>
+    }
+  }
+
+  const getTableStatusBadge = (exists: boolean) => {
+    return exists ? (
+      <Badge variant="success" icon={<CheckCircle className="w-3 h-3" />}>
+        Exists
+      </Badge>
+    ) : (
+      <Badge variant="warning" icon={<XCircle className="w-3 h-3" />}>
+        Missing
+      </Badge>
+    )
+  }
+
+  const formatLastChecked = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp)
+      return date.toLocaleString()
+    } catch {
+      return timestamp
+    }
+  }
+
+  return (
+    <Card className="p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-900">Storage Status</h3>
+        {onRefresh && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Checking...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+
+      {isLoading && !status && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <span className="ml-2 text-sm text-gray-500">Checking status...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="py-4">
+          <div className="flex items-center gap-2 text-red-600">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm font-medium">Error checking status</span>
+          </div>
+          <p className="mt-1 text-sm text-red-500">{error}</p>
+        </div>
+      )}
+
+      {status && !error && (
+        <div className="space-y-4">
+          {/* Connection Status */}
+          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Connection</p>
+              {status.connection_error && (
+                <p className="mt-1 text-xs text-red-600">{status.connection_error}</p>
+              )}
+            </div>
+            {getConnectionStatusBadge()}
+          </div>
+
+          {/* Results Table Status */}
+          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Results Table</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Stores profiling results
+              </p>
+            </div>
+            {getTableStatusBadge(status.results_table_exists)}
+          </div>
+
+          {/* Runs Table Status */}
+          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Runs Table</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Stores run metadata
+              </p>
+            </div>
+            {getTableStatusBadge(status.runs_table_exists)}
+          </div>
+
+          {/* Last Checked */}
+          {status.last_checked && (
+            <div className="pt-2">
+              <p className="text-xs text-gray-500">
+                Last checked: {formatLastChecked(status.last_checked)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!status && !isLoading && !error && (
+        <div className="py-4 text-center">
+          <p className="text-sm text-gray-500">No status information available</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Click Refresh to check storage status
+          </p>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export default StorageStatus
+
