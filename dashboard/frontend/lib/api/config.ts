@@ -10,6 +10,7 @@ import {
   ConnectionTestResponse,
   ConfigHistoryResponse,
   ConfigVersionResponse,
+  StorageStatusResponse,
 } from '@/types/config'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -303,6 +304,36 @@ export async function loadConfigVersion(versionId: string): Promise<ConfigVersio
     }
     throw new ConfigError(
       `Failed to load configuration version: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+
+/**
+ * Get storage connection and table status
+ * 
+ * @returns Storage status information
+ * @throws {ConfigError} If the request fails
+ */
+export async function getStorageStatus(): Promise<StorageStatusResponse> {
+  try {
+    const url = `${API_URL}/api/config/storage/status`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorResponse(response)
+      throw new ConfigError(
+        `Failed to get storage status: ${errorMessage}`,
+        response.status
+      )
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error
+    }
+    throw new ConfigError(
+      `Failed to get storage status: ${error instanceof Error ? error.message : 'Unknown error'}`
     )
   }
 }

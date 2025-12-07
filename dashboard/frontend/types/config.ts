@@ -498,3 +498,14 @@ export interface ConfigVersionResponse {
   description?: string
 }
 
+/**
+ * Storage status response
+ */
+export interface StorageStatusResponse {
+  connection_status: 'connected' | 'disconnected' | 'error'
+  connection_error?: string
+  results_table_exists: boolean
+  runs_table_exists: boolean
+  last_checked: string
+}
+
