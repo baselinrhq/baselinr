@@ -73,7 +73,7 @@ export function StorageConfig({
   })
 
   // Determine if we're using a saved connection or custom
-  const savedConnections = connectionsData?.connections || []
+  const savedConnections = useMemo(() => connectionsData?.connections || [], [connectionsData?.connections])
   const isUsingCustomConnection = selectedConnectionId === CUSTOM_CONNECTION_VALUE || selectedConnectionId === null
 
   // Build connection selector options

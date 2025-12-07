@@ -15,6 +15,7 @@ const navigation = [
   { name: 'Connections', href: '/config/connections', icon: Settings },
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
   { name: 'Tables', href: '/config/tables', icon: Table },
+  { name: 'Profiling', href: '/config/profiling', icon: BarChart3 },
 ]
 
 export default function Sidebar() {
