@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Activity, AlertTriangle, Database, BarChart3, MessageCircle, Settings, HardDrive } from 'lucide-react'
+import { Home, Activity, AlertTriangle, Database, BarChart3, MessageCircle, Settings, HardDrive, Table } from 'lucide-react'
 import clsx from 'clsx'
 
 const navigation = [
@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Chat', href: '/chat', icon: MessageCircle },
   { name: 'Connections', href: '/config/connections', icon: Settings },
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
+  { name: 'Tables', href: '/config/tables', icon: Table },
 ]
 
 export default function Sidebar() {
