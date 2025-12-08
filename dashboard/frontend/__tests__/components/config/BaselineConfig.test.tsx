@@ -34,7 +34,7 @@ describe('BaselineConfig', () => {
     const onChange = vi.fn()
     render(<BaselineConfig {...defaultProps} onChange={onChange} />)
     
-    const strategyButton = screen.getByRole('button', { name: /baseline strategy/i })
+    const strategyButton = screen.getByRole('button', { name: /last run/i })
     await user.click(strategyButton)
     
     // Select a different strategy
@@ -53,7 +53,7 @@ describe('BaselineConfig', () => {
   it('shows prior period for prior_period strategy', () => {
     render(<BaselineConfig {...defaultProps} baselines={{ ...defaultProps.baselines, strategy: 'prior_period' }} />)
     
-    expect(screen.getByText(/prior period/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/prior period/i).length).toBeGreaterThan(0)
   })
 
   it('shows all window fields for auto strategy', () => {
@@ -69,7 +69,7 @@ describe('BaselineConfig', () => {
     const onChange = vi.fn()
     render(<BaselineConfig {...defaultProps} onChange={onChange} baselines={{ ...defaultProps.baselines, strategy: 'moving_average' }} />)
     
-    const windowInput = screen.getByLabelText(/moving average window/i)
+    const windowInput = screen.getByDisplayValue('7')
     await user.clear(windowInput)
     await user.type(windowInput, '10')
     

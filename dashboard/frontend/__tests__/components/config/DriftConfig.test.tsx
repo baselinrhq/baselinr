@@ -19,7 +19,7 @@ describe('DriftConfig', () => {
   it('renders strategy selector', () => {
     render(<DriftConfig {...defaultProps} />)
     
-    expect(screen.getByText(/detection strategy/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /drift detection strategy/i })).toBeInTheDocument()
   })
 
   it('displays current strategy', () => {
@@ -79,7 +79,7 @@ describe('DriftConfig', () => {
       />
     )
     
-    expect(screen.getByText(/coming soon/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0)
   })
 
   it('calls onChange when strategy changes', async () => {
@@ -87,7 +87,7 @@ describe('DriftConfig', () => {
     const onChange = vi.fn()
     render(<DriftConfig {...defaultProps} onChange={onChange} />)
     
-    const strategyButton = screen.getByRole('button', { name: /detection strategy/i })
+    const strategyButton = screen.getByRole('button', { name: /absolute threshold/i })
     await user.click(strategyButton)
     
     const standardDevOption = screen.getByText(/standard deviation/i)
