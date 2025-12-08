@@ -63,7 +63,7 @@ describe('StatisticalStrategyConfig', () => {
     const onChange = vi.fn()
     render(<StatisticalStrategyConfig {...defaultProps} onChange={onChange} />)
     
-    const sensitivityButton = screen.getByRole('button', { name: /sensitivity/i })
+    const sensitivityButton = screen.getByRole('button', { name: /medium/i })
     await user.click(sensitivityButton)
     
     const highOption = screen.getByText(/high/i)
@@ -77,7 +77,7 @@ describe('StatisticalStrategyConfig', () => {
     const onChange = vi.fn()
     render(<StatisticalStrategyConfig {...defaultProps} onChange={onChange} />)
     
-    const alphaInput = screen.getByLabelText(/ks test - alpha/i)
+    const alphaInput = screen.getAllByDisplayValue('0.05')[0]
     await user.clear(alphaInput)
     await user.type(alphaInput, '0.01')
     

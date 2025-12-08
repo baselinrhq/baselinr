@@ -28,10 +28,10 @@ describe('TypeSpecificThresholds', () => {
   it('shows tabs for different data types when enabled', () => {
     render(<TypeSpecificThresholds {...defaultProps} />)
     
-    expect(screen.getByText(/numeric/i)).toBeInTheDocument()
-    expect(screen.getByText(/categorical/i)).toBeInTheDocument()
-    expect(screen.getByText(/timestamp/i)).toBeInTheDocument()
-    expect(screen.getByText(/boolean/i)).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /numeric/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /categorical/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /timestamp/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /boolean/i })).toBeInTheDocument()
   })
 
   it('shows threshold configs for numeric type', () => {
@@ -59,12 +59,10 @@ describe('TypeSpecificThresholds', () => {
     render(<TypeSpecificThresholds {...defaultProps} onChange={onChange} />)
     
     // Find and update a threshold input
-    const lowInput = screen.getByDisplayValue('10')
-    if (lowInput) {
-      await user.clear(lowInput)
-      await user.type(lowInput, '12')
-      expect(onChange).toHaveBeenCalled()
-    }
+    const lowInput = screen.getAllByRole('spinbutton')[0]
+    await user.clear(lowInput)
+    await user.type(lowInput, '12')
+    expect(onChange).toHaveBeenCalled()
   })
 
   it('shows message when disabled', () => {
