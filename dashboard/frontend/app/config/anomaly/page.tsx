@@ -1,0 +1,248 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { Save, Loader2, AlertCircle, CheckCircle, Activity } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { AnomalyConfig } from '@/components/config/AnomalyConfig'
+import { ExpectationLearning } from '@/components/config/ExpectationLearning'
+import { useConfig } from '@/hooks/useConfig'
+import { StorageConfig } from '@/types/config'
+
+/**
+ * Deep merge utility for merging config updates
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const output = { ...target }
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach((key) => {
+      if (isObject(source[key])) {
+        if (!(key in target)) {
+          Object.assign(output, { [key]: source[key] })
+        } else {
+          output[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>)
+        }
+      } else {
+        Object.assign(output, { [key]: source[key] })
+      }
+    })
+  }
+  return output
+}
+
+function isObject(item: unknown): boolean {
+  return item && typeof item === 'object' && !Array.isArray(item)
+}
+
+export default function AnomalyPage() {
+  const {
+    currentConfig,
+    modifiedConfig,
+    loadConfig,
+    updateConfigPath,
+    saveConfig,
+    isLoading: isConfigLoading,
+    error: configError,
+    canSave,
+  } = useConfig()
+
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [anomalyErrors, setAnomalyErrors] = useState<Record<string, string>>({})
+  const [hasTriedLoad, setHasTriedLoad] = useState(false)
+
+  // Load config on mount (only once)
+  useEffect(() => {
+    if (!currentConfig && !hasTriedLoad && !configError) {
+      setHasTriedLoad(true)
+      loadConfig().catch(() => {
+        // Error is handled by useConfig hook
+      })
+    }
+  }, [currentConfig, loadConfig, hasTriedLoad, configError])
+
+  // Get effective config (current + modifications) and extract storage
+  const effectiveConfig = currentConfig && modifiedConfig
+    ? deepMerge(currentConfig, modifiedConfig)
+    : currentConfig || {}
+  const storage: StorageConfig | undefined = effectiveConfig?.storage
+
+  // Save mutation
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      setSaveSuccess(false)
+      setAnomalyErrors({})
+      await saveConfig()
+    },
+    onSuccess: () => {
+      setSaveSuccess(true)
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000)
+    },
+    onError: (error) => {
+      // Handle validation errors
+      if (error instanceof Error && error.message.includes('validation')) {
+        setAnomalyErrors({
+          general: error.message,
+        })
+      } else {
+        setAnomalyErrors({
+          general: error instanceof Error ? error.message : 'Failed to save anomaly detection configuration',
+        })
+      }
+    },
+  })
+
+  // Handle storage config changes (for anomaly/expectation learning settings)
+  const handleStorageChange = (updatedStorage: StorageConfig) => {
+    // Update storage config via updateConfigPath
+    Object.keys(updatedStorage).forEach((key) => {
+      const value = updatedStorage[key as keyof StorageConfig]
+      updateConfigPath(['storage', key], value)
+    })
+  }
+
+  // Handle save
+  const handleSave = () => {
+    saveMutation.mutate()
+  }
+
+  // Initialize default storage if needed
+  useEffect(() => {
+    if (currentConfig && !storage) {
+      // Initialize with default storage config
+      updateConfigPath(['storage'], {
+        connection: {
+          type: 'postgres',
+          database: '',
+        },
+        results_table: 'baselinr_results',
+        runs_table: 'baselinr_runs',
+        create_tables: true,
+        enable_expectation_learning: false,
+        enable_anomaly_detection: false,
+      })
+    }
+  }, [currentConfig, storage, updateConfigPath])
+
+  // Show loading state
+  if (isConfigLoading && !currentConfig) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  // Show error state if config failed to load
+  if (configError && !currentConfig) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card>
+          <div className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Failed to Load Configuration
+            </h3>
+            <p className="text-sm text-gray-600 mb-6">
+              {configError instanceof Error
+                ? configError.message
+                : 'Backend API Not Available'}
+            </p>
+            <Button variant="outline" onClick={() => loadConfig()}>
+              Retry
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!storage) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
+          <p className="mt-4 text-sm text-gray-500">Initializing configuration...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-6 py-8 max-w-5xl">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Activity className="w-6 h-6" />
+            Anomaly Detection & Expectation Learning
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Configure automatic anomaly detection and expectation learning from historical data
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {saveSuccess && (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="w-4 h-4" />
+              <span>Saved successfully</span>
+            </div>
+          )}
+          {anomalyErrors.general && (
+            <div className="flex items-center gap-2 text-sm text-red-600">
+              <AlertCircle className="w-4 h-4" />
+              <span>{anomalyErrors.general}</span>
+            </div>
+          )}
+          <Button
+            onClick={handleSave}
+            disabled={!canSave || saveMutation.isPending}
+            loading={saveMutation.isPending}
+            icon={<Save className="w-4 h-4" />}
+          >
+            Save Configuration
+          </Button>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {saveSuccess && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <p className="text-sm font-medium text-green-800">
+            Configuration saved successfully
+          </p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {anomalyErrors.general && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600" />
+          <p className="text-sm font-medium text-red-800">{anomalyErrors.general}</p>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="space-y-6">
+        {/* Expectation Learning Configuration */}
+        <ExpectationLearning
+          storage={storage}
+          onChange={handleStorageChange}
+          errors={anomalyErrors}
+          isLoading={isConfigLoading || saveMutation.isPending}
+        />
+
+        {/* Anomaly Detection Configuration */}
+        <AnomalyConfig
+          storage={storage}
+          onChange={handleStorageChange}
+          errors={anomalyErrors}
+          isLoading={isConfigLoading || saveMutation.isPending}
+        />
+      </div>
+    </div>
+  )
+}
+
