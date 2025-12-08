@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS baselinr_saved_connections (
 
 CREATE INDEX IF NOT EXISTS idx_connections_name ON baselinr_saved_connections(name);
 
+

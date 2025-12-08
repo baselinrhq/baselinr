@@ -273,3 +273,4 @@ class ConfigService:
             logger.warning(f"Failed to get config version: {e}")
             return None
 
+

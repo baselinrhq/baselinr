@@ -35,3 +35,4 @@ class SaveConnectionResponse(BaseModel):
     id: str = Field(..., description="Connection identifier")
     connection: SavedConnection = Field(..., description="Saved connection details")
 
+

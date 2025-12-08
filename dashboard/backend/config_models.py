@@ -61,3 +61,4 @@ class ConfigVersionResponse(BaseModel):
     created_by: Optional[str] = Field(None, description="User who created this version")
     comment: Optional[str] = Field(None, description="Optional comment for this version")
 
+

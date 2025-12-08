@@ -11,3 +11,4 @@ CREATE TABLE IF NOT EXISTS baselinr_config_history (
 
 CREATE INDEX IF NOT EXISTS idx_config_history_created_at ON baselinr_config_history(created_at DESC);
 
+

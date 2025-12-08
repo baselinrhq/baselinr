@@ -257,8 +257,9 @@ describe('Connection Management Integration', () => {
     renderWithProviders(<ConnectionsPage />)
 
     await waitFor(() => {
-      // The error message was changed to "Backend API Not Available" for better UX
-      expect(screen.getByText(/Backend API Not Available/i)).toBeInTheDocument()
+      // Verify that the error is displayed gracefully
+      expect(screen.getByText(/Connection Error/i)).toBeInTheDocument()
+      expect(screen.getByText(/API Error/i)).toBeInTheDocument()
     })
   })
 })

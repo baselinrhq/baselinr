@@ -107,7 +107,7 @@ export async function saveConfig(config: BaselinrConfig): Promise<ConfigResponse
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(config),
+      body: JSON.stringify({ config }),
     })
 
     if (!response.ok) {
@@ -161,7 +161,7 @@ export async function validateConfig(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(config),
+      body: JSON.stringify({ config }),
     })
 
     if (!response.ok) {
