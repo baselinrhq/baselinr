@@ -11,9 +11,35 @@ import { useConfig } from '@/hooks/useConfig'
 import { ProfilingConfig as ProfilingConfigType, TablePattern } from '@/types/config'
 import { getTablePreview } from '@/lib/api/tables'
 
+/**
+ * Deep merge utility for merging config updates
+ */
+function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+  const output = { ...target }
+  if (isObject(target) && isObject(source)) {
+    Object.keys(source).forEach((key) => {
+      if (isObject(source[key])) {
+        if (!(key in target)) {
+          Object.assign(output, { [key]: source[key] })
+        } else {
+          output[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>)
+        }
+      } else {
+        Object.assign(output, { [key]: source[key] })
+      }
+    })
+  }
+  return output
+}
+
+function isObject(item: unknown): boolean {
+  return item && typeof item === 'object' && !Array.isArray(item)
+}
+
 export default function ProfilingPage() {
   const {
     currentConfig,
+    modifiedConfig,
     loadConfig,
     updateConfigPath,
     saveConfig,
@@ -36,8 +62,11 @@ export default function ProfilingPage() {
     }
   }, [currentConfig, loadConfig, hasTriedLoad, configError])
 
-  // Get current profiling config
-  const profiling: ProfilingConfigType | undefined = currentConfig?.profiling
+  // Get effective config (current + modifications) and extract profiling
+  const effectiveConfig = currentConfig && modifiedConfig
+    ? deepMerge(currentConfig, modifiedConfig)
+    : currentConfig || {}
+  const profiling: ProfilingConfigType | undefined = effectiveConfig?.profiling
 
   // Save mutation
   const saveMutation = useMutation({

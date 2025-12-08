@@ -33,6 +33,8 @@ from lineage_models import (
 from database import DatabaseClient
 import rca_routes
 import chat_routes
+import config_routes
+import connection_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -60,6 +62,10 @@ db_client = DatabaseClient()
 
 # Register RCA routes
 rca_routes.register_routes(app, db_client.engine)
+
+# Register config and connection routes
+app.include_router(config_routes.router)
+app.include_router(connection_routes.router)
 
 
 # Load config for chat (from environment or default)
