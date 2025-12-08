@@ -610,3 +610,75 @@ validation:
             table: customers
             column: customer_id
           severity: high
+
+# Dataset-level configuration overrides (NEW FEATURE)
+# Consolidates table-specific overrides for profiling, drift, validation, and anomaly detection
+# This reduces duplication compared to specifying overrides in each feature section
+datasets:
+  # Example 1: Complete dataset configuration for customers table
+  - database: baselinr  # Optional: can be omitted if same as source.database
+    schema: public
+    table: customers
+    profiling:
+      partition:
+        strategy: latest
+        key: created_at
+      sampling:
+        enabled: true
+        fraction: 0.1  # Sample 10% of rows
+      columns:
+        - name: email
+          metrics: [count, null_count, distinct_count]
+          drift:
+            enabled: true
+            thresholds:
+              low: 2.0
+              medium: 5.0
+              high: 10.0
+        - name: "*_id"
+          drift:
+            enabled: false  # Disable drift for all ID columns
+    drift:
+      strategy: statistical  # Override global drift strategy for this table
+    validation:
+      rules:
+        - type: format
+          column: email
+          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+          severity: high
+        - type: not_null
+          column: customer_id
+          severity: high
+    # Note: anomaly config would go here if needed
+    # anomaly:
+    #   columns:
+    #     - name: total_amount
+    #       enabled: true
+    #       methods: [control_limits, iqr]
+
+  # Example 2: Schema-level dataset config (applies to all tables in analytics schema)
+  - schema: analytics
+    profiling:
+      partition:
+        strategy: latest
+        key: date
+      sampling:
+        enabled: true
+        fraction: 0.05  # Sample 5% for all analytics tables
+    drift:
+      strategy: absolute_threshold
+      absolute_threshold:
+        low_threshold: 3.0
+        medium_threshold: 10.0
+        high_threshold: 25.0
+
+  # Example 3: Database-level dataset config (applies to all tables in warehouse database)
+  - database: warehouse
+    profiling:
+      columns:
+        - name: "*_metadata"
+          profiling:
+            enabled: false  # Skip metadata columns across entire database
+        - name: "*_id"
+          drift:
+            enabled: false  # Disable drift for all ID columns

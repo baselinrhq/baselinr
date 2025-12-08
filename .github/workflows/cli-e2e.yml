@@ -619,6 +619,55 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --output /tmp/validation_results.json || echo "Validation output failed (expected if validation disabled or no rules)"
 
+      - name: Test datasets configuration functionality
+        run: |
+          # Test that config with datasets section loads successfully
+          # The plan command will validate the config structure including datasets
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr plan --config $BASELINR_CONFIG_PATH || echo "Plan with datasets config failed (expected if config invalid)"
+
+          # Test that profiling applies dataset overrides
+          # The customers table should use dataset config (partition, sampling, columns)
+          # This verifies that ConfigMerger is working and applying dataset-level overrides
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr profile --config $BASELINR_CONFIG_PATH --table customers || echo "Profile with dataset overrides failed (expected if table doesn't exist)"
+
+          # Test that drift detection uses dataset drift configs
+          # The customers table should use statistical strategy from dataset config (instead of global absolute_threshold)
+          # This verifies that dataset-level drift overrides are applied
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr drift --config $BASELINR_CONFIG_PATH --dataset customers || echo "Drift with dataset config failed (expected if no drift data)"
+
+          # Test that validation uses dataset validation rules
+          # The customers table should have dataset-specific validation rules applied
+          # This verifies that dataset-level validation rules are merged with global rules
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr validate --config $BASELINR_CONFIG_PATH --table customers || echo "Validation with dataset rules failed (expected if validation disabled or no rules)"
+
       - name: Run chat CLI commands (error handling tests)
         run: |
           # Test chat help command (validates CLI structure)

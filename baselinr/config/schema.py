@@ -1341,6 +1341,123 @@ class ValidationConfig(BaseModel):
     )
 
 
+class DatasetProfilingConfig(BaseModel):
+    """Dataset-level profiling configuration overrides."""
+
+    partition: Optional[PartitionConfig] = Field(
+        None, description="Partition-aware profiling configuration"
+    )
+    sampling: Optional[SamplingConfig] = Field(
+        None, description="Sampling configuration for profiling"
+    )
+    columns: Optional[List[ColumnConfig]] = Field(
+        None,
+        description="Column-level configurations for profiling, drift, and anomaly detection",
+    )
+    metrics: Optional[List[str]] = Field(
+        None, description="List of metrics to compute (overrides table-level metrics)"
+    )
+
+
+class DatasetDriftConfig(BaseModel):
+    """Dataset-level drift detection configuration overrides."""
+
+    strategy: Optional[str] = Field(
+        None,
+        description="Override drift strategy (absolute_threshold, standard_deviation, statistical)",
+    )
+    absolute_threshold: Optional[Dict[str, float]] = Field(
+        None, description="Override absolute threshold parameters"
+    )
+    standard_deviation: Optional[Dict[str, float]] = Field(
+        None, description="Override standard deviation parameters"
+    )
+    statistical: Optional[Dict[str, Any]] = Field(
+        None, description="Override statistical test parameters"
+    )
+    baselines: Optional[Dict[str, Any]] = Field(
+        None, description="Override baseline selection strategy and windows"
+    )
+    columns: Optional[List[ColumnConfig]] = Field(
+        None, description="Column-level drift detection configurations"
+    )
+
+    @field_validator("strategy")
+    @classmethod
+    def validate_strategy(cls, v: Optional[str]) -> Optional[str]:
+        """Validate drift strategy."""
+        if v is not None:
+            valid_strategies = ["absolute_threshold", "standard_deviation", "statistical"]
+            if v not in valid_strategies:
+                raise ValueError(f"Strategy must be one of {valid_strategies}")
+        return v
+
+
+class DatasetValidationConfig(BaseModel):
+    """Dataset-level validation configuration overrides."""
+
+    rules: Optional[List[ValidationRuleConfig]] = Field(
+        None, description="Validation rules specific to this dataset"
+    )
+
+
+class DatasetAnomalyConfig(BaseModel):
+    """Dataset-level anomaly detection configuration overrides."""
+
+    columns: Optional[List[ColumnConfig]] = Field(
+        None, description="Column-level anomaly detection configurations"
+    )
+
+
+class DatasetConfig(BaseModel):
+    """Dataset-level configuration that consolidates overrides for all features.
+
+    This allows specifying table/schema/database-specific overrides for
+    profiling, drift detection, validation, and anomaly detection in one place,
+    reducing duplication compared to specifying overrides in each feature section.
+    """
+
+    database: Optional[str] = Field(
+        None, description="Database name (optional, at least one of database/schema/table required)"
+    )
+    schema_: Optional[str] = Field(None, alias="schema", description="Schema name")
+    table: Optional[str] = Field(None, description="Table name")
+
+    # Feature-specific overrides
+    profiling: Optional[DatasetProfilingConfig] = Field(
+        None, description="Profiling configuration overrides"
+    )
+    drift: Optional[DatasetDriftConfig] = Field(
+        None, description="Drift detection configuration overrides"
+    )
+    validation: Optional[DatasetValidationConfig] = Field(
+        None, description="Validation configuration overrides"
+    )
+    anomaly: Optional[DatasetAnomalyConfig] = Field(
+        None, description="Anomaly detection configuration overrides"
+    )
+
+    model_config = {"populate_by_name": True}
+
+    @model_validator(mode="after")
+    def validate_dataset_identifier(self):
+        """Ensure at least one of database, schema, or table is specified."""
+        if not (self.database or self.schema_ or self.table):
+            raise ValueError(
+                "DatasetConfig must specify at least one of: database, schema, or table"
+            )
+        return self
+
+
+class DatasetsConfig(BaseModel):
+    """Configuration for dataset-level overrides."""
+
+    datasets: List[DatasetConfig] = Field(
+        default_factory=list,
+        description="List of dataset-specific configuration overrides",
+    )
+
+
 class BaselinrConfig(BaseModel):
     """Main Baselinr configuration."""
 
@@ -1383,6 +1500,13 @@ class BaselinrConfig(BaseModel):
     )
     validation: Optional["ValidationConfig"] = Field(
         None, description="Data validation configuration"
+    )
+    datasets: Optional[DatasetsConfig] = Field(
+        None,
+        description=(
+            "Dataset-level configuration overrides. Consolidates table-specific "
+            "overrides for profiling, drift, validation, and anomaly detection in one place."
+        ),
     )
 
     @field_validator("environment")
