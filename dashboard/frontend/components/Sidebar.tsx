@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Activity, AlertTriangle, Database, BarChart3, MessageCircle, Settings, HardDrive, Table, Shield } from 'lucide-react'
+import { Home, Activity, AlertTriangle, Database, BarChart3, MessageCircle, Settings, HardDrive, Table, Shield, TrendingUp } from 'lucide-react'
 import clsx from 'clsx'
 
 const navigation = [
@@ -16,6 +16,7 @@ const navigation = [
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
   { name: 'Tables', href: '/config/tables', icon: Table },
   { name: 'Profiling', href: '/config/profiling', icon: BarChart3 },
+  { name: 'Anomaly Detection', href: '/config/anomaly', icon: TrendingUp },
   { name: 'Validation', href: '/config/validation', icon: Shield },
 ]
 
