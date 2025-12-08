@@ -48,12 +48,15 @@ export function Select({
   const listRef = useRef<HTMLUListElement>(null)
   const id = useRef(generateId('select')).current
 
+  // Ensure options is always an array
+  const safeOptions = options || []
+
   // Filter options based on search query
   const filteredOptions = searchable && searchQuery
-    ? options.filter(option =>
+    ? safeOptions.filter(option =>
         option.label.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : options
+    : safeOptions
 
   // Group options if they have group property
   const groupedOptions = filteredOptions.reduce<Record<string, SelectOption[]>>(
@@ -66,7 +69,7 @@ export function Select({
     {}
   )
 
-  const selectedOption = options.find(o => o.value === value)
+  const selectedOption = safeOptions.find(o => o.value === value)
 
   // Close dropdown on outside click
   useEffect(() => {
