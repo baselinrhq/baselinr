@@ -474,3 +474,4 @@ class TestConfigMerger:
         assert dataset.database is None
         assert dataset.schema_ is None
 
+

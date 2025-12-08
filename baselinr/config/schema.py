@@ -1505,9 +1505,43 @@ class BaselinrConfig(BaseModel):
         None,
         description=(
             "Dataset-level configuration overrides. Consolidates table-specific "
-            "overrides for profiling, drift, validation, and anomaly detection in one place."
+            "overrides for profiling, drift, validation, and anomaly detection in one place. "
+            "Can be specified as a list directly or as a DatasetsConfig object."
         ),
     )
+
+    @field_validator("datasets", mode="before")
+    @classmethod
+    def validate_datasets(cls, v: Any) -> Any:
+        """Normalize datasets field to accept either a list or DatasetsConfig."""
+        if v is None:
+            return None
+        # Helper to coerce any item into a DatasetConfig
+        def to_dataset_config(item: Any) -> DatasetConfig:
+            if isinstance(item, DatasetConfig):
+                return item
+            if isinstance(item, dict):
+                return DatasetConfig(**item)
+            return DatasetConfig(**dict(item))
+        # If it's already a DatasetsConfig instance, return as-is
+        if isinstance(v, DatasetsConfig):
+            return v
+        # If it's a list, wrap it in DatasetsConfig
+        if isinstance(v, list):
+            normalized = [to_dataset_config(item) for item in v]
+            return DatasetsConfig(datasets=normalized)
+        # If it's a dict with 'datasets' key, create DatasetsConfig
+        if isinstance(v, dict) and "datasets" in v:
+            datasets_value = v.get("datasets", [])
+            if isinstance(datasets_value, list):
+                normalized = [to_dataset_config(item) for item in datasets_value]
+                return DatasetsConfig(datasets=normalized)
+            return DatasetsConfig(**v)
+        # If it's a dict without 'datasets' key, assume it's a single dataset config
+        # This shouldn't happen but handle gracefully
+        if isinstance(v, dict):
+            return DatasetsConfig(datasets=[to_dataset_config(v)])
+        return v
 
     @field_validator("environment")
     @classmethod
