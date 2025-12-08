@@ -16,6 +16,7 @@ const navigation = [
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
   { name: 'Tables', href: '/config/tables', icon: Table },
   { name: 'Profiling', href: '/config/profiling', icon: BarChart3 },
+  { name: 'Anomaly Detection', href: '/config/anomaly', icon: TrendingUp },
   { name: 'Validation', href: '/config/validation', icon: Shield },
   { name: 'Drift Detection', href: '/config/drift', icon: TrendingUp },
   { name: 'Hooks', href: '/config/hooks', icon: Bell },
