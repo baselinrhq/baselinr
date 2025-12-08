@@ -1516,6 +1516,7 @@ class BaselinrConfig(BaseModel):
         """Normalize datasets field to accept either a list or DatasetsConfig."""
         if v is None:
             return None
+
         # Helper to coerce any item into a DatasetConfig
         def to_dataset_config(item: Any) -> DatasetConfig:
             if isinstance(item, DatasetConfig):
@@ -1523,6 +1524,7 @@ class BaselinrConfig(BaseModel):
             if isinstance(item, dict):
                 return DatasetConfig(**item)
             return DatasetConfig(**dict(item))
+
         # If it's already a DatasetsConfig instance, return as-is
         if isinstance(v, DatasetsConfig):
             return v
