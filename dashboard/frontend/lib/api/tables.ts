@@ -100,9 +100,16 @@ async function parseErrorResponse(response: Response): Promise<string> {
  * @returns List of discovered tables
  * @throws {TableError} If the request fails
  */
-export async function discoverTables(filters?: DiscoveryFilters): Promise<TableDiscoveryResponse> {
+export async function discoverTables(
+  filters?: DiscoveryFilters,
+  connectionId?: string
+): Promise<TableDiscoveryResponse> {
   try {
     const url = new URL(`${API_URL}/api/tables/discover`)
+    
+    if (connectionId) {
+      url.searchParams.append('connection_id', connectionId)
+    }
     
     if (filters) {
       if (filters.database) {
@@ -214,11 +221,15 @@ export async function previewTablePattern(pattern: TablePattern): Promise<TableP
  */
 export async function getTablePreview(
   schema: string,
-  table: string
+  table: string,
+  connectionId?: string
 ): Promise<TableMetadataResponse> {
   try {
-    const url = `${API_URL}/api/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/preview`
-    const response = await fetch(url)
+    const url = new URL(`${API_URL}/api/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/preview`)
+    if (connectionId) {
+      url.searchParams.append('connection_id', connectionId)
+    }
+    const response = await fetch(url.toString())
 
     if (!response.ok) {
       const errorMessage = await parseErrorResponse(response)
