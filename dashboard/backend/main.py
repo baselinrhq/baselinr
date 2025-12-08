@@ -35,6 +35,7 @@ import rca_routes
 import chat_routes
 import config_routes
 import connection_routes
+import discovery_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -66,6 +67,7 @@ rca_routes.register_routes(app, db_client.engine)
 # Register config and connection routes
 app.include_router(config_routes.router)
 app.include_router(connection_routes.router)
+app.include_router(discovery_routes.router)
 
 
 # Load config for chat (from environment or default)
