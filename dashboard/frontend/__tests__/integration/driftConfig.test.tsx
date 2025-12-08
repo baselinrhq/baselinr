@@ -19,6 +19,7 @@ describe('DriftConfig Integration', () => {
   const mockLoadConfig = vi.fn()
 
   beforeEach(() => {
+    mockLoadConfig.mockResolvedValue(undefined)
     mockUseConfig.mockReturnValue({
       currentConfig: {
         drift_detection: {
@@ -58,19 +59,19 @@ describe('DriftConfig Integration', () => {
   it('renders all configuration sections', () => {
     render(<DriftPage />)
     
-    expect(screen.getByText(/drift detection strategy/i)).toBeInTheDocument()
-    expect(screen.getByText(/baseline selection/i)).toBeInTheDocument()
-    expect(screen.getByText(/type-specific thresholds/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /drift detection strategy/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /baseline selection/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /type-specific thresholds/i })).toBeInTheDocument()
   })
 
   it('calls updateConfigPath when strategy changes', async () => {
     const user = userEvent.setup()
     render(<DriftPage />)
     
-    const strategyButton = screen.getByRole('button', { name: /detection strategy/i })
+    const strategyButton = screen.getByRole('button', { name: /absolute threshold/i })
     await user.click(strategyButton)
     
-    const standardDevOption = screen.getByText(/standard deviation/i)
+    const standardDevOption = screen.getAllByText(/standard deviation/i)[0]
     await user.click(standardDevOption)
     
     await waitFor(() => {
@@ -82,7 +83,7 @@ describe('DriftConfig Integration', () => {
     const user = userEvent.setup()
     render(<DriftPage />)
     
-    const baselineButton = screen.getByRole('button', { name: /baseline strategy/i })
+    const baselineButton = screen.getByRole('button', { name: /last run/i })
     await user.click(baselineButton)
     
     const autoOption = screen.getByText(/auto/i)
@@ -114,7 +115,7 @@ describe('DriftConfig Integration', () => {
     render(<DriftPage />)
     
     // Should show loading spinner (Loader2 component)
-    const loader = screen.getByRole('status', { hidden: true }) || document.querySelector('.animate-spin')
+    const loader = document.querySelector('.animate-spin')
     expect(loader).toBeTruthy()
   })
 
