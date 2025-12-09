@@ -213,3 +213,226 @@ export async function exportDrift(
   return response.blob();
 }
 
+// Table list interfaces and functions
+export interface TableListItem {
+  table_name: string;
+  schema_name?: string | null;
+  warehouse_type: string;
+  last_profiled?: string | null;
+  row_count?: number | null;
+  column_count?: number | null;
+  total_runs: number;
+  drift_count: number;
+  validation_pass_rate?: number | null;
+  has_recent_drift: boolean;
+  has_failed_validations: boolean;
+}
+
+export interface TableListResponse {
+  tables: TableListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TableListOptions {
+  warehouse?: string;
+  schema?: string;
+  search?: string;
+  has_drift?: boolean;
+  has_failed_validations?: boolean;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+}
+
+export async function fetchTables(options: TableListOptions = {}): Promise<TableListResponse> {
+  const params = new URLSearchParams();
+  if (options.warehouse) params.append('warehouse', options.warehouse);
+  if (options.schema) params.append('schema', options.schema);
+  if (options.search) params.append('search', options.search);
+  if (options.has_drift !== undefined) params.append('has_drift', options.has_drift.toString());
+  if (options.has_failed_validations !== undefined) params.append('has_failed_validations', options.has_failed_validations.toString());
+  if (options.sort_by) params.append('sort_by', options.sort_by);
+  if (options.sort_order) params.append('sort_order', options.sort_order);
+  if (options.page) params.append('page', options.page.toString());
+  if (options.page_size) params.append('page_size', options.page_size.toString());
+  
+  const url = `${API_URL}/api/tables${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// Table overview interfaces
+export interface TableOverview {
+  table_name: string;
+  schema_name?: string | null;
+  warehouse_type: string;
+  last_profiled: string;
+  row_count: number;
+  column_count: number;
+  total_runs: number;
+  drift_count: number;
+  validation_pass_rate?: number | null;
+  total_validation_rules: number;
+  failed_validation_rules: number;
+  row_count_trend: Array<{ timestamp: string; value: number }>;
+  null_percent_trend: Array<{ timestamp: string; value: number }>;
+  columns: Array<{
+    column_name: string;
+    column_type: string;
+    null_count?: number | null;
+    null_percent?: number | null;
+    distinct_count?: number | null;
+    distinct_percent?: number | null;
+    min_value?: string | number | null;
+    max_value?: string | number | null;
+    mean?: number | null;
+    stddev?: number | null;
+    histogram?: unknown;
+  }>;
+  recent_runs: Run[];
+}
+
+export async function fetchTableOverview(
+  tableName: string,
+  options: { schema?: string; warehouse?: string } = {}
+): Promise<TableOverview> {
+  const params = new URLSearchParams();
+  if (options.schema) params.append('schema', options.schema);
+  if (options.warehouse) params.append('warehouse', options.warehouse);
+  
+  const url = `${API_URL}/api/tables/${tableName}/overview${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// Table drift history interfaces
+export interface TableDriftHistory {
+  table_name: string;
+  schema_name?: string | null;
+  drift_events: Array<{
+    event_id?: string;
+    alert_id?: string;
+    run_id: string;
+    table_name: string;
+    column_name?: string | null;
+    metric_name: string;
+    baseline_value?: number | null;
+    current_value?: number | null;
+    change_percent?: number | null;
+    change_percentage?: number | null;
+    severity: string;
+    timestamp?: string;
+    detected_at?: string;
+    warehouse_type: string;
+  }>;
+  summary: {
+    total_events?: number;
+    by_severity?: Record<string, number>;
+    by_column?: Record<string, number>;
+    recent_count?: number;
+  };
+}
+
+export async function fetchTableDriftHistory(
+  tableName: string,
+  options: { schema?: string; warehouse?: string; limit?: number } = {}
+): Promise<TableDriftHistory> {
+  const params = new URLSearchParams();
+  if (options.schema) params.append('schema', options.schema);
+  if (options.warehouse) params.append('warehouse', options.warehouse);
+  if (options.limit) params.append('limit', options.limit.toString());
+  
+  const url = `${API_URL}/api/tables/${tableName}/drift-history${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// Table validation results interfaces
+export interface ValidationResult {
+  id: number;
+  run_id: string;
+  column_name?: string | null;
+  rule_type: string;
+  passed: boolean;
+  failure_reason?: string | null;
+  total_rows?: number | null;
+  failed_rows?: number | null;
+  failure_rate?: number | null;
+  severity?: string | null;
+  validated_at: string;
+}
+
+export interface TableValidationResults {
+  table_name: string;
+  schema_name?: string | null;
+  validation_results: ValidationResult[];
+  summary: {
+    total?: number;
+    passed?: number;
+    failed?: number;
+    pass_rate?: number;
+    by_rule_type?: Record<string, number>;
+    by_severity?: Record<string, number>;
+  };
+}
+
+export async function fetchTableValidationResults(
+  tableName: string,
+  options: { schema?: string; limit?: number } = {}
+): Promise<TableValidationResults> {
+  const params = new URLSearchParams();
+  if (options.schema) params.append('schema', options.schema);
+  if (options.limit) params.append('limit', options.limit.toString());
+  
+  const url = `${API_URL}/api/tables/${tableName}/validation-results${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// Table config interfaces
+export interface TableConfig {
+  table_name: string;
+  schema_name?: string | null;
+  config: Record<string, unknown>;
+}
+
+export async function fetchTableConfig(
+  tableName: string,
+  options: { schema?: string } = {}
+): Promise<TableConfig> {
+  const params = new URLSearchParams();
+  if (options.schema) params.append('schema', options.schema);
+  
+  const url = `${API_URL}/api/tables/${tableName}/config${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
