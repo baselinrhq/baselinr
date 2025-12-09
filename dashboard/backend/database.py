@@ -20,7 +20,13 @@ from models import (
     MetricsDashboardResponse,
     ColumnMetrics,
     KPI,
-    TableMetricsTrend
+    TableMetricsTrend,
+    TableListItem,
+    TableListResponse,
+    TableOverviewResponse,
+    TableDriftHistoryResponse,
+    TableValidationResultsResponse,
+    ValidationResultResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -796,4 +802,384 @@ class DatabaseClient:
         elif format == "csv":
             # TODO: Implement CSV export
             return {"error": "CSV export not yet implemented"}
+    
+    async def get_tables(
+        self,
+        warehouse: Optional[str] = None,
+        schema: Optional[str] = None,
+        search: Optional[str] = None,
+        has_drift: Optional[bool] = None,
+        has_failed_validations: Optional[bool] = None,
+        sort_by: str = "table_name",
+        sort_order: str = "asc",
+        page: int = 1,
+        page_size: int = 50
+    ) -> TableListResponse:
+        """Get list of tables with filters, sorting, and pagination."""
+        
+        offset = (page - 1) * page_size
+        
+        # Build base query to get distinct tables with latest run info
+        base_query = """
+            SELECT DISTINCT
+                r.dataset_name as table_name,
+                r.schema_name,
+                'postgres' as warehouse_type,
+                MAX(r.profiled_at) as last_profiled,
+                (SELECT row_count FROM baselinr_runs 
+                 WHERE dataset_name = r.dataset_name 
+                 AND (r.schema_name IS NULL OR schema_name = r.schema_name)
+                 ORDER BY profiled_at DESC LIMIT 1) as row_count,
+                (SELECT column_count FROM baselinr_runs 
+                 WHERE dataset_name = r.dataset_name 
+                 AND (r.schema_name IS NULL OR schema_name = r.schema_name)
+                 ORDER BY profiled_at DESC LIMIT 1) as column_count,
+                COUNT(DISTINCT r.run_id) as total_runs
+            FROM baselinr_runs r
+            WHERE 1=1
+        """
+        
+        params: Dict[str, Any] = {}
+        
+        # Apply filters
+        if warehouse:
+            base_query += " AND r.warehouse_type = :warehouse"
+            params["warehouse"] = warehouse
+        
+        if schema:
+            base_query += " AND r.schema_name = :schema"
+            params["schema"] = schema
+        
+        if search:
+            base_query += " AND (r.dataset_name ILIKE :search OR r.schema_name ILIKE :search)"
+            params["search"] = f"%{search}%"
+        
+        # Group by for aggregation
+        base_query += " GROUP BY r.dataset_name, r.schema_name"
+        
+        # Get total count
+        count_query = f"SELECT COUNT(*) FROM ({base_query}) as subquery"
+        
+        # Note: drift_count and validation stats are calculated separately, so we'll sort in Python
+        # For now, sort by available columns in SQL, then apply Python sorting if needed
+        valid_sort_columns = {
+            "table_name": "table_name",
+            "last_profiled": "last_profiled",
+            "row_count": "row_count"
+        }
+        sort_column = valid_sort_columns.get(sort_by, "table_name")
+        sort_dir = "DESC" if sort_order.lower() == "desc" else "ASC"
+        
+        # Final query with sorting and pagination (without drift_count for now)
+        final_query = f"""
+            SELECT * FROM ({base_query}) as t
+            ORDER BY {sort_column} {sort_dir}
+        """
+        # Don't apply limit/offset yet - we need to filter first
+        
+        with self.engine.connect() as conn:
+            # Get all matching tables first (we'll filter and paginate in Python)
+            table_rows = conn.execute(text(final_query), params).fetchall()
+            
+            tables = []
+            for row in table_rows:
+                table_name = row[0]
+                schema_name = row[1]
+                warehouse_type = row[2] or "postgres"
+                last_profiled = row[3]
+                row_count = row[4]
+                column_count = row[5]
+                total_runs = row[6] or 0
+                
+                # Get drift count
+                drift_count = 0
+                has_recent_drift = False
+                try:
+                    with self.engine.connect() as drift_conn:
+                        drift_query = """
+                            SELECT COUNT(*), MAX(timestamp)
+                            FROM baselinr_events e
+                            JOIN baselinr_runs r ON e.run_id = r.run_id
+                            WHERE r.dataset_name = :table_name
+                            AND e.event_type IN ('DataDriftDetected', 'drift_detected')
+                        """
+                        drift_params = {"table_name": table_name}
+                        if schema_name:
+                            drift_query += " AND r.schema_name = :schema_name"
+                            drift_params["schema_name"] = schema_name
+                        
+                        drift_result = drift_conn.execute(text(drift_query), drift_params).fetchone()
+                        if drift_result:
+                            drift_count = drift_result[0] or 0
+                            # Check if there's drift in last 7 days
+                            if drift_result[1]:
+                                from datetime import timedelta
+                                recent_threshold = datetime.now() - timedelta(days=7)
+                                if isinstance(drift_result[1], datetime):
+                                    has_recent_drift = drift_result[1] >= recent_threshold
+                                elif isinstance(drift_result[1], str):
+                                    drift_date = datetime.fromisoformat(drift_result[1].replace('Z', '+00:00'))
+                                    has_recent_drift = drift_date >= recent_threshold
+                except Exception as e:
+                    logger.warning(f"Could not get drift count for {table_name}: {e}")
+                
+                # Get validation stats
+                validation_pass_rate = None
+                table_has_failed_validations = False
+                try:
+                    with self.engine.connect() as validation_conn:
+                        validation_query = """
+                            SELECT 
+                                COUNT(*) as total,
+                                SUM(CASE WHEN passed = true THEN 1 ELSE 0 END) as passed
+                            FROM baselinr_validation_results
+                            WHERE table_name = :table_name
+                        """
+                        validation_params = {"table_name": table_name}
+                        if schema_name:
+                            validation_query += " AND schema_name = :schema_name"
+                            validation_params["schema_name"] = schema_name
+                        
+                        validation_result = validation_conn.execute(text(validation_query), validation_params).fetchone()
+                        if validation_result and validation_result[0] and validation_result[0] > 0:
+                            total_validations = validation_result[0]
+                            passed = validation_result[1] or 0
+                            if total_validations > 0:
+                                validation_pass_rate = (passed / total_validations) * 100.0
+                                table_has_failed_validations = passed < total_validations
+                except Exception as e:
+                    logger.warning(f"Could not get validation stats for {table_name}: {e}")
+                
+                # Apply additional filters
+                if has_drift is not None and has_drift != (drift_count > 0):
+                    continue
+                if has_failed_validations is not None and has_failed_validations != table_has_failed_validations:
+                    continue
+                
+                tables.append(TableListItem(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    warehouse_type=warehouse_type,
+                    last_profiled=last_profiled,
+                    row_count=row_count,
+                    column_count=column_count,
+                    total_runs=total_runs,
+                    drift_count=drift_count,
+                    validation_pass_rate=validation_pass_rate,
+                    has_recent_drift=has_recent_drift,
+                    has_failed_validations=table_has_failed_validations
+                ))
+            
+            # Apply Python-based sorting for drift_count if needed
+            if sort_by == "drift_count":
+                tables.sort(key=lambda t: t.drift_count, reverse=(sort_order.lower() == "desc"))
+            
+            # Get total count after filtering
+            total = len(tables)
+            
+            # Apply pagination
+            start_idx = (page - 1) * page_size
+            end_idx = start_idx + page_size
+            paginated_tables = tables[start_idx:end_idx]
+            
+            return TableListResponse(
+                tables=paginated_tables,
+                total=total,
+                page=page,
+                page_size=page_size
+            )
+    
+    async def get_table_overview(
+        self,
+        table_name: str,
+        schema: Optional[str] = None,
+        warehouse: Optional[str] = None
+    ) -> Optional[TableOverviewResponse]:
+        """Get enhanced table overview."""
+        # Get base metrics
+        base_metrics = await self.get_table_metrics(table_name, schema, warehouse)
+        if not base_metrics:
+            return None
+        
+        # Get recent runs
+        recent_runs = await self.get_runs(
+            table=table_name,
+            schema=schema,
+            warehouse=warehouse,
+            limit=10
+        )
+        
+        # Get validation stats
+        validation_pass_rate = None
+        total_validation_rules = 0
+        failed_validation_rules = 0
+        try:
+            with self.engine.connect() as conn:
+                validation_query = """
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN passed = true THEN 1 ELSE 0 END) as passed,
+                        SUM(CASE WHEN passed = false THEN 1 ELSE 0 END) as failed
+                    FROM baselinr_validation_results
+                    WHERE table_name = :table_name
+                """
+                validation_params = {"table_name": table_name}
+                if schema:
+                    validation_query += " AND schema_name = :schema_name"
+                    validation_params["schema_name"] = schema
+                
+                validation_result = conn.execute(text(validation_query), validation_params).fetchone()
+                if validation_result and validation_result[0] and validation_result[0] > 0:
+                    total_validation_rules = validation_result[0] or 0
+                    passed_count = validation_result[1] or 0
+                    failed_validation_rules = validation_result[2] or 0
+                    if total_validation_rules > 0:
+                        validation_pass_rate = (passed_count / total_validation_rules) * 100.0
+        except Exception as e:
+            logger.warning(f"Could not get validation stats: {e}")
+        
+        return TableOverviewResponse(
+            table_name=base_metrics.table_name,
+            schema_name=base_metrics.schema_name,
+            warehouse_type=base_metrics.warehouse_type,
+            last_profiled=base_metrics.last_profiled,
+            row_count=base_metrics.row_count,
+            column_count=base_metrics.column_count,
+            total_runs=base_metrics.total_runs,
+            drift_count=base_metrics.drift_count,
+            validation_pass_rate=validation_pass_rate,
+            total_validation_rules=total_validation_rules,
+            failed_validation_rules=failed_validation_rules,
+            row_count_trend=base_metrics.row_count_trend,
+            null_percent_trend=base_metrics.null_percent_trend,
+            columns=base_metrics.columns,
+            recent_runs=recent_runs
+        )
+    
+    async def get_table_drift_history(
+        self,
+        table_name: str,
+        schema: Optional[str] = None,
+        warehouse: Optional[str] = None,
+        limit: int = 100
+    ) -> TableDriftHistoryResponse:
+        """Get drift history for a specific table."""
+        # Get drift alerts for this table
+        drift_alerts = await self.get_drift_alerts(
+            table=table_name,
+            warehouse=warehouse,
+            limit=limit
+        )
+        
+        # Calculate summary
+        summary: Dict[str, Any] = {
+            "total_events": len(drift_alerts),
+            "by_severity": {},
+            "by_column": {},
+            "recent_count": 0
+        }
+        
+        from datetime import timedelta
+        recent_threshold = datetime.now() - timedelta(days=7)
+        
+        for alert in drift_alerts:
+            # Count by severity
+            severity = alert.severity if alert.severity else 'unknown'
+            summary["by_severity"][severity] = summary["by_severity"].get(severity, 0) + 1
+            
+            # Count by column
+            if alert.column_name:
+                summary["by_column"][alert.column_name] = summary["by_column"].get(alert.column_name, 0) + 1
+            
+            # Count recent
+            if alert.timestamp >= recent_threshold:
+                summary["recent_count"] += 1
+        
+        return TableDriftHistoryResponse(
+            table_name=table_name,
+            schema_name=schema,
+            drift_events=drift_alerts,
+            summary=summary
+        )
+    
+    async def get_table_validation_results(
+        self,
+        table_name: str,
+        schema: Optional[str] = None,
+        limit: int = 100
+    ) -> TableValidationResultsResponse:
+        """Get validation results for a specific table."""
+        validation_results = []
+        summary: Dict[str, Any] = {
+            "total": 0,
+            "passed": 0,
+            "failed": 0,
+            "pass_rate": 0.0,
+            "by_rule_type": {},
+            "by_severity": {}
+        }
+        
+        try:
+            with self.engine.connect() as conn:
+                query = """
+                    SELECT 
+                        id, run_id, column_name, rule_type, passed,
+                        failure_reason, total_rows, failed_rows, failure_rate,
+                        severity, validated_at
+                    FROM baselinr_validation_results
+                    WHERE table_name = :table_name
+                """
+                params = {"table_name": table_name}
+                if schema:
+                    query += " AND schema_name = :schema_name"
+                    params["schema_name"] = schema
+                
+                query += " ORDER BY validated_at DESC LIMIT :limit"
+                params["limit"] = limit
+                
+                results = conn.execute(text(query), params).fetchall()
+                
+                for row in results:
+                    validation_results.append(ValidationResultResponse(
+                        id=row[0],
+                        run_id=row[1],
+                        column_name=row[2],
+                        rule_type=row[3],
+                        passed=row[4],
+                        failure_reason=row[5],
+                        total_rows=row[6],
+                        failed_rows=row[7],
+                        failure_rate=float(row[8]) if row[8] else None,
+                        severity=row[9],
+                        validated_at=row[10]
+                    ))
+                    
+                    # Update summary
+                    summary["total"] += 1
+                    if row[4]:  # passed
+                        summary["passed"] += 1
+                    else:
+                        summary["failed"] += 1
+                    
+                    # Count by rule type
+                    rule_type = row[3] or "unknown"
+                    summary["by_rule_type"][rule_type] = summary["by_rule_type"].get(rule_type, 0) + 1
+                    
+                    # Count by severity
+                    if row[9]:
+                        severity = row[9]
+                        summary["by_severity"][severity] = summary["by_severity"].get(severity, 0) + 1
+                
+                # Calculate pass rate
+                if summary["total"] > 0:
+                    summary["pass_rate"] = (summary["passed"] / summary["total"]) * 100.0
+        except Exception as e:
+            logger.warning(f"Could not get validation results: {e}")
+        
+        return TableValidationResultsResponse(
+            table_name=table_name,
+            schema_name=schema,
+            validation_results=validation_results,
+            summary=summary
+        )
 

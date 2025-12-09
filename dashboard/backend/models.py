@@ -115,3 +115,83 @@ class MetricsDashboardResponse(BaseModel):
     stale_tables_count: int = 0
     validation_trend: List[TableMetricsTrend] = Field(default_factory=list)
 
+
+class TableListItem(BaseModel):
+    """Table list item for tables explorer."""
+    table_name: str
+    schema_name: Optional[str]
+    warehouse_type: str
+    last_profiled: Optional[datetime]
+    row_count: Optional[int]
+    column_count: Optional[int]
+    total_runs: int
+    drift_count: int
+    validation_pass_rate: Optional[float] = None
+    has_recent_drift: bool = False
+    has_failed_validations: bool = False
+
+
+class TableListResponse(BaseModel):
+    """Response model for table list with pagination."""
+    tables: List[TableListItem]
+    total: int
+    page: int
+    page_size: int
+
+
+class TableOverviewResponse(BaseModel):
+    """Enhanced table overview response."""
+    table_name: str
+    schema_name: Optional[str]
+    warehouse_type: str
+    last_profiled: datetime
+    row_count: int
+    column_count: int
+    total_runs: int
+    drift_count: int
+    validation_pass_rate: Optional[float] = None
+    total_validation_rules: int = 0
+    failed_validation_rules: int = 0
+    row_count_trend: List[TableMetricsTrend]
+    null_percent_trend: List[TableMetricsTrend]
+    columns: List[ColumnMetrics]
+    recent_runs: List[RunHistoryResponse] = Field(default_factory=list)
+
+
+class ValidationResultResponse(BaseModel):
+    """Validation result response."""
+    id: int
+    run_id: str
+    column_name: Optional[str]
+    rule_type: str
+    passed: bool
+    failure_reason: Optional[str] = None
+    total_rows: Optional[int] = None
+    failed_rows: Optional[int] = None
+    failure_rate: Optional[float] = None
+    severity: Optional[str] = None
+    validated_at: datetime
+
+
+class TableDriftHistoryResponse(BaseModel):
+    """Drift history for a specific table."""
+    table_name: str
+    schema_name: Optional[str]
+    drift_events: List[DriftAlertResponse]
+    summary: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TableValidationResultsResponse(BaseModel):
+    """Validation results for a specific table."""
+    table_name: str
+    schema_name: Optional[str]
+    validation_results: List[ValidationResultResponse]
+    summary: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TableConfigResponse(BaseModel):
+    """Table configuration response."""
+    table_name: str
+    schema_name: Optional[str]
+    config: Dict[str, Any] = Field(default_factory=dict)
+

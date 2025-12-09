@@ -20,7 +20,12 @@ from models import (
     ProfilingResultResponse,
     DriftAlertResponse,
     MetricsDashboardResponse,
-    TableMetricsResponse
+    TableMetricsResponse,
+    TableListResponse,
+    TableOverviewResponse,
+    TableDriftHistoryResponse,
+    TableValidationResultsResponse,
+    TableConfigResponse
 )
 from lineage_models import (
     LineageGraphResponse,
@@ -276,6 +281,36 @@ async def get_drift_alerts(
     return alerts
 
 
+@app.get("/api/tables", response_model=TableListResponse)
+async def get_tables(
+    warehouse: Optional[str] = Query(None),
+    schema: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    has_drift: Optional[bool] = Query(None),
+    has_failed_validations: Optional[bool] = Query(None),
+    sort_by: str = Query("table_name"),
+    sort_order: str = Query("asc"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100)
+):
+    """
+    Get list of profiled tables with filters, sorting, and pagination.
+    """
+    result = await db_client.get_tables(
+        warehouse=warehouse,
+        schema=schema,
+        search=search,
+        has_drift=has_drift,
+        has_failed_validations=has_failed_validations,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size
+    )
+    
+    return result
+
+
 @app.get("/api/tables/{table_name}/metrics", response_model=TableMetricsResponse)
 async def get_table_metrics(
     table_name: str,
@@ -297,6 +332,81 @@ async def get_table_metrics(
         raise HTTPException(status_code=404, detail=f"Table {table_name} not found")
     
     return metrics
+
+
+@app.get("/api/tables/{table}/overview", response_model=TableOverviewResponse)
+async def get_table_overview(
+    table: str,
+    schema: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None)
+):
+    """
+    Get enhanced table overview with additional stats and recent runs.
+    """
+    overview = await db_client.get_table_overview(
+        table_name=table,
+        schema=schema,
+        warehouse=warehouse
+    )
+    
+    if not overview:
+        raise HTTPException(status_code=404, detail=f"Table {table} not found")
+    
+    return overview
+
+
+@app.get("/api/tables/{table}/drift-history", response_model=TableDriftHistoryResponse)
+async def get_table_drift_history(
+    table: str,
+    schema: Optional[str] = Query(None),
+    warehouse: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """
+    Get drift history for a specific table.
+    """
+    history = await db_client.get_table_drift_history(
+        table_name=table,
+        schema=schema,
+        warehouse=warehouse,
+        limit=limit
+    )
+    
+    return history
+
+
+@app.get("/api/tables/{table}/validation-results", response_model=TableValidationResultsResponse)
+async def get_table_validation_results(
+    table: str,
+    schema: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000)
+):
+    """
+    Get validation results for a specific table.
+    """
+    results = await db_client.get_table_validation_results(
+        table_name=table,
+        schema=schema,
+        limit=limit
+    )
+    
+    return results
+
+
+@app.get("/api/tables/{table}/config", response_model=TableConfigResponse)
+async def get_table_config(
+    table: str,
+    schema: Optional[str] = Query(None)
+):
+    """
+    Get table configuration (placeholder for now).
+    """
+    # TODO: Implement actual config retrieval
+    return TableConfigResponse(
+        table_name=table,
+        schema_name=schema,
+        config={}
+    )
 
 
 @app.get("/api/dashboard/metrics", response_model=MetricsDashboardResponse)
