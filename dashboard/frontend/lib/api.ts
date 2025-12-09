@@ -40,21 +40,36 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
 
 export interface DashboardMetrics {
   total_runs: number;
-  successful_runs: number;
-  failed_runs: number;
   total_tables: number;
-  total_drift_alerts: number;
-  high_severity_alerts: number;
-  trends: Array<{
-    date: string;
-    runs: number;
-    alerts: number;
+  total_drift_events: number;
+  avg_row_count: number;
+  kpis: Array<{
+    name: string;
+    value: string | number;
+    change_percent?: number | null;
+    trend: string;
   }>;
-  warehouse_summary: Array<{
-    warehouse: string;
-    runs: number;
-    tables: number;
-    alerts: number;
+  run_trend: Array<{
+    timestamp: string;
+    value: number;
+  }>;
+  drift_trend: Array<{
+    timestamp: string;
+    value: number;
+  }>;
+  warehouse_breakdown: Record<string, number>;
+  recent_runs: Run[];
+  recent_drift: DriftAlert[];
+  // Enhanced metrics
+  validation_pass_rate?: number | null;
+  total_validation_rules: number;
+  failed_validation_rules: number;
+  active_alerts: number;
+  data_freshness_hours?: number | null;
+  stale_tables_count: number;
+  validation_trend: Array<{
+    timestamp: string;
+    value: number;
   }>;
 }
 
