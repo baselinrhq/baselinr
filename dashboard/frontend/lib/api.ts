@@ -11,6 +11,12 @@ interface FetchOptions {
   status?: string;
   severity?: string;
   days?: number;
+  start_date?: string;
+  end_date?: string;
+  min_duration?: number;
+  max_duration?: number;
+  sort_by?: string;
+  sort_order?: string;
   limit?: number;
   offset?: number;
 }
@@ -24,6 +30,12 @@ async function fetchAPI<T>(endpoint: string, options: FetchOptions = {}): Promis
   if (options.status) params.append('status', options.status);
   if (options.severity) params.append('severity', options.severity);
   if (options.days) params.append('days', options.days.toString());
+  if (options.start_date) params.append('start_date', options.start_date);
+  if (options.end_date) params.append('end_date', options.end_date);
+  if (options.min_duration !== undefined) params.append('min_duration', options.min_duration.toString());
+  if (options.max_duration !== undefined) params.append('max_duration', options.max_duration.toString());
+  if (options.sort_by) params.append('sort_by', options.sort_by);
+  if (options.sort_order) params.append('sort_order', options.sort_order);
   if (options.limit) params.append('limit', options.limit.toString());
   if (options.offset) params.append('offset', options.offset.toString());
 
@@ -81,41 +93,108 @@ export async function fetchDashboardMetrics(
 
 export interface Run {
   run_id: string;
-  warehouse: string;
-  schema: string;
-  table: string;
+  dataset_name: string;
+  schema_name?: string;
+  warehouse_type: string;
+  profiled_at: string;
   status: string;
-  started_at: string;
-  completed_at?: string;
+  row_count?: number;
+  column_count?: number;
   duration_seconds?: number;
-  rows_profiled?: number;
-  metrics_count?: number;
+  has_drift: boolean;
 }
 
 export async function fetchRuns(options: FetchOptions = {}): Promise<Run[]> {
   return fetchAPI<Run[]>('/api/runs', options);
 }
 
+export interface ColumnMetric {
+  column_name: string;
+  column_type?: string;
+  null_count?: number;
+  null_percent?: number;
+  distinct_count?: number;
+  distinct_percent?: number;
+  min_value?: number | string;
+  max_value?: number | string;
+  mean?: number;
+  stddev?: number;
+  histogram?: unknown;
+}
+
 export interface RunDetails {
   run_id: string;
-  warehouse: string;
-  schema: string;
-  table: string;
-  status: string;
-  started_at: string;
-  completed_at?: string;
-  duration_seconds?: number;
-  rows_profiled?: number;
-  metrics: Array<{
-    column: string;
-    metric_name: string;
-    metric_value: number | string;
-    data_type?: string;
-  }>;
+  dataset_name: string;
+  schema_name?: string;
+  warehouse_type: string;
+  profiled_at: string;
+  environment: string;
+  row_count: number;
+  column_count: number;
+  columns: ColumnMetric[];
+  metadata?: Record<string, unknown>;
+  // Legacy fields for backward compatibility
+  error_message?: string;
+  error_logs?: string[];
 }
 
 export async function fetchRunDetails(runId: string): Promise<RunDetails> {
   return fetchAPI<RunDetails>(`/api/runs/${runId}`);
+}
+
+export interface RunComparison {
+  runs: Run[];
+  comparison: {
+    row_count_diff: number;
+    column_count_diff: number;
+    common_columns: string[];
+    unique_columns: Record<string, string[]>;
+    metric_differences: Array<{
+      column: string;
+      metric: string;
+      run_id: string;
+      baseline_value: number | string;
+      current_value: number | string;
+      change_percent: number;
+    }>;
+  };
+}
+
+export async function fetchRunComparison(runIds: string[]): Promise<RunComparison> {
+  const params = new URLSearchParams();
+  params.append('run_ids', runIds.join(','));
+  const url = `${API_URL}/api/runs/compare?${params.toString()}`;
+  
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export interface RetryRunResponse {
+  status: string;
+  message: string;
+  run_id: string;
+}
+
+export async function retryRun(runId: string): Promise<RetryRunResponse> {
+  const url = `${API_URL}/api/runs/${runId}/retry`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
 }
 
 export interface DriftAlert {

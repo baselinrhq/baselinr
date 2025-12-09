@@ -21,6 +21,12 @@ class RunHistoryResponse(BaseModel):
     has_drift: bool = False
 
 
+class RunComparisonResponse(BaseModel):
+    """Response model for run comparison."""
+    runs: List[RunHistoryResponse]
+    comparison: Dict[str, Any] = Field(default_factory=dict)  # Metrics differences, common columns, etc.
+
+
 class ColumnMetrics(BaseModel):
     """Column-level metrics."""
     column_name: str
