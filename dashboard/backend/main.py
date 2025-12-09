@@ -18,6 +18,7 @@ import sys
 from models import (
     RunHistoryResponse,
     ProfilingResultResponse,
+    RunComparisonResponse,
     DriftAlertResponse,
     MetricsDashboardResponse,
     TableMetricsResponse,
@@ -213,8 +214,14 @@ async def get_runs(
     warehouse: Optional[str] = Query(None, description="Filter by warehouse type"),
     schema: Optional[str] = Query(None, description="Filter by schema"),
     table: Optional[str] = Query(None, description="Filter by table name"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    days: int = Query(30, description="Number of days to look back"),
+    status: Optional[str] = Query(None, description="Filter by status (comma-separated for multiple)"),
+    days: Optional[int] = Query(None, description="Number of days to look back (deprecated, use start_date)"),
+    start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
+    min_duration: Optional[float] = Query(None, description="Minimum duration in seconds"),
+    max_duration: Optional[float] = Query(None, description="Maximum duration in seconds"),
+    sort_by: str = Query("profiled_at", description="Sort by column (profiled_at, row_count, column_count, status)"),
+    sort_order: str = Query("desc", description="Sort order (asc, desc)"),
     limit: int = Query(100, description="Maximum number of results"),
     offset: int = Query(0, description="Offset for pagination")
 ):
@@ -223,19 +230,78 @@ async def get_runs(
     
     Returns a list of profiling runs with metadata.
     """
-    start_date = datetime.utcnow() - timedelta(days=days)
+    # Parse dates if provided
+    start_date_obj = None
+    end_date_obj = None
+    
+    if start_date:
+        try:
+            start_date_obj = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+        except ValueError:
+            try:
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use ISO format.")
+    elif days:
+        # Backward compatibility: use days if start_date not provided
+        start_date_obj = datetime.utcnow() - timedelta(days=days)
+    
+    if end_date:
+        try:
+            end_date_obj = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except ValueError:
+            try:
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
+                # Set to end of day
+                end_date_obj = end_date_obj.replace(hour=23, minute=59, second=59)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use ISO format.")
     
     runs = await db_client.get_runs(
         warehouse=warehouse,
         schema=schema,
         table=table,
         status=status,
-        start_date=start_date,
+        start_date=start_date_obj,
+        end_date=end_date_obj,
+        min_duration=min_duration,
+        max_duration=max_duration,
+        sort_by=sort_by,
+        sort_order=sort_order,
         limit=limit,
         offset=offset
     )
     
     return runs
+
+
+@app.get("/api/runs/compare", response_model=RunComparisonResponse)
+async def compare_runs(
+    run_ids: str = Query(..., description="Comma-separated list of run IDs to compare (2-5 runs)")
+):
+    """
+    Compare multiple runs side-by-side.
+    
+    Returns comparison data including:
+    - Row and column count differences
+    - Common columns across runs
+    - Unique columns per run
+    - Metric differences for common columns
+    """
+    run_id_list = [rid.strip() for rid in run_ids.split(',')]
+    
+    if len(run_id_list) < 2:
+        raise HTTPException(status_code=400, detail="At least 2 run IDs required for comparison")
+    if len(run_id_list) > 5:
+        raise HTTPException(status_code=400, detail="Maximum 5 runs can be compared at once")
+    
+    try:
+        comparison = await db_client.compare_runs(run_id_list)
+        return comparison
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to compare runs: {str(e)}")
 
 
 @app.get("/api/runs/{run_id}", response_model=ProfilingResultResponse)
@@ -251,6 +317,29 @@ async def get_run_details(run_id: str):
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
     
     return result
+
+
+@app.post("/api/runs/{run_id}/retry")
+async def retry_run(run_id: str):
+    """
+    Retry a failed run.
+    
+    Note: This is a placeholder endpoint. Actual retry functionality
+    requires integration with the profiling service.
+    """
+    # Check if run exists
+    result = await db_client.get_run_details(run_id)
+    
+    if not result:
+        raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+    
+    # TODO: Integrate with profiling service to actually retry the run
+    # For now, return a placeholder response
+    return {
+        "status": "pending",
+        "message": "Retry request received. Integration with profiling service pending.",
+        "run_id": run_id
+    }
 
 
 @app.get("/api/drift", response_model=List[DriftAlertResponse])

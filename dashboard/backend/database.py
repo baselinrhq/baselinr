@@ -15,6 +15,7 @@ import logging
 from models import (
     RunHistoryResponse,
     ProfilingResultResponse,
+    RunComparisonResponse,
     DriftAlertResponse,
     TableMetricsResponse,
     MetricsDashboardResponse,
@@ -71,6 +72,11 @@ class DatabaseClient:
         table: Optional[str] = None,
         status: Optional[str] = None,
         start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        min_duration: Optional[float] = None,
+        max_duration: Optional[float] = None,
+        sort_by: str = "profiled_at",
+        sort_order: str = "desc",
         limit: int = 100,
         offset: int = 0
     ) -> List[RunHistoryResponse]:
@@ -119,6 +125,10 @@ class DatabaseClient:
         
         params = {}
         
+        if warehouse:
+            query += " AND r.warehouse_type = :warehouse"
+            params["warehouse"] = warehouse
+        
         if schema:
             query += " AND r.schema_name = :schema"
             params["schema"] = schema
@@ -128,14 +138,46 @@ class DatabaseClient:
             params["table"] = table
         
         if status:
-            query += " AND r.status = :status"
-            params["status"] = status
+            # Support multiple statuses (comma-separated)
+            if ',' in status:
+                statuses = [s.strip() for s in status.split(',')]
+                placeholders = ','.join([f':status_{i}' for i in range(len(statuses))])
+                query += f" AND r.status IN ({placeholders})"
+                for i, s in enumerate(statuses):
+                    params[f"status_{i}"] = s
+            else:
+                query += " AND r.status = :status"
+                params["status"] = status
         
         if start_date:
             query += " AND r.profiled_at >= :start_date"
             params["start_date"] = start_date
         
-        query += " ORDER BY r.profiled_at DESC LIMIT :limit OFFSET :offset"
+        if end_date:
+            query += " AND r.profiled_at <= :end_date"
+            params["end_date"] = end_date
+        
+        # Note: Duration filtering not yet supported as duration_seconds is not stored
+        # Will be added when duration tracking is implemented
+        # if min_duration is not None:
+        #     query += " AND duration_seconds >= :min_duration"
+        #     params["min_duration"] = min_duration
+        # if max_duration is not None:
+        #     query += " AND duration_seconds <= :max_duration"
+        #     params["max_duration"] = max_duration
+        
+        # Sorting
+        valid_sort_columns = {
+            "profiled_at": "r.profiled_at",
+            "duration_seconds": "duration_seconds",  # Not available yet
+            "row_count": "r.row_count",
+            "column_count": "r.column_count",
+            "status": "r.status"
+        }
+        sort_column = valid_sort_columns.get(sort_by, "r.profiled_at")
+        sort_dir = "DESC" if sort_order.lower() == "desc" else "ASC"
+        
+        query += f" ORDER BY {sort_column} {sort_dir} LIMIT :limit OFFSET :offset"
         params["limit"] = limit
         params["offset"] = offset
         
@@ -261,6 +303,149 @@ class DatabaseClient:
                 column_count=run_result[6] or 0,
                 columns=columns
             )
+    
+    async def compare_runs(self, run_ids: List[str]) -> RunComparisonResponse:
+        """Compare multiple runs and calculate differences."""
+        if len(run_ids) < 2:
+            raise ValueError("At least 2 run IDs required for comparison")
+        if len(run_ids) > 5:
+            raise ValueError("Maximum 5 runs can be compared at once")
+        
+        # Fetch all runs
+        runs = []
+        run_details = []
+        
+        for run_id in run_ids:
+            # Get run history
+            run_query = """
+                SELECT 
+                    r.run_id,
+                    r.dataset_name,
+                    r.schema_name,
+                    'postgres' as warehouse_type,
+                    r.profiled_at,
+                    r.status,
+                    r.row_count,
+                    r.column_count,
+                    false as has_drift
+                FROM baselinr_runs r
+                WHERE r.run_id = :run_id
+                LIMIT 1
+            """
+            
+            with self.engine.connect() as conn:
+                result = conn.execute(text(run_query), {"run_id": run_id}).fetchone()
+                if not result:
+                    continue
+                
+                run = RunHistoryResponse(
+                    run_id=result[0],
+                    dataset_name=result[1],
+                    schema_name=result[2],
+                    warehouse_type=result[3],
+                    profiled_at=result[4],
+                    status=result[5] or "completed",
+                    row_count=result[6],
+                    column_count=result[7],
+                    duration_seconds=None,
+                    has_drift=result[8] or False
+                )
+                runs.append(run)
+                
+                # Get detailed metrics for comparison
+                details = await self.get_run_details(run_id)
+                if details:
+                    run_details.append(details)
+        
+        if len(runs) < 2:
+            raise ValueError("Could not find at least 2 valid runs to compare")
+        
+        # Build comparison data
+        comparison = {
+            "row_count_diff": 0,
+            "column_count_diff": 0,
+            "common_columns": [],
+            "unique_columns": {},
+            "metric_differences": []
+        }
+        
+        # Compare row and column counts (use first run as baseline)
+        if len(runs) >= 2:
+            baseline = runs[0]
+            for i, run in enumerate(runs[1:], 1):
+                if baseline.row_count and run.row_count:
+                    comparison["row_count_diff"] = run.row_count - baseline.row_count
+                if baseline.column_count and run.column_count:
+                    comparison["column_count_diff"] = run.column_count - baseline.column_count
+        
+        # Compare column metrics if we have detailed data
+        if len(run_details) >= 2:
+            baseline_details = run_details[0]
+            baseline_columns = {col.column_name: col for col in baseline_details.columns}
+            
+            # Find common columns
+            all_column_names = set(baseline_columns.keys())
+            for details in run_details[1:]:
+                all_column_names = all_column_names.intersection(
+                    {col.column_name for col in details.columns}
+                )
+            comparison["common_columns"] = sorted(list(all_column_names))
+            
+            # Find unique columns per run
+            for i, details in enumerate(run_details):
+                run_columns = {col.column_name for col in details.columns}
+                unique = run_columns - all_column_names
+                if unique:
+                    comparison["unique_columns"][runs[i].run_id] = sorted(list(unique))
+            
+            # Compare metrics for common columns
+            for col_name in comparison["common_columns"]:
+                baseline_col = baseline_columns.get(col_name)
+                if not baseline_col:
+                    continue
+                
+                for i, details in enumerate(run_details[1:], 1):
+                    current_col = next((c for c in details.columns if c.column_name == col_name), None)
+                    if not current_col:
+                        continue
+                    
+                    # Compare numeric metrics
+                    metrics_to_compare = [
+                        ("null_percent", "null_percent"),
+                        ("distinct_percent", "distinct_percent"),
+                        ("mean", "mean"),
+                        ("stddev", "stddev"),
+                    ]
+                    
+                    for metric_key, metric_name in metrics_to_compare:
+                        baseline_val = getattr(baseline_col, metric_key, None)
+                        current_val = getattr(current_col, metric_key, None)
+                        
+                        if baseline_val is not None and current_val is not None:
+                            try:
+                                baseline_float = float(baseline_val)
+                                current_float = float(current_val)
+                                
+                                if baseline_float != 0:
+                                    change_percent = ((current_float - baseline_float) / abs(baseline_float)) * 100
+                                else:
+                                    change_percent = 100 if current_float != 0 else 0
+                                
+                                comparison["metric_differences"].append({
+                                    "column": col_name,
+                                    "metric": metric_name,
+                                    "run_id": runs[i].run_id,
+                                    "baseline_value": baseline_float,
+                                    "current_value": current_float,
+                                    "change_percent": round(change_percent, 2)
+                                })
+                            except (ValueError, TypeError):
+                                pass
+        
+        return RunComparisonResponse(
+            runs=runs,
+            comparison=comparison
+        )
     
     async def get_drift_alerts(
         self,
