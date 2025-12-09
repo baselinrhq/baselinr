@@ -106,4 +106,12 @@ class MetricsDashboardResponse(BaseModel):
     warehouse_breakdown: Dict[str, int]
     recent_runs: List[RunHistoryResponse]
     recent_drift: List[DriftAlertResponse]
+    # Enhanced metrics
+    validation_pass_rate: Optional[float] = None
+    total_validation_rules: int = 0
+    failed_validation_rules: int = 0
+    active_alerts: int = 0
+    data_freshness_hours: Optional[float] = None
+    stale_tables_count: int = 0
+    validation_trend: List[TableMetricsTrend] = Field(default_factory=list)
 

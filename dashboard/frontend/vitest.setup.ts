@@ -5,6 +5,13 @@
  */
 
 import '@testing-library/jest-dom'
+
+// Mock ResizeObserver for Recharts components
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as any
 import { cleanup } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 

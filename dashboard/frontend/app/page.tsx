@@ -6,7 +6,9 @@ import { fetchDashboardMetrics } from '@/lib/api'
 import KPICard from '@/components/KPICard'
 import RunsTable from '@/components/RunsTable'
 import DriftAlertsTable from '@/components/DriftAlertsTable'
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import EnhancedKPIs from '@/components/dashboard/EnhancedKPIs'
+import QuickActions from '@/components/dashboard/QuickActions'
+import TrendCharts from '@/components/dashboard/TrendCharts'
 
 export default function DashboardPage() {
   const { data: metrics, isLoading } = useQuery({
@@ -66,28 +68,27 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* Enhanced KPI Cards */}
+      {(metrics.validation_pass_rate !== undefined || 
+        metrics.active_alerts !== undefined || 
+        metrics.data_freshness_hours !== undefined) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <EnhancedKPIs metrics={metrics} />
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <QuickActions />
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Run Trend */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Profiling Runs Trend</h2>
-          <div className="h-64">
-            {metrics.run_trend.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={metrics.run_trend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="timestamp" />
-                  <YAxis />
-                  <Tooltip />
-                  <Area type="monotone" dataKey="value" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.3} />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>No trend data available</p>
-              </div>
-            )}
-          </div>
+        {/* Enhanced Trend Charts */}
+        <div className="lg:col-span-2">
+          <TrendCharts
+            runTrend={metrics.run_trend}
+            driftTrend={metrics.drift_trend}
+            validationTrend={metrics.validation_trend}
+          />
         </div>
 
         {/* Warehouse Breakdown */}

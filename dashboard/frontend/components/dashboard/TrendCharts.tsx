@@ -1,0 +1,233 @@
+'use client'
+
+import {
+  ComposedChart,
+  Line,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
+
+interface TrendData {
+  timestamp: string
+  value: number
+}
+
+interface TrendChartsProps {
+  runTrend: TrendData[]
+  driftTrend: TrendData[]
+  validationTrend: TrendData[]
+}
+
+export default function TrendCharts({
+  runTrend,
+  driftTrend,
+  validationTrend,
+}: TrendChartsProps) {
+  // Combine all trends into a single dataset for the chart
+  // Group by date and merge values
+  const combineTrends = () => {
+    const dataMap = new Map<string, { runs: number; drift: number; validation: number }>()
+
+    // Helper to extract date string from timestamp
+    const getDateString = (timestamp: string): string => {
+      try {
+        const date = new Date(timestamp)
+        if (isNaN(date.getTime())) {
+          return timestamp.split('T')[0] // Fallback to string split
+        }
+        return date.toISOString().split('T')[0]
+      } catch {
+        return timestamp.split('T')[0]
+      }
+    }
+
+    // Process run trend
+    if (runTrend && runTrend.length > 0) {
+      runTrend.forEach((item) => {
+        const date = getDateString(item.timestamp)
+        if (!dataMap.has(date)) {
+          dataMap.set(date, { runs: 0, drift: 0, validation: 0 })
+        }
+        const existing = dataMap.get(date)!
+        existing.runs = item.value || 0
+      })
+    }
+
+    // Process drift trend
+    if (driftTrend && driftTrend.length > 0) {
+      driftTrend.forEach((item) => {
+        const date = getDateString(item.timestamp)
+        if (!dataMap.has(date)) {
+          dataMap.set(date, { runs: 0, drift: 0, validation: 0 })
+        }
+        const existing = dataMap.get(date)!
+        existing.drift = item.value || 0
+      })
+    }
+
+    // Process validation trend
+    if (validationTrend && validationTrend.length > 0) {
+      validationTrend.forEach((item) => {
+        const date = getDateString(item.timestamp)
+        if (!dataMap.has(date)) {
+          dataMap.set(date, { runs: 0, drift: 0, validation: 0 })
+        }
+        const existing = dataMap.get(date)!
+        existing.validation = item.value || 0
+      })
+    }
+
+    // Convert to array and sort by date
+    return Array.from(dataMap.entries())
+      .map(([date, values]) => ({
+        date,
+        timestamp: date,
+        runs: values.runs,
+        drift: values.drift,
+        validation: values.validation,
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }
+
+  const chartData = combineTrends()
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
+  const hasData = chartData.length > 0 && chartData.some((d) => d.runs > 0 || d.drift > 0 || d.validation > 0)
+
+  return (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Trends Overview</h2>
+      <div className="h-64">
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="date"
+                tickFormatter={formatDate}
+                stroke="#6b7280"
+                style={{ fontSize: '12px' }}
+              />
+              <YAxis
+                yAxisId="left"
+                stroke="#6b7280"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#6b7280"
+                style={{ fontSize: '12px' }}
+                label={{ value: 'Pass Rate %', angle: 90, position: 'insideRight' }}
+                domain={[0, 100]}
+              />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || !payload.length) {
+                    return null
+                  }
+                  
+                  interface TooltipPayload {
+                    dataKey?: string
+                    name?: string
+                    value?: number | string
+                    color?: string
+                  }
+                  
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        padding: '8px',
+                      }}
+                    >
+                      <p style={{ marginBottom: '4px', fontWeight: 'bold' }}>
+                        {formatDate(label as string)}
+                      </p>
+                      {payload.map((entry: TooltipPayload, index: number) => {
+                        const dataKey = entry.dataKey
+                        let displayLabel = entry.name || ''
+                        let displayValue: string | number = entry.value || 0
+                        
+                        // Determine label and format based on dataKey
+                        if (dataKey === 'validation') {
+                          displayLabel = 'Validation Pass Rate'
+                          displayValue = `${Number(displayValue).toFixed(1)}%`
+                        } else if (dataKey === 'runs') {
+                          displayLabel = 'Runs'
+                          displayValue = Number(displayValue).toString()
+                        } else if (dataKey === 'drift') {
+                          displayLabel = 'Drift Events'
+                          displayValue = Number(displayValue).toString()
+                        }
+                        
+                        return (
+                          <p key={index} style={{ color: entry.color, margin: '2px 0' }}>
+                            {displayLabel}: {displayValue}
+                          </p>
+                        )
+                      })}
+                    </div>
+                  )
+                }}
+              />
+              <Legend />
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey="runs"
+                fill="#0ea5e9"
+                fillOpacity={0.3}
+                stroke="#0ea5e9"
+                strokeWidth={2}
+                name="Runs"
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="drift"
+                stroke="#f97316"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                name="Drift Events"
+              />
+              {validationTrend.length > 0 && (
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="validation"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  strokeDasharray="5 5"
+                  name="Validation Pass Rate"
+                />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-full text-gray-500">
+            <p>No trend data available</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+

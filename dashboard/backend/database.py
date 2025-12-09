@@ -426,11 +426,11 @@ class DatabaseClient:
             stats_query += " AND profiled_at >= :start_date"
             params["start_date"] = start_date
         
-        # Drift count
+        # Drift count - use autocommit to avoid transaction issues
         drift_query = """
             SELECT COUNT(*)
             FROM baselinr_events
-            WHERE event_type = 'DataDriftDetected'
+            WHERE event_type IN ('DataDriftDetected', 'drift_detected')
         """
         
         if start_date:
@@ -438,15 +438,297 @@ class DatabaseClient:
         
         with self.engine.connect() as conn:
             stats = conn.execute(text(stats_query), params).fetchone()
+            conn.commit()  # Commit the stats query
             
             # Handle case where baselinr_events table doesn't exist yet
+            # Use separate connection to avoid transaction issues
+            drift_count = 0
             try:
-                drift_result = conn.execute(text(drift_query), params).fetchone()
-                drift_count = drift_result[0] if drift_result else 0
+                with self.engine.connect() as drift_conn:
+                    drift_result = drift_conn.execute(text(drift_query), params).fetchone()
+                    drift_count = drift_result[0] if drift_result else 0
             except Exception as e:
                 # Table doesn't exist or query failed - set to 0
                 logger.warning(f"Could not query drift events (table may not exist): {e}")
                 drift_count = 0
+            
+            # Validation metrics
+            validation_pass_rate = None
+            total_validation_rules = 0
+            failed_validation_rules = 0
+            
+            try:
+                validation_query = """
+                    SELECT 
+                        COUNT(*) as total,
+                        SUM(CASE WHEN passed = true THEN 1 ELSE 0 END) as passed,
+                        SUM(CASE WHEN passed = false THEN 1 ELSE 0 END) as failed
+                    FROM baselinr_validation_results
+                    WHERE 1=1
+                """
+                validation_params = {}
+                if start_date:
+                    validation_query += " AND validated_at >= :start_date"
+                    validation_params["start_date"] = start_date
+                
+                validation_result = conn.execute(text(validation_query), validation_params).fetchone()
+                if validation_result and validation_result[0] and validation_result[0] > 0:
+                    total_validation_rules = validation_result[0] or 0
+                    passed_count = validation_result[1] or 0
+                    failed_validation_rules = validation_result[2] or 0
+                    if total_validation_rules > 0:
+                        validation_pass_rate = (passed_count / total_validation_rules) * 100.0
+            except Exception as e:
+                logger.warning(f"Could not query validation results (table may not exist): {e}")
+            
+            # Data freshness calculation
+            data_freshness_hours = None
+            stale_tables_count = 0
+            
+            try:
+                freshness_query = """
+                    SELECT MAX(profiled_at) as last_run
+                    FROM baselinr_runs
+                """
+                freshness_result = conn.execute(text(freshness_query)).fetchone()
+                if freshness_result and freshness_result[0]:
+                    last_run = freshness_result[0]
+                    if isinstance(last_run, str):
+                        from dateutil.parser import parse
+                        last_run = parse(last_run)
+                    elif not isinstance(last_run, datetime):
+                        # Handle different datetime types
+                        last_run = datetime.fromisoformat(str(last_run))
+                    
+                    now = datetime.now()
+                    if last_run.tzinfo:
+                        # Handle timezone-aware datetime
+                        if now.tzinfo is None:
+                            from datetime import timezone
+                            now = now.replace(tzinfo=timezone.utc)
+                    else:
+                        # Handle timezone-naive datetime
+                        if now.tzinfo:
+                            now = now.replace(tzinfo=None)
+                    
+                    time_diff = now - last_run
+                    data_freshness_hours = time_diff.total_seconds() / 3600.0
+                
+                # Count stale tables (not profiled in last 24 hours)
+                stale_query = """
+                    SELECT COUNT(DISTINCT dataset_name)
+                    FROM baselinr_runs r1
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM baselinr_runs r2
+                        WHERE r2.dataset_name = r1.dataset_name
+                        AND r2.profiled_at >= NOW() - INTERVAL '24 hours'
+                    )
+                """
+                # Try PostgreSQL syntax first, fallback to generic
+                try:
+                    stale_result = conn.execute(text(stale_query)).fetchone()
+                    stale_tables_count = stale_result[0] if stale_result else 0
+                except Exception:
+                    # Fallback for databases without INTERVAL support
+                    from datetime import timedelta
+                    stale_threshold = datetime.now() - timedelta(hours=24)
+                    stale_query_generic = """
+                        SELECT COUNT(DISTINCT dataset_name)
+                        FROM baselinr_runs
+                        WHERE dataset_name NOT IN (
+                            SELECT DISTINCT dataset_name
+                            FROM baselinr_runs
+                            WHERE profiled_at >= :threshold
+                        )
+                    """
+                    stale_result = conn.execute(
+                        text(stale_query_generic), 
+                        {"threshold": stale_threshold}
+                    ).fetchone()
+                    stale_tables_count = stale_result[0] if stale_result else 0
+            except Exception as e:
+                logger.warning(f"Could not calculate data freshness: {e}")
+            
+            # Active alerts: high severity drift + failed validations
+            active_alerts = failed_validation_rules
+            try:
+                # Use drift_severity column (not severity) and handle both event types
+                high_severity_drift_query = """
+                    SELECT COUNT(*)
+                    FROM baselinr_events
+                    WHERE event_type IN ('DataDriftDetected', 'drift_detected')
+                    AND drift_severity = 'high'
+                """
+                high_severity_params = {}
+                if start_date:
+                    high_severity_drift_query += " AND timestamp >= :start_date"
+                    high_severity_params["start_date"] = start_date
+                
+                high_drift_result = conn.execute(
+                    text(high_severity_drift_query), 
+                    high_severity_params
+                ).fetchone()
+                if high_drift_result:
+                    active_alerts += high_drift_result[0] or 0
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not query high severity drift: {e}")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+            
+            # Validation trend (pass rate over time)
+            validation_trend = []
+            try:
+                # Use separate connection to avoid transaction issues
+                with self.engine.connect() as trend_conn:
+                    # Try DATE() function first (PostgreSQL, MySQL), fallback to CAST
+                    trend_query = """
+                        SELECT 
+                            DATE(validated_at) as date,
+                            COUNT(*) as total,
+                            SUM(CASE WHEN passed = true THEN 1 ELSE 0 END) as passed
+                        FROM baselinr_validation_results
+                        WHERE validated_at >= :start_date
+                        GROUP BY DATE(validated_at)
+                        ORDER BY date ASC
+                    """
+                    trend_params = {"start_date": start_date if start_date else datetime.now().replace(day=1)}
+                    trend_results = trend_conn.execute(text(trend_query), trend_params).fetchall()
+                    for row in trend_results:
+                        date_val = row[0]
+                        total = row[1] or 0
+                        passed = row[2] or 0
+                        if total > 0:
+                            pass_rate = (passed / total) * 100.0
+                            # Ensure date_val is a datetime
+                            if isinstance(date_val, str):
+                                try:
+                                    from dateutil.parser import parse
+                                    date_val = parse(date_val)
+                                except Exception:
+                                    date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                            elif not isinstance(date_val, datetime):
+                                # Handle date objects
+                                if hasattr(date_val, 'isoformat'):
+                                    date_val = datetime.combine(date_val, datetime.min.time())
+                                else:
+                                    date_val = datetime.fromisoformat(str(date_val))
+                            validation_trend.append(
+                                TableMetricsTrend(timestamp=date_val, value=pass_rate)
+                            )
+            except Exception as e:
+                logger.warning(f"Could not calculate validation trend: {e}")
+            
+            # Calculate run trend (runs per day)
+            run_trend = []
+            try:
+                # Use separate connection to avoid transaction issues
+                with self.engine.connect() as trend_conn:
+                    run_trend_query = """
+                        SELECT 
+                            DATE(profiled_at) as date,
+                            COUNT(*) as run_count
+                        FROM baselinr_runs
+                        WHERE 1=1
+                    """
+                    run_trend_params = {}
+                    if start_date:
+                        run_trend_query += " AND profiled_at >= :start_date"
+                        run_trend_params["start_date"] = start_date
+                    run_trend_query += " GROUP BY DATE(profiled_at) ORDER BY date ASC"
+                    
+                    run_trend_results = trend_conn.execute(text(run_trend_query), run_trend_params).fetchall()
+                    for row in run_trend_results:
+                        date_val = row[0]
+                        count = row[1] or 0
+                        # Ensure date_val is a datetime
+                        if isinstance(date_val, str):
+                            try:
+                                from dateutil.parser import parse
+                                date_val = parse(date_val)
+                            except Exception:
+                                date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        elif not isinstance(date_val, datetime):
+                            if hasattr(date_val, 'isoformat'):
+                                date_val = datetime.combine(date_val, datetime.min.time())
+                            else:
+                                date_val = datetime.fromisoformat(str(date_val))
+                        run_trend.append(
+                            TableMetricsTrend(timestamp=date_val, value=float(count))
+                        )
+            except Exception as e:
+                logger.warning(f"Could not calculate run trend: {e}")
+            
+            # Calculate drift trend (drift events per day)
+            drift_trend = []
+            try:
+                # Use separate connection/transaction to avoid cascading failures
+                with self.engine.connect() as trend_conn:
+                    drift_trend_query = """
+                        SELECT 
+                            DATE(timestamp) as date,
+                            COUNT(*) as drift_count
+                        FROM baselinr_events
+                        WHERE event_type IN ('DataDriftDetected', 'drift_detected')
+                    """
+                    drift_trend_params = {}
+                    if start_date:
+                        drift_trend_query += " AND timestamp >= :start_date"
+                        drift_trend_params["start_date"] = start_date
+                    drift_trend_query += " GROUP BY DATE(timestamp) ORDER BY date ASC"
+                    
+                    drift_trend_results = trend_conn.execute(text(drift_trend_query), drift_trend_params).fetchall()
+                    for row in drift_trend_results:
+                        date_val = row[0]
+                        count = row[1] or 0
+                        # Ensure date_val is a datetime
+                        if isinstance(date_val, str):
+                            try:
+                                from dateutil.parser import parse
+                                date_val = parse(date_val)
+                            except Exception:
+                                date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                        elif not isinstance(date_val, datetime):
+                            if hasattr(date_val, 'isoformat'):
+                                date_val = datetime.combine(date_val, datetime.min.time())
+                            else:
+                                date_val = datetime.fromisoformat(str(date_val))
+                        drift_trend.append(
+                            TableMetricsTrend(timestamp=date_val, value=float(count))
+                        )
+            except Exception as e:
+                logger.warning(f"Could not calculate drift trend: {e}")
+            
+            # Calculate warehouse breakdown
+            # Note: warehouse_type may not exist in baselinr_runs table
+            # For now, use a simple count - can be enhanced when warehouse_type is available
+            warehouse_breakdown = {}
+            try:
+                # Try to get warehouse_type if column exists, otherwise default to postgres
+                try:
+                    warehouse_query = """
+                        SELECT warehouse_type, COUNT(*) as count
+                        FROM baselinr_runs
+                        WHERE 1=1
+                    """
+                    warehouse_params = {}
+                    if start_date:
+                        warehouse_query += " AND profiled_at >= :start_date"
+                        warehouse_params["start_date"] = start_date
+                    warehouse_query += " GROUP BY warehouse_type"
+                    
+                    warehouse_results = conn.execute(text(warehouse_query), warehouse_params).fetchall()
+                    for row in warehouse_results:
+                        warehouse_breakdown[row[0] or 'unknown'] = row[1] or 0
+                except Exception:
+                    # Column doesn't exist, use default
+                    warehouse_breakdown = {"postgres": stats[0] or 0}
+            except Exception as e:
+                logger.warning(f"Could not calculate warehouse breakdown: {e}")
+                warehouse_breakdown = {"postgres": stats[0] or 0}
             
             # Get recent runs and drift
             recent_runs = await self.get_runs(limit=5)
@@ -466,11 +748,18 @@ class DatabaseClient:
                 total_drift_events=drift_count,
                 avg_row_count=float(stats[2] or 0),
                 kpis=kpis,
-                run_trend=[],  # TODO: Calculate trends
-                drift_trend=[],
-                warehouse_breakdown={"postgres": stats[0] or 0},
+                run_trend=run_trend,
+                drift_trend=drift_trend,
+                warehouse_breakdown=warehouse_breakdown,
                 recent_runs=recent_runs,
-                recent_drift=recent_drift
+                recent_drift=recent_drift,
+                validation_pass_rate=validation_pass_rate,
+                total_validation_rules=total_validation_rules,
+                failed_validation_rules=failed_validation_rules,
+                active_alerts=active_alerts,
+                data_freshness_hours=data_freshness_hours,
+                stale_tables_count=stale_tables_count,
+                validation_trend=validation_trend
             )
     
     async def get_warehouses(self) -> List[str]:
