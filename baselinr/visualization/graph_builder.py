@@ -4,6 +4,7 @@ Graph builder for lineage visualization.
 Constructs graph data structures from lineage data stored in the database.
 """
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
@@ -189,7 +190,7 @@ class LineageGraphBuilder:
                 root_table, schema_name=schema, max_depth=max_depth
             )
             self._process_table_lineage_data(
-                upstream_data, nodes_dict, edges_list, is_upstream=True
+                upstream_data, nodes_dict, edges_list, is_upstream=True, root_id=root_id
             )
 
         # Get downstream dependencies
@@ -198,7 +199,7 @@ class LineageGraphBuilder:
                 root_table, schema_name=schema, max_depth=max_depth
             )
             self._process_table_lineage_data(
-                downstream_data, nodes_dict, edges_list, is_upstream=False
+                downstream_data, nodes_dict, edges_list, is_upstream=False, root_id=root_id
             )
 
         graph = LineageGraph(
@@ -350,13 +351,19 @@ class LineageGraphBuilder:
         nodes_dict: Dict[str, LineageNode],
         edges_list: List[LineageEdge],
         is_upstream: bool,
+        root_id: Optional[str] = None,
     ) -> None:
         """Process table lineage data and populate nodes/edges."""
+        # Track parent-child relationships by depth
+        depth_map: Dict[int, List[str]] = {}  # depth -> list of node IDs at that depth
+
         for item in lineage_data:
             schema_name = item.get("schema", "")
             table_name = item.get("table", "")
             depth = item.get("depth", 0)
             provider = item.get("provider", "unknown")
+            lineage_type = item.get("lineage_type", "depends_on")
+            confidence = item.get("confidence_score", 1.0)
 
             # Create node if not exists
             node_id = self._make_table_id(schema_name, table_name)
@@ -374,9 +381,163 @@ class LineageGraphBuilder:
                     },
                 )
 
-            # Note: Edges are created during recursive traversal
-            # We'll need to infer edges from the depth information
-            # For now, we skip edge creation as the lineage client doesn't provide parent info
+            # Track nodes by depth
+            if depth not in depth_map:
+                depth_map[depth] = []
+            depth_map[depth].append(node_id)
+
+            # Create edge from root to depth 1 nodes
+            if depth == 1 and root_id:
+                # Check if edge already exists
+                if not any(
+                    e.source == (node_id if is_upstream else root_id)
+                    and e.target == (root_id if is_upstream else node_id)
+                    for e in edges_list
+                ):
+                    if is_upstream:
+                        # Upstream: upstream_table -> root_table
+                        edge = LineageEdge(
+                            source=node_id,
+                            target=root_id,
+                            relationship_type=lineage_type,
+                            confidence=confidence,
+                            provider=provider,
+                            metadata=item.get("metadata", {}),
+                        )
+                    else:
+                        # Downstream: root_table -> downstream_table
+                        edge = LineageEdge(
+                            source=root_id,
+                            target=node_id,
+                            relationship_type=lineage_type,
+                            confidence=confidence,
+                            provider=provider,
+                            metadata=item.get("metadata", {}),
+                        )
+                    edges_list.append(edge)
+
+            # Create edges between nodes at adjacent depths
+            if depth > 1 and root_id:
+                # Find parent node (at depth - 1)
+                parent_depth = depth - 1
+                if parent_depth in depth_map:
+                    # For simplicity, connect to the first parent found
+                    # In a more sophisticated implementation, we'd query the lineage table
+                    # to find the actual parent relationship
+                    parent_id = depth_map[parent_depth][0] if depth_map[parent_depth] else root_id
+                    # Check if edge already exists
+                    if not any(
+                        e.source == (parent_id if not is_upstream else node_id)
+                        and e.target == (node_id if not is_upstream else parent_id)
+                        for e in edges_list
+                    ):
+                        if is_upstream:
+                            edge = LineageEdge(
+                                source=node_id,
+                                target=parent_id,
+                                relationship_type=lineage_type,
+                                confidence=confidence,
+                                provider=provider,
+                                metadata=item.get("metadata", {}),
+                            )
+                        else:
+                            edge = LineageEdge(
+                                source=parent_id,
+                                target=node_id,
+                                relationship_type=lineage_type,
+                                confidence=confidence,
+                                provider=provider,
+                                metadata=item.get("metadata", {}),
+                            )
+                        edges_list.append(edge)
+
+        # Better approach: Query lineage table directly to get ALL relationships
+        # between nodes in our graph
+        if nodes_dict:
+            try:
+                from sqlalchemy import text
+
+                with self.engine.connect() as conn:
+                    # Get all edges where both source and target are in our graph
+                    # Build a list of all table identifiers in our graph
+                    graph_table_ids = set()
+                    for node_id in nodes_dict.keys():
+                        graph_table_ids.add(node_id)
+                        # Also add without schema for matching
+                        if "." in node_id:
+                            graph_table_ids.add(node_id.split(".", 1)[1])
+
+                    # Query all edges from lineage table
+                    query = text(
+                        """
+                        SELECT
+                            downstream_schema, downstream_table,
+                            upstream_schema, upstream_table,
+                            lineage_type, provider, confidence_score, metadata
+                        FROM baselinr_lineage
+                    """
+                    )
+                    result = conn.execute(query)
+
+                    edge_count = 0
+                    for row in result:
+                        (ds_schema, ds_table, us_schema, us_table, lin_type, prov, conf, meta) = row
+                        # In lineage: downstream_table depends on upstream_table
+                        # For visualization: arrows show data flow FROM upstream TO downstream
+                        # So: upstream (source) -> downstream (destination)
+                        upstream_id = self._make_table_id(us_schema or "", us_table)
+                        downstream_id = self._make_table_id(ds_schema or "", ds_table)
+
+                        # Create edge: upstream -> downstream
+                        source_id = upstream_id
+                        target_id = downstream_id
+
+                        # Only add edge if both nodes exist in our graph
+                        if source_id in nodes_dict and target_id in nodes_dict:
+                            # Check if edge already exists
+                            if not any(
+                                e.source == source_id and e.target == target_id for e in edges_list
+                            ):
+                                metadata = (
+                                    json.loads(meta)
+                                    if meta and isinstance(meta, str)
+                                    else (meta or {})
+                                )
+                                edge = LineageEdge(
+                                    source=source_id,  # upstream
+                                    target=target_id,  # downstream
+                                    relationship_type=lin_type or "depends_on",
+                                    confidence=float(conf) if conf else 1.0,
+                                    provider=prov or "unknown",
+                                    metadata=metadata,
+                                )
+                                edges_list.append(edge)
+                                edge_count += 1
+                                logger.debug(f"Added edge: {source_id} -> {target_id}")
+                            else:
+                                logger.debug(f"Edge already exists: {source_id} -> {target_id}")
+                        else:
+                            # Log when nodes don't match
+                            if source_id not in nodes_dict:
+                                available = list(nodes_dict.keys())[:5]
+                                logger.debug(
+                                    f"Source node not in graph: {source_id} "
+                                    f"(available: {available}...)"
+                                )
+                            if target_id not in nodes_dict:
+                                available = list(nodes_dict.keys())[:5]
+                                logger.debug(
+                                    f"Target node not in graph: {target_id} "
+                                    f"(available: {available}...)"
+                                )
+                    logger.info(
+                        f"Added {edge_count} edges from lineage table "
+                        f"(total edges: {len(edges_list)})"
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to query lineage table for edges: {e}")
+                # If query fails, fall back to depth-based edges
+                pass
 
     def _process_column_lineage_data(
         self,
@@ -411,6 +572,13 @@ class LineageGraphBuilder:
                         "is_stale": item.get("is_stale", False),
                     },
                 )
+
+    def _parse_table_id(self, table_id: str) -> tuple[str, str]:
+        """Parse table ID into (schema, table) tuple."""
+        if "." in table_id:
+            parts = table_id.split(".", 1)
+            return (parts[0] or "", parts[1])
+        return ("", table_id)
 
     def _make_table_id(self, schema: Optional[str], table: str) -> str:
         """Generate unique ID for table node."""

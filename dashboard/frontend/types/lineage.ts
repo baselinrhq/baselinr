@@ -58,3 +58,30 @@ export interface DriftPathResponse {
   affected_downstream: TableInfoResponse[];
   lineage_path: LineageGraphResponse;
 }
+
+export interface LineageImpactResponse {
+  table: string;
+  schema?: string;
+  affected_tables: TableInfoResponse[];
+  impact_score: number; // 0-1 scale
+  affected_metrics: number;
+  drift_propagation: string[]; // Path of drift propagation
+  recommendations: string[];
+}
+
+export interface LineageFilters {
+  providers?: string[];
+  confidence_min?: number;
+  confidence_max?: number;
+  node_type?: 'table' | 'column' | 'both';
+  schemas?: string[];
+  databases?: string[];
+  has_drift?: boolean;
+  drift_severity?: string;
+}
+
+export interface LineageSearchResult extends TableInfoResponse {
+  row_count?: number;
+  last_profiled?: string;
+  provider?: string;
+}

@@ -1682,7 +1682,14 @@ class DatabaseClient:
             except ImportError:
                 pass
             
-            if LINEAGE_AVAILABLE:
+            # Check if lineage is available
+            try:
+                from baselinr.visualization import LineageGraphBuilder
+                lineage_available = True
+            except ImportError:
+                lineage_available = False
+            
+            if lineage_available:
                 builder = LineageGraphBuilder(self.engine)
                 try:
                     graph = builder.build_table_graph(
@@ -1718,6 +1725,143 @@ class DatabaseClient:
             affected_tables=affected_tables,
             affected_metrics=affected_metrics,
             impact_score=impact_score,
+            recommendations=recommendations
+        )
+    
+    async def get_lineage_impact(
+        self,
+        table: str,
+        schema: Optional[str] = None,
+        include_metrics: bool = True
+    ) -> "LineageImpactResponse":
+        """Calculate impact analysis for a table."""
+        from lineage_models import LineageImpactResponse, TableInfoResponse
+        
+        affected_tables: List[TableInfoResponse] = []
+        drift_propagation: List[str] = []
+        recommendations: List[str] = []
+        impact_score = 0.0
+        affected_metrics = 0
+        
+        # Check if lineage is available
+        try:
+            from baselinr.visualization import LineageGraphBuilder
+            lineage_available = True
+        except ImportError:
+            lineage_available = False
+        
+        if not lineage_available:
+            logger.warning("Lineage not available, returning empty impact")
+            return LineageImpactResponse(
+                table=table,
+                schema=schema,
+                affected_tables=affected_tables,
+                impact_score=0.0,
+                affected_metrics=0,
+                drift_propagation=drift_propagation,
+                recommendations=recommendations
+            )
+        
+        try:
+            try:
+                from baselinr.visualization import LineageGraphBuilder
+            except ImportError:
+                try:
+                    from lineage_graph import LineageGraphBuilder
+                except ImportError:
+                    logger.warning("LineageGraphBuilder not available")
+                    return LineageImpactResponse(
+                        table=table,
+                        schema=schema,
+                        affected_tables=affected_tables,
+                        impact_score=0.0,
+                        affected_metrics=0,
+                        drift_propagation=drift_propagation,
+                        recommendations=recommendations
+                    )
+            
+            # Build downstream graph to find affected tables
+            builder = LineageGraphBuilder(self.engine)
+            graph = builder.build_table_graph(
+                root_table=table,
+                schema=schema,
+                direction="downstream",
+                max_depth=5,
+                confidence_threshold=0.5
+            )
+            
+            # Get downstream tables
+            for node in graph.nodes:
+                if node.id != graph.root_id and node.type == "table":
+                    affected_tables.append(TableInfoResponse(
+                        schema=node.schema or "",
+                        table=node.table or node.label,
+                        database=node.database
+                    ))
+                    drift_propagation.append(node.id)
+            
+            # Check for drift in root table
+            root_node = graph.get_node_by_id(graph.root_id or "")
+            has_drift = root_node and root_node.metadata.get("has_drift", False)
+            drift_severity = root_node.metadata.get("drift_severity") if root_node else None
+            
+            # Calculate impact score
+            # Base score from number of downstream tables
+            table_count_score = min(1.0, len(affected_tables) * 0.1)
+            
+            # Add drift severity multiplier
+            severity_multipliers = {"low": 0.2, "medium": 0.5, "high": 0.8}
+            drift_multiplier = severity_multipliers.get(drift_severity, 0.0) if has_drift else 0.0
+            
+            # Combine scores
+            impact_score = min(1.0, table_count_score + (drift_multiplier * 0.5))
+            
+            # Count affected metrics if requested
+            if include_metrics and self._table_exists('baselinr_results'):
+                try:
+                    with self.engine.connect() as conn:
+                        query = """
+                            SELECT COUNT(DISTINCT metric_name)
+                            FROM baselinr_results
+                            WHERE table_name = :table_name
+                        """
+                        params = {"table_name": table}
+                        if schema:
+                            query += " AND schema_name = :schema_name"
+                            params["schema_name"] = schema
+                        
+                        result = conn.execute(text(query), params).fetchone()
+                        affected_metrics = result[0] if result else 0
+                except Exception as e:
+                    logger.warning(f"Could not count metrics: {e}")
+            
+            # Generate recommendations
+            if has_drift:
+                if drift_severity == "high":
+                    recommendations.append("High severity drift detected. Investigate immediately.")
+                recommendations.append(f"Check {len(affected_tables)} downstream table(s) for cascading effects.")
+            
+            if len(affected_tables) > 10:
+                recommendations.append("Large number of downstream dependencies. Consider breaking into smaller tables.")
+            
+            if impact_score > 0.7:
+                recommendations.append("High impact score detected. Review data pipeline dependencies.")
+            
+            if len(affected_tables) == 0:
+                recommendations.append("No downstream dependencies found. This table may be a source table.")
+            else:
+                recommendations.append(f"Monitor {len(affected_tables)} downstream table(s) for data quality issues.")
+        
+        except Exception as e:
+            logger.warning(f"Could not calculate lineage impact: {e}")
+        
+        return LineageImpactResponse(
+            table=table,
+            schema=schema,
+            affected_tables=affected_tables,
+            impact_score=impact_score,
+            affected_metrics=affected_metrics,
+            drift_propagation=drift_propagation,
             recommendations=recommendations
         )
 

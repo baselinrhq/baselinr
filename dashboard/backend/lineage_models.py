@@ -68,3 +68,14 @@ class DriftPathResponse(BaseModel):
     drift_severity: Optional[str] = None
     affected_downstream: List[TableInfoResponse] = []
     lineage_path: LineageGraphResponse
+
+
+class LineageImpactResponse(BaseModel):
+    """Impact analysis response for a table."""
+    table: str
+    schema: Optional[str] = None
+    affected_tables: List[TableInfoResponse] = Field(default_factory=list)
+    impact_score: float = 0.0  # 0-1 scale
+    affected_metrics: int = 0
+    drift_propagation: List[str] = Field(default_factory=list)  # Path of drift propagation
+    recommendations: List[str] = Field(default_factory=list)
