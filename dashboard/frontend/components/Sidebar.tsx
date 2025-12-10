@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Runs', href: '/runs', icon: Activity },
   { name: 'Drift Detection', href: '/drift', icon: AlertTriangle },
+  { name: 'Validation Dashboard', href: '/validation', icon: Shield },
   { name: 'Lineage', href: '/lineage', icon: Database },
   { name: 'Metrics', href: '/metrics', icon: BarChart3 },
   { name: 'Chat', href: '/chat', icon: MessageCircle },

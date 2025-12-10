@@ -168,7 +168,9 @@ class ValidationResultResponse(BaseModel):
     """Validation result response."""
     id: int
     run_id: str
-    column_name: Optional[str]
+    table_name: str
+    schema_name: Optional[str] = None
+    column_name: Optional[str] = None
     rule_type: str
     passed: bool
     failure_reason: Optional[str] = None
@@ -236,3 +238,40 @@ class DriftImpactResponse(BaseModel):
     affected_metrics: int = 0
     impact_score: float = 0.0  # 0-1 scale
     recommendations: List[str] = Field(default_factory=list)
+
+
+class ValidationSummaryResponse(BaseModel):
+    """Validation summary statistics."""
+    total_validations: int
+    passed_count: int
+    failed_count: int
+    pass_rate: float
+    by_rule_type: Dict[str, int] = Field(default_factory=dict)
+    by_severity: Dict[str, int] = Field(default_factory=dict)
+    by_table: Dict[str, int] = Field(default_factory=dict)
+    trending: List[TableMetricsTrend] = Field(default_factory=list)
+    recent_runs: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class ValidationResultsListResponse(BaseModel):
+    """List of validation results with pagination."""
+    results: List[ValidationResultResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class ValidationResultDetailsResponse(BaseModel):
+    """Detailed validation result with context."""
+    result: ValidationResultResponse
+    rule_config: Optional[Dict[str, Any]] = None
+    run_info: Optional[Dict[str, Any]] = None
+    historical_results: List[ValidationResultResponse] = Field(default_factory=list)
+
+
+class ValidationFailureSamplesResponse(BaseModel):
+    """Failure samples for a validation result."""
+    result_id: int
+    total_failures: int
+    sample_failures: List[Dict[str, Any]] = Field(default_factory=list)
+    failure_patterns: Optional[Dict[str, Any]] = None

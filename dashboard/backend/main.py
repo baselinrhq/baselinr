@@ -29,7 +29,11 @@ from models import (
     TableConfigResponse,
     DriftSummaryResponse,
     DriftDetailsResponse,
-    DriftImpactResponse
+    DriftImpactResponse,
+    ValidationSummaryResponse,
+    ValidationResultsListResponse,
+    ValidationResultDetailsResponse,
+    ValidationFailureSamplesResponse
 )
 from lineage_models import (
     LineageGraphResponse,
@@ -545,6 +549,85 @@ async def get_table_validation_results(
     )
     
     return results
+
+
+@app.get("/api/validation/summary", response_model=ValidationSummaryResponse)
+async def get_validation_summary(
+    warehouse: Optional[str] = Query(None),
+    days: int = Query(30)
+):
+    """
+    Get validation summary statistics.
+    
+    Returns aggregate statistics including pass/fail rates, breakdowns by rule type,
+    severity, and table, plus trending data and recent validation runs.
+    """
+    summary = await db_client.get_validation_summary(
+        warehouse=warehouse,
+        days=days
+    )
+    
+    return summary
+
+
+@app.get("/api/validation/results", response_model=ValidationResultsListResponse)
+async def get_validation_results(
+    table: Optional[str] = Query(None),
+    schema: Optional[str] = Query(None),
+    rule_type: Optional[str] = Query(None),
+    severity: Optional[str] = Query(None),
+    passed: Optional[bool] = Query(None),
+    days: int = Query(30),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=1000)
+):
+    """
+    List validation results with filtering and pagination.
+    
+    Supports filtering by table, schema, rule type, severity, and pass status.
+    """
+    results = await db_client.get_validation_results(
+        table=table,
+        schema=schema,
+        rule_type=rule_type,
+        severity=severity,
+        passed=passed,
+        days=days,
+        page=page,
+        page_size=page_size
+    )
+    
+    return results
+
+
+@app.get("/api/validation/results/{result_id}", response_model=ValidationResultDetailsResponse)
+async def get_validation_result_details(result_id: int):
+    """
+    Get detailed validation result information.
+    
+    Returns full result details, rule configuration, associated run information,
+    and historical context (previous validations for same rule).
+    """
+    try:
+        details = await db_client.get_validation_result_details(result_id)
+        return details
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/api/validation/results/{result_id}/failures", response_model=ValidationFailureSamplesResponse)
+async def get_validation_failure_samples(result_id: int):
+    """
+    Get failure samples for a validation result.
+    
+    Returns sample failed rows (up to 100), failure reasons per row,
+    and column values that failed validation.
+    """
+    try:
+        samples = await db_client.get_validation_failure_samples(result_id)
+        return samples
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get("/api/tables/{table}/config", response_model=TableConfigResponse)
