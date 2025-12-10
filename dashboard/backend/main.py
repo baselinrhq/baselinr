@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import os
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 from models import (
     RunHistoryResponse,
@@ -42,6 +45,7 @@ from lineage_models import (
     NodeDetailsResponse,
     TableInfoResponse,
     DriftPathResponse,
+    LineageImpactResponse,
 )
 from database import DatabaseClient
 import rca_routes
@@ -732,6 +736,12 @@ async def get_lineage_graph(
     direction: str = Query("both", pattern="^(upstream|downstream|both)$"),
     depth: int = Query(3, ge=1, le=10, description="Maximum depth to traverse"),
     confidence_threshold: float = Query(0.0, ge=0.0, le=1.0, description="Minimum confidence score"),
+    provider: Optional[str] = Query(None, description="Filter by lineage provider (comma-separated)"),
+    schemas: Optional[str] = Query(None, description="Filter by schemas (comma-separated)"),
+    databases: Optional[str] = Query(None, description="Filter by databases (comma-separated)"),
+    node_type: Optional[str] = Query(None, pattern="^(table|column|both)$", description="Filter by node type"),
+    has_drift: Optional[bool] = Query(None, description="Filter nodes with drift"),
+    drift_severity: Optional[str] = Query(None, pattern="^(low|medium|high)$", description="Filter by drift severity"),
 ):
     """
     Get lineage graph for a table.
@@ -751,20 +761,77 @@ async def get_lineage_graph(
             confidence_threshold=confidence_threshold,
         )
         
+        # Parse filter parameters
+        provider_list = [p.strip() for p in provider.split(',')] if provider else None
+        schema_list = [s.strip() for s in schemas.split(',')] if schemas else None
+        database_list = [d.strip() for d in databases.split(',')] if databases else None
+        
+        # Filter nodes
+        filtered_nodes = []
+        for node in graph.nodes:
+            # Provider filter
+            if provider_list:
+                node_providers = node.metadata.get("providers", [])
+                if not any(p in node_providers for p in provider_list):
+                    continue
+            
+            # Schema filter
+            if schema_list and node.schema:
+                if node.schema not in schema_list:
+                    continue
+            
+            # Database filter
+            if database_list and node.database:
+                if node.database not in database_list:
+                    continue
+            
+            # Node type filter
+            if node_type and node_type != "both":
+                if node.type != node_type:
+                    continue
+            
+            # Drift filter
+            if has_drift is not None:
+                node_has_drift = node.metadata.get("has_drift", False)
+                if node_has_drift != has_drift:
+                    continue
+            
+            # Drift severity filter
+            if drift_severity:
+                node_severity = node.metadata.get("drift_severity")
+                if node_severity != drift_severity:
+                    continue
+            
+            filtered_nodes.append(node)
+        
+        # Filter edges to only include edges between filtered nodes
+        filtered_node_ids = {node.id for node in filtered_nodes}
+        filtered_edges = [
+            edge for edge in graph.edges
+            if edge.source in filtered_node_ids and edge.target in filtered_node_ids
+        ]
+        
+        # Provider filter for edges
+        if provider_list:
+            filtered_edges = [
+                edge for edge in filtered_edges
+                if edge.provider in provider_list
+            ]
+        
         # Convert to response model
         nodes = [
             LineageNodeResponse(**node.to_dict())
-            for node in graph.nodes
+            for node in filtered_nodes
         ]
         edges = [
             LineageEdgeResponse(**edge.to_dict())
-            for edge in graph.edges
+            for edge in filtered_edges
         ]
         
         return LineageGraphResponse(
             nodes=nodes,
             edges=edges,
-            root_id=graph.root_id,
+            root_id=graph.root_id if graph.root_id in filtered_node_ids else None,
             direction=graph.direction,
         )
     
@@ -937,28 +1004,143 @@ async def search_lineage(
     limit: int = Query(20, ge=1, le=100),
 ):
     """
-    Search for tables in lineage data.
+    Search for tables in lineage data and profiled tables.
     
-    Returns matching tables based on name pattern.
+    Returns matching tables based on name pattern. Searches both lineage data
+    and profiled tables (from baselinr_runs) as a fallback.
     """
-    if not LINEAGE_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    from sqlalchemy import text
+    
+    logger.info(f"Search request: q='{q}', limit={limit}")
+    logger.info(f"LINEAGE_AVAILABLE={LINEAGE_AVAILABLE}")
     
     try:
-        builder = LineageGraphBuilder(db_client.engine)
-        all_tables = builder.get_all_tables()
-        
-        # Filter tables matching search query
         search_lower = q.lower()
-        matching = [
-            TableInfoResponse(**t)
-            for t in all_tables
-            if search_lower in t["table"].lower() or search_lower in (t["schema"] or "").lower()
-        ]
+        matching_tables = []
+        seen_keys = set()
         
-        return matching[:limit]
+        # First, try direct query to lineage table (most reliable)
+        try:
+            lineage_table_exists = db_client._table_exists('baselinr_lineage')
+            logger.info(f"baselinr_lineage table exists: {lineage_table_exists}")
+            
+            if lineage_table_exists:
+                with db_client.engine.connect() as conn:
+                    # First, let's see what tables exist in the lineage table
+                    count_query = text("SELECT COUNT(*) FROM baselinr_lineage")
+                    total_count = conn.execute(count_query).scalar()
+                    logger.info(f"Total rows in baselinr_lineage: {total_count}")
+                    
+                    # Get a sample of table names
+                    sample_query = text("""
+                        SELECT DISTINCT downstream_table, upstream_table
+                        FROM baselinr_lineage
+                        LIMIT 10
+                    """)
+                    sample_rows = conn.execute(sample_query).fetchall()
+                    logger.info(f"Sample tables in lineage: {[row for row in sample_rows]}")
+                    
+                    query = text("""
+                        SELECT DISTINCT downstream_schema, downstream_table
+                        FROM baselinr_lineage
+                        WHERE LOWER(downstream_table) LIKE :pattern 
+                           OR LOWER(COALESCE(downstream_schema, '')) LIKE :pattern
+                        UNION
+                        SELECT DISTINCT upstream_schema, upstream_table
+                        FROM baselinr_lineage
+                        WHERE LOWER(upstream_table) LIKE :pattern 
+                           OR LOWER(COALESCE(upstream_schema, '')) LIKE :pattern
+                        ORDER BY downstream_schema, downstream_table
+                        LIMIT :limit
+                    """)
+                    pattern = f"%{search_lower}%"
+                    logger.info(f"Executing search query with pattern: {pattern}")
+                    result = conn.execute(query, {"pattern": pattern, "limit": limit})
+                    rows = result.fetchall()
+                    logger.info(f"Query returned {len(rows)} rows")
+                    
+                    for row in rows:
+                        schema, table = row
+                        table_key = f"{schema or ''}.{table or ''}"
+                        logger.debug(f"Found table: {table_key}")
+                        if table_key not in seen_keys and table:
+                            matching_tables.append(TableInfoResponse(
+                                schema=schema or "",
+                                table=table,
+                                database=None
+                            ))
+                            seen_keys.add(table_key)
+                    logger.info(f"Found {len(matching_tables)} unique tables from lineage table")
+            else:
+                logger.warning("baselinr_lineage table does not exist")
+        except Exception as e:
+            logger.error(f"Failed to query lineage table directly: {e}", exc_info=True)
+        
+        # Also try LineageGraphBuilder as fallback
+        if len(matching_tables) < limit and LINEAGE_AVAILABLE:
+            try:
+                builder = LineageGraphBuilder(db_client.engine)
+                all_tables = builder.get_all_tables()
+                logger.debug(f"LineageGraphBuilder found {len(all_tables)} tables")
+                
+                for t in all_tables:
+                    # get_all_tables returns {"schema": ..., "table": ...}
+                    table_name = t.get("table", "")
+                    schema_name = t.get("schema", "")
+                    table_key = f"{schema_name}.{table_name}"
+                    
+                    if table_key not in seen_keys and table_name:
+                        if search_lower in table_name.lower() or search_lower in (schema_name or "").lower():
+                            matching_tables.append(TableInfoResponse(
+                                schema=schema_name or "",
+                                table=table_name,
+                                database=t.get("database")
+                            ))
+                            seen_keys.add(table_key)
+            except Exception as e:
+                logger.error(f"Failed to search lineage via LineageGraphBuilder: {e}", exc_info=True)
+        
+        # Also search in profiled tables (baselinr_runs) as fallback
+        if len(matching_tables) < limit:
+            try:
+                # Check if baselinr_runs table exists
+                if db_client._table_exists('baselinr_runs'):
+                    with db_client.engine.connect() as conn:
+                        query = text("""
+                            SELECT DISTINCT schema_name, dataset_name, warehouse_type
+                            FROM baselinr_runs
+                            WHERE LOWER(dataset_name) LIKE :pattern 
+                               OR LOWER(COALESCE(schema_name, '')) LIKE :pattern
+                            ORDER BY schema_name, dataset_name
+                            LIMIT :limit
+                        """)
+                        pattern = f"%{search_lower}%"
+                        result = conn.execute(query, {"pattern": pattern, "limit": limit - len(matching_tables)})
+                        
+                        for row in result:
+                            schema, table, warehouse = row
+                            table_key = f"{schema or ''}.{table or ''}"
+                            if table_key not in seen_keys and table:
+                                matching_tables.append(TableInfoResponse(
+                                    schema=schema or "",
+                                    table=table,
+                                    database=None
+                                ))
+                                seen_keys.add(table_key)
+            except Exception as e:
+                # If table doesn't exist or query fails, continue
+                logger.warning(f"Failed to search profiled tables: {e}")
+                pass
+        
+        final_results = matching_tables[:limit]
+        logger.info(f"Returning {len(final_results)} matching tables for search '{q}'")
+        for result in final_results:
+            logger.debug(f"  - {result.schema}.{result.table}")
+        
+        return final_results
     
     except Exception as e:
+        logger.error(f"Search endpoint error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
@@ -1045,6 +1227,36 @@ async def get_drift_propagation(
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get drift path: {str(e)}")
+
+
+@app.get("/api/lineage/impact", response_model=LineageImpactResponse)
+async def get_lineage_impact(
+    table: str = Query(..., description="Table name"),
+    schema: Optional[str] = Query(None, description="Schema name"),
+    include_metrics: bool = Query(True, description="Include metric impact"),
+):
+    """
+    Get impact analysis for a table.
+    
+    Returns:
+    - Affected downstream tables
+    - Impact score (0-1 scale)
+    - Affected metrics count
+    - Drift propagation path
+    - Recommendations
+    """
+    if not LINEAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    try:
+        impact = await db_client.get_lineage_impact(
+            table=table,
+            schema=schema,
+            include_metrics=include_metrics
+        )
+        return impact
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get lineage impact: {str(e)}")
 
 
 if __name__ == "__main__":

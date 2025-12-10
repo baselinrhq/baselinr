@@ -4,7 +4,7 @@
  * Interactive lineage graph viewer using Cytoscape.js
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CytoscapeComponent from 'react-cytoscapejs';
 import dagre from 'cytoscape-dagre';
 import cytoscape, { Core } from 'cytoscape';
@@ -19,6 +19,7 @@ interface LineageViewerProps {
   onNodeClick?: (nodeId: string) => void;
   onEdgeClick?: (edgeId: string) => void;
   layout?: 'hierarchical' | 'circular' | 'force-directed';
+  onCyReady?: (cy: Core) => void;
 }
 
 export default function LineageViewer({
@@ -27,8 +28,10 @@ export default function LineageViewer({
   onNodeClick,
   onEdgeClick,
   layout = 'hierarchical',
+  onCyReady,
 }: LineageViewerProps) {
   const cyRef = useRef<Core | null>(null);
+  const [, setSelectedNode] = useState<string | null>(null);
 
   // Convert graph to Cytoscape format
   const elements = graph
@@ -230,6 +233,10 @@ export default function LineageViewer({
   // Handle graph ready
   const handleCyReady = (cy: Core) => {
     cyRef.current = cy;
+    
+    if (onCyReady) {
+      onCyReady(cy);
+    }
 
     // Node click handler
     cy.on('tap', 'node', (evt) => {
