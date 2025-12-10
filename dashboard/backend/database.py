@@ -31,7 +31,11 @@ from models import (
     DriftSummaryResponse,
     DriftDetailsResponse,
     DriftImpactResponse,
-    TopAffectedTable
+    TopAffectedTable,
+    ValidationSummaryResponse,
+    ValidationResultsListResponse,
+    ValidationResultDetailsResponse,
+    ValidationFailureSamplesResponse
 )
 
 logger = logging.getLogger(__name__)
@@ -1323,7 +1327,7 @@ class DatabaseClient:
             with self.engine.connect() as conn:
                 query = """
                     SELECT 
-                        id, run_id, column_name, rule_type, passed,
+                        id, run_id, table_name, schema_name, column_name, rule_type, passed,
                         failure_reason, total_rows, failed_rows, failure_rate,
                         severity, validated_at
                     FROM baselinr_validation_results
@@ -1343,31 +1347,33 @@ class DatabaseClient:
                     validation_results.append(ValidationResultResponse(
                         id=row[0],
                         run_id=row[1],
-                        column_name=row[2],
-                        rule_type=row[3],
-                        passed=row[4],
-                        failure_reason=row[5],
-                        total_rows=row[6],
-                        failed_rows=row[7],
-                        failure_rate=float(row[8]) if row[8] else None,
-                        severity=row[9],
-                        validated_at=row[10]
+                        table_name=row[2],
+                        schema_name=row[3],
+                        column_name=row[4],
+                        rule_type=row[5],
+                        passed=row[6],
+                        failure_reason=row[7],
+                        total_rows=row[8],
+                        failed_rows=row[9],
+                        failure_rate=float(row[10]) if row[10] else None,
+                        severity=row[11],
+                        validated_at=row[12]
                     ))
                     
                     # Update summary
                     summary["total"] += 1
-                    if row[4]:  # passed
+                    if row[6]:  # passed
                         summary["passed"] += 1
                     else:
                         summary["failed"] += 1
                     
                     # Count by rule type
-                    rule_type = row[3] or "unknown"
+                    rule_type = row[5] or "unknown"
                     summary["by_rule_type"][rule_type] = summary["by_rule_type"].get(rule_type, 0) + 1
                     
                     # Count by severity
-                    if row[9]:
-                        severity = row[9]
+                    if row[11]:
+                        severity = row[11]
                         summary["by_severity"][severity] = summary["by_severity"].get(severity, 0) + 1
                 
                 # Calculate pass rate
@@ -1381,6 +1387,445 @@ class DatabaseClient:
             schema_name=schema,
             validation_results=validation_results,
             summary=summary
+        )
+    
+    async def get_validation_summary(
+        self,
+        warehouse: Optional[str] = None,
+        days: int = 30
+    ) -> "ValidationSummaryResponse":
+        """Get validation summary statistics."""
+        from datetime import timedelta, timezone
+        from models import ValidationSummaryResponse, TableMetricsTrend
+        
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        total_validations = 0
+        passed_count = 0
+        failed_count = 0
+        by_rule_type: Dict[str, int] = {}
+        by_severity: Dict[str, int] = {}
+        by_table: Dict[str, int] = {}
+        trending: List[TableMetricsTrend] = []
+        recent_runs: List[Dict[str, Any]] = []
+        
+        if not self._table_exists('baselinr_validation_results'):
+            logger.warning("baselinr_validation_results table does not exist, returning empty validation summary")
+            return ValidationSummaryResponse(
+                total_validations=0,
+                passed_count=0,
+                failed_count=0,
+                pass_rate=0.0,
+                by_rule_type=by_rule_type,
+                by_severity=by_severity,
+                by_table=by_table,
+                trending=trending,
+                recent_runs=recent_runs
+            )
+        
+        try:
+            with self.engine.connect() as conn:
+                # Base WHERE clause
+                where_clause = "WHERE validated_at >= :start_date"
+                params = {"start_date": start_date}
+                
+                if warehouse:
+                    where_clause += " AND EXISTS (SELECT 1 FROM baselinr_runs r WHERE r.run_id = baselinr_validation_results.run_id AND r.warehouse_type = :warehouse)"
+                    params["warehouse"] = warehouse
+                
+                # Get totals
+                count_query = f"""
+                    SELECT 
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE passed = true) as passed,
+                        COUNT(*) FILTER (WHERE passed = false) as failed
+                    FROM baselinr_validation_results
+                    {where_clause}
+                """
+                count_result = conn.execute(text(count_query), params).fetchone()
+                if count_result:
+                    total_validations = count_result[0] or 0
+                    passed_count = count_result[1] or 0
+                    failed_count = count_result[2] or 0
+                
+                # Get breakdown by rule type
+                rule_type_query = f"""
+                    SELECT 
+                        rule_type,
+                        COUNT(*) as count
+                    FROM baselinr_validation_results
+                    {where_clause}
+                    GROUP BY rule_type
+                """
+                rule_type_results = conn.execute(text(rule_type_query), params).fetchall()
+                for row in rule_type_results:
+                    rule_type = row[0] or "unknown"
+                    count = row[1] or 0
+                    by_rule_type[rule_type] = count
+                
+                # Get breakdown by severity
+                severity_query = f"""
+                    SELECT 
+                        severity,
+                        COUNT(*) as count
+                    FROM baselinr_validation_results
+                    {where_clause}
+                    GROUP BY severity
+                """
+                severity_results = conn.execute(text(severity_query), params).fetchall()
+                for row in severity_results:
+                    severity = row[0] or "unknown"
+                    count = row[1] or 0
+                    by_severity[severity] = count
+                
+                # Get breakdown by table
+                table_query = f"""
+                    SELECT 
+                        table_name,
+                        COUNT(*) as count
+                    FROM baselinr_validation_results
+                    {where_clause}
+                    GROUP BY table_name
+                """
+                table_results = conn.execute(text(table_query), params).fetchall()
+                for row in table_results:
+                    table_name = row[0] or "unknown"
+                    count = row[1] or 0
+                    by_table[table_name] = count
+                
+                # Get trending data (pass rate per day)
+                trend_query = f"""
+                    SELECT 
+                        DATE(validated_at) as date,
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE passed = true) as passed
+                    FROM baselinr_validation_results
+                    {where_clause}
+                    GROUP BY DATE(validated_at) ORDER BY date ASC
+                """
+                
+                trend_results = conn.execute(text(trend_query), params).fetchall()
+                for row in trend_results:
+                    date_val = row[0]
+                    total = row[1] or 0
+                    passed = row[2] or 0
+                    pass_rate = (passed / total * 100.0) if total > 0 else 0.0
+                    
+                    if isinstance(date_val, str):
+                        try:
+                            from dateutil.parser import parse
+                            date_val = parse(date_val)
+                        except Exception:
+                            date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    elif not isinstance(date_val, datetime):
+                        if hasattr(date_val, 'isoformat'):
+                            date_val = datetime.combine(date_val, datetime.min.time())
+                        else:
+                            date_val = datetime.fromisoformat(str(date_val))
+                    
+                    trending.append(TableMetricsTrend(timestamp=date_val, value=pass_rate))
+                
+                # Get recent validation runs (grouped by run_id)
+                recent_query = f"""
+                    SELECT 
+                        run_id,
+                        MAX(validated_at) as validated_at,
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE passed = true) as passed,
+                        COUNT(*) FILTER (WHERE passed = false) as failed
+                    FROM baselinr_validation_results
+                    {where_clause}
+                    GROUP BY run_id ORDER BY validated_at DESC LIMIT 10
+                """
+                
+                recent_results = conn.execute(text(recent_query), params).fetchall()
+                for row in recent_results:
+                    recent_runs.append({
+                        "run_id": row[0],
+                        "validated_at": row[1].isoformat() if isinstance(row[1], datetime) else str(row[1]),
+                        "total": row[2] or 0,
+                        "passed": row[3] or 0,
+                        "failed": row[4] or 0
+                    })
+                
+        except Exception as e:
+            logger.warning(f"Could not get validation summary: {e}")
+        
+        pass_rate = (passed_count / total_validations * 100.0) if total_validations > 0 else 0.0
+        
+        return ValidationSummaryResponse(
+            total_validations=total_validations,
+            passed_count=passed_count,
+            failed_count=failed_count,
+            pass_rate=pass_rate,
+            by_rule_type=by_rule_type,
+            by_severity=by_severity,
+            by_table=by_table,
+            trending=trending,
+            recent_runs=recent_runs
+        )
+    
+    async def get_validation_results(
+        self,
+        table: Optional[str] = None,
+        schema: Optional[str] = None,
+        rule_type: Optional[str] = None,
+        severity: Optional[str] = None,
+        passed: Optional[bool] = None,
+        days: int = 30,
+        page: int = 1,
+        page_size: int = 50
+    ) -> "ValidationResultsListResponse":
+        """Get validation results with filtering and pagination."""
+        from datetime import timedelta, timezone
+        from models import ValidationResultsListResponse, ValidationResultResponse
+        
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        offset = (page - 1) * page_size
+        
+        results: List[ValidationResultResponse] = []
+        total = 0
+        
+        if not self._table_exists('baselinr_validation_results'):
+            logger.warning("baselinr_validation_results table does not exist, returning empty results")
+            return ValidationResultsListResponse(
+                results=results,
+                total=0,
+                page=page,
+                page_size=page_size
+            )
+        
+        try:
+            with self.engine.connect() as conn:
+                # Build query with filters
+                query = """
+                    SELECT 
+                        id, run_id, table_name, schema_name, column_name, rule_type, passed,
+                        failure_reason, total_rows, failed_rows, failure_rate, severity, validated_at
+                    FROM baselinr_validation_results
+                    WHERE validated_at >= :start_date
+                """
+                params = {"start_date": start_date, "limit": page_size, "offset": offset}
+                
+                if table:
+                    query += " AND table_name = :table_name"
+                    params["table_name"] = table
+                
+                if schema:
+                    query += " AND schema_name = :schema_name"
+                    params["schema_name"] = schema
+                
+                if rule_type:
+                    query += " AND rule_type = :rule_type"
+                    params["rule_type"] = rule_type
+                
+                if severity:
+                    query += " AND severity = :severity"
+                    params["severity"] = severity
+                
+                if passed is not None:
+                    query += " AND passed = :passed"
+                    params["passed"] = passed
+                
+                # Get total count
+                count_query = query.replace("SELECT id, run_id, table_name, schema_name, column_name, rule_type, passed, failure_reason, total_rows, failed_rows, failure_rate, severity, validated_at", "SELECT COUNT(*)")
+                count_result = conn.execute(text(count_query), params).fetchone()
+                total = count_result[0] if count_result else 0
+                
+                # Get paginated results
+                query += " ORDER BY validated_at DESC LIMIT :limit OFFSET :offset"
+                
+                result_rows = conn.execute(text(query), params).fetchall()
+                
+                for row in result_rows:
+                    results.append(ValidationResultResponse(
+                        id=row[0],
+                        run_id=row[1],
+                        table_name=row[2],
+                        schema_name=row[3],
+                        column_name=row[4],
+                        rule_type=row[5],
+                        passed=row[6],
+                        failure_reason=row[7],
+                        total_rows=row[8],
+                        failed_rows=row[9],
+                        failure_rate=float(row[10]) if row[10] else None,
+                        severity=row[11],
+                        validated_at=row[12]
+                    ))
+                
+        except Exception as e:
+            logger.warning(f"Could not get validation results: {e}")
+        
+        return ValidationResultsListResponse(
+            results=results,
+            total=total,
+            page=page,
+            page_size=page_size
+        )
+    
+    async def get_validation_result_details(
+        self,
+        result_id: int
+    ) -> "ValidationResultDetailsResponse":
+        """Get detailed validation result with context."""
+        from models import ValidationResultDetailsResponse, ValidationResultResponse
+        
+        result: Optional[ValidationResultResponse] = None
+        rule_config: Optional[Dict[str, Any]] = None
+        run_info: Optional[Dict[str, Any]] = None
+        historical_results: List[ValidationResultResponse] = []
+        
+        if not self._table_exists('baselinr_validation_results'):
+            raise ValueError(f"Validation result {result_id} not found")
+        
+        try:
+            with self.engine.connect() as conn:
+                # Get the result
+                result_query = """
+                    SELECT 
+                        id, run_id, table_name, schema_name, column_name, rule_type, passed,
+                        failure_reason, total_rows, failed_rows, failure_rate, severity, validated_at
+                    FROM baselinr_validation_results
+                    WHERE id = :result_id
+                """
+                result_row = conn.execute(text(result_query), {"result_id": result_id}).fetchone()
+                
+                if not result_row:
+                    raise ValueError(f"Validation result {result_id} not found")
+                
+                result = ValidationResultResponse(
+                    id=result_row[0],
+                    run_id=result_row[1],
+                    table_name=result_row[2],
+                    schema_name=result_row[3],
+                    column_name=result_row[4],
+                    rule_type=result_row[5],
+                    passed=result_row[6],
+                    failure_reason=result_row[7],
+                    total_rows=result_row[8],
+                    failed_rows=result_row[9],
+                    failure_rate=float(result_row[10]) if result_row[10] else None,
+                    severity=result_row[11],
+                    validated_at=result_row[12]
+                )
+                
+                # Get run info
+                run_query = """
+                    SELECT run_id, dataset_name, profiled_at, warehouse_type
+                    FROM baselinr_runs
+                    WHERE run_id = :run_id
+                """
+                run_row = conn.execute(text(run_query), {"run_id": result.run_id}).fetchone()
+                if run_row:
+                    run_info = {
+                        "run_id": run_row[0],
+                        "dataset_name": run_row[1],
+                        "profiled_at": run_row[2].isoformat() if isinstance(run_row[2], datetime) else str(run_row[2]),
+                        "warehouse_type": run_row[3]
+                    }
+                
+                # Get historical results for same rule
+                hist_query = """
+                    SELECT 
+                        id, run_id, table_name, schema_name, column_name, rule_type, passed,
+                        failure_reason, total_rows, failed_rows, failure_rate, severity, validated_at
+                    FROM baselinr_validation_results
+                    WHERE table_name = :table_name
+                    AND rule_type = :rule_type
+                    AND id != :result_id
+                """
+                hist_params = {
+                    "table_name": result_row[2],  # table_name from result
+                    "rule_type": result_row[5],  # rule_type from result
+                    "result_id": result_id
+                }
+                
+                if result_row[4]:  # column_name
+                    hist_query += " AND column_name = :column_name"
+                    hist_params["column_name"] = result_row[4]
+                
+                hist_query += " ORDER BY validated_at DESC LIMIT 10"
+                
+                hist_rows = conn.execute(text(hist_query), hist_params).fetchall()
+                for row in hist_rows:
+                    historical_results.append(ValidationResultResponse(
+                        id=row[0],
+                        run_id=row[1],
+                        table_name=row[2],
+                        schema_name=row[3],
+                        column_name=row[4],
+                        rule_type=row[5],
+                        passed=row[6],
+                        failure_reason=row[7],
+                        total_rows=row[8],
+                        failed_rows=row[9],
+                        failure_rate=float(row[10]) if row[10] else None,
+                        severity=row[11],
+                        validated_at=row[12]
+                    ))
+                
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.warning(f"Could not get validation result details: {e}")
+            raise ValueError(f"Validation result {result_id} not found")
+        
+        return ValidationResultDetailsResponse(
+            result=result,
+            rule_config=rule_config,
+            run_info=run_info,
+            historical_results=historical_results
+        )
+    
+    async def get_validation_failure_samples(
+        self,
+        result_id: int
+    ) -> "ValidationFailureSamplesResponse":
+        """Get failure samples for a validation result."""
+        from models import ValidationFailureSamplesResponse
+        
+        total_failures = 0
+        sample_failures: List[Dict[str, Any]] = []
+        failure_patterns: Optional[Dict[str, Any]] = None
+        
+        if not self._table_exists('baselinr_validation_results'):
+            raise ValueError(f"Validation result {result_id} not found")
+        
+        try:
+            with self.engine.connect() as conn:
+                # Get the result to check if it failed
+                result_query = """
+                    SELECT failed_rows, failure_reason
+                    FROM baselinr_validation_results
+                    WHERE id = :result_id
+                """
+                result_row = conn.execute(text(result_query), {"result_id": result_id}).fetchone()
+                
+                if not result_row:
+                    raise ValueError(f"Validation result {result_id} not found")
+                
+                total_failures = result_row[0] or 0
+                
+                # Sample failures are typically stored in metadata or a separate table
+                # For now, we'll return the failure_reason and create a basic sample
+                if result_row[1]:  # failure_reason
+                    sample_failures.append({
+                        "failure_reason": result_row[1],
+                        "note": "Detailed failure samples may not be available for all validation types"
+                    })
+                
+        except ValueError:
+            raise
+        except Exception as e:
+            logger.warning(f"Could not get validation failure samples: {e}")
+            raise ValueError(f"Validation result {result_id} not found")
+        
+        return ValidationFailureSamplesResponse(
+            result_id=result_id,
+            total_failures=total_failures,
+            sample_failures=sample_failures,
+            failure_patterns=failure_patterns
         )
     
     async def get_drift_summary(

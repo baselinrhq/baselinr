@@ -561,3 +561,106 @@ export async function fetchTableConfig(
   return response.json();
 }
 
+// Validation dashboard interfaces and functions
+export interface ValidationSummary {
+  total_validations: number;
+  passed_count: number;
+  failed_count: number;
+  pass_rate: number;
+  by_rule_type: Record<string, number>;
+  by_severity: Record<string, number>;
+  by_table: Record<string, number>;
+  trending: Array<{ timestamp: string; value: number }>;
+  recent_runs: Array<{
+    run_id: string;
+    validated_at: string;
+    total: number;
+    passed: number;
+    failed: number;
+  }>;
+}
+
+export async function fetchValidationSummary(
+  options: { days?: number; warehouse?: string } = {}
+): Promise<ValidationSummary> {
+  return fetchAPI<ValidationSummary>('/api/validation/summary', options);
+}
+
+export interface ValidationResultsList {
+  results: ValidationResult[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export async function fetchValidationResults(
+  options: {
+    table?: string;
+    schema?: string;
+    rule_type?: string;
+    severity?: string;
+    passed?: boolean;
+    days?: number;
+    page?: number;
+    page_size?: number;
+  } = {}
+): Promise<ValidationResultsList> {
+  const params = new URLSearchParams();
+  if (options.table) params.append('table', options.table);
+  if (options.schema) params.append('schema', options.schema);
+  if (options.rule_type) params.append('rule_type', options.rule_type);
+  if (options.severity) params.append('severity', options.severity);
+  if (options.passed !== undefined) params.append('passed', options.passed.toString());
+  if (options.days) params.append('days', options.days.toString());
+  if (options.page) params.append('page', options.page.toString());
+  if (options.page_size) params.append('page_size', options.page_size.toString());
+  
+  const url = `${API_URL}/api/validation/results${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export interface ValidationResultDetails extends ValidationResult {
+  rule_config?: Record<string, unknown>;
+  run_info?: Record<string, unknown>;
+  historical_results: ValidationResult[];
+}
+
+export async function fetchValidationResultDetails(
+  resultId: number
+): Promise<ValidationResultDetails> {
+  const url = `${API_URL}/api/validation/results/${resultId}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export interface ValidationFailureSamples {
+  result_id: number;
+  total_failures: number;
+  sample_failures: Array<Record<string, unknown>>;
+  failure_patterns?: Record<string, unknown>;
+}
+
+export async function fetchValidationFailureSamples(
+  resultId: number
+): Promise<ValidationFailureSamples> {
+  const url = `${API_URL}/api/validation/results/${resultId}/failures`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
