@@ -27,7 +27,11 @@ from models import (
     TableOverviewResponse,
     TableDriftHistoryResponse,
     TableValidationResultsResponse,
-    ValidationResultResponse
+    ValidationResultResponse,
+    DriftSummaryResponse,
+    DriftDetailsResponse,
+    DriftImpactResponse,
+    TopAffectedTable
 )
 
 logger = logging.getLogger(__name__)
@@ -54,14 +58,25 @@ class DatabaseClient:
         """Check if a table exists in the database."""
         try:
             with self.engine.connect() as conn:
-                result = conn.execute(text("""
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
-                        AND table_name = :table_name
-                    )
-                """), {'table_name': table_name})
-                return result.fetchone()[0]
+                # Check database type
+                dialect = self.engine.dialect.name
+                if dialect == 'sqlite':
+                    # SQLite uses sqlite_master
+                    result = conn.execute(text("""
+                        SELECT name FROM sqlite_master 
+                        WHERE type='table' AND name=:table_name
+                    """), {'table_name': table_name})
+                    return result.fetchone() is not None
+                else:
+                    # PostgreSQL and others use information_schema
+                    result = conn.execute(text("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = :table_name
+                        )
+                    """), {'table_name': table_name})
+                    return result.fetchone()[0]
         except Exception:
             return False
     
@@ -1366,5 +1381,343 @@ class DatabaseClient:
             schema_name=schema,
             validation_results=validation_results,
             summary=summary
+        )
+    
+    async def get_drift_summary(
+        self,
+        warehouse: Optional[str] = None,
+        days: int = 30
+    ) -> DriftSummaryResponse:
+        """Get drift summary statistics."""
+        from datetime import timedelta, timezone
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        total_events = 0
+        by_severity: Dict[str, int] = {"low": 0, "medium": 0, "high": 0}
+        trending: List[TableMetricsTrend] = []
+        top_affected_tables: List[TopAffectedTable] = []
+        warehouse_breakdown: Dict[str, int] = {}
+        recent_activity: List[DriftAlertResponse] = []
+        
+        if not self._table_exists('baselinr_events'):
+            logger.warning("baselinr_events table does not exist, returning empty drift summary")
+            return DriftSummaryResponse(
+                total_events=0,
+                by_severity=by_severity,
+                trending=trending,
+                top_affected_tables=top_affected_tables,
+                warehouse_breakdown=warehouse_breakdown,
+                recent_activity=recent_activity
+            )
+        
+        try:
+            with self.engine.connect() as conn:
+                # Get total events and by severity
+                count_query = """
+                    SELECT 
+                        COUNT(*) as total,
+                        drift_severity,
+                        COUNT(*) FILTER (WHERE drift_severity = 'low') as low_count,
+                        COUNT(*) FILTER (WHERE drift_severity = 'medium') as medium_count,
+                        COUNT(*) FILTER (WHERE drift_severity = 'high') as high_count
+                    FROM baselinr_events
+                    WHERE event_type IN ('DataDriftDetected', 'drift_detected')
+                    AND timestamp >= :start_date
+                """
+                params = {"start_date": start_date}
+                
+                if warehouse:
+                    count_query += " AND EXISTS (SELECT 1 FROM baselinr_runs r WHERE r.run_id = baselinr_events.run_id AND r.warehouse_type = :warehouse)"
+                    params["warehouse"] = warehouse
+                
+                count_query += " GROUP BY drift_severity"
+                
+                count_results = conn.execute(text(count_query), params).fetchall()
+                for row in count_results:
+                    severity = row[1] or "low"
+                    count = row[0] or 0
+                    total_events += count
+                    by_severity[severity] = count
+                
+                # Get trending data (events per day)
+                trend_query = """
+                    SELECT 
+                        DATE(timestamp) as date,
+                        COUNT(*) as drift_count
+                    FROM baselinr_events
+                    WHERE event_type IN ('DataDriftDetected', 'drift_detected')
+                    AND timestamp >= :start_date
+                """
+                if warehouse:
+                    trend_query += " AND EXISTS (SELECT 1 FROM baselinr_runs r WHERE r.run_id = baselinr_events.run_id AND r.warehouse_type = :warehouse)"
+                
+                trend_query += " GROUP BY DATE(timestamp) ORDER BY date ASC"
+                
+                trend_results = conn.execute(text(trend_query), params).fetchall()
+                for row in trend_results:
+                    date_val = row[0]
+                    count = row[1] or 0
+                    if isinstance(date_val, str):
+                        try:
+                            from dateutil.parser import parse
+                            date_val = parse(date_val)
+                        except Exception:
+                            date_val = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                    elif not isinstance(date_val, datetime):
+                        if hasattr(date_val, 'isoformat'):
+                            date_val = datetime.combine(date_val, datetime.min.time())
+                        else:
+                            date_val = datetime.fromisoformat(str(date_val))
+                    trending.append(TableMetricsTrend(timestamp=date_val, value=float(count)))
+                
+                # Get top affected tables
+                top_tables_query = """
+                    SELECT 
+                        table_name,
+                        COUNT(*) as drift_count,
+                        COUNT(*) FILTER (WHERE drift_severity = 'low') as low_count,
+                        COUNT(*) FILTER (WHERE drift_severity = 'medium') as medium_count,
+                        COUNT(*) FILTER (WHERE drift_severity = 'high') as high_count
+                    FROM baselinr_events
+                    WHERE event_type IN ('DataDriftDetected', 'drift_detected')
+                    AND timestamp >= :start_date
+                """
+                if warehouse:
+                    top_tables_query += " AND EXISTS (SELECT 1 FROM baselinr_runs r WHERE r.run_id = baselinr_events.run_id AND r.warehouse_type = :warehouse)"
+                
+                top_tables_query += " GROUP BY table_name ORDER BY drift_count DESC LIMIT 10"
+                
+                top_tables_results = conn.execute(text(top_tables_query), params).fetchall()
+                for row in top_tables_results:
+                    table_name = row[0]
+                    drift_count = row[1] or 0
+                    severity_breakdown = {
+                        "low": row[2] or 0,
+                        "medium": row[3] or 0,
+                        "high": row[4] or 0
+                    }
+                    top_affected_tables.append(TopAffectedTable(
+                        table_name=table_name,
+                        drift_count=drift_count,
+                        severity_breakdown=severity_breakdown
+                    ))
+                
+                # Get warehouse breakdown
+                warehouse_query = """
+                    SELECT 
+                        COALESCE(r.warehouse_type, 'unknown') as warehouse_type,
+                        COUNT(*) as drift_count
+                    FROM baselinr_events e
+                    LEFT JOIN baselinr_runs r ON e.run_id = r.run_id
+                    WHERE e.event_type IN ('DataDriftDetected', 'drift_detected')
+                    AND e.timestamp >= :start_date
+                """
+                if warehouse:
+                    warehouse_query += " AND r.warehouse_type = :warehouse"
+                
+                warehouse_query += " GROUP BY r.warehouse_type"
+                
+                warehouse_results = conn.execute(text(warehouse_query), params).fetchall()
+                for row in warehouse_results:
+                    wh_type = row[0] or "unknown"
+                    count = row[1] or 0
+                    warehouse_breakdown[wh_type] = count
+                
+                # Get recent activity (last 10 events)
+                recent_activity = await self.get_drift_alerts(
+                    warehouse=warehouse,
+                    start_date=start_date,
+                    limit=10
+                )
+                
+        except Exception as e:
+            logger.warning(f"Could not get drift summary: {e}")
+        
+        return DriftSummaryResponse(
+            total_events=total_events,
+            by_severity=by_severity,
+            trending=trending,
+            top_affected_tables=top_affected_tables,
+            warehouse_breakdown=warehouse_breakdown,
+            recent_activity=recent_activity
+        )
+    
+    async def get_drift_details(
+        self,
+        event_id: str
+    ) -> DriftDetailsResponse:
+        """Get detailed drift information for a specific event."""
+        # Get the event itself
+        all_alerts = await self.get_drift_alerts(limit=10000)  # Get all to find the one we need
+        event = None
+        for alert in all_alerts:
+            if alert.event_id == event_id:
+                event = alert
+                break
+        
+        if not event:
+            raise ValueError(f"Drift event {event_id} not found")
+        
+        # Get baseline and current metrics from runs
+        baseline_metrics: Dict[str, Any] = {}
+        current_metrics: Dict[str, Any] = {}
+        historical_values: List[Dict[str, Any]] = []
+        statistical_tests: Optional[List[Dict[str, Any]]] = None
+        related_events: List[DriftAlertResponse] = []
+        
+        try:
+            with self.engine.connect() as conn:
+                # Get run details for baseline and current
+                run_query = """
+                    SELECT run_id, dataset_name, profiled_at
+                    FROM baselinr_runs
+                    WHERE run_id = :run_id
+                """
+                run_result = conn.execute(text(run_query), {"run_id": event.run_id}).fetchone()
+                
+                if run_result:
+                    # Get column metrics for the run
+                    metrics_query = """
+                        SELECT column_name, metric_name, metric_value
+                        FROM baselinr_results
+                        WHERE run_id = :run_id
+                        AND table_name = :table_name
+                    """
+                    metrics_params = {"run_id": event.run_id, "table_name": event.table_name}
+                    if event.column_name:
+                        metrics_query += " AND column_name = :column_name"
+                        metrics_params["column_name"] = event.column_name
+                    
+                    metrics_results = conn.execute(text(metrics_query), metrics_params).fetchall()
+                    for row in metrics_results:
+                        col_name = row[0]
+                        metric_name = row[1]
+                        metric_value = row[2]
+                        if col_name not in current_metrics:
+                            current_metrics[col_name] = {}
+                        current_metrics[col_name][metric_name] = metric_value
+                
+                # Get historical values (previous runs for same table/column)
+                if event.column_name:
+                    hist_query = """
+                        SELECT r.profiled_at, res.metric_value
+                        FROM baselinr_runs r
+                        JOIN baselinr_results res ON r.run_id = res.run_id
+                        WHERE res.table_name = :table_name
+                        AND res.column_name = :column_name
+                        AND res.metric_name = :metric_name
+                        AND r.profiled_at < (SELECT profiled_at FROM baselinr_runs WHERE run_id = :run_id)
+                        ORDER BY r.profiled_at DESC
+                        LIMIT 10
+                    """
+                    hist_params = {
+                        "table_name": event.table_name,
+                        "column_name": event.column_name,
+                        "metric_name": event.metric_name,
+                        "run_id": event.run_id
+                    }
+                    hist_results = conn.execute(text(hist_query), hist_params).fetchall()
+                    for row in hist_results:
+                        historical_values.append({
+                            "timestamp": row[0].isoformat() if isinstance(row[0], datetime) else str(row[0]),
+                            "value": float(row[1]) if row[1] is not None else None
+                        })
+                
+                # Get related events (same table/column)
+                related_alerts = await self.get_drift_alerts(
+                    table=event.table_name,
+                    limit=20
+                )
+                for alert in related_alerts:
+                    if alert.event_id != event_id:
+                        if not event.column_name or alert.column_name == event.column_name:
+                            related_events.append(alert)
+                            if len(related_events) >= 5:
+                                break
+                
+                # Try to get statistical test results from event metadata if available
+                # This would require checking if metadata column exists and contains test results
+                # For now, we'll leave it as None
+                
+        except Exception as e:
+            logger.warning(f"Could not get drift details: {e}")
+        
+        return DriftDetailsResponse(
+            event=event,
+            baseline_metrics=baseline_metrics,
+            current_metrics=current_metrics,
+            statistical_tests=statistical_tests,
+            historical_values=historical_values,
+            related_events=related_events
+        )
+    
+    async def get_drift_impact(
+        self,
+        event_id: str
+    ) -> DriftImpactResponse:
+        """Get drift impact analysis."""
+        # Get the event
+        all_alerts = await self.get_drift_alerts(limit=10000)
+        event = None
+        for alert in all_alerts:
+            if alert.event_id == event_id:
+                event = alert
+                break
+        
+        if not event:
+            raise ValueError(f"Drift event {event_id} not found")
+        
+        affected_tables: List[str] = []
+        affected_metrics = 1  # At least the current metric
+        impact_score = 0.5  # Default medium impact
+        recommendations: List[str] = []
+        
+        # Try to use lineage to find downstream tables
+        try:
+            # Check if lineage is available
+            LINEAGE_AVAILABLE = False
+            try:
+                from lineage_graph import LineageGraphBuilder
+                LINEAGE_AVAILABLE = True
+            except ImportError:
+                pass
+            
+            if LINEAGE_AVAILABLE:
+                builder = LineageGraphBuilder(self.engine)
+                try:
+                    graph = builder.build_table_graph(
+                        root_table=event.table_name,
+                        direction="downstream",
+                        max_depth=3
+                    )
+                    for node in graph.nodes:
+                        if node.id != graph.root_id:
+                            affected_tables.append(node.id)
+                except Exception as e:
+                    logger.warning(f"Could not build lineage graph for impact analysis: {e}")
+        except Exception as e:
+            logger.warning(f"Could not get drift impact: {e}")
+        
+        # Calculate impact score based on severity and affected tables
+        severity_scores = {"low": 0.2, "medium": 0.5, "high": 0.8}
+        base_score = severity_scores.get(event.severity, 0.5)
+        table_multiplier = min(1.0, 1.0 + (len(affected_tables) * 0.1))
+        impact_score = min(1.0, base_score * table_multiplier)
+        
+        # Generate recommendations
+        if event.severity == "high":
+            recommendations.append("High severity drift detected. Investigate immediately.")
+        if len(affected_tables) > 0:
+            recommendations.append(f"Check {len(affected_tables)} downstream table(s) for cascading effects.")
+        if event.change_percent and abs(event.change_percent) > 50:
+            recommendations.append("Significant change detected (>50%). Review data pipeline.")
+        recommendations.append("Consider adjusting drift detection thresholds if this is expected.")
+        
+        return DriftImpactResponse(
+            event_id=event_id,
+            affected_tables=affected_tables,
+            affected_metrics=affected_metrics,
+            impact_score=impact_score,
+            recommendations=recommendations
         )
 

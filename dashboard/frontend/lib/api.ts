@@ -2,6 +2,12 @@
  * API client for Baselinr Dashboard Backend
  */
 
+import type { 
+  DriftSummary, 
+  DriftDetails, 
+  DriftImpact 
+} from '@/types/drift';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface FetchOptions {
@@ -215,6 +221,46 @@ export interface DriftAlert {
 
 export async function fetchDriftAlerts(options: FetchOptions = {}): Promise<DriftAlert[]> {
   return fetchAPI<DriftAlert[]>('/api/drift', options);
+}
+
+// Enhanced drift API functions
+export async function fetchDriftSummary(
+  options: { days?: number; warehouse?: string } = {}
+): Promise<DriftSummary> {
+  const params = new URLSearchParams();
+  if (options.days) params.append('days', options.days.toString());
+  if (options.warehouse) params.append('warehouse', options.warehouse);
+  
+  const url = `${API_URL}/api/drift/summary${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function fetchDriftDetails(eventId: string): Promise<DriftDetails> {
+  const url = `${API_URL}/api/drift/${eventId}/details`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+export async function fetchDriftImpact(eventId: string): Promise<DriftImpact> {
+  const url = `${API_URL}/api/drift/${eventId}/impact`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return response.json();
 }
 
 export interface TableMetrics {
