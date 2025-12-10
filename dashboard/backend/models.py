@@ -201,3 +201,38 @@ class TableConfigResponse(BaseModel):
     schema_name: Optional[str]
     config: Dict[str, Any] = Field(default_factory=dict)
 
+
+class TopAffectedTable(BaseModel):
+    """Top affected table in drift summary."""
+    table_name: str
+    drift_count: int
+    severity_breakdown: Dict[str, int] = Field(default_factory=dict)
+
+
+class DriftSummaryResponse(BaseModel):
+    """Drift summary statistics."""
+    total_events: int
+    by_severity: Dict[str, int] = Field(default_factory=dict)  # {"low": 10, "medium": 5, "high": 2}
+    trending: List[TableMetricsTrend] = Field(default_factory=list)  # Events over time
+    top_affected_tables: List[TopAffectedTable] = Field(default_factory=list)
+    warehouse_breakdown: Dict[str, int] = Field(default_factory=dict)
+    recent_activity: List[DriftAlertResponse] = Field(default_factory=list)  # Last 10 events
+
+
+class DriftDetailsResponse(BaseModel):
+    """Detailed drift information for a specific event."""
+    event: DriftAlertResponse
+    baseline_metrics: Dict[str, Any] = Field(default_factory=dict)  # Full baseline snapshot
+    current_metrics: Dict[str, Any] = Field(default_factory=dict)  # Full current snapshot
+    statistical_tests: Optional[List[Dict[str, Any]]] = None  # Test results if available
+    historical_values: List[Dict[str, Any]] = Field(default_factory=dict)  # Previous values over time
+    related_events: List[DriftAlertResponse] = Field(default_factory=list)  # Other drift events for same table/column
+
+
+class DriftImpactResponse(BaseModel):
+    """Drift impact analysis."""
+    event_id: str
+    affected_tables: List[str] = Field(default_factory=list)  # Downstream tables
+    affected_metrics: int = 0
+    impact_score: float = 0.0  # 0-1 scale
+    recommendations: List[str] = Field(default_factory=list)

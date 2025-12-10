@@ -19,6 +19,7 @@ interface DriftAlert {
 interface DriftAlertsTableProps {
   alerts: DriftAlert[]
   showDetails?: boolean
+  onRowClick?: (eventId: string) => void
 }
 
 const severityColors = {
@@ -27,7 +28,7 @@ const severityColors = {
   high: 'bg-red-100 text-red-800 border-red-200',
 }
 
-export default function DriftAlertsTable({ alerts, showDetails = false }: DriftAlertsTableProps) {
+export default function DriftAlertsTable({ alerts, showDetails = false, onRowClick }: DriftAlertsTableProps) {
   return (
     <div>
       <div className="overflow-x-auto">
@@ -66,7 +67,14 @@ export default function DriftAlertsTable({ alerts, showDetails = false }: DriftA
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {alerts.map((alert) => (
-              <tr key={alert.event_id} className="hover:bg-gray-50">
+              <tr
+                key={alert.event_id}
+                className={clsx(
+                  'hover:bg-gray-50',
+                  onRowClick && 'cursor-pointer'
+                )}
+                onClick={() => onRowClick?.(alert.event_id)}
+              >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={clsx(
                     'px-2 py-1 text-xs font-medium rounded border capitalize',

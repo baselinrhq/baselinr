@@ -26,7 +26,10 @@ from models import (
     TableOverviewResponse,
     TableDriftHistoryResponse,
     TableValidationResultsResponse,
-    TableConfigResponse
+    TableConfigResponse,
+    DriftSummaryResponse,
+    DriftDetailsResponse,
+    DriftImpactResponse
 )
 from lineage_models import (
     LineageGraphResponse,
@@ -368,6 +371,68 @@ async def get_drift_alerts(
     )
     
     return alerts
+
+
+@app.get("/api/drift/summary", response_model=DriftSummaryResponse)
+async def get_drift_summary(
+    warehouse: Optional[str] = Query(None),
+    days: int = Query(30)
+):
+    """
+    Get drift summary statistics.
+    
+    Returns aggregate drift statistics including:
+    - Total events by severity
+    - Trending data over time
+    - Top affected tables
+    - Warehouse breakdown
+    - Recent activity
+    """
+    summary = await db_client.get_drift_summary(
+        warehouse=warehouse,
+        days=days
+    )
+    return summary
+
+
+@app.get("/api/drift/{event_id}/details", response_model=DriftDetailsResponse)
+async def get_drift_details(event_id: str):
+    """
+    Get detailed drift information for a specific event.
+    
+    Returns:
+    - Full baseline vs current comparison
+    - Statistical test results (if available)
+    - Historical context (previous values)
+    - Related drift events
+    """
+    try:
+        details = await db_client.get_drift_details(event_id)
+        return details
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get drift details: {str(e)}")
+
+
+@app.get("/api/drift/{event_id}/impact", response_model=DriftImpactResponse)
+async def get_drift_impact(event_id: str):
+    """
+    Get drift impact analysis.
+    
+    Returns:
+    - Downstream table impact (via lineage)
+    - Affected metrics count
+    - Business impact assessment
+    - Recommendations
+    """
+    try:
+        impact = await db_client.get_drift_impact(event_id)
+        return impact
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get drift impact: {str(e)}")
 
 
 @app.get("/api/tables", response_model=TableListResponse)
