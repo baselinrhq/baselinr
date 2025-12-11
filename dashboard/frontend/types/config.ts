@@ -509,3 +509,23 @@ export interface StorageStatusResponse {
   last_checked: string
 }
 
+/**
+ * Configuration section status
+ */
+export interface ConfigSectionStatus {
+  section: string
+  status: 'configured' | 'incomplete' | 'not_configured' | 'error'
+  message?: string
+  lastUpdated?: string
+}
+
+/**
+ * Configuration status response
+ */
+export interface ConfigStatusResponse {
+  overall_completion: number // 0-100
+  sections: ConfigSectionStatus[]
+  total_sections: number
+  configured_sections: number
+}
+

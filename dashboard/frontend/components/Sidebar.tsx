@@ -13,6 +13,7 @@ const navigation = [
   { name: 'Lineage', href: '/lineage', icon: Database },
   { name: 'Metrics', href: '/metrics', icon: BarChart3 },
   { name: 'Chat', href: '/chat', icon: MessageCircle },
+  { name: 'Configuration', href: '/config', icon: Settings },
   { name: 'Connections', href: '/config/connections', icon: Settings },
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
   { name: 'Tables', href: '/config/tables', icon: Table },
