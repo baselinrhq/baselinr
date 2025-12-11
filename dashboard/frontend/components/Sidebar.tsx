@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Metrics', href: '/metrics', icon: BarChart3 },
   { name: 'Chat', href: '/chat', icon: MessageCircle },
   { name: 'Configuration', href: '/config', icon: Settings },
+  { name: 'Config Editor', href: '/config/editor', icon: Settings },
   { name: 'Connections', href: '/config/connections', icon: Settings },
   { name: 'Storage', href: '/config/storage', icon: HardDrive },
   { name: 'Tables', href: '/config/tables', icon: Table },

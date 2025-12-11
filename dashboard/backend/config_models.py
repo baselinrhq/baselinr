@@ -62,3 +62,24 @@ class ConfigVersionResponse(BaseModel):
     comment: Optional[str] = Field(None, description="Optional comment for this version")
 
 
+class ParseYAMLRequest(BaseModel):
+    """Request body for POST /api/config/parse-yaml."""
+    yaml: str = Field(..., description="YAML string to parse")
+
+
+class ParseYAMLResponse(BaseModel):
+    """Response model for POST /api/config/parse-yaml."""
+    config: Dict[str, Any] = Field(..., description="Parsed configuration object")
+    errors: List[str] = Field(default_factory=list, description="List of parsing/validation errors")
+
+
+class ToYAMLRequest(BaseModel):
+    """Request body for POST /api/config/to-yaml."""
+    config: Dict[str, Any] = Field(..., description="Configuration object to convert")
+
+
+class ToYAMLResponse(BaseModel):
+    """Response model for POST /api/config/to-yaml."""
+    yaml: str = Field(..., description="YAML string representation of the configuration")
+
+

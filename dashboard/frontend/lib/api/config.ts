@@ -338,3 +338,82 @@ export async function getStorageStatus(): Promise<StorageStatusResponse> {
   }
 }
 
+/**
+ * Parse YAML string to configuration object
+ * 
+ * @param yaml - YAML string to parse
+ * @returns Parsed configuration with errors if any
+ * @throws {ConfigError} If the request fails
+ */
+export async function parseYAML(yaml: string): Promise<{ config: BaselinrConfig; errors: string[] }> {
+  try {
+    const url = `${API_URL}/api/config/parse-yaml`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ yaml }),
+    })
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorResponse(response)
+      throw new ConfigError(
+        `Failed to parse YAML: ${errorMessage}`,
+        response.status
+      )
+    }
+
+    const result = await response.json()
+    return {
+      config: result.config,
+      errors: result.errors || [],
+    }
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error
+    }
+    throw new ConfigError(
+      `Failed to parse YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+
+/**
+ * Convert configuration object to YAML string
+ * 
+ * @param config - Configuration object to convert
+ * @returns YAML string representation
+ * @throws {ConfigError} If the request fails
+ */
+export async function configToYAML(config: BaselinrConfig): Promise<string> {
+  try {
+    const url = `${API_URL}/api/config/to-yaml`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ config }),
+    })
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorResponse(response)
+      throw new ConfigError(
+        `Failed to convert config to YAML: ${errorMessage}`,
+        response.status
+      )
+    }
+
+    const result = await response.json()
+    return result.yaml
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error
+    }
+    throw new ConfigError(
+      `Failed to convert config to YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+

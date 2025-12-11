@@ -22,6 +22,10 @@ from config_models import (
     ConfigHistoryResponse,
     ConfigVersionResponse,
     ConfigVersion,
+    ParseYAMLRequest,
+    ParseYAMLResponse,
+    ToYAMLRequest,
+    ToYAMLResponse,
 )
 from config_service import ConfigService
 from database import DatabaseClient
@@ -178,4 +182,81 @@ async def get_config_version(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get config version: {str(e)}")
+
+
+@router.post("/parse-yaml", response_model=ParseYAMLResponse)
+async def parse_yaml(
+    request: ParseYAMLRequest,
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """
+    Parse YAML string to configuration object.
+    
+    Parses a YAML string and validates it as a Baselinr configuration.
+    """
+    try:
+        import yaml
+        from baselinr.config.schema import BaselinrConfig
+        
+        # Parse YAML
+        try:
+            config_dict = yaml.safe_load(request.yaml)
+            if not config_dict:
+                raise ValueError("YAML does not contain a valid configuration object")
+        except yaml.YAMLError as e:
+            return ParseYAMLResponse(
+                config={},
+                errors=[f"YAML parsing error: {str(e)}"]
+            )
+        
+        # Validate configuration
+        try:
+            validated_config = BaselinrConfig(**config_dict)
+            return ParseYAMLResponse(
+                config=validated_config.model_dump(mode='json'),
+                errors=[]
+            )
+        except Exception as e:
+            return ParseYAMLResponse(
+                config=config_dict,
+                errors=[f"Configuration validation error: {str(e)}"]
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse YAML: {str(e)}")
+
+
+@router.post("/to-yaml", response_model=ToYAMLResponse)
+async def to_yaml(
+    request: ToYAMLRequest,
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """
+    Convert configuration object to YAML string.
+    
+    Converts a Baselinr configuration object to its YAML representation.
+    """
+    try:
+        import yaml
+        from baselinr.config.schema import BaselinrConfig
+        
+        # Validate and convert config
+        try:
+            validated_config = BaselinrConfig(**request.config)
+            config_dict = validated_config.model_dump(mode='json', exclude_none=True)
+        except Exception as e:
+            # If validation fails, still try to convert the dict
+            config_dict = request.config
+        
+        # Convert to YAML
+        yaml_string = yaml.dump(
+            config_dict,
+            default_flow_style=False,
+            sort_keys=False,
+            indent=2,
+            allow_unicode=True,
+        )
+        
+        return ToYAMLResponse(yaml=yaml_string)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to convert to YAML: {str(e)}")
 
