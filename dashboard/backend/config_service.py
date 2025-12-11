@@ -96,12 +96,14 @@ class ConfigService:
         # If no config file, return empty config structure
         return {}
     
-    def save_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    def save_config(self, config: Dict[str, Any], comment: Optional[str] = None, created_by: Optional[str] = None) -> Dict[str, Any]:
         """
         Save configuration to file or database.
         
         Args:
             config: Configuration dictionary to save
+            comment: Optional comment for this version
+            created_by: Optional user identifier
             
         Returns:
             Saved configuration dictionary
@@ -124,18 +126,26 @@ class ConfigService:
             try:
                 config_dict = validated_config.model_dump(exclude_none=True)
                 
+                # Filter out sensitive data before saving to file
+                # API keys should be stored in environment variables, not in config files
+                file_safe_config = self._sanitize_config_for_file(config_dict)
+                
                 # Write to file based on extension
                 path = Path(self._config_path)
                 with open(path, 'w') as f:
                     if path.suffix in ['.yaml', '.yml']:
-                        yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
+                        yaml.dump(file_safe_config, f, default_flow_style=False, sort_keys=False)
                     elif path.suffix == '.json':
-                        json.dump(config_dict, f, indent=2)
+                        json.dump(file_safe_config, f, indent=2)
                     else:
                         # Default to YAML
-                        yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
+                        yaml.dump(file_safe_config, f, default_flow_style=False, sort_keys=False)
                 
-                logger.info(f"Config saved to: {self._config_path}")
+                logger.info(f"Config saved to: {self._config_path} (sensitive data filtered)")
+                
+                # Save to history (with sanitized data)
+                self._save_to_history(file_safe_config, comment=comment, created_by=created_by)
+                
                 return config_dict
             except Exception as e:
                 logger.error(f"Failed to save config: {e}")
@@ -143,7 +153,12 @@ class ConfigService:
         else:
             # If no config path, just return validated config
             logger.warning("No config file path configured, config not persisted")
-            return validated_config.model_dump(exclude_none=True)
+            config_dict = validated_config.model_dump(exclude_none=True)
+            
+            # Still save to history even if no file path
+            self._save_to_history(config_dict, comment=comment, created_by=created_by)
+            
+            return config_dict
     
     def validate_config(self, config: Dict[str, Any]) -> tuple[bool, List[str]]:
         """
@@ -272,5 +287,333 @@ class ConfigService:
         except Exception as e:
             logger.warning(f"Failed to get config version: {e}")
             return None
+    
+    def _deep_diff(self, old: Dict[str, Any], new: Dict[str, Any], path: str = "") -> Dict[str, Any]:
+        """
+        Calculate deep diff between two config dictionaries.
+        
+        Args:
+            old: Old configuration
+            new: New configuration
+            path: Current path prefix for nested keys
+            
+        Returns:
+            Dictionary with 'added', 'removed', and 'changed' keys
+        """
+        added = {}
+        removed = {}
+        changed = {}
+        
+        # Get all keys from both configs
+        all_keys = set(old.keys()) | set(new.keys())
+        
+        for key in all_keys:
+            current_path = f"{path}.{key}" if path else key
+            old_val = old.get(key)
+            new_val = new.get(key)
+            
+            if key not in old:
+                # Added
+                added[current_path] = new_val
+            elif key not in new:
+                # Removed
+                removed[current_path] = old_val
+            elif old_val != new_val:
+                # Check if both are dicts for nested comparison
+                if isinstance(old_val, dict) and isinstance(new_val, dict):
+                    nested_diff = self._deep_diff(old_val, new_val, current_path)
+                    added.update(nested_diff.get('added', {}))
+                    removed.update(nested_diff.get('removed', {}))
+                    changed.update(nested_diff.get('changed', {}))
+                elif isinstance(old_val, list) and isinstance(new_val, list):
+                    # For arrays, just mark as changed
+                    changed[current_path] = {"old": old_val, "new": new_val}
+                else:
+                    # Changed value
+                    changed[current_path] = {"old": old_val, "new": new_val}
+        
+        return {
+            "added": added,
+            "removed": removed,
+            "changed": changed
+        }
+    
+    def get_config_diff(self, version_id: str, compare_with: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get diff between a version and current config or another version.
+        
+        Args:
+            version_id: Version ID to compare
+            compare_with: Version ID to compare with (None = current config)
+            
+        Returns:
+            Dictionary with diff information
+        """
+        # Get the version config
+        version_data = self.get_config_version(version_id)
+        if not version_data:
+            raise ValueError(f"Version not found: {version_id}")
+        
+        version_config = version_data["config"]
+        
+        # Get the config to compare with
+        if compare_with:
+            compare_data = self.get_config_version(compare_with)
+            if not compare_data:
+                raise ValueError(f"Compare version not found: {compare_with}")
+            compare_config = compare_data["config"]
+            compare_label = compare_with
+        else:
+            # Compare with current config
+            compare_config = self.load_config()
+            compare_label = "current"
+        
+        # Calculate diff
+        diff = self._deep_diff(compare_config, version_config)
+        
+        return {
+            "version_id": version_id,
+            "compare_with": compare_label,
+            "added": diff["added"],
+            "removed": diff["removed"],
+            "changed": diff["changed"]
+        }
+    
+    def _sanitize_config_for_file(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Remove sensitive data from config before saving to file.
+        
+        API keys and other secrets should be stored in environment variables,
+        not in config files that might be committed to version control.
+        
+        Args:
+            config: Configuration dictionary
+            
+        Returns:
+            Sanitized configuration with sensitive fields removed or replaced
+        """
+        sanitized = json.loads(json.dumps(config))  # Deep copy
+        
+        # Remove API keys from LLM config
+        if 'llm' in sanitized and isinstance(sanitized['llm'], dict):
+            if 'api_key' in sanitized['llm']:
+                api_key = sanitized['llm']['api_key']
+                # If it's an actual key (not an env var reference), remove it
+                if isinstance(api_key, str) and not (api_key.startswith('${') and api_key.endswith('}')):
+                    # Replace with environment variable reference
+                    provider = sanitized['llm'].get('provider', 'openai')
+                    if provider == 'openai':
+                        sanitized['llm']['api_key'] = '${OPENAI_API_KEY}'
+                    elif provider == 'anthropic':
+                        sanitized['llm']['api_key'] = '${ANTHROPIC_API_KEY}'
+                    elif provider == 'azure':
+                        sanitized['llm']['api_key'] = '${AZURE_OPENAI_API_KEY}'
+                    else:
+                        sanitized['llm']['api_key'] = None  # Remove if unknown provider
+        
+        # Remove API keys from connection configs
+        if 'source' in sanitized and isinstance(sanitized['source'], dict):
+            connection = sanitized['source']
+            # Common connection fields that might contain secrets
+            sensitive_fields = ['password', 'api_key', 'apiKey', 'secret', 'token', 'access_key', 'secret_key']
+            for field in sensitive_fields:
+                if field in connection:
+                    # Only remove if it's an actual value, not an env var reference
+                    value = connection[field]
+                    if isinstance(value, str) and not (value.startswith('${') and value.endswith('}')):
+                        connection[field] = None  # Remove from file
+        
+        return sanitized
+    
+    def _ensure_history_table(self) -> bool:
+        """
+        Ensure the config history table exists, create it if it doesn't.
+        
+        Returns:
+            True if table exists or was created, False otherwise
+        """
+        if not self.db_engine:
+            return False
+        
+        try:
+            # Check if table exists
+            with self.db_engine.connect() as conn:
+                # Check database type
+                dialect = self.db_engine.dialect.name
+                if dialect == 'postgresql':
+                    result = conn.execute(text("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'baselinr_config_history'
+                        )
+                    """))
+                elif dialect == 'sqlite':
+                    result = conn.execute(text("""
+                        SELECT EXISTS (
+                            SELECT name FROM sqlite_master 
+                            WHERE type='table' AND name='baselinr_config_history'
+                        )
+                    """))
+                else:
+                    # For other databases, try PostgreSQL syntax
+                    result = conn.execute(text("""
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_name = 'baselinr_config_history'
+                        )
+                    """))
+                
+                table_exists = result.scalar()
+                
+                if not table_exists:
+                    logger.info("Creating baselinr_config_history table...")
+                    # Create the table
+                    if dialect == 'postgresql':
+                        conn.execute(text("""
+                            CREATE TABLE baselinr_config_history (
+                                version_id VARCHAR(255) PRIMARY KEY,
+                                config_json JSONB NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                created_by VARCHAR(255),
+                                comment TEXT
+                            )
+                        """))
+                        conn.execute(text("""
+                            CREATE INDEX IF NOT EXISTS idx_config_history_created_at 
+                            ON baselinr_config_history(created_at DESC)
+                        """))
+                    elif dialect == 'sqlite':
+                        conn.execute(text("""
+                            CREATE TABLE baselinr_config_history (
+                                version_id TEXT PRIMARY KEY,
+                                config_json TEXT NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                created_by TEXT,
+                                comment TEXT
+                            )
+                        """))
+                        conn.execute(text("""
+                            CREATE INDEX IF NOT EXISTS idx_config_history_created_at 
+                            ON baselinr_config_history(created_at DESC)
+                        """))
+                    else:
+                        # Generic SQL
+                        conn.execute(text("""
+                            CREATE TABLE baselinr_config_history (
+                                version_id VARCHAR(255) PRIMARY KEY,
+                                config_json TEXT NOT NULL,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                created_by VARCHAR(255),
+                                comment TEXT
+                            )
+                        """))
+                        conn.execute(text("""
+                            CREATE INDEX IF NOT EXISTS idx_config_history_created_at 
+                            ON baselinr_config_history(created_at DESC)
+                        """))
+                    conn.commit()
+                    logger.info("Successfully created baselinr_config_history table")
+                    return True
+                else:
+                    return True
+        except Exception as e:
+            logger.error(f"Failed to ensure history table exists: {e}", exc_info=True)
+            return False
+    
+    def _save_to_history(self, config: Dict[str, Any], comment: Optional[str] = None, created_by: Optional[str] = None) -> str:
+        """
+        Save configuration to history table.
+        
+        Args:
+            config: Configuration dictionary
+            comment: Optional comment
+            created_by: Optional user identifier
+            
+        Returns:
+            Version ID (UUID)
+        """
+        if not self.db_engine:
+            logger.warning("No database engine available, skipping history save")
+            import uuid
+            return str(uuid.uuid4())
+        
+        # Ensure table exists
+        if not self._ensure_history_table():
+            logger.error("Failed to ensure history table exists, skipping history save")
+            import uuid
+            return str(uuid.uuid4())
+        
+        try:
+            import uuid
+            version_id = str(uuid.uuid4())
+            config_json = json.dumps(config)
+            
+            # Determine JSON column type based on database
+            dialect = self.db_engine.dialect.name
+            if dialect == 'postgresql':
+                # PostgreSQL uses JSONB
+                with self.db_engine.begin() as conn:
+                    conn.execute(text("""
+                        INSERT INTO baselinr_config_history (version_id, config_json, created_by, comment)
+                        VALUES (:version_id, CAST(:config_json AS JSONB), :created_by, :comment)
+                    """), {
+                        "version_id": version_id,
+                        "config_json": config_json,
+                        "created_by": created_by,
+                        "comment": comment
+                    })
+            else:
+                # Other databases use TEXT
+                with self.db_engine.begin() as conn:
+                    conn.execute(text("""
+                        INSERT INTO baselinr_config_history (version_id, config_json, created_by, comment)
+                        VALUES (:version_id, :config_json, :created_by, :comment)
+                    """), {
+                        "version_id": version_id,
+                        "config_json": config_json,
+                        "created_by": created_by,
+                        "comment": comment
+                    })
+            
+            logger.info(f"Saved config to history with version_id: {version_id}")
+            return version_id
+        except Exception as e:
+            logger.error(f"Failed to save config to history: {e}", exc_info=True)
+            # Return a version ID anyway so save doesn't fail
+            import uuid
+            return str(uuid.uuid4())
+    
+    def restore_config_version(self, version_id: str, comment: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Restore a configuration version as the current config.
+        
+        Args:
+            version_id: Version ID to restore
+            comment: Optional comment for the restore action
+            
+        Returns:
+            Restored configuration dictionary
+        """
+        # Get the version config
+        version_data = self.get_config_version(version_id)
+        if not version_data:
+            raise ValueError(f"Version not found: {version_id}")
+        
+        config_to_restore = version_data["config"]
+        
+        # Validate the config
+        is_valid, errors = self.validate_config(config_to_restore)
+        if not is_valid:
+            raise ValueError(f"Invalid configuration: {', '.join(errors)}")
+        
+        # Save the config to file
+        saved_config = self.save_config(config_to_restore)
+        
+        # Save to history with restore comment
+        restore_comment = comment or f"Restored from version {version_id}"
+        self._save_to_history(saved_config, comment=restore_comment)
+        
+        return saved_config
 
 
