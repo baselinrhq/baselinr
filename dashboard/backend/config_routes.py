@@ -6,7 +6,7 @@ import sys
 import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.engine import Engine
 
 # Add parent directory to path to import baselinr
@@ -26,6 +26,10 @@ from config_models import (
     ParseYAMLResponse,
     ToYAMLRequest,
     ToYAMLResponse,
+    ConfigDiffRequest,
+    ConfigDiffResponse,
+    RestoreConfigRequest,
+    RestoreConfigResponse,
 )
 from config_service import ConfigService
 from database import DatabaseClient
@@ -75,9 +79,14 @@ async def save_config(
     Save configuration.
     
     Validates and saves the Baselinr configuration to file or database.
+    Creates a history entry for this version.
     """
     try:
-        saved_config = config_service.save_config(request.config)
+        saved_config = config_service.save_config(
+            request.config,
+            comment=request.comment,
+            created_by=request.created_by
+        )
         return ConfigResponse(config=saved_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -182,6 +191,54 @@ async def get_config_version(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get config version: {str(e)}")
+
+
+@router.get("/history/{version_id}/diff", response_model=ConfigDiffResponse)
+async def get_config_diff(
+    version_id: str,
+    compare_with: Optional[str] = Query(None, description="Version ID to compare with (defaults to current)"),
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """
+    Get diff between a configuration version and current config or another version.
+    
+    Query params:
+        compare_with: Optional version ID to compare with (defaults to current config)
+    """
+    try:
+        diff = config_service.get_config_diff(version_id, compare_with)
+        return ConfigDiffResponse(**diff)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get config diff: {str(e)}")
+
+
+@router.post("/history/{version_id}/restore", response_model=RestoreConfigResponse)
+async def restore_config_version(
+    version_id: str,
+    request: RestoreConfigRequest,
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """
+    Restore a configuration version as the current config.
+    
+    Creates a new history entry for the restore action.
+    """
+    if not request.confirm:
+        raise HTTPException(status_code=400, detail="Restore must be confirmed")
+    
+    try:
+        restored_config = config_service.restore_config_version(version_id, request.comment)
+        return RestoreConfigResponse(
+            success=True,
+            message=f"Configuration restored from version {version_id}",
+            config=restored_config
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restore config version: {str(e)}")
 
 
 @router.post("/parse-yaml", response_model=ParseYAMLResponse)

@@ -11,6 +11,8 @@ import {
   ConfigHistoryResponse,
   ConfigVersionResponse,
   StorageStatusResponse,
+  ConfigDiffResponse,
+  RestoreConfigResponse,
 } from '@/types/config'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -413,6 +415,105 @@ export async function configToYAML(config: BaselinrConfig): Promise<string> {
     }
     throw new ConfigError(
       `Failed to convert config to YAML: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+
+/**
+ * Get diff between configuration versions
+ * 
+ * @param versionId - Version ID to compare
+ * @param compareWith - Optional version ID to compare with (defaults to current)
+ * @returns Diff response with added/removed/changed fields
+ * @throws {ConfigError} If the request fails
+ */
+export async function getConfigDiff(
+  versionId: string,
+  compareWith?: string
+): Promise<ConfigDiffResponse> {
+  try {
+    const params = new URLSearchParams()
+    if (compareWith) {
+      params.append('compare_with', compareWith)
+    }
+    const url = `${API_URL}/api/config/history/${encodeURIComponent(versionId)}/diff${params.toString() ? `?${params.toString()}` : ''}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorResponse(response)
+      
+      if (response.status === 404) {
+        throw new ConfigError(
+          `Configuration version not found: ${versionId}`,
+          404
+        )
+      }
+      
+      throw new ConfigError(
+        `Failed to get config diff: ${errorMessage}`,
+        response.status
+      )
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error
+    }
+    throw new ConfigError(
+      `Failed to get config diff: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
+  }
+}
+
+/**
+ * Restore a configuration version
+ * 
+ * @param versionId - Version ID to restore
+ * @param comment - Optional comment for the restore action
+ * @returns Restore response with restored config
+ * @throws {ConfigError} If the request fails
+ */
+export async function restoreConfigVersion(
+  versionId: string,
+  comment?: string
+): Promise<RestoreConfigResponse> {
+  try {
+    const url = `${API_URL}/api/config/history/${encodeURIComponent(versionId)}/restore`
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        confirm: true,
+        comment,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorMessage = await parseErrorResponse(response)
+      
+      if (response.status === 404) {
+        throw new ConfigError(
+          `Configuration version not found: ${versionId}`,
+          404
+        )
+      }
+      
+      throw new ConfigError(
+        `Failed to restore config version: ${errorMessage}`,
+        response.status
+      )
+    }
+
+    return response.json()
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error
+    }
+    throw new ConfigError(
+      `Failed to restore config version: ${error instanceof Error ? error.message : 'Unknown error'}`
     )
   }
 }

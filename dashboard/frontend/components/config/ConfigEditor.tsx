@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { YAMLPreview } from './YAMLPreview'
 import { useConfig } from '@/hooks/useConfig'
 import { toYAML, parseYAML } from '@/lib/utils/yaml'
+import { isSensitiveField } from '@/lib/utils/sanitize'
 import type { BaselinrConfig } from '@/types/config'
 
 export interface ConfigEditorProps {
@@ -427,6 +428,25 @@ function VisualConfigEditor({
   const renderValue = (value: unknown, path: string = '', depth = 0): React.ReactNode => {
     const isEditing = editingPath === path
     const canEdit = depth < 3 && onConfigChange && (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+    
+    // Check if this is a sensitive field and mask it for display
+    const pathParts = path.split(/[\.\[\]]/).filter(Boolean)
+    const fieldName = pathParts[pathParts.length - 1] || ''
+    const isSensitive = isSensitiveField(fieldName)
+    
+    // Get display value (masked if sensitive)
+    const getDisplayValue = (val: unknown): unknown => {
+      if (isSensitive && typeof val === 'string' && val.length > 0 && !isEditing) {
+        // Check if it's an env var reference
+        if (val.startsWith('${') && val.endsWith('}')) {
+          return val // Keep env var references visible
+        }
+        return '****' // Mask actual values
+      }
+      return val
+    }
+    
+    const displayValue = getDisplayValue(value)
 
     if (isEditing && canEdit) {
       return (
@@ -466,9 +486,10 @@ function VisualConfigEditor({
     }
 
     if (typeof value === 'string') {
+      const stringDisplayValue = typeof displayValue === 'string' ? displayValue : String(displayValue)
       return (
         <span className="text-green-700">
-          &quot;{value}&quot;
+          &quot;{stringDisplayValue}&quot;
           {canEdit && (
             <button
               onClick={() => handleStartEdit(path, value)}

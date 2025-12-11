@@ -1,9 +1,4 @@
-# Baselinr Configuration Example
-# This is a sample configuration for profiling PostgreSQL tables
-
 environment: development
-
-# Source database connection
 source:
   type: postgres
   host: localhost
@@ -11,9 +6,8 @@ source:
   database: baselinr
   username: baselinr
   password: baselinr
-  schema: public
-
-# Storage configuration (where to save profiling results)
+  schema_: public
+  extra_params: {}
 storage:
   connection:
     type: postgres
@@ -22,529 +16,317 @@ storage:
     database: baselinr
     username: baselinr
     password: baselinr
-    schema: public
+    schema_: public
+    extra_params: {}
   results_table: baselinr_results
   runs_table: baselinr_runs
   create_tables: true
-
-# Smart Table Selection - NEW FEATURE
-smart_selection:
-  enabled: true
-  mode: "recommend"  # Options: recommend (generate suggestions), auto (apply automatically), disabled
-  
-  # Selection criteria
-  criteria:
-    # Query thresholds
-    min_query_count: 10          # At least 10 queries in lookback period
-    min_queries_per_day: 1.0     # Average at least 1 query per day
-    lookback_days: 30            # Analyze last 30 days
-    
-    # Exclude patterns (wildcards supported)
-    exclude_patterns:
-      - "temp_*"
-      - "*_backup"
-      - "*_archive"
-      - "staging_*"
-      - "test_*"
-    
-    # Size filters
-    min_rows: 100                # Skip very small tables
-    max_rows: null               # No upper limit (null = unlimited)
-    
-    # Recency filters
-    max_days_since_query: 60     # Only tables queried in last 60 days
-    max_days_since_modified: null  # No restriction on last modified
-    
-    # Scoring weights (must sum to ~1.0)
-    weights:
-      query_frequency: 0.40      # How often table is queried
-      query_recency: 0.25        # How recently queried
-      write_activity: 0.20       # How recently updated
-      table_size: 0.15           # Table size considerations
-  
-  # Recommendation generation settings
-  recommendations:
-    output_file: "recommendations.yaml"
-    auto_refresh_days: 7
-    include_explanations: true
-    include_suggested_checks: true
-  
-  # Auto-apply settings (for mode: auto)
-  auto_apply:
-    confidence_threshold: 0.8    # Only auto-apply high confidence tables
-    max_tables: 100              # Safety limit on auto-selections
-    skip_existing: true          # Don't duplicate explicit configs
-  
-  # Performance settings
-  cache_metadata: true
-  cache_ttl_seconds: 3600        # Cache for 1 hour
-
-# Profiling configuration
+  enable_expectation_learning: false
+  learning_window_days: 30
+  min_samples: 5
+  ewma_lambda: 0.2
+  enable_anomaly_detection: false
+  anomaly_enabled_methods:
+  - control_limits
+  - iqr
+  - mad
+  - ewma
+  - seasonality
+  - regime_shift
+  anomaly_iqr_threshold: 1.5
+  anomaly_mad_threshold: 3.0
+  anomaly_ewma_deviation_threshold: 2.0
+  anomaly_seasonality_enabled: true
+  anomaly_regime_shift_enabled: true
+  anomaly_regime_shift_window: 3
+  anomaly_regime_shift_sensitivity: 0.05
 profiling:
-  # Tables to profile
   tables:
-    # Explicit table profiling (highest priority)
-    - table: customers
-      schema: public
-    
-    - table: customer_summary
-      schema: public
-    
-    - table: customer_analytics
-      schema: public
-    
-    # Explicit table profiling
-    # - table: products
-    #   schema: public
-    
-    # Example: Pattern-based selection (matches all tables starting with "user_")
-    # - pattern: "user_*"
-    #   schema: public
-    #   # Uncomment to enable pattern matching
-    
-    # Example: Schema-based selection (all tables in schema)
-    #  - select_schema: true
-    #    schema: public
-    #   exclude_patterns:
-    #     - "*_temp"
-    #     - "*_backup"
-    #   # Uncomment to profile all tables in analytics schema
-    
-    # Example: Multi-database profiling
-    # - table: users
-    #   schema: public
-    #   database: analytics_db  # Profile from analytics_db instead of source.database
-    # - pattern: "order_*"
-    #   schema: public
-    #   database: warehouse_db  # Profile matching tables from warehouse_db
-    # - select_schema: true
-    #   schema: analytics
-    #   database: production_db  # Profile all tables in analytics schema from production_db
-    
-    # Example with partition-aware profiling (commented out)
-    # - table: orders
-    #   schema: public
-      # Uncomment to enable partition-aware profiling:
-      # partition:
-      #   key: order_date              # Partition column
-      #   strategy: latest             # Options: latest | recent_n | sample | all
-      #   metadata_fallback: true      # Try to infer partition key if not specified
-      
-      # Uncomment to enable sampling:
-      # sampling:
-      #   enabled: true
-      #   method: random               # Options: random | stratified | topk
-      #   fraction: 0.01               # Sample 1% of rows
-      #   max_rows: 500000             # Cap at 500k rows
-    
-    # Example: Column-level configurations (commented out)
-    # - table: customers
-    #   schema: public
-    #   columns:
-    #     # Profile specific columns with custom metrics
-    #     - name: email
-    #       metrics: [count, null_count, distinct_count]
-    #       drift:
-    #         enabled: true
-    #         thresholds:
-    #           low: 2.0
-    #           medium: 5.0
-    #           high: 10.0
-    #       anomaly:
-    #         enabled: true
-    #         methods: [control_limits, iqr]
-    #     
-    #     # Profile numeric columns with full metrics
-    #     - name: age
-    #       metrics: [count, mean, stddev, min, max, null_ratio]
-    #       drift:
-    #         enabled: true
-    #         thresholds:
-    #           low: 5.0
-    #           medium: 15.0
-    #           high: 30.0
-    #     
-    #     # Pattern matching for columns (wildcard)
-    #     - name: "*_id"
-    #       metrics: [count, null_count]
-    #       drift:
-    #         enabled: false  # Skip drift detection for ID columns
-    #     
-    #     # Skip profiling for specific columns
-    #     - name: internal_notes
-    #       profiling:
-    #         enabled: false  # Not profiled, so drift/anomaly automatically skipped
-  
-  # Database-level configurations (commented out)
-  # Apply settings to all schemas/tables within a specified database
-  # databases:
-  #   # Example 1: Database-level column configs
-  #   - database: warehouse
-  #     columns:
-  #       - name: "*_id"
-  #         drift:
-  #           enabled: false  # All ID columns in warehouse database skip drift
-  #       - name: "*_temp"
-  #         profiling:
-  #           enabled: false  # Skip temp columns
-  #   
-  #   # Example 2: Database-level sampling
-  #   - database: staging_db
-  #     sampling:
-  #       enabled: true
-  #       fraction: 0.05  # All tables in staging_db sample 5%
-  #   
-  #   # Example 3: Database-level partition config
-  #   - database: analytics_db
-  #     partition:
-  #       strategy: latest
-  #       key: date
-  #     columns:
-  #       - name: "*_metadata"
-  #         profiling:
-  #           enabled: false  # Skip metadata columns across entire database
-
-  # Schema-level configurations (commented out)
-  # Apply settings to all tables within a specified schema
-  # schemas:
-  #   # Example 1: Schema-level column configs
-  #   - schema: analytics
-  #     database: warehouse  # Optional: database-specific schema config
-  #     columns:
-  #       - name: "*_id"
-  #         drift:
-  #           enabled: false  # All ID columns in analytics schema skip drift
-  #       - name: "*_metadata"
-  #         profiling:
-  #           enabled: false  # Skip metadata columns
-  
-  #   # Example 2: Schema-level sampling
-  #   - schema: staging
-  #     sampling:
-  #       enabled: true
-  #       fraction: 0.1  # All staging tables sample 10%
-  #     columns:
-  #       - name: "*_temp"
-  #         profiling:
-  #           enabled: false  # Skip temporary columns
-  
-  #   # Example 3: Schema-level partition config
-  #   - schema: analytics
-  #     partition:
-  #       strategy: latest
-  #       key: date
-  #     columns:
-  #       - name: "*_id"
-  #         drift:
-  #           enabled: false
-  #     # Filter fields also supported
-  #     min_rows: 100
-  #     table_types: [table]
-  #     exclude_patterns: ["*_temp"]
-  
-  # Tables matching schema configs inherit the settings
-  # tables:
-  #   - table: orders
-  #     schema: analytics  # Inherits schema-level column configs and partition
-  #     columns:
-  #       - name: total_amount  # Override/add table-specific config
-  #         drift:
-  #           thresholds:
-  #             low: 1.0
-  
-  # Maximum distinct values to compute
+  - schema_: public
+    table: customers
+  - schema_: public
+    table: customer_summary
+  - schema_: public
+    table: customer_analytics
   max_distinct_values: 1000
-  
-  # Whether to compute histograms
   compute_histograms: true
-  
-  # Number of histogram bins
   histogram_bins: 10
-  
-  # Enable lineage extraction during profiling
-  extract_lineage: true
-  
-  # Metrics to compute
   metrics:
+  - count
+  - null_count
+  - null_percent
+  - distinct_count
+  - distinct_percent
+  - min
+  - max
+  - mean
+  - stddev
+  - histogram
+  default_sample_ratio: 1.0
+  table_discovery: true
+  discovery_options:
+    cache_discovery: true
+    cache_ttl_seconds: 300
+    max_tables_per_pattern: 1000
+    max_schemas_per_database: 100
+    discovery_limit_action: warn
+    validate_regex: true
+  enable_enrichment: true
+  enable_approx_distinct: true
+  enable_schema_tracking: true
+  enable_type_inference: true
+  enable_column_stability: true
+  stability_window: 7
+  type_inference_sample_size: 1000
+  extract_lineage: true
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    high_threshold: 30.0
+    medium_threshold: 15.0
+  standard_deviation:
+    low_threshold: 1.0
+    high_threshold: 3.0
+    medium_threshold: 2.0
+  ml_based: {}
+  statistical:
+    tests:
+    - ks_test
+    - psi
+    - chi_square
+    sensitivity: medium
+    test_params:
+      psi:
+        buckets: 10
+        threshold: 0.2
+      top_k:
+        k: 10
+        similarity_threshold: 0.7
+      entropy:
+        entropy_threshold: 0.1
+      ks_test:
+        alpha: 0.05
+      z_score:
+        z_threshold: 2
+      chi_square:
+        alpha: 0.05
+  baselines:
+    windows:
+      min_runs: 3
+      prior_period: 7
+      moving_average: 7
+    strategy: auto
+  enable_type_specific_thresholds: true
+  type_specific_thresholds:
+    boolean:
+      default:
+        low: 2
+        high: 10
+        medium: 5
+    numeric:
+      mean:
+        low: 10
+        high: 50
+        medium: 25
+      stddev:
+        low: 3
+        high: 15
+        medium: 8
+      default:
+        low: 5
+        high: 30
+        medium: 15
+    timestamp:
+      default:
+        low: 5
+        high: 30
+        medium: 15
+    categorical:
+      default:
+        low: 5
+        high: 30
+        medium: 15
+      distinct_count:
+        low: 2
+        high: 10
+        medium: 5
+      distinct_percent:
+        low: 2
+        high: 10
+        medium: 5
+hooks:
+  enabled: true
+  hooks:
+  - type: logging
+    enabled: true
+    log_level: INFO
+    table_name: baselinr_events
+    username: Baselinr
+    min_severity: low
+    alert_on_drift: true
+    alert_on_schema_change: true
+    alert_on_profiling_failure: true
+    timeout: 10
+    params: {}
+  - type: sql
+    enabled: true
+    log_level: INFO
+    connection:
+      type: postgres
+      host: localhost
+      port: 5433
+      database: baselinr
+      username: baselinr
+      password: baselinr
+      schema_: public
+      extra_params: {}
+    table_name: baselinr_events
+    username: Baselinr
+    min_severity: low
+    alert_on_drift: true
+    alert_on_schema_change: true
+    alert_on_profiling_failure: true
+    timeout: 10
+    params: {}
+monitoring:
+  enable_metrics: true
+  port: 9753
+  keep_alive: false
+retry:
+  enabled: true
+  retries: 3
+  backoff_strategy: exponential
+  min_backoff: 0.5
+  max_backoff: 8.0
+execution:
+  max_workers: 1
+  batch_size: 10
+  queue_size: 100
+  warehouse_limits: {}
+incremental:
+  enabled: false
+  change_detection:
+    enabled: true
+    metadata_table: baselinr_table_state
+    connector_overrides: {}
+    snapshot_ttl_minutes: 1440
+  partial_profiling:
+    enabled: true
+    allow_partition_pruning: true
+    max_partitions_per_run: 64
+    mergeable_metrics:
     - count
     - null_count
-    - null_percent
-    - distinct_count
-    - distinct_percent
+    - null_ratio
     - min
     - max
     - mean
     - stddev
-    - histogram
-
-# Drift detection configuration
-drift_detection:
-  # Strategy to use: "absolute_threshold", "standard_deviation", "ml_based", "statistical"
-  strategy: absolute_threshold
-  
-  # Parameters for absolute_threshold strategy
-  absolute_threshold:
-    low_threshold: 5.0      # 5% change triggers low severity
-    medium_threshold: 15.0   # 15% change triggers medium severity
-    high_threshold: 30.0     # 30% change triggers high severity
-  
-  # Baseline auto-selection configuration
-  # Let the system pick the correct baseline automatically
-  baselines:
-    strategy: auto  # auto | last_run | moving_average | prior_period | stable_window
-    windows:
-      moving_average: 7    # Number of runs for moving average
-      prior_period: 7      # Days for prior period (1=day, 7=week, 30=month)
-      min_runs: 3          # Minimum runs required for auto-selection
-  
-  # Parameters for standard_deviation strategy (alternative)
-  # standard_deviation:
-  #   low_threshold: 1.0     # 1 std dev triggers low severity
-  #   medium_threshold: 2.0  # 2 std devs trigger medium severity
-  #   high_threshold: 3.0    # 3 std devs trigger high severity
-  
-  # Parameters for ML-based strategy (placeholder for future)
-  # ml_based:
-  #   model_type: isolation_forest
-  #   sensitivity: 0.8
-  
-  # Parameters for statistical test strategy (advanced drift detection)
-  # statistical:
-  #   tests:
-  #     - ks_test          # Kolmogorov-Smirnov test for distribution comparison
-  #     - psi              # Population Stability Index
-  #     - z_score          # Z-score test for mean/variance shifts
-  #     - chi_square       # Chi-square test for categorical distributions
-  #     - entropy          # Entropy change detection
-  #     - top_k            # Top-K category stability
-  #   sensitivity: medium  # low, medium, or high
-  #   test_params:
-  #     ks_test:
-  #       alpha: 0.05      # Significance level
-  #     psi:
-  #       buckets: 10      # Number of buckets for distribution
-  #       threshold: 0.2   # PSI threshold for drift detection
-  #     z_score:
-  #       z_threshold: 2.0 # Z-score threshold (standard deviations)
-  #     chi_square:
-  #       alpha: 0.05      # Significance level
-  #     entropy:
-  #       entropy_threshold: 0.1  # Threshold for entropy change
-  #     top_k:
-  #       k: 10                    # Number of top categories to track
-  #       similarity_threshold: 0.7  # Similarity threshold for stability
-  
-  # Type-specific threshold configuration
-  # Adjusts drift detection sensitivity based on column data type to reduce false positives
-  enable_type_specific_thresholds: true  # Enable type-specific thresholds (default: true)
-  
-  type_specific_thresholds:
-    # Numeric columns: Accept larger drift in mean, but be sensitive to stddev changes
-    numeric:
-      mean:
-        low: 10.0      # 10% change in mean triggers low severity (more lenient)
-        medium: 25.0   # 25% change triggers medium severity
-        high: 50.0     # 50% change triggers high severity
-      stddev:
-        low: 3.0       # 3% change in stddev triggers low severity (more sensitive)
-        medium: 8.0    # 8% change triggers medium severity
-        high: 15.0     # 15% change triggers high severity
-      default:          # Default thresholds for other numeric metrics
-        low: 5.0
-        medium: 15.0
-        high: 30.0
-    
-    # Categorical columns: Focus on cardinality changes, ignore numeric metrics
-    categorical:
-      distinct_count:   # Cardinality changes are high signal
-        low: 2.0       # 2% change in distinct count triggers low severity
-        medium: 5.0    # 5% change triggers medium severity
-        high: 10.0     # 10% change triggers high severity
-      distinct_percent:
-        low: 2.0
-        medium: 5.0
-        high: 10.0
-      default:          # Default thresholds for other categorical metrics
-        low: 5.0
-        medium: 15.0
-        high: 30.0
-      # Note: mean, stddev, min, max are automatically ignored for categorical columns
-    
-    # Timestamp columns: Detect freshness and latency distribution spikes
-    timestamp:
-      default:
-        low: 5.0
-        medium: 15.0
-        high: 30.0
-    
-    # Boolean columns: Use lower thresholds for proportion changes (binomial test logic)
-    boolean:
-      default:
-        low: 2.0       # 2% change triggers low severity (more sensitive)
-        medium: 5.0    # 5% change triggers medium severity
-        high: 10.0     # 10% change triggers high severity
-      # Note: mean, stddev, min, max, histogram are automatically ignored for boolean columns
-
-# Monitoring configuration (Prometheus metrics)
-monitoring:
-  enable_metrics: true   # Set to true to enable Prometheus metrics
-  port: 9753             # Port for metrics HTTP server
-  keep_alive: false       # Keep server running after profiling (default: true)
-
-# Retry and recovery configuration
-retry:
-  enabled: true           # Enable retry logic for transient warehouse errors
-  retries: 3              # Maximum number of retry attempts (0-10)
-  backoff_strategy: exponential  # Options: exponential | fixed
-  min_backoff: 0.5        # Minimum backoff delay in seconds
-  max_backoff: 8.0        # Maximum backoff delay in seconds
-
-# Execution and parallelism configuration (OPTIONAL)
-# Default: max_workers=1 (sequential execution)
-# Enable parallelism by setting max_workers > 1
-# Note: Dagster users already benefit from asset-level parallelism
-execution:
-  max_workers: 1          # Default: 1 (sequential). Set > 1 to enable parallelism
-  batch_size: 10          # Tables per batch (default: 10)
-  queue_size: 100         # Maximum queue size (default: 100)
-  
-  # Warehouse-specific worker limits (optional, only used if max_workers > 1)
-  # warehouse_limits:
-  #   snowflake: 20       # Snowflake can handle more concurrency
-  #   postgres: 8         # Postgres moderate concurrency
-  #   sqlite: 1           # SQLite single writer (parallelism disabled)
-
-# Event hooks configuration
-hooks:
-  # Master switch - set to false to disable all hooks
+  adaptive_scheduling:
+    enabled: true
+    default_interval_minutes: 1440
+    min_interval_minutes: 60
+    max_interval_minutes: 10080
+    priority_overrides: {}
+    staleness_penalty_minutes: 1440
+  cost_controls:
+    enabled: true
+    fallback_strategy: sample
+    sample_fraction: 0.1
+schema_change:
   enabled: true
-  
-  hooks:
-    # Example 1: Logging hook (useful for development)
-    - type: logging
-      enabled: true
-      log_level: INFO
-    
-    # Example 2: SQL event persistence
-    - type: sql
-      enabled: true
-      table_name: baselinr_events
-      connection:
-        type: postgres
-        host: localhost
-        port: 5433
-        database: baselinr
-        username: baselinr
-        password: baselinr
-        schema: public
-    
-    # Example 3: Snowflake event persistence (commented out)
-    # - type: snowflake
-    #   enabled: true
-    #   table_name: baselinr_events
-    #   connection:
-    #     type: snowflake
-    #     account: myaccount
-    #     database: monitoring
-    #     warehouse: compute_wh
-    #     username: user
-    #     password: pass
-    
-    # Example 4: Custom hook (commented out)
-    # - type: custom
-    #   enabled: true
-    #   module: my_custom_hooks
-    #   class_name: SlackAlertHook
-    #   params:
-    #     webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
-    #     channel: "#data-alerts"
-
-# Lineage configuration for data lineage extraction
+  similarity_threshold: 0.7
+  suppression: []
 lineage:
-  enabled: true  # Enable lineage extraction
-  extract_column_lineage: true  # Enable column-level lineage extraction
-  providers: [dbt, sql_parser, postgres_query_history, dagster]  # Enable dbt, SQL parser, PostgreSQL query history, and Dagster
-  # If not specified, uses all available providers
-  
-  # dbt configuration (optional)
+  enabled: true
+  extract_column_lineage: true
+  providers:
+  - dbt
+  - sql_parser
+  - postgres_query_history
+  - dagster
   dbt:
     manifest_path: dbt_package/target/manifest.json
-  
-  # Dagster configuration (optional)
   dagster:
-    # Option 1: Metadata database (recommended for production)
-    # Using the same PostgreSQL instance - adjust database name if Dagster uses a different one
-    # Common options: "postgres", "dagster" (separate database), or "baselinr" (same database as Baselinr)
-    # NOTE: If your asset_keys table is in baselinr.public schema, use "baselinr" database
-    metadata_db_url: "postgresql://baselinr:baselinr@localhost:5433/baselinr"
-    auto_detect_metadata_db: true  # Also try to auto-detect from DAGSTER_POSTGRES_URL env var
-    
-    # Option 2: Code scanning (works without Dagster running)
-    # Uncomment if you want to scan code for asset definitions
-    # code_locations:
-    #   - "dagster_definitions/"
-    #   - "src/assets/"
-    
-    # Option 3: GraphQL API (requires Dagster UI running)
-    # Uncomment if you want to use GraphQL API instead
-    # graphql_url: "http://localhost:3000/graphql"
-    
-    # Optional: Explicit asset-to-table mapping
-    # Use this if Dagster asset keys don't match your table names directly
-    # asset_table_mapping:
-    #   "schema::table_name": ["schema", "table_name"]
-    #   "my_asset": ["public", "my_table"]
-  
-  # Query history lineage configuration
+    metadata_db_url: postgresql://baselinr:baselinr@localhost:5433/baselinr
+    auto_detect_metadata_db: true
   query_history:
     enabled: true
-    incremental: true  # Enable incremental updates during profiling
-    lookback_days: 30  # Days of history for bulk sync
-    min_query_count: 1  # Minimum queries to establish relationship
+    incremental: true
+    lookback_days: 30
+    min_query_count: 1
     exclude_patterns:
-      - ".*INFORMATION_SCHEMA.*"
-      - ".*SHOW.*"
-      - ".*pg_stat.*"
-    edge_expiration_days: 90  # Auto-cleanup edges not seen for 90+ days (None = never)
-    warn_stale_days: 90  # Warn about edges not seen for 90+ days
+    - .*INFORMATION_SCHEMA.*
+    - .*SHOW.*
+    - .*pg_stat.*
+    edge_expiration_days: 90
+    warn_stale_days: 90
     postgres:
-      require_extension: false  # Set to true to fail if pg_stat_statements not installed
-
-# LLM configuration for human-readable explanations (optional)
-# This feature is opt-in and disabled by default
+      require_extension: false
+visualization:
+  enabled: true
+  max_depth: 3
+  direction: both
+  confidence_threshold: 0.5
+  layout: hierarchical
+  web_viewer_port: 8080
+  theme: dark
+  styles:
+    node_colors:
+      drift: '#F44336'
+      healthy: '#4CAF50'
+      warning: '#FFC107'
 llm:
-  enabled: true  # Set to true to enable LLM explanations
-  provider: openai  # Options: openai | anthropic | azure | ollama
-  api_key: ${OPENAI_API_KEY}  # Supports environment variable expansion
-  model: gpt-4o-mini  # Provider-specific model name (better free tier limits than gpt-4o-mini)
-  temperature: 0.3  # Low temperature for consistent explanations
-  max_tokens: 1500  # Reasonable limit for single explanations
-  timeout: 30  # API timeout in seconds
-  fallback_to_template: true  # Use templates if LLM fails
+  enabled: true
+  provider: openai
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+  temperature: 0.3
+  max_tokens: 1500
+  timeout: 30
+  rate_limit: {}
+  fallback_to_template: true
   chat:
-    enabled: true  # Enable conversational chat interface
-    max_history_messages: 20  # Maximum conversation history to keep
-    max_iterations: 5  # Maximum tool-calling iterations per query
-    tool_timeout: 30  # Timeout for tool execution in seconds
-    cache_tool_results: true  # Cache tool results for performance
-    enable_context_enhancement: true  # Enhance responses with context
-#
-#   # Example: Anthropic provider
-#   # provider: anthropic
-#   # api_key: ${ANTHROPIC_API_KEY}
-#   # model: claude-sonnet-4-20250514
-#
-#   # Example: Azure OpenAI provider
-#   # provider: azure
-#   # api_key: ${AZURE_OPENAI_API_KEY}
-#   # model: gpt-4o-mini
-#   # Note: Azure requires additional configuration (endpoint, api_version)
-#
-#   # Example: Ollama provider (local/air-gapped)
-#   # provider: ollama
-#   # model: llama2
-#   # Note: Ollama runs locally, no API key needed
-
+    enabled: true
+    max_history_messages: 20
+    max_iterations: 5
+    tool_timeout: 30
+    cache_tool_results: true
+    enable_context_enhancement: true
+smart_selection:
+  mode: recommend
+  enabled: true
+  criteria:
+    weights:
+      table_size: 0.15
+      query_recency: 0.25
+      write_activity: 0.2
+      query_frequency: 0.4
+    max_rows: null
+    min_rows: 100
+    lookback_days: 30
+    min_query_count: 10
+    exclude_patterns:
+    - temp_*
+    - '*_backup'
+    - '*_archive'
+    - staging_*
+    - test_*
+    min_queries_per_day: 1
+    max_days_since_query: 60
+    max_days_since_modified: null
+  auto_apply:
+    max_tables: 100
+    skip_existing: true
+    confidence_threshold: 0.8
+  cache_metadata: true
+  recommendations:
+    output_file: recommendations.yaml
+    auto_refresh_days: 7
+    include_explanations: true
+    include_suggested_checks: true
+  cache_ttl_seconds: 3600
 rca:
   enabled: true
   lookback_window_hours: 24
@@ -554,131 +336,118 @@ rca:
   auto_analyze: true
   enable_pattern_learning: true
   collectors:
-    dbt: true  # or false
-    manifest_path: ./dbt_package/target/manifest.json  # if using dbt
-    project_dir: ./dbt_package  # if using dbt
-    
-    dagster: false  # set to true if using Dagster
-    dagster_instance_path: /path/to/.dagster  # optional
-    dagster_graphql_url: http://localhost:3000/graphql  # optional
-
-# Validation configuration (optional)
+    dbt: true
+    manifest_path: ./dbt_package/target/manifest.json
+    project_dir: ./dbt_package
+    dagster: false
+    dagster_instance_path: /path/to/.dagster
+    dagster_graphql_url: http://localhost:3000/graphql
+    airflow: false
+    airflow_api_version: v1
 validation:
   enabled: true
   providers:
-    - type: builtin
-      rules:
-        # Format validation example - validates email format
-        - table: customers
-          column: email
-          type: format
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-          severity: high
-        
-        # Not-null validation example - ensures customer_id is never null
-        - table: customers
-          column: customer_id
-          type: not_null
-          severity: high
-        
-        # Uniqueness validation example - ensures email is unique
-        - table: customers
-          column: email
-          type: unique
-          severity: high
-        
-        # Range validation example - validates total_amount is non-negative
-        - table: orders
-          column: total_amount
-          type: range
-          min_value: 0
-          max_value: 1000000
-          severity: medium
-        
-        # Enum validation example - validates status is in allowed list
-        - table: orders
-          column: status
-          type: enum
-          allowed_values: ["Delivered", "In Transit", "Processing"]
-          severity: high
-        
-        # Referential integrity example - validates customer_id references customers table
-        - table: orders
-          column: customer_id
-          type: referential
-          references:
-            table: customers
-            column: customer_id
-          severity: high
-
-# Dataset-level configuration overrides (NEW FEATURE)
-# Consolidates table-specific overrides for profiling, drift, validation, and anomaly detection
-# This reduces duplication compared to specifying overrides in each feature section
+  - type: builtin
+    rules:
+    - type: format
+      table: customers
+      column: email
+      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+      severity: high
+    - type: not_null
+      table: customers
+      column: customer_id
+      severity: high
+    - type: unique
+      table: customers
+      column: email
+      severity: high
+    - type: range
+      table: orders
+      column: total_amount
+      severity: medium
+      max_value: 1000000
+      min_value: 0
+    - type: enum
+      table: orders
+      column: status
+      severity: high
+      allowed_values:
+      - Delivered
+      - In Transit
+      - Processing
+    - type: referential
+      table: orders
+      column: customer_id
+      severity: high
+      references:
+        table: customers
+        column: customer_id
+  rules: []
 datasets:
-  # Example 1: Complete dataset configuration for customers table
-  - database: baselinr  # Optional: can be omitted if same as source.database
-    schema: public
+  datasets:
+  - database: baselinr
+    schema_: public
     table: customers
     profiling:
       partition:
-        strategy: latest
         key: created_at
+        strategy: latest
+        metadata_fallback: true
       sampling:
         enabled: true
-        fraction: 0.1  # Sample 10% of rows
+        method: random
+        fraction: 0.1
       columns:
-        - name: email
-          metrics: [count, null_count, distinct_count]
-          drift:
-            enabled: true
-            thresholds:
-              low: 2.0
-              medium: 5.0
-              high: 10.0
-        - name: "*_id"
-          drift:
-            enabled: false  # Disable drift for all ID columns
+      - name: email
+        metrics:
+        - count
+        - null_count
+        - distinct_count
+        drift:
+          enabled: true
+          thresholds:
+            low: 2.0
+            high: 10.0
+            medium: 5.0
+      - name: '*_id'
+        drift:
+          enabled: false
     drift:
-      strategy: statistical  # Override global drift strategy for this table
+      strategy: statistical
     validation:
       rules:
-        - type: format
-          column: email
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-          severity: high
-        - type: not_null
-          column: customer_id
-          severity: high
-    # Note: anomaly config would go here if needed
-    # anomaly:
-    #   columns:
-    #     - name: total_amount
-    #       enabled: true
-    #       methods: [control_limits, iqr]
-
-  # Example 2: Schema-level dataset config (applies to all tables in analytics schema)
-  - schema: analytics
+      - type: format
+        column: email
+        pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+        severity: high
+        enabled: true
+      - type: not_null
+        column: customer_id
+        severity: high
+        enabled: true
+  - schema_: analytics
     profiling:
       partition:
-        strategy: latest
         key: date
+        strategy: latest
+        metadata_fallback: true
       sampling:
         enabled: true
-        fraction: 0.05  # Sample 5% for all analytics tables
+        method: random
+        fraction: 0.05
     drift:
       strategy: absolute_threshold
       absolute_threshold:
         low_threshold: 3.0
-        medium_threshold: 10.0
         high_threshold: 25.0
-
-  # Example 3: Database-level dataset config (applies to all tables in warehouse database)
+        medium_threshold: 10.0
   - database: warehouse
     profiling:
       columns:
-        - name: "*_metadata"
-          profiling:
-            enabled: false  # Skip metadata columns across entire database
-        - name: "*_id"
-          drift:
-            enabled: false  # Disable drift for all ID columns
+      - name: '*_metadata'
+        profiling:
+          enabled: false
+      - name: '*_id'
+        drift:
+          enabled: false

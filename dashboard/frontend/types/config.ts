@@ -481,13 +481,33 @@ export interface ConfigHistoryEntry {
   version_id: string
   created_at: string
   created_by?: string
-  description?: string
+  comment?: string
+  description?: string // Alias for comment (for backwards compatibility)
   is_current?: boolean
 }
 
 export interface ConfigHistoryResponse {
   versions: ConfigHistoryEntry[]
   total?: number
+}
+
+export interface ConfigDiffResponse {
+  version_id: string
+  compare_with: string
+  added: Record<string, unknown>
+  removed: Record<string, unknown>
+  changed: Record<string, { old: unknown; new: unknown }>
+}
+
+export interface RestoreConfigRequest {
+  confirm: boolean
+  comment?: string
+}
+
+export interface RestoreConfigResponse {
+  success: boolean
+  message: string
+  config: BaselinrConfig
 }
 
 export interface ConfigVersionResponse {
