@@ -5,11 +5,14 @@ RCA API routes for Baselinr Dashboard.
 import json
 import sys
 import os
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import text
+
+logger = logging.getLogger(__name__)
 
 # Add parent directory to path to import baselinr
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -28,14 +31,25 @@ from rca_models import (
     RCAResultResponse,
     RCAStatisticsResponse,
 )
+from database import DatabaseClient
 
 router = APIRouter(prefix="/api/rca", tags=["rca"])
 
+# Global database client instance
+_db_client = None
 
-def get_rca_service(db_engine):
+def get_db_client():
+    """Get or create database client instance."""
+    global _db_client
+    if _db_client is None:
+        _db_client = DatabaseClient()
+    return _db_client
+
+def get_rca_service():
     """Get or create RCA service instance."""
+    db_client = get_db_client()
     return RCAService(
-        engine=db_engine,
+        engine=db_client.engine,
         auto_analyze=False,  # Disabled for API mode
         lookback_window_hours=24,
         max_depth=5,
@@ -44,9 +58,14 @@ def get_rca_service(db_engine):
         enable_pattern_learning=True,
     )
 
+def get_rca_storage():
+    """Get or create RCA storage instance."""
+    db_client = get_db_client()
+    return RCAStorage(db_client.engine)
+
 
 @router.post("/analyze", response_model=RCAResultResponse)
-async def analyze_anomaly(body: AnalyzeRequestBody, db_engine):
+async def analyze_anomaly(body: AnalyzeRequestBody):
     """
     Trigger RCA for a specific anomaly.
 
@@ -54,7 +73,7 @@ async def analyze_anomaly(body: AnalyzeRequestBody, db_engine):
     to identify probable root causes.
     """
     try:
-        service = get_rca_service(db_engine)
+        service = get_rca_service()
 
         result = service.analyze_anomaly(
             anomaly_id=body.anomaly_id,
@@ -95,14 +114,14 @@ async def analyze_anomaly(body: AnalyzeRequestBody, db_engine):
 
 
 @router.get("/{anomaly_id}", response_model=RCAResultResponse)
-async def get_rca_result(anomaly_id: str, db_engine):
+async def get_rca_result(anomaly_id: str):
     """
     Get stored RCA result for an anomaly.
 
     Returns cached analysis results if available.
     """
     try:
-        storage = RCAStorage(db_engine)
+        storage = get_rca_storage()
         result = storage.get_rca_result(anomaly_id)
 
         if not result:
@@ -141,7 +160,6 @@ async def get_rca_result(anomaly_id: str, db_engine):
 async def list_rca_results(
     limit: int = Query(10, ge=1, le=100),
     status: Optional[str] = Query(None, pattern="^(analyzed|pending|dismissed)$"),
-    db_engine=None,
 ):
     """
     Get list of recent RCA results.
@@ -149,45 +167,74 @@ async def list_rca_results(
     Returns summary information for recent analyses.
     """
     try:
-        service = get_rca_service(db_engine)
+        service = get_rca_service()
         results = service.get_recent_rca_results(limit=limit)
 
         # Filter by status if provided
         if status:
             results = [r for r in results if r.get("rca_status") == status]
 
-        return [RCAListResponse(**r) for r in results]
+        # Ensure all results have required fields and correct types
+        cleaned_results = []
+        for r in results:
+            cleaned = {
+                "anomaly_id": str(r.get("anomaly_id", "")),
+                "table_name": str(r.get("table_name", "")),
+                "schema_name": r.get("schema_name"),
+                "column_name": r.get("column_name"),
+                "metric_name": r.get("metric_name"),
+                "analyzed_at": str(r.get("analyzed_at", "")),
+                "rca_status": str(r.get("rca_status", "pending")),
+                "num_causes": int(r.get("num_causes", 0)),
+                "top_cause": r.get("top_cause"),
+            }
+            cleaned_results.append(RCAListResponse(**cleaned))
+
+        return cleaned_results
 
     except Exception as e:
+        logger.error(f"Failed to list RCA results: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to list RCA results: {str(e)}")
 
 
 @router.get("/statistics/summary", response_model=RCAStatisticsResponse)
-async def get_rca_statistics(db_engine):
+async def get_rca_statistics():
     """
     Get RCA statistics.
 
     Returns aggregate statistics about RCA operations.
     """
     try:
-        service = get_rca_service(db_engine)
+        service = get_rca_service()
         stats = service.get_rca_statistics()
+        
+        logger.debug(f"RCA statistics retrieved: {stats}")
+        
+        # Ensure all values are the correct type (convert Decimal to float/int if needed)
+        stats_clean = {
+            "total_analyses": int(stats.get("total_analyses", 0)),
+            "analyzed": int(stats.get("analyzed", 0)),
+            "dismissed": int(stats.get("dismissed", 0)),
+            "pending": int(stats.get("pending", 0)),
+            "avg_causes_per_anomaly": float(stats.get("avg_causes_per_anomaly", 0.0)),
+        }
 
-        return RCAStatisticsResponse(**stats)
+        return RCAStatisticsResponse(**stats_clean)
 
     except Exception as e:
+        logger.error(f"Failed to get RCA statistics: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get statistics: {str(e)}")
 
 
 @router.post("/{anomaly_id}/reanalyze", response_model=RCAResultResponse)
-async def reanalyze_anomaly(anomaly_id: str, db_engine):
+async def reanalyze_anomaly(anomaly_id: str):
     """
     Re-run RCA for an existing anomaly.
 
     Useful after new data is available or patterns have been learned.
     """
     try:
-        service = get_rca_service(db_engine)
+        service = get_rca_service()
         result = service.reanalyze_anomaly(anomaly_id)
 
         if not result:
@@ -226,7 +273,6 @@ async def reanalyze_anomaly(anomaly_id: str, db_engine):
 async def dismiss_rca_result(
     anomaly_id: str,
     reason: Optional[str] = Query(None, description="Reason for dismissing"),
-    db_engine=None,
 ):
     """
     Mark an RCA result as dismissed.
@@ -234,7 +280,7 @@ async def dismiss_rca_result(
     Used when the analysis is not relevant or has been resolved.
     """
     try:
-        service = get_rca_service(db_engine)
+        service = get_rca_service()
         service.dismiss_rca_result(anomaly_id, reason)
 
         return {"status": "dismissed", "anomaly_id": anomaly_id}
@@ -248,7 +294,6 @@ async def get_recent_pipeline_runs(
     limit: int = Query(20, ge=1, le=100),
     pipeline_name: Optional[str] = None,
     status: Optional[str] = None,
-    db_engine=None,
 ):
     """
     Get recent pipeline runs.
@@ -256,7 +301,7 @@ async def get_recent_pipeline_runs(
     Returns pipeline execution history.
     """
     try:
-        storage = RCAStorage(db_engine)
+        storage = get_rca_storage()
         runs = storage.get_pipeline_runs(
             start_time=datetime.utcnow() - timedelta(days=7),
             pipeline_name=pipeline_name,
@@ -290,7 +335,6 @@ async def get_recent_pipeline_runs(
 async def get_recent_deployments(
     limit: int = Query(20, ge=1, le=100),
     git_commit_sha: Optional[str] = None,
-    db_engine=None,
 ):
     """
     Get recent code deployments.
@@ -298,7 +342,7 @@ async def get_recent_deployments(
     Returns deployment history.
     """
     try:
-        storage = RCAStorage(db_engine)
+        storage = get_rca_storage()
         deployments = storage.get_code_deployments(
             start_time=datetime.utcnow() - timedelta(days=7),
             git_commit_sha=git_commit_sha,
@@ -324,10 +368,9 @@ async def get_recent_deployments(
 
 @router.get("/timeline", response_model=List[EventTimelineResponse])
 async def get_events_timeline(
-    start_time: datetime = Query(..., description="Start of time window"),
-    end_time: datetime = Query(..., description="End of time window"),
+    start_time: str = Query(..., description="Start of time window (ISO format)"),
+    end_time: str = Query(..., description="End of time window (ISO format)"),
     asset_name: Optional[str] = Query(None, description="Filter by table/asset name"),
-    db_engine=None,
 ):
     """
     Get timeline view of events (anomalies, pipeline runs, deployments).
@@ -335,6 +378,24 @@ async def get_events_timeline(
     Returns chronologically ordered events for RCA visualization.
     """
     try:
+        # Parse datetime strings
+        try:
+            start_time_obj = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+        except ValueError:
+            try:
+                start_time_obj = datetime.strptime(start_time, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_time format. Use ISO format (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)")
+        
+        try:
+            end_time_obj = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+        except ValueError:
+            try:
+                end_time_obj = datetime.strptime(end_time, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_time format. Use ISO format (YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS)")
+
+        db_client = get_db_client()
         events = []
 
         # Get anomalies from events table
@@ -352,12 +413,12 @@ async def get_events_timeline(
         """
         )
 
-        with db_engine.connect() as conn:
+        with db_client.engine.connect() as conn:
             result = conn.execute(
                 anomaly_query,
                 {
-                    "start_time": start_time,
-                    "end_time": end_time,
+                    "start_time": start_time_obj,
+                    "end_time": end_time_obj,
                     "asset_name": asset_name,
                 },
             )
@@ -379,9 +440,9 @@ async def get_events_timeline(
                 )
 
         # Get pipeline runs
-        storage = RCAStorage(db_engine)
+        storage = get_rca_storage()
         runs = storage.get_pipeline_runs(
-            start_time=start_time, end_time=end_time, limit=50
+            start_time=start_time_obj, end_time=end_time_obj, limit=50
         )
 
         for run in runs:
@@ -402,7 +463,7 @@ async def get_events_timeline(
 
         # Get deployments
         deployments = storage.get_code_deployments(
-            start_time=start_time, end_time=end_time, limit=50
+            start_time=start_time_obj, end_time=end_time_obj, limit=50
         )
 
         for dep in deployments:
@@ -435,21 +496,7 @@ def register_routes(app, db_engine):
 
     Args:
         app: FastAPI application instance
-        db_engine: Database engine
+        db_engine: Database engine (kept for compatibility, but not used)
     """
-
-    # Create a dependency to inject db_engine
-    async def get_db_engine():
-        return db_engine
-
-    # Add dependency to router
-    for route in router.routes:
-        # Inject db_engine into route functions
-        original_endpoint = route.endpoint
-
-        async def wrapper(*args, db_engine=db_engine, **kwargs):
-            return await original_endpoint(*args, db_engine=db_engine, **kwargs)
-
-        route.endpoint = wrapper
-
+    # Simply include the router - routes now use get_db_client() internally
     app.include_router(router)
