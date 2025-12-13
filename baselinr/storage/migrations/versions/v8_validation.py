@@ -139,7 +139,7 @@ def create_validation_results_table(conn):
         # Generic SQL (PostgreSQL, MySQL, etc.)
         # Detect PostgreSQL vs MySQL
         is_postgres = "postgresql" in engine_url.lower() or "postgres" in engine_url.lower()
-        
+
         if is_postgres:
             # PostgreSQL-specific DDL
             conn.execute(
