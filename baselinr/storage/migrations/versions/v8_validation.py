@@ -137,34 +137,98 @@ def create_validation_results_table(conn):
         )
     else:
         # Generic SQL (PostgreSQL, MySQL, etc.)
-        conn.execute(
-            text(
+        # Detect PostgreSQL vs MySQL
+        is_postgres = "postgresql" in engine_url.lower() or "postgres" in engine_url.lower()
+        
+        if is_postgres:
+            # PostgreSQL-specific DDL
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_validation_results (
+                        id SERIAL PRIMARY KEY,
+                        run_id VARCHAR(36) NOT NULL,
+                        table_name VARCHAR(255) NOT NULL,
+                        schema_name VARCHAR(255),
+                        column_name VARCHAR(255),
+                        rule_type VARCHAR(50) NOT NULL,
+                        rule_config TEXT,
+                        passed BOOLEAN NOT NULL,
+                        failure_reason TEXT,
+                        total_rows INTEGER,
+                        failed_rows INTEGER,
+                        failure_rate FLOAT,
+                        severity VARCHAR(20),
+                        validated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        provider VARCHAR(50) NOT NULL DEFAULT 'builtin',
+                        metadata TEXT
+                    )
                 """
-                CREATE TABLE IF NOT EXISTS baselinr_validation_results (
-                    id INTEGER PRIMARY KEY AUTO_INCREMENT,
-                    run_id VARCHAR(36) NOT NULL,
-                    table_name VARCHAR(255) NOT NULL,
-                    schema_name VARCHAR(255),
-                    column_name VARCHAR(255),
-                    rule_type VARCHAR(50) NOT NULL,
-                    rule_config TEXT,
-                    passed BOOLEAN NOT NULL,
-                    failure_reason TEXT,
-                    total_rows INTEGER,
-                    failed_rows INTEGER,
-                    failure_rate FLOAT,
-                    severity VARCHAR(20),
-                    validated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    provider VARCHAR(50) NOT NULL DEFAULT 'builtin',
-                    metadata TEXT,
-                    INDEX idx_run_id (run_id),
-                    INDEX idx_table (table_name, schema_name),
-                    INDEX idx_column (table_name, schema_name, column_name),
-                    INDEX idx_validated_at (validated_at DESC)
                 )
-            """
             )
-        )
+            # Create indexes separately for PostgreSQL
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_validation_run_id
+                    ON baselinr_validation_results (run_id)
+                """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_validation_table
+                    ON baselinr_validation_results (table_name, schema_name)
+                """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_validation_column
+                    ON baselinr_validation_results (table_name, schema_name, column_name)
+                """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_validation_validated_at
+                    ON baselinr_validation_results (validated_at DESC)
+                """
+                )
+            )
+        else:
+            # MySQL and other databases
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS baselinr_validation_results (
+                        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+                        run_id VARCHAR(36) NOT NULL,
+                        table_name VARCHAR(255) NOT NULL,
+                        schema_name VARCHAR(255),
+                        column_name VARCHAR(255),
+                        rule_type VARCHAR(50) NOT NULL,
+                        rule_config TEXT,
+                        passed BOOLEAN NOT NULL,
+                        failure_reason TEXT,
+                        total_rows INTEGER,
+                        failed_rows INTEGER,
+                        failure_rate FLOAT,
+                        severity VARCHAR(20),
+                        validated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        provider VARCHAR(50) NOT NULL DEFAULT 'builtin',
+                        metadata TEXT,
+                        INDEX idx_run_id (run_id),
+                        INDEX idx_table (table_name, schema_name),
+                        INDEX idx_column (table_name, schema_name, column_name),
+                        INDEX idx_validated_at (validated_at DESC)
+                    )
+                """
+                )
+            )
 
 
 migration = Migration(

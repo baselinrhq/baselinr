@@ -1337,8 +1337,85 @@ class ValidationConfig(BaseModel):
         default_factory=list, description="List of validation provider configurations"
     )
     rules: List[ValidationRuleConfig] = Field(
-        default_factory=list, description="List of validation rules"
+        default_factory=list, description="List of top-level validation rules"
     )
+
+
+class QualityScoringWeights(BaseModel):
+    """Component weights for quality scoring."""
+
+    completeness: float = Field(25.0, ge=0, le=100)
+    validity: float = Field(25.0, ge=0, le=100)
+    consistency: float = Field(20.0, ge=0, le=100)
+    freshness: float = Field(15.0, ge=0, le=100)
+    uniqueness: float = Field(10.0, ge=0, le=100)
+    accuracy: float = Field(5.0, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_weights_sum(self):
+        """Ensure weights sum to 100."""
+        total = (
+            self.completeness
+            + self.validity
+            + self.consistency
+            + self.freshness
+            + self.uniqueness
+            + self.accuracy
+        )
+        if abs(total - 100.0) > 0.01:  # Allow small floating point differences
+            raise ValueError(f"Quality scoring weights must sum to 100, got {total}")
+        return self
+
+
+class QualityScoringThresholds(BaseModel):
+    """Score thresholds for status classification."""
+
+    healthy: float = Field(80.0, ge=0, le=100)
+    warning: float = Field(60.0, ge=0, le=100)
+    critical: float = Field(0.0, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def validate_thresholds(self):
+        """Ensure thresholds are in descending order."""
+        if not (self.critical <= self.warning <= self.healthy):
+            raise ValueError(
+                "Quality scoring thresholds must be in order: critical <= warning <= healthy"
+            )
+        return self
+
+
+class QualityScoringFreshness(BaseModel):
+    """Freshness thresholds in hours."""
+
+    excellent: int = Field(24, gt=0)
+    good: int = Field(48, gt=0)
+    acceptable: int = Field(168, gt=0)  # 1 week
+
+    @model_validator(mode="after")
+    def validate_freshness(self):
+        """Ensure freshness thresholds are in ascending order."""
+        if not (self.excellent <= self.good <= self.acceptable):
+            raise ValueError(
+                "Freshness thresholds must be in order: excellent <= good <= acceptable"
+            )
+        return self
+
+
+class QualityScoringConfig(BaseModel):
+    """Quality scoring configuration."""
+
+    enabled: bool = Field(True, description="Enable quality scoring")
+    weights: QualityScoringWeights = Field(
+        default_factory=lambda: QualityScoringWeights()  # type: ignore[call-arg]
+    )
+    thresholds: QualityScoringThresholds = Field(
+        default_factory=lambda: QualityScoringThresholds()  # type: ignore[call-arg]
+    )
+    freshness: QualityScoringFreshness = Field(
+        default_factory=lambda: QualityScoringFreshness()  # type: ignore[call-arg]
+    )
+    store_history: bool = Field(True, description="Store historical scores")
+    history_retention_days: int = Field(90, gt=0, description="Days to retain score history")
 
 
 class DatasetProfilingConfig(BaseModel):
@@ -1500,6 +1577,9 @@ class BaselinrConfig(BaseModel):
     )
     validation: Optional["ValidationConfig"] = Field(
         None, description="Data validation configuration"
+    )
+    quality_scoring: Optional["QualityScoringConfig"] = Field(
+        None, description="Quality scoring configuration"
     )
     datasets: Optional[DatasetsConfig] = Field(
         None,

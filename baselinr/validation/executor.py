@@ -325,16 +325,8 @@ class ValidationExecutor:
                 rules.append(rule)
 
         # Also load rules from top-level rules list
-        for rule_config_dict in validation_config.rules:
-            if not isinstance(rule_config_dict, dict):
-                continue
-
-            try:
-                rule_config = ValidationRuleConfig(**rule_config_dict)
-            except Exception as e:
-                logger.warning(f"Invalid validation rule config: {e}")
-                continue
-
+        for rule_config in validation_config.rules:
+            # rule_config is already a ValidationRuleConfig object
             if not rule_config.table:
                 logger.warning("Validation rule missing table name, skipping")
                 continue

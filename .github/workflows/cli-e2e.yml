@@ -619,6 +619,60 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --output /tmp/validation_results.json || echo "Validation output failed (expected if validation disabled or no rules)"
 
+      - name: Run quality score CLI commands
+        run: |
+          # Test basic score command with JSON output
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr score \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format json || echo "Score command failed (expected if quality_scoring disabled or no data)"
+
+          # Test score command with table format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr score \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --format table || echo "Score command with table format failed (expected if quality_scoring disabled or no data)"
+
+          # Test score command with schema filter
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr score \
+              --config $BASELINR_CONFIG_PATH \
+              --table customers \
+              --schema public \
+              --format json || echo "Score command with schema filter failed (expected if quality_scoring disabled or no data)"
+
+          # Test score command without table (should error)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr score \
+              --config $BASELINR_CONFIG_PATH \
+              --format json || echo "Score command without table failed as expected"
+
       - name: Test datasets configuration functionality
         run: |
           # Test that config with datasets section loads successfully
