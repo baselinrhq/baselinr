@@ -108,33 +108,33 @@ export default function ConfigHistoryPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <Link href="/config" className="hover:text-primary-600">
-            Configuration
-          </Link>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-gray-900 font-medium">History</span>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+            <Link href="/config" className="hover:text-cyan-400">
+              Configuration
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-white font-medium">History</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <History className="w-6 h-6" />
+            Configuration History
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            View, compare, and restore previous configuration versions
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <History className="w-6 h-6 text-gray-700" />
-          <h1 className="text-2xl font-bold text-gray-900">Configuration History</h1>
-        </div>
-        <p className="text-sm text-gray-600 mt-1">
-          View, compare, and restore previous configuration versions
-        </p>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <ConfigHistory
-          onVersionSelect={handleVersionSelect}
-          onCompare={handleCompare}
-          onRestore={handleRestore}
-        />
-      </div>
+      <ConfigHistory
+        onVersionSelect={handleVersionSelect}
+        onCompare={handleCompare}
+        onRestore={handleRestore}
+      />
 
       {/* Diff Modal */}
       {isDiffOpen && diffData && (
@@ -155,10 +155,10 @@ export default function ConfigHistoryPage() {
       {/* Loading Diff State */}
       {isLoadingDiff && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg">
+          <div className="glass-card p-6">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-              <span className="text-gray-700">Loading diff...</span>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+              <span className="text-white">Loading diff...</span>
             </div>
           </div>
         </div>
@@ -167,14 +167,14 @@ export default function ConfigHistoryPage() {
       {/* Diff Error */}
       {diffError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-md">
-            <div className="text-red-800 mb-4">{diffError}</div>
+          <div className="glass-card border-rose-500/30 bg-rose-500/10 p-6 max-w-md">
+            <div className="text-rose-200 mb-4">{diffError}</div>
             <button
               onClick={() => {
                 setDiffError(null)
                 setIsDiffOpen(false)
               }}
-              className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+              className="px-4 py-2 bg-surface-800 rounded hover:bg-surface-700 text-white"
             >
               Close
             </button>
@@ -194,10 +194,10 @@ export default function ConfigHistoryPage() {
       {/* Loading Version State */}
       {isLoadingVersion && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg">
+          <div className="glass-card p-6">
             <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-              <span className="text-gray-700">Loading version...</span>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+              <span className="text-white">Loading version...</span>
             </div>
           </div>
         </div>
@@ -206,11 +206,11 @@ export default function ConfigHistoryPage() {
       {/* Version Error */}
       {versionError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-md">
-            <div className="text-red-800 mb-4">{versionError}</div>
+          <div className="glass-card border-rose-500/30 bg-rose-500/10 p-6 max-w-md">
+            <div className="text-rose-200 mb-4">{versionError}</div>
             <button
               onClick={() => setVersionError(null)}
-              className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+              className="px-4 py-2 bg-surface-800 rounded hover:bg-surface-700 text-white"
             >
               Close
             </button>

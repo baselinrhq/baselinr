@@ -1,14 +1,19 @@
-# Baselinr Dashboard v2.0
+# Baselinr Quality Studio
 
-Internal dashboard MVP for Baselinr data profiling and drift detection. This dashboard visualizes profiling results, drift alerts, run history, and metrics across multi-warehouse environments.
+Quality Studio is Baselinr's no-code web interface for configuring and managing your entire data quality setup. Configure connections, tables, profiling settings, validation rules, drift detection, and more—all through an intuitive visual interface. The Quality Studio also provides comprehensive monitoring and analysis of profiling results, drift alerts, run history, and metrics across multi-warehouse environments.
 
 ## 🎯 Features
 
 ### Core Features
+- **No-Code Configuration**: Set up your entire data quality configuration through visual forms—no YAML or JSON required
+- **Configuration Management**: Visual editors for connections, storage, tables, profiling, validation rules, drift detection, and more
+- **Visual & YAML Editor**: Split-view editor with real-time sync between visual forms and YAML configuration
 - **Run History**: View past profiling runs with filtering and search
 - **Profiling Results**: Detailed table and column-level metrics visualization
 - **Drift Detection**: Monitor data drift events with severity indicators
-- **Metrics Dashboard**: Aggregate KPIs and trends
+- **Validation Results**: View and manage data quality validation results
+- **Root Cause Analysis**: AI-powered correlation of anomalies with pipeline runs and upstream issues
+- **Metrics Overview**: Aggregate KPIs and trends
 - **Multi-Warehouse Support**: PostgreSQL, Snowflake, MySQL, BigQuery, Redshift, SQLite
 - **Export Functionality**: Export data in JSON/CSV formats
 - **AI Chat Assistant**: Conversational interface for data quality investigation
@@ -43,7 +48,7 @@ dashboard/
 │   └── sample_data_generator.py
 ├── frontend/                   # Next.js frontend
 │   ├── app/                   # App router pages
-│   │   ├── page.tsx           # Dashboard overview
+│   │   ├── page.tsx           # Quality Studio overview
 │   │   ├── runs/              # Run history page
 │   │   ├── drift/             # Drift alerts page
 │   │   ├── tables/            # Table details page
@@ -124,7 +129,7 @@ Frontend will be available at: `http://localhost:3000`
 
 ## 🔌 API Endpoints
 
-### Dashboard Metrics
+### Quality Studio Metrics
 - `GET /api/dashboard/metrics?warehouse=&days=30` - Get aggregate metrics
 
 ### Run History
@@ -154,7 +159,7 @@ Frontend will be available at: `http://localhost:3000`
 
 ## 📊 Sample Data
 
-To populate the dashboard with sample data for testing:
+To populate the Quality Studio with sample data for testing:
 
 ```bash
 cd dashboard/backend
@@ -248,7 +253,7 @@ NODE_ENV=development
 
 ## 💬 Chat Feature
 
-The dashboard includes an AI-powered chat assistant for data quality investigation.
+The Quality Studio includes an AI-powered chat assistant for data quality investigation.
 
 ### Enabling Chat
 

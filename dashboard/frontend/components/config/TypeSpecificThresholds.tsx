@@ -103,8 +103,8 @@ export function TypeSpecificThresholds({
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-sm font-medium text-gray-900 mb-1">Type-Specific Thresholds</h4>
-            <p className="text-xs text-gray-600">
+            <h4 className="text-sm font-medium text-white mb-1">Type-Specific Thresholds</h4>
+            <p className="text-xs text-slate-400">
               Adjust drift detection sensitivity based on column data type to reduce false positives
             </p>
           </div>
@@ -128,14 +128,14 @@ export function TypeSpecificThresholds({
 
             <div className="space-y-4">
               {DATA_TYPES.find((t) => t.id === activeType) && (
-                <div className="text-sm text-gray-600 mb-4">
+                <div className="text-sm text-slate-400 mb-4">
                   {DATA_TYPES.find((t) => t.id === activeType)?.description}
                 </div>
               )}
 
               {getMetricsForType(activeType).map((metric) => (
-                <div key={metric.id} className="border rounded-lg p-4">
-                  <h5 className="text-sm font-medium text-gray-900 mb-4">{metric.label}</h5>
+                <div key={metric.id} className="border border-surface-700/50 rounded-lg p-4">
+                  <h5 className="text-sm font-medium text-white mb-4">{metric.label}</h5>
                   <ThresholdConfig
                     thresholds={getCurrentThresholds(activeType, metric.id)}
                     onChange={(thresholds) => handleThresholdChange(activeType, metric.id, thresholds)}
@@ -152,7 +152,7 @@ export function TypeSpecificThresholds({
         )}
 
         {!enableTypeSpecificThresholds && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+          <div className="glass-card border-surface-700/50 rounded-lg p-4 text-sm text-slate-400">
             Enable type-specific thresholds to configure different sensitivity levels for different data types.
           </div>
         )}

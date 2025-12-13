@@ -93,12 +93,12 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
       {/* Filters */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Timeline Filters</h3>
+          <h3 className="text-lg font-semibold text-white">Timeline Filters</h3>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-300 mb-1">
                 Start Time
               </label>
               <Input
@@ -108,7 +108,7 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-300 mb-1">
                 End Time
               </label>
               <Input
@@ -118,7 +118,7 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-300 mb-1">
                 Asset Name
               </label>
               <Input
@@ -146,40 +146,40 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
       {/* Timeline */}
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Events Timeline</h3>
+          <h3 className="text-lg font-semibold text-white">Events Timeline</h3>
         </CardHeader>
         <CardBody>
           {sortedItems.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <div className="text-center py-12 text-slate-400">
+              <Clock className="w-12 h-12 mx-auto mb-4 text-slate-500" />
               <p>No events found in the selected time range</p>
             </div>
           ) : (
             <div className="relative">
               {/* Timeline line */}
-              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200" />
+              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-surface-700" />
 
               {/* Timeline items */}
               <div className="space-y-6">
                 {sortedItems.map((item, index) => {
                   const EventIcon = eventTypeIcons[item.event_type as keyof typeof eventTypeIcons] || AlertTriangle
                   const eventColor =
-                    eventTypeColors[item.event_type as keyof typeof eventTypeColors] || 'bg-gray-500'
+                    eventTypeColors[item.event_type as keyof typeof eventTypeColors] || 'bg-slate-500'
 
                   return (
                     <div key={index} className="relative flex items-start gap-4">
                       {/* Timeline marker */}
                       <div className="relative z-10 flex-shrink-0">
                         <div
-                          className={`w-4 h-4 rounded-full ${eventColor} border-2 border-white shadow-sm`}
+                          className={`w-4 h-4 rounded-full ${eventColor} border-2 border-surface-800 shadow-sm`}
                         />
                       </div>
 
                       {/* Event content */}
-                      <div className="flex-1 bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex-1 bg-surface-800/50 border border-surface-700/50 rounded-lg p-4 hover:border-surface-600 transition-colors">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <EventIcon className="w-4 h-4 text-gray-500" />
+                            <EventIcon className="w-4 h-4 text-slate-400" />
                             <Badge
                               variant={
                                 item.event_type === 'anomaly'
@@ -192,12 +192,12 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
                             >
                               {item.event_type.replace('_', ' ')}
                             </Badge>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-slate-400">
                               {formatDate(item.timestamp)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500">Relevance:</span>
+                            <span className="text-xs text-slate-400">Relevance:</span>
                             <Badge variant="default" size="sm">
                               {(item.relevance_score * 100).toFixed(0)}%
                             </Badge>
@@ -206,7 +206,7 @@ export default function RCATimeline({ assetName }: RCATimelineProps) {
 
                         {/* Event data preview */}
                         <div className="mt-2">
-                          <pre className="text-xs bg-gray-50 p-2 rounded overflow-x-auto max-h-32 overflow-y-auto">
+                          <pre className="text-xs bg-surface-900/50 text-slate-300 p-2 rounded overflow-x-auto max-h-32 overflow-y-auto">
                             {JSON.stringify(item.event_data, null, 2)}
                           </pre>
                         </div>

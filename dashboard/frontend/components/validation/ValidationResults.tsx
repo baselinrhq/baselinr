@@ -18,9 +18,9 @@ interface ValidationResultsProps {
 }
 
 const severityColors = {
-  low: 'bg-green-100 text-green-800 border-green-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  high: 'bg-red-100 text-red-800 border-red-200',
+  low: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  medium: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  high: 'bg-rose-500/20 text-rose-400 border-rose-500/30',
 }
 
 const ruleTypeLabels: Record<string, string> = {
@@ -52,43 +52,43 @@ export default function ValidationResults({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="glass-card rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-800/60">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Table
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Column
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Rule Type
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Failed / Total
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Failure Rate
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Severity
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Validated At
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-surface-700/50">
             {results.map((result) => (
               <tr
                 key={result.id}
                 className={clsx(
-                  'hover:bg-gray-50',
+                  'hover:bg-surface-700/30 transition-colors',
                   onRowClick && 'cursor-pointer'
                 )}
                 onClick={() => onRowClick?.(result.id)}
@@ -107,28 +107,28 @@ export default function ValidationResults({
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
                     href={`/tables/${result.table_name}`}
-                    className="text-sm font-medium text-primary-600 hover:text-primary-800"
+                    className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {result.table_name}
                   </Link>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                   {result.column_name || '-'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                  <span className="font-mono text-xs bg-surface-700/50 px-2 py-1 rounded">
                     {ruleTypeLabels[result.rule_type] || result.rule_type}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                   {result.total_rows !== undefined && result.failed_rows !== undefined ? (
                     <span>
-                      <span className={clsx('font-medium', result.failed_rows > 0 && 'text-red-600')}>
+                      <span className={clsx('font-medium', result.failed_rows > 0 && 'text-rose-400')}>
                         {result.failed_rows.toLocaleString()}
                       </span>
                       {' / '}
-                      <span className="text-gray-500">{result.total_rows.toLocaleString()}</span>
+                      <span className="text-slate-400">{result.total_rows.toLocaleString()}</span>
                     </span>
                   ) : (
                     '-'
@@ -138,7 +138,7 @@ export default function ValidationResults({
                   {result.failure_rate !== undefined && result.failure_rate !== null ? (
                     <span className={clsx(
                       'text-sm font-medium',
-                      result.failure_rate > 0 ? 'text-red-600' : 'text-green-600'
+                      result.failure_rate > 0 ? 'text-rose-400' : 'text-emerald-400'
                     )}>
                       {result.failure_rate.toFixed(2)}%
                     </span>
@@ -158,7 +158,7 @@ export default function ValidationResults({
                     '-'
                   )}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                   {new Date(result.validated_at).toLocaleString()}
                 </td>
               </tr>
@@ -169,15 +169,15 @@ export default function ValidationResults({
 
       {results.length === 0 && (
         <div className="text-center py-12">
-          <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500">No validation results found</p>
+          <AlertTriangle className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+          <p className="text-slate-400">No validation results found</p>
         </div>
       )}
 
       {/* Pagination */}
       {totalPages > 1 && onPageChange && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-700">
+        <div className="px-6 py-4 border-t border-surface-700/50 flex items-center justify-between">
+          <div className="text-sm text-slate-400">
             Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total} results
           </div>
           <div className="flex items-center gap-2">
@@ -189,7 +189,7 @@ export default function ValidationResults({
             >
               Previous
             </Button>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-slate-400">
               Page {page} of {totalPages}
             </span>
             <Button

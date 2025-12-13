@@ -59,7 +59,7 @@ export default function EnhancedLineageViewer({
 
   const handleExportPNG = () => {
     if (cyRef.current) {
-      const png = cyRef.current.png({ output: 'blob', bg: 'white', full: true })
+      const png = cyRef.current.png({ output: 'blob', bg: '#0f172a', full: true })
       const url = URL.createObjectURL(png)
       const link = document.createElement('a')
       link.href = url
@@ -71,7 +71,7 @@ export default function EnhancedLineageViewer({
 
   const handleExportSVG = () => {
     if (cyRef.current) {
-      const svg = cyRef.current.svg({ full: true, bg: 'white' })
+      const svg = cyRef.current.svg({ full: true, bg: '#0f172a' })
       const blob = new Blob([svg], { type: 'image/svg+xml' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -103,10 +103,10 @@ export default function EnhancedLineageViewer({
 
   return (
     <>
-      <div className="relative w-full h-full bg-white rounded-lg border border-gray-200">
+      <div className="relative w-full h-full bg-surface-900/50 rounded-lg border border-surface-700/50">
         {/* Controls Toolbar */}
         {showControls && (
-          <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-surface-800 rounded-lg shadow-xl shadow-black/20 border border-surface-700 p-2">
             <Button
               variant="outline"
               size="sm"
@@ -141,7 +141,7 @@ export default function EnhancedLineageViewer({
             </Button>
             {showExport && (
               <>
-                <div className="w-px h-6 bg-gray-300 mx-1" />
+                <div className="w-px h-6 bg-surface-600 mx-1" />
                 <Button
                   variant="outline"
                   size="sm"

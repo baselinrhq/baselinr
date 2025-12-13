@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle, Plus } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, Plus, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Toggle } from '@/components/ui/Toggle'
@@ -67,9 +68,9 @@ export default function ValidationPage() {
 
   // Get effective config (current + modifications) and extract validation
   const effectiveConfig = currentConfig && modifiedConfig
-    ? deepMerge(currentConfig, modifiedConfig)
-    : currentConfig || {}
-  const validation: ValidationConfig | undefined = effectiveConfig?.validation
+    ? deepMerge(currentConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>)
+    : (currentConfig || {}) as unknown as Record<string, unknown>
+  const validation: ValidationConfig | undefined = effectiveConfig?.validation as ValidationConfig | undefined
   const rules: ValidationRuleConfig[] = validation?.rules || []
 
   // Save mutation
@@ -161,7 +162,7 @@ export default function ValidationPage() {
   if (isConfigLoading && !currentConfig) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
       </div>
     )
   }
@@ -169,12 +170,18 @@ export default function ValidationPage() {
   // Show error state if config failed to load
   if (configError && !currentConfig) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto p-6 lg:p-8">
         <Card>
           <div className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load configuration</h2>
-            <p className="text-gray-600 mb-4">{configError}</p>
+            <AlertCircle className="h-12 w-12 text-rose-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">Failed to load configuration</h2>
+            <p className="text-slate-400 mb-4">
+              {typeof configError === 'string'
+                ? configError
+                : configError && typeof configError === 'object' && 'message' in configError
+                ? String((configError as { message: unknown }).message)
+                : 'Backend API Not Available'}
+            </p>
             <Button onClick={() => loadConfig()}>Retry</Button>
           </div>
         </Card>
@@ -183,18 +190,25 @@ export default function ValidationPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Validation Rules</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+            <Link href="/config" className="hover:text-cyan-400">
+              Configuration
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-white font-medium">Validation</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Validation Rules</h1>
+          <p className="text-sm text-slate-400 mt-1">
             Create and manage data validation rules for your tables
           </p>
         </div>
         <div className="flex items-center gap-3">
           {saveSuccess && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
               <CheckCircle className="w-4 h-4" />
               <span>Configuration saved</span>
             </div>
@@ -217,12 +231,12 @@ export default function ValidationPage() {
 
       {/* Error message */}
       {validationErrors.general && (
-        <Card className="bg-red-50 border-red-200">
+        <Card className="glass-card border-rose-500/30 bg-rose-500/10">
           <div className="p-4 flex items-start gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-900">Error</p>
-              <p className="text-sm text-red-700 mt-1">{validationErrors.general}</p>
+              <p className="text-sm font-medium text-rose-300">Error</p>
+              <p className="text-sm text-rose-400/80 mt-1">{validationErrors.general}</p>
             </div>
           </div>
         </Card>
@@ -233,8 +247,8 @@ export default function ValidationPage() {
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-1">Enable Validation</h3>
-              <p className="text-xs text-gray-600">
+              <h3 className="text-sm font-medium text-white mb-1">Enable Validation</h3>
+              <p className="text-xs text-slate-400">
                 When enabled, validation rules will be executed during profiling runs
               </p>
             </div>

@@ -36,14 +36,14 @@ export function ExpectationLearning({
       <div className="space-y-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Expectation Learning</h3>
+            <h3 className="text-lg font-semibold text-white">Expectation Learning</h3>
             <Tooltip content="Expectation learning automatically builds statistical models of your data over time. These learned expectations are used by anomaly detection to identify unusual patterns.">
               <span>
-                <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                <Info className="w-4 h-4 text-slate-400 cursor-help" />
               </span>
             </Tooltip>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-400">
             Configure how Baselinr learns expected metric ranges from historical profiling data.
             These expectations enable automatic anomaly detection.
           </p>
@@ -63,7 +63,7 @@ export function ExpectationLearning({
         </FormField>
 
         {enableExpectationLearning && (
-          <div className="space-y-6 pl-4 border-l-2 border-gray-200">
+          <div className="space-y-6 pl-4 border-l-2 border-surface-700/50">
             {/* Learning Window */}
             <FormField
               label="Learning Window (Days)"
@@ -95,9 +95,9 @@ export function ExpectationLearning({
                     disabled={isLoading}
                     className="w-24"
                   />
-                  <span className="text-sm text-gray-500">days</span>
+                  <span className="text-sm text-slate-400">days</span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   Longer windows provide more stable expectations but may include outdated patterns.
                   Shorter windows adapt faster but may be less reliable.
                 </p>
@@ -124,7 +124,7 @@ export function ExpectationLearning({
                   disabled={isLoading}
                   className="w-32"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   If fewer runs are available, expectations will not be learned for that metric.
                   Recommended: 5-10 for stable expectations.
                 </p>
@@ -163,9 +163,9 @@ export function ExpectationLearning({
                     disabled={isLoading}
                     className="w-24"
                   />
-                  <span className="text-sm text-gray-500">(0.01 - 1.0)</span>
+                  <span className="text-sm text-slate-400">(0.01 - 1.0)</span>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-400">
                   Lower values (e.g., 0.1) give more weight to older data (smoother).
                   Higher values (e.g., 0.3) give more weight to recent data (more reactive).
                 </p>
@@ -175,8 +175,8 @@ export function ExpectationLearning({
         )}
 
         {!enableExpectationLearning && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
+          <div className="p-4 glass-card border-amber-500/30 bg-amber-500/10 rounded-lg">
+            <p className="text-sm text-amber-300">
               <strong>Note:</strong> Expectation learning must be enabled for anomaly detection to work effectively.
               Anomaly detection uses learned expectations to identify unusual patterns in your data.
             </p>

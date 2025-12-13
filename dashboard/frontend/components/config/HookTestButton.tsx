@@ -68,8 +68,8 @@ export function HookTestButton({
         <div
           className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
             testResult.success
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
+              ? 'glass-card border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+              : 'glass-card border-rose-500/30 bg-rose-500/10 text-rose-200'
           }`}
         >
           {testResult.success ? (

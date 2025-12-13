@@ -104,13 +104,13 @@ export function HookCard({
         </div>
 
         {/* Hook Details */}
-        <div className="text-sm text-gray-600 mb-4 flex-1">
+        <div className="text-sm text-slate-400 mb-4 flex-1">
           <div className="space-y-1">
             <div className="truncate" title={getHookSummary()}>
               {getHookSummary()}
             </div>
             {hook.last_tested && (
-              <div className="text-xs text-gray-500 mt-2">
+              <div className="text-xs text-slate-500 mt-2">
                 Last tested: {new Date(hook.last_tested).toLocaleString()}
               </div>
             )}
@@ -128,7 +128,7 @@ export function HookCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+        <div className="flex items-center gap-2 pt-4 border-t border-surface-700/50">
           {onTest && (
             <Button
               variant="outline"
@@ -174,7 +174,7 @@ export function HookCard({
               size="sm"
               icon={<Trash2 className="w-4 h-4" />}
               onClick={handleDelete}
-              className="flex-1 text-red-600 hover:text-red-700 hover:border-red-300"
+              className="flex-1 text-rose-400 hover:text-rose-300 hover:border-rose-500/50"
             >
               Delete
             </Button>

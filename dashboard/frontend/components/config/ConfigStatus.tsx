@@ -310,7 +310,7 @@ export function ConfigStatus({ config, isLoading = false, onRefresh }: ConfigSta
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Configuration Status</h3>
+        <h3 className="text-lg font-semibold text-white">Configuration Status</h3>
         {onRefresh && (
           <Button
             variant="secondary"
@@ -326,8 +326,8 @@ export function ConfigStatus({ config, isLoading = false, onRefresh }: ConfigSta
 
       {isLoading && !config && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          <span className="ml-2 text-sm text-gray-500">Loading configuration...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-slate-500" />
+          <span className="ml-2 text-sm text-slate-400">Loading configuration...</span>
         </div>
       )}
 
@@ -336,18 +336,18 @@ export function ConfigStatus({ config, isLoading = false, onRefresh }: ConfigSta
           {/* Overall Completion */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Overall Completion</span>
-              <span className="text-sm font-bold text-gray-900">
+              <span className="text-sm font-medium text-slate-300">Overall Completion</span>
+              <span className="text-sm font-bold text-white">
                 {status.overall_completion}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-surface-700 rounded-full h-2.5">
               <div
-                className="bg-primary-600 h-2.5 rounded-full transition-all duration-300"
+                className="bg-cyan-500 h-2.5 rounded-full transition-all duration-300"
                 style={{ width: `${status.overall_completion}%` }}
               />
             </div>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-slate-400">
               {status.configured_sections} of {status.total_sections} sections configured
             </p>
           </div>
@@ -357,19 +357,19 @@ export function ConfigStatus({ config, isLoading = false, onRefresh }: ConfigSta
             {status.sections.map((sectionStatus) => (
               <div
                 key={sectionStatus.section}
-                className="flex items-center justify-between py-2 border-b border-gray-200 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-surface-700/50 last:border-0"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Link
                       href={getSectionRoute(sectionStatus.section)}
-                      className="text-sm font-medium text-gray-900 hover:text-primary-600 transition-colors"
+                      className="text-sm font-medium text-white hover:text-cyan-400 transition-colors"
                     >
                       {getSectionName(sectionStatus.section)}
                     </Link>
                   </div>
                   {sectionStatus.message && (
-                    <p className="mt-0.5 text-xs text-gray-500">{sectionStatus.message}</p>
+                    <p className="mt-0.5 text-xs text-slate-400">{sectionStatus.message}</p>
                   )}
                 </div>
                 <div className="ml-4">{getStatusBadge(sectionStatus.status)}</div>

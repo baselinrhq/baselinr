@@ -8,11 +8,11 @@ interface EnhancedKPIsProps {
 
 export default function EnhancedKPIs({ metrics }: EnhancedKPIsProps) {
   // Determine validation pass rate color and trend
-  const getValidationColor = (rate?: number | null): 'green' | 'orange' | 'red' => {
-    if (rate === null || rate === undefined) return 'green'
-    if (rate >= 90) return 'green'
-    if (rate >= 70) return 'orange'
-    return 'red'
+  const getValidationColor = (rate?: number | null): 'emerald' | 'amber' | 'rose' => {
+    if (rate === null || rate === undefined) return 'emerald'
+    if (rate >= 90) return 'emerald'
+    if (rate >= 70) return 'amber'
+    return 'rose'
   }
 
   const getValidationTrend = (): 'up' | 'down' | 'stable' => {
@@ -36,18 +36,18 @@ export default function EnhancedKPIs({ metrics }: EnhancedKPIsProps) {
   }
 
   // Determine freshness color based on staleness
-  const getFreshnessColor = (hours?: number | null): 'green' | 'orange' | 'red' => {
-    if (hours === null || hours === undefined) return 'green'
-    if (hours <= 24) return 'green'
-    if (hours <= 48) return 'orange'
-    return 'red'
+  const getFreshnessColor = (hours?: number | null): 'emerald' | 'amber' | 'rose' => {
+    if (hours === null || hours === undefined) return 'emerald'
+    if (hours <= 24) return 'emerald'
+    if (hours <= 48) return 'amber'
+    return 'rose'
   }
 
   // Determine active alerts color
-  const getAlertsColor = (count: number): 'green' | 'orange' | 'red' => {
-    if (count === 0) return 'green'
-    if (count <= 5) return 'orange'
-    return 'red'
+  const getAlertsColor = (count: number): 'emerald' | 'amber' | 'rose' => {
+    if (count === 0) return 'emerald'
+    if (count <= 5) return 'amber'
+    return 'rose'
   }
 
   return (
@@ -85,4 +85,3 @@ export default function EnhancedKPIs({ metrics }: EnhancedKPIsProps) {
     </>
   )
 }
-

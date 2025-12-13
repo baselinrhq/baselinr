@@ -232,7 +232,7 @@ export function StorageConfig({
 
       {/* Custom Connection Form */}
       {isUsingCustomConnection && (
-        <div className="pl-4 border-l-2 border-gray-200">
+        <div className="pl-4 border-l-2 border-surface-700/50">
           <ConnectionForm
             connection={storage.connection || { type: 'postgres', database: '' }}
             onChange={handleConnectionChange}
@@ -263,15 +263,15 @@ export function StorageConfig({
         </Button>
 
         {testSuccess && (
-          <div className="flex items-center gap-2 text-sm text-green-600">
+          <div className="flex items-center gap-2 text-sm text-emerald-400">
             <span className="font-medium">Connection successful!</span>
           </div>
         )}
 
         {testError && (
           <div className="flex-1">
-            <p className="text-sm text-red-600 font-medium">Connection test failed</p>
-            <p className="text-sm text-red-500 mt-1">{testError}</p>
+            <p className="text-sm text-rose-400 font-medium">Connection test failed</p>
+            <p className="text-sm text-rose-300 mt-1">{testError}</p>
           </div>
         )}
       </div>

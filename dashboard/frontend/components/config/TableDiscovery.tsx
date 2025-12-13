@@ -80,7 +80,7 @@ export function TableDiscovery({
       if (current[key] === undefined || current[key] === null) {
         current[key] = {}
       }
-      current = current[key]
+      current = current[key] as Record<string, unknown>
     }
     
     const lastKey = path[path.length - 1] as string
@@ -105,17 +105,17 @@ export function TableDiscovery({
     <Card>
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Discovery Settings
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-slate-400 mb-6">
             Configure how tables are discovered and filtered during profiling.
           </p>
         </div>
 
         {/* Schema Filters */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Schema Filters</h4>
+          <h4 className="text-sm font-medium text-slate-300">Schema Filters</h4>
           
           <FormField
             label="Include Schemas"
@@ -152,7 +152,7 @@ export function TableDiscovery({
 
         {/* Table Type Filters */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Table Type Filters</h4>
+          <h4 className="text-sm font-medium text-slate-300">Table Type Filters</h4>
           
           <FormField
             label="Include Table Types"
@@ -189,7 +189,7 @@ export function TableDiscovery({
 
         {/* Caching */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Caching</h4>
+          <h4 className="text-sm font-medium text-slate-300">Caching</h4>
           
           <FormField
             label="Cache Discovery"
@@ -224,7 +224,7 @@ export function TableDiscovery({
 
         {/* Performance Limits */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Performance Limits</h4>
+          <h4 className="text-sm font-medium text-slate-300">Performance Limits</h4>
           
           <FormField
             label="Max Tables Per Pattern"
@@ -282,7 +282,7 @@ export function TableDiscovery({
 
         {/* Validation */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Validation</h4>
+          <h4 className="text-sm font-medium text-slate-300">Validation</h4>
           
           <FormField
             label="Validate Regex"
@@ -298,7 +298,7 @@ export function TableDiscovery({
 
         {/* Tag Provider */}
         <div className="space-y-4">
-          <h4 className="text-sm font-medium text-gray-900">Tag Provider</h4>
+          <h4 className="text-sm font-medium text-slate-300">Tag Provider</h4>
           
           <FormField
             label="Tag Provider"

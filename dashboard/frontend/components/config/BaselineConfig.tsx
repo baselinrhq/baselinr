@@ -91,8 +91,8 @@ export function BaselineConfig({
     <Card>
       <div className="p-6 space-y-6">
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-1">Baseline Selection</h4>
-          <p className="text-xs text-gray-600">
+          <h4 className="text-sm font-medium text-white mb-1">Baseline Selection</h4>
+          <p className="text-xs text-slate-400">
             Configure how the baseline is selected for drift comparison
           </p>
         </div>
@@ -109,7 +109,7 @@ export function BaselineConfig({
             disabled={isLoading}
           />
           {strategy && (
-            <p className="text-xs text-gray-600 mt-2">{getStrategyDescription(strategy)}</p>
+            <p className="text-xs text-slate-400 mt-2">{getStrategyDescription(strategy)}</p>
           )}
         </FormField>
 
@@ -117,7 +117,7 @@ export function BaselineConfig({
           <FormField
             label="Moving Average Window"
             error={errors?.moving_average}
-            helpText="Number of runs to include in the moving average"
+            helperText="Number of runs to include in the moving average"
           >
             <Input
               type="number"
@@ -138,7 +138,7 @@ export function BaselineConfig({
           <FormField
             label="Prior Period (Days)"
             error={errors?.prior_period}
-            helpText="Days for prior period comparison (1=day, 7=week, 30=month)"
+            helperText="Days for prior period comparison (1=day, 7=week, 30=month)"
           >
             <Input
               type="number"
@@ -159,7 +159,7 @@ export function BaselineConfig({
           <FormField
             label="Minimum Runs Required"
             error={errors?.min_runs}
-            helpText="Minimum number of runs required before auto-selection is available"
+            helperText="Minimum number of runs required before auto-selection is available"
           >
             <Input
               type="number"

@@ -66,7 +66,7 @@ export function ConfigHistory({
     return (
       <div className="flex items-center justify-center py-12">
         <LoadingSpinner size="lg" />
-        <span className="ml-3 text-sm text-gray-500">Loading history...</span>
+        <span className="ml-3 text-sm text-slate-400">Loading history...</span>
       </div>
     )
   }
@@ -77,12 +77,12 @@ export function ConfigHistory({
       : 'Failed to load configuration history'
     
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-red-800">
+      <div className="glass-card border-rose-500/30 bg-rose-500/10 p-4">
+        <div className="flex items-center gap-2 text-rose-300">
           <AlertCircle className="w-5 h-5" />
           <span className="font-medium">Error loading history</span>
         </div>
-        <p className="mt-1 text-sm text-red-600">{errorMessage}</p>
+        <p className="mt-1 text-sm text-rose-200">{errorMessage}</p>
         <Button
           variant="secondary"
           size="sm"
@@ -100,9 +100,9 @@ export function ConfigHistory({
   if (versions.length === 0) {
     return (
       <div className="text-center py-12">
-        <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Configuration History</h3>
-        <p className="text-sm text-gray-600">
+        <Clock className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-white mb-2">No Configuration History</h3>
+        <p className="text-sm text-slate-400">
           Configuration versions will appear here once you start making changes.
         </p>
       </div>
@@ -115,7 +115,7 @@ export function ConfigHistory({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold text-white">
           Configuration History ({versions.length} version{versions.length !== 1 ? 's' : ''})
         </h3>
         <Button
@@ -138,31 +138,31 @@ export function ConfigHistory({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-gray-500" />
-                    <span className="text-sm font-medium text-gray-900">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium text-white">
                       {createdAt.toLocaleString()}
                     </span>
-                    <span className="text-xs text-gray-500">({timeAgo})</span>
+                    <span className="text-xs text-slate-500">({timeAgo})</span>
                     {isCurrent && (
                       <Badge variant="success">Current</Badge>
                     )}
                   </div>
 
                   {version.created_by && (
-                    <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 mb-2 text-sm text-slate-400">
                       <User className="w-4 h-4" />
                       <span>{version.created_by}</span>
                     </div>
                   )}
 
                   {version.comment && (
-                    <div className="flex items-start gap-2 mb-2 text-sm text-gray-600">
+                    <div className="flex items-start gap-2 mb-2 text-sm text-slate-400">
                       <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" />
                       <span className="flex-1">{version.comment}</span>
                     </div>
                   )}
 
-                  <div className="text-xs text-gray-500 font-mono mt-2">
+                  <div className="text-xs text-slate-500 font-mono mt-2">
                     Version: {version.version_id.substring(0, 8)}...
                   </div>
                 </div>

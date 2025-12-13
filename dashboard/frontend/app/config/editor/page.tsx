@@ -35,50 +35,58 @@ export default function ConfigEditorPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-surface-950">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-          <Link href="/config" className="hover:text-primary-600">
+      <div className="p-6 lg:p-8">
+        <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+          <Link href="/config" className="hover:text-cyan-400">
             Configuration
           </Link>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-gray-900 font-medium">Editor</span>
+          <span className="text-white font-medium">Editor</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Configuration Editor</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-bold text-white">Configuration Editor</h1>
+        <p className="text-sm text-slate-400 mt-1">
           Edit your Baselinr configuration with visual and YAML views
         </p>
       </div>
 
       {/* Error State */}
       {configError && !currentConfig && (
-        <div className="mx-6 mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="font-medium text-yellow-900">Configuration Error</div>
-            <div className="text-sm text-yellow-700 mt-1">
-              {configError instanceof Error ? (
-                configError.message.includes('NetworkError') ||
-                configError.message.includes('Failed to fetch') ? (
-                  <>
-                    Unable to connect to the backend API. Please ensure:
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>
-                        The backend server is running on{' '}
-                        <code className="bg-yellow-100 px-1 rounded">
-                          {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}
-                        </code>
-                      </li>
-                      <li>Check the browser console for more details</li>
-                    </ul>
-                  </>
-                ) : (
-                  configError.message
-                )
-              ) : (
-                'Unknown error occurred'
-              )}
+        <div className="px-6 lg:px-8">
+          <div className="glass-card border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-medium text-amber-300">Configuration Error</div>
+              <div className="text-sm text-amber-200 mt-1">
+                {(() => {
+                  if (!configError) return 'Unknown error occurred'
+                  const errorObj = configError as { message?: string } | string | null
+                  const errorMessage = typeof errorObj === 'string' 
+                    ? errorObj 
+                    : errorObj && typeof errorObj === 'object' && 'message' in errorObj
+                      ? String(errorObj.message || 'Unknown error')
+                      : String(configError)
+                  
+                  if (errorMessage.includes('NetworkError') || errorMessage.includes('Failed to fetch')) {
+                    return (
+                      <>
+                        Unable to connect to the backend API. Please ensure:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>
+                            The backend server is running on{' '}
+                            <code className="bg-amber-500/20 px-1 rounded text-amber-200">
+                              {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}
+                            </code>
+                          </li>
+                          <li>Check the browser console for more details</li>
+                        </ul>
+                      </>
+                    )
+                  }
+                  return errorMessage
+                })()}
+              </div>
             </div>
           </div>
         </div>
@@ -87,7 +95,6 @@ export default function ConfigEditorPage() {
       {/* Editor */}
       <div className="flex-1 overflow-hidden">
         <ConfigEditor
-          config={currentConfig}
           onSave={handleSave}
           onValidate={handleValidate}
         />

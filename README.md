@@ -9,6 +9,8 @@
 
 **Baselinr** is an open-source data quality and observability platform for SQL data warehouses. It automatically recommends which tables and columns to monitor, sets up data quality checks, profiles your data, detects drift and anomalies, and provides AI-powered root cause analysis—all with a self-improving feedback loop that learns from your data patterns. Use automation for zero-touch setup, or configure everything manually—you have full control and transparency.
 
+**Quality Studio** - Baselinr includes a powerful no-code web interface for setting up and managing your entire data quality configuration. Configure connections, tables, profiling settings, validation rules, drift detection, and more—all through an intuitive visual interface without writing YAML or JSON. The UI provides real-time validation, smart recommendations, and a visual editor with YAML preview, making it easy to get started while maintaining full transparency and control.
+
 ## 🚀 Features
 
 - **Automated Setup** ✨ **NEW**: Zero-touch configuration—automatically recommends tables and columns to monitor, suggests data quality checks, and can auto-apply configurations to set up complete monitoring in minutes. Or configure everything manually with full control—automation is optional, not required
@@ -35,7 +37,8 @@
 - **Airflow Integration**: Operators and sensors for Apache Airflow 2.x workflows
 - **Configuration-Driven**: Simple YAML/JSON configuration for defining profiling targets
 - **Historical Tracking**: Store profiling results over time for trend analysis
-- **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, schema management, and dashboard UI
+- **No-Code Quality Studio** ✨ **NEW**: Complete web-based UI for configuring and managing data quality—set up connections, tables, profiling, validation rules, and drift detection through an intuitive visual interface without writing configuration files
+- **CLI Interface**: Comprehensive command-line interface for profiling, drift detection, querying, schema management, and Quality Studio UI
 
 ## 📋 Requirements
 
@@ -93,7 +96,7 @@ All documentation has been organized into the [`docs/`](docs/) directory:
 - **Getting Started**: [docs/getting-started/](docs/getting-started/) - Quick start and installation guides
 - **User Guides**: [docs/guides/](docs/guides/) - Drift detection, partitioning, metrics
 - **Architecture**: [docs/architecture/](docs/architecture/) - System design and implementation
-- **Dashboard**: [docs/dashboard/](docs/dashboard/) - Dashboard setup and development
+- **Quality Studio**: [docs/dashboard/](docs/dashboard/) - Quality Studio setup and development
 - **Development**: [docs/development/](docs/development/) - Contributing and development
 - **Roadmap**: [ROADMAP.md](ROADMAP.md) - Planned features and future enhancements
 
@@ -253,12 +256,12 @@ baselinr status --config config.yml --watch
 baselinr status --config config.yml --json
 ```
 
-### 8. Start Dashboard UI
+### 8. Start Quality Studio
 
-Launch the web dashboard to view profiling runs, drift alerts, and metrics:
+Launch the Quality Studio web interface to configure your data quality setup, view profiling runs, drift alerts, and metrics:
 
 ```bash
-# Start dashboard (foreground mode)
+# Start Quality Studio (foreground mode)
 baselinr ui --config config.yml
 
 # Custom ports
@@ -268,7 +271,14 @@ baselinr ui --config config.yml --port-backend 8080 --port-frontend 3001
 baselinr ui --config config.yml --host 127.0.0.1
 ```
 
-Press `Ctrl+C` to stop the dashboard. See [docs/schemas/UI_COMMAND.md](docs/schemas/UI_COMMAND.md) for more details.
+Press `Ctrl+C` to stop the Quality Studio. See [docs/schemas/UI_COMMAND.md](docs/schemas/UI_COMMAND.md) for more details.
+
+The Quality Studio provides a no-code interface for:
+- **Configuration Management**: Set up connections, storage, tables, and profiling settings through visual forms
+- **Validation Rules**: Create and manage data quality validation rules with a visual rule builder
+- **Drift Detection**: Configure drift detection strategies and thresholds
+- **Monitoring & Analysis**: View profiling runs, drift alerts, validation results, and root cause analysis
+- **Visual Editor**: Edit configuration with a split-view visual/YAML editor
 
 ### 9. Manage Schema Migrations
 
@@ -662,7 +672,7 @@ baselinr status --config examples/config.yml --watch
 # Status with JSON output
 baselinr status --config examples/config.yml --json
 
-# Start dashboard UI
+# Start Quality Studio
 baselinr ui --config examples/config.yml
 
 # Check schema migration status

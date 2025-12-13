@@ -1,14 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
 import './globals.css'
 import Providers from './providers'
 import Sidebar from '@/components/Sidebar'
 
-const inter = Inter({ subsets: ['latin'] })
-
 export const metadata: Metadata = {
-  title: 'Baselinr Dashboard',
-  description: 'Internal dashboard for Baselinr data profiling and drift detection',
+  title: 'Baselinr Quality Studio',
+  description: 'No-code data quality setup and monitoring platform',
 }
 
 export default function RootLayout({
@@ -17,13 +14,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className="font-sans">
         <Providers>
-          <div className="flex h-screen bg-gray-50">
+          <div className="flex h-screen bg-surface-950">
             <Sidebar />
             <main className="flex-1 overflow-auto">
-              <div className="container mx-auto px-6 py-8">
+              <div className="min-h-full">
                 {children}
               </div>
             </main>
@@ -33,4 +30,3 @@ export default function RootLayout({
     </html>
   )
 }
-

@@ -48,26 +48,26 @@ export default function TableFilters({
     filters.has_failed_validations !== undefined
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="glass-card overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-surface-700/30 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+          <h3 className="text-lg font-semibold text-white">Filters</h3>
           {hasActiveFilters && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 rounded-full">
+            <span className="px-2 py-0.5 text-xs font-medium bg-cyan-500/20 text-cyan-400 rounded-full">
               Active
             </span>
           )}
         </div>
         <ChevronDown
-          className={`w-5 h-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
       {isOpen && (
-        <div className="border-t border-gray-200 p-6 space-y-6">
+        <div className="border-t border-surface-700/50 p-6 space-y-6">
           {/* Search */}
           <div>
             <Input
@@ -81,13 +81,13 @@ export default function TableFilters({
           {/* Warehouse and Schema */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Warehouse
               </label>
               <select
                 value={filters.warehouse || ''}
                 onChange={(e) => handleChange('warehouse', e.target.value || undefined)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className="w-full px-3 py-2 bg-surface-800/50 border border-surface-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               >
                 <option value="">All Warehouses</option>
                 {availableWarehouses.map((wh) => (
@@ -99,14 +99,14 @@ export default function TableFilters({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Schema
               </label>
               {availableSchemas.length > 0 ? (
                 <select
                   value={filters.schema || ''}
                   onChange={(e) => handleChange('schema', e.target.value || undefined)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-surface-800/50 border border-surface-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                 >
                   <option value="">All Schemas</option>
                   {availableSchemas.map((schema) => (
@@ -127,7 +127,7 @@ export default function TableFilters({
 
           {/* Status Filters */}
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Status Filters
             </label>
             <div className="space-y-2">
@@ -154,25 +154,25 @@ export default function TableFilters({
 
           {/* Date Range (for last profiled) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Last Profiled Date Range
             </label>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">From</label>
+                <label className="block text-xs text-slate-500 mb-1">From</label>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-surface-800/50 border border-surface-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   onChange={() => {
                     // TODO: Implement date range filter
                   }}
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">To</label>
+                <label className="block text-xs text-slate-500 mb-1">To</label>
                 <input
                   type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 bg-surface-800/50 border border-surface-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   onChange={() => {
                     // TODO: Implement date range filter
                   }}
@@ -182,7 +182,7 @@ export default function TableFilters({
           </div>
 
           {/* Clear Filters */}
-          <div className="flex justify-end pt-4 border-t border-gray-200">
+          <div className="flex justify-end pt-4 border-t border-surface-700/50">
             <Button
               variant="outline"
               onClick={clearFilters}

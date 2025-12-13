@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle, XCircle, AlertTriangle, ChevronUp, ChevronDown, Eye } from 'lucide-react'
+import { CheckCircle, XCircle, AlertTriangle, ChevronUp, ChevronDown, Eye, Activity } from 'lucide-react'
 import { Run } from '@/lib/api'
 import Checkbox from '@/components/ui/Checkbox'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
+import clsx from 'clsx'
 
 interface RunsTableProps {
   runs: Run[]
@@ -79,10 +79,10 @@ export default function RunsTable({
   const someSelected = selectedRuns.length > 0 && selectedRuns.length < runs.length
 
   const statusIcons = {
-    success: <CheckCircle className="w-5 h-5 text-green-600" />,
-    completed: <CheckCircle className="w-5 h-5 text-green-600" />,
-    failed: <XCircle className="w-5 h-5 text-red-600" />,
-    drift_detected: <AlertTriangle className="w-5 h-5 text-orange-600" />,
+    success: <CheckCircle className="w-5 h-5 text-success-400" />,
+    completed: <CheckCircle className="w-5 h-5 text-success-400" />,
+    failed: <XCircle className="w-5 h-5 text-danger-400" />,
+    drift_detected: <AlertTriangle className="w-5 h-5 text-warning-400" />,
   }
 
   const SortIcon = ({ column }: { column: SortColumn }) => {
@@ -98,10 +98,10 @@ export default function RunsTable({
     <div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-800/50 border-b border-surface-700/50">
             <tr>
               {onSelectRun && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   <Checkbox
                     checked={allSelected}
                     indeterminate={someSelected}
@@ -110,62 +110,69 @@ export default function RunsTable({
                 </th>
               )}
               <th
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                  sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                }`}
+                className={clsx(
+                  'px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider',
+                  sortable && 'cursor-pointer hover:bg-surface-700/50 transition-colors'
+                )}
                 onClick={() => handleSort('status')}
               >
                 Status
                 <SortIcon column="status" />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Table
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Warehouse
               </th>
               <th
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                  sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                }`}
+                className={clsx(
+                  'px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider',
+                  sortable && 'cursor-pointer hover:bg-surface-700/50 transition-colors'
+                )}
                 onClick={() => handleSort('row_count')}
               >
                 Rows
                 <SortIcon column="row_count" />
               </th>
               <th
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                  sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                }`}
+                className={clsx(
+                  'px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider',
+                  sortable && 'cursor-pointer hover:bg-surface-700/50 transition-colors'
+                )}
                 onClick={() => handleSort('column_count')}
               >
                 Columns
                 <SortIcon column="column_count" />
               </th>
               <th
-                className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                  sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                }`}
+                className={clsx(
+                  'px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider',
+                  sortable && 'cursor-pointer hover:bg-surface-700/50 transition-colors'
+                )}
                 onClick={() => handleSort('profiled_at')}
               >
                 Profiled At
                 <SortIcon column="profiled_at" />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Drift
               </th>
               {onRunClick && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   Actions
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-surface-700/50">
             {sortedRuns.map((run) => (
               <tr
                 key={run.run_id}
-                className={`hover:bg-gray-50 ${onRunClick ? 'cursor-pointer' : ''}`}
+                className={clsx(
+                  'transition-colors hover:bg-surface-800/50',
+                  onRunClick && 'cursor-pointer'
+                )}
                 onClick={() => onRunClick?.(run)}
               >
                 {onSelectRun && (
@@ -185,32 +192,38 @@ export default function RunsTable({
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
                     href={`/tables/${run.dataset_name}`}
-                    className="text-sm font-medium text-primary-600 hover:text-primary-800"
+                    className="text-sm font-medium text-accent-400 hover:text-accent-300 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {run.dataset_name}
                   </Link>
                   {run.schema_name && (
-                    <p className="text-xs text-gray-500">{run.schema_name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{run.schema_name}</p>
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Badge color="gray">{run.warehouse_type}</Badge>
+                  <span className="px-2.5 py-1 text-xs font-medium bg-surface-700/50 text-slate-300 rounded-full capitalize">
+                    {run.warehouse_type}
+                  </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {run.row_count?.toLocaleString() || '-'}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">
+                  {run.row_count?.toLocaleString() || <span className="text-slate-600">—</span>}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {run.column_count || '-'}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">
+                  {run.column_count || <span className="text-slate-600">—</span>}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                   {new Date(run.profiled_at).toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {run.has_drift ? (
-                    <Badge color="orange">Detected</Badge>
+                    <span className="px-2.5 py-1 text-xs font-medium bg-warning-500/20 text-warning-400 rounded-full">
+                      Detected
+                    </span>
                   ) : (
-                    <Badge color="gray">None</Badge>
+                    <span className="px-2.5 py-1 text-xs font-medium bg-surface-700/50 text-slate-500 rounded-full">
+                      None
+                    </span>
                   )}
                 </td>
                 {onRunClick && (
@@ -232,21 +245,25 @@ export default function RunsTable({
       </div>
 
       {runs.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No runs found</p>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-8 h-8 text-slate-600" />
+          </div>
+          <p className="text-slate-400 font-medium">No runs found</p>
+          <p className="text-sm text-slate-500 mt-1">Adjust your filters or run a new profile</p>
         </div>
       )}
 
       {showPagination && runs.length > 0 && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">{runs.length}</span> results
+        <div className="px-6 py-4 border-t border-surface-700/50 flex items-center justify-between">
+          <p className="text-sm text-slate-400">
+            Showing <span className="font-medium text-slate-300">{runs.length}</span> results
           </p>
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" disabled>
+            <Button variant="outline" size="sm" disabled>
               Previous
             </Button>
-            <Button variant="secondary" size="sm" disabled>
+            <Button variant="outline" size="sm" disabled>
               Next
             </Button>
           </div>
@@ -255,4 +272,3 @@ export default function RunsTable({
     </div>
   )
 }
-

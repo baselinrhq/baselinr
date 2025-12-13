@@ -28,7 +28,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
       {/* Avatar */}
       <div className={`
         flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center
-        ${isUser ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-600'}
+        ${isUser ? 'bg-cyan-500/20 text-cyan-400' : 'bg-surface-700/50 text-slate-400'}
       `}>
         {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
       </div>
@@ -38,8 +38,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         <div className={`
           rounded-2xl px-4 py-3
           ${isUser 
-            ? 'bg-primary-600 text-white rounded-br-md' 
-            : 'bg-gray-100 text-gray-900 rounded-bl-md'}
+            ? 'bg-cyan-500 text-white rounded-br-md' 
+            : 'bg-surface-800/50 text-white rounded-bl-md'}
         `}>
           {isAssistant ? (
             <div className="prose prose-sm max-w-none dark:prose-invert">
@@ -49,11 +49,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                   code: ({ className, children, ...props }) => {
                     const isInline = !className
                     return isInline ? (
-                      <code className="bg-gray-200 px-1 py-0.5 rounded text-sm" {...props}>
+                      <code className="bg-surface-900/70 px-1 py-0.5 rounded text-sm text-cyan-300" {...props}>
                         {children}
                       </code>
                     ) : (
-                      <code className={`${className} block bg-gray-800 text-gray-100 p-3 rounded-lg my-2 overflow-x-auto`} {...props}>
+                      <code className={`${className} block bg-surface-900 text-slate-200 p-3 rounded-lg my-2 overflow-x-auto`} {...props}>
                         {children}
                       </code>
                     )
@@ -61,18 +61,18 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                   // Style tables
                   table: ({ children }) => (
                     <div className="overflow-x-auto my-2">
-                      <table className="min-w-full border-collapse border border-gray-300">
+                      <table className="min-w-full border-collapse border border-surface-700">
                         {children}
                       </table>
                     </div>
                   ),
                   th: ({ children }) => (
-                    <th className="border border-gray-300 px-3 py-2 bg-gray-50 text-left font-medium">
+                    <th className="border border-surface-700 px-3 py-2 bg-surface-800 text-left font-medium text-white">
                       {children}
                     </th>
                   ),
                   td: ({ children }) => (
-                    <td className="border border-gray-300 px-3 py-2">
+                    <td className="border border-surface-700 px-3 py-2 text-slate-300">
                       {children}
                     </td>
                   ),
@@ -103,7 +103,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                   ),
                   // Style links
                   a: ({ children, href }) => (
-                    <a href={href} className="text-primary-600 hover:underline" target="_blank" rel="noopener noreferrer">
+                    <a href={href} className="text-cyan-400 hover:text-cyan-300 hover:underline" target="_blank" rel="noopener noreferrer">
                       {children}
                     </a>
                   ),
@@ -119,7 +119,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
 
         {/* Metadata */}
         <div className={`
-          flex items-center gap-3 mt-1 text-xs text-gray-500
+          flex items-center gap-3 mt-1 text-xs text-slate-500
           ${isUser ? 'flex-row-reverse' : ''}
         `}>
           <span className="flex items-center gap-1">
@@ -135,7 +135,7 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           )}
           
           {message.tokensUsed && (
-            <span className="text-gray-400">
+            <span className="text-slate-500">
               {message.tokensUsed.toLocaleString()} tokens
             </span>
           )}

@@ -13,24 +13,24 @@ export interface BadgeProps {
 
 const variantStyles = {
   default: {
-    solid: 'bg-gray-100 text-gray-800',
-    outline: 'border-gray-300 text-gray-700',
+    solid: 'bg-surface-700 text-slate-300',
+    outline: 'border-surface-600 text-slate-400',
   },
   success: {
-    solid: 'bg-green-100 text-green-800',
-    outline: 'border-green-500 text-green-700',
+    solid: 'bg-success-500/20 text-success-400',
+    outline: 'border-success-500/50 text-success-400',
   },
   warning: {
-    solid: 'bg-yellow-100 text-yellow-800',
-    outline: 'border-yellow-500 text-yellow-700',
+    solid: 'bg-warning-500/20 text-warning-400',
+    outline: 'border-warning-500/50 text-warning-400',
   },
   error: {
-    solid: 'bg-red-100 text-red-800',
-    outline: 'border-red-500 text-red-700',
+    solid: 'bg-danger-500/20 text-danger-400',
+    outline: 'border-danger-500/50 text-danger-400',
   },
   info: {
-    solid: 'bg-blue-100 text-blue-800',
-    outline: 'border-blue-500 text-blue-700',
+    solid: 'bg-accent-500/20 text-accent-400',
+    outline: 'border-accent-500/50 text-accent-400',
   },
 }
 

@@ -6,8 +6,8 @@ import { Play, AlertTriangle, Settings, Sparkles } from 'lucide-react'
 
 export default function QuickActions() {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+    <div className="glass-card p-6">
+      <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link href="/runs">
           <Button
@@ -60,4 +60,3 @@ export default function QuickActions() {
     </div>
   )
 }
-

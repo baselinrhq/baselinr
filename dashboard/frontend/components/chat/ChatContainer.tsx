@@ -143,16 +143,16 @@ export default function ChatContainer() {
   const isConfigured = config?.enabled ?? false
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-8rem)] glass-card rounded-xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-white">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-surface-700/50 bg-gradient-to-r from-cyan-500/10 to-transparent">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-600" />
+          <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">Baselinr Assistant</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="font-semibold text-white">Baselinr Assistant</h2>
+            <p className="text-sm text-slate-400">
               {isConfigured 
                 ? `Powered by ${config?.provider || 'LLM'} (${config?.model || 'unknown'})`
                 : 'Not configured'}
@@ -162,7 +162,7 @@ export default function ChatContainer() {
 
         <div className="flex items-center gap-2">
           {sessionId && (
-            <span className="text-xs text-gray-400 mr-2">
+            <span className="text-xs text-slate-500 mr-2">
               Session: {sessionId}
             </span>
           )}
@@ -170,7 +170,7 @@ export default function ChatContainer() {
             onClick={clearChat}
             disabled={messages.length === 0}
             className="
-              p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100
+              p-2 rounded-lg text-slate-400 hover:text-slate-300 hover:bg-surface-700/50
               disabled:opacity-50 disabled:cursor-not-allowed
               transition-colors
             "
@@ -184,14 +184,14 @@ export default function ChatContainer() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
         {!isConfigured && (
-          <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 bg-amber-500/10 rounded-lg border border-amber-500/30">
+            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-medium text-yellow-800">Chat Not Configured</h3>
-              <p className="text-sm text-yellow-700 mt-1">
+              <h3 className="font-medium text-amber-400">Chat Not Configured</h3>
+              <p className="text-sm text-amber-400/80 mt-1">
                 To use the chat feature, configure LLM settings in your environment:
               </p>
-              <pre className="mt-2 text-xs bg-yellow-100 p-2 rounded text-yellow-800 overflow-x-auto">
+              <pre className="mt-2 text-xs bg-surface-900/50 p-2 rounded text-slate-300 overflow-x-auto">
 {`LLM_ENABLED=true
 LLM_PROVIDER=openai
 LLM_MODEL=gpt-4o-mini
@@ -203,28 +203,28 @@ OPENAI_API_KEY=your-api-key`}
 
         {messages.length === 0 && isConfigured && (
           <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-primary-100 mx-auto mb-4 flex items-center justify-center">
-              <MessageCircle className="w-8 h-8 text-primary-600" />
+            <div className="w-16 h-16 rounded-full bg-cyan-500/20 mx-auto mb-4 flex items-center justify-center">
+              <MessageCircle className="w-8 h-8 text-cyan-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-white mb-2">
               Ask me anything about your data quality
             </h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+            <p className="text-slate-400 mb-6 max-w-md mx-auto">
               I can help you investigate drift events, analyze trends, compare runs, 
               and understand your data quality metrics.
             </p>
 
             <div className="space-y-2 max-w-lg mx-auto">
-              <p className="text-sm font-medium text-gray-700 mb-3">Try asking:</p>
+              <p className="text-sm font-medium text-slate-300 mb-3">Try asking:</p>
               {EXAMPLE_QUESTIONS.map((question, index) => (
                 <button
                   key={index}
                   onClick={() => handleExampleClick(question)}
                   className="
                     block w-full text-left px-4 py-3 rounded-lg
-                    bg-gray-50 hover:bg-primary-50 
-                    text-gray-700 hover:text-primary-700
-                    border border-gray-200 hover:border-primary-200
+                    bg-surface-700/50 hover:bg-cyan-500/10 
+                    text-slate-300 hover:text-cyan-300
+                    border border-surface-700/50 hover:border-cyan-500/30
                     transition-colors text-sm
                   "
                 >
@@ -240,16 +240,16 @@ OPENAI_API_KEY=your-api-key`}
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-3 text-gray-500">
-            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-600 animate-pulse" />
+          <div className="flex items-center gap-3 text-slate-400">
+            <div className="w-10 h-10 rounded-full bg-surface-700/50 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
             </div>
             <div className="flex items-center gap-2">
               <span className="animate-pulse">Thinking</span>
               <span className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </span>
             </div>
           </div>

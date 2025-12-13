@@ -14,25 +14,29 @@ export interface TabsProps {
   tabs: Tab[]
   activeTab?: string
   defaultActiveTab?: string
+  defaultTab?: string
   onChange?: (tabId: string) => void
   orientation?: 'horizontal' | 'vertical'
   className?: string
+  children?: (activeTab: string) => React.ReactNode
 }
 
 export function Tabs({
   tabs,
   activeTab: controlledActiveTab,
   defaultActiveTab,
+  defaultTab,
   onChange,
   orientation = 'horizontal',
   className,
+  children,
 }: TabsProps) {
   const id = useRef(generateId('tabs')).current
   
   // Support controlled and uncontrolled modes
   const isControlled = controlledActiveTab !== undefined
   const [internalActiveTab, setInternalActiveTab] = useState(
-    defaultActiveTab || tabs[0]?.id || ''
+    defaultActiveTab || defaultTab || tabs[0]?.id || ''
   )
   const activeTab = isControlled ? controlledActiveTab : internalActiveTab
   
@@ -105,64 +109,70 @@ export function Tabs({
   const isHorizontal = orientation === 'horizontal'
 
   return (
-    <div
-      className={cn(
-        'w-full',
-        !isHorizontal && 'flex gap-4',
-        className
-      )}
-    >
-      {/* Tab list */}
+    <div className={cn('w-full', className)}>
       <div
-        role="tablist"
-        aria-orientation={orientation}
         className={cn(
-          isHorizontal
-            ? 'flex border-b border-gray-200'
-            : 'flex flex-col border-r border-gray-200 pr-4'
+          'w-full',
+          !isHorizontal && 'flex gap-4',
         )}
       >
-        {tabs.map((tab, index) => {
-          const isActive = tab.id === activeTab
-          const isDisabled = tab.disabled
+        {/* Tab list */}
+        <div
+          role="tablist"
+          aria-orientation={orientation}
+          className={cn(
+            'inline-flex p-1 rounded-lg bg-surface-800/50',
+            isHorizontal
+              ? 'flex-row gap-1'
+              : 'flex-col gap-1'
+          )}
+        >
+          {tabs.map((tab, index) => {
+            const isActive = tab.id === activeTab
+            const isDisabled = tab.disabled
 
-          return (
-            <button
-              key={tab.id}
-              ref={el => {
-                if (el) tabRefs.current.set(tab.id, el)
-              }}
-              role="tab"
-              id={`${id}-tab-${tab.id}`}
-              aria-controls={`${id}-panel-${tab.id}`}
-              aria-selected={isActive}
-              aria-disabled={isDisabled}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => handleTabClick(tab)}
-              onKeyDown={e => handleKeyDown(e, index)}
-              disabled={isDisabled}
-              className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-medium',
-                'transition-colors focus:outline-none',
-                'focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset',
-                isHorizontal
-                  ? '-mb-px border-b-2'
-                  : '-mr-px border-r-2',
-                isActive
-                  ? 'border-primary-600 text-primary-600'
-                  : isDisabled
-                  ? 'border-transparent text-gray-400 cursor-not-allowed'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-              )}
-            >
-              {tab.icon && (
-                <span className="flex-shrink-0 w-4 h-4">{tab.icon}</span>
-              )}
-              {tab.label}
-            </button>
-          )
-        })}
+            return (
+              <button
+                key={tab.id}
+                ref={el => {
+                  if (el) tabRefs.current.set(tab.id, el)
+                }}
+                role="tab"
+                id={`${id}-tab-${tab.id}`}
+                aria-controls={`${id}-panel-${tab.id}`}
+                aria-selected={isActive}
+                aria-disabled={isDisabled}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => handleTabClick(tab)}
+                onKeyDown={e => handleKeyDown(e, index)}
+                disabled={isDisabled}
+                className={cn(
+                  'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md',
+                  'transition-all duration-150 focus:outline-none',
+                  'focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900',
+                  isActive
+                    ? 'bg-surface-700 text-white shadow-sm'
+                    : isDisabled
+                    ? 'text-slate-600 cursor-not-allowed'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-surface-700/50'
+                )}
+              >
+                {tab.icon && (
+                  <span className="flex-shrink-0 w-4 h-4">{tab.icon}</span>
+                )}
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
+      
+      {/* Tab content */}
+      {children && (
+        <div className="mt-4">
+          {children(activeTab)}
+        </div>
+      )}
     </div>
   )
 }

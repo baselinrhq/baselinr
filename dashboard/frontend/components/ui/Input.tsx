@@ -15,15 +15,15 @@ export interface InputProps
 }
 
 const stateStyles = {
-  default: 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
-  error: 'border-red-500 focus:border-red-500 focus:ring-red-500',
-  success: 'border-green-500 focus:border-green-500 focus:ring-green-500',
+  default: 'border-surface-600 focus:border-accent-500 focus:ring-accent-500',
+  error: 'border-danger-500 focus:border-danger-500 focus:ring-danger-500',
+  success: 'border-success-500 focus:border-success-500 focus:ring-success-500',
 }
 
 const stateIconColors = {
-  default: 'text-gray-400',
-  error: 'text-red-500',
-  success: 'text-green-500',
+  default: 'text-slate-500',
+  error: 'text-danger-400',
+  success: 'text-success-400',
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
@@ -53,7 +53,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={id}
-            className="block text-sm font-medium text-gray-700 mb-2"
+            className="block text-sm font-medium text-slate-300 mb-2"
           >
             {label}
           </label>
@@ -76,10 +76,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={id}
             disabled={disabled}
             className={cn(
-              'w-full px-3 py-2 border rounded-lg',
+              'w-full px-3 py-2 border rounded-lg bg-surface-800/50',
+              'text-slate-200 placeholder:text-slate-500',
               'focus:outline-none focus:ring-2',
               'transition-colors',
-              'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+              'disabled:bg-surface-900 disabled:text-slate-600 disabled:cursor-not-allowed',
               stateStyles[state],
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
@@ -105,13 +106,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         </div>
         
         {error && (
-          <p id={`${id}-error`} className="mt-1.5 text-sm text-red-600">
+          <p id={`${id}-error`} className="mt-1.5 text-sm text-danger-400">
             {error}
           </p>
         )}
         
         {helperText && !error && (
-          <p id={`${id}-helper`} className="mt-1.5 text-sm text-gray-500">
+          <p id={`${id}-helper`} className="mt-1.5 text-sm text-slate-500">
             {helperText}
           </p>
         )}

@@ -108,31 +108,31 @@ export default function TrendCharts({
   const hasData = chartData.length > 0 && chartData.some((d) => d.runs > 0 || d.drift > 0 || d.validation > 0)
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Trends Overview</h2>
+    <div className="glass-card p-6">
+      <h2 className="text-lg font-semibold text-white mb-4">Trends Overview</h2>
       <div className="h-64">
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis
                 dataKey="date"
                 tickFormatter={formatDate}
-                stroke="#6b7280"
+                stroke="#94a3b8"
                 style={{ fontSize: '12px' }}
               />
               <YAxis
                 yAxisId="left"
-                stroke="#6b7280"
+                stroke="#94a3b8"
                 style={{ fontSize: '12px' }}
-                label={{ value: 'Count', angle: -90, position: 'insideLeft' }}
+                label={{ value: 'Count', angle: -90, position: 'insideLeft', fill: '#94a3b8' }}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                stroke="#6b7280"
+                stroke="#94a3b8"
                 style={{ fontSize: '12px' }}
-                label={{ value: 'Pass Rate %', angle: 90, position: 'insideRight' }}
+                label={{ value: 'Pass Rate %', angle: 90, position: 'insideRight', fill: '#94a3b8' }}
                 domain={[0, 100]}
               />
               <Tooltip
@@ -151,13 +151,14 @@ export default function TrendCharts({
                   return (
                     <div
                       style={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px',
-                        padding: '8px',
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
                       }}
                     >
-                      <p style={{ marginBottom: '4px', fontWeight: 'bold' }}>
+                      <p style={{ marginBottom: '8px', fontWeight: '600', color: '#f1f5f9' }}>
                         {formatDate(label as string)}
                       </p>
                       {payload.map((entry: TooltipPayload, index: number) => {
@@ -178,8 +179,8 @@ export default function TrendCharts({
                         }
                         
                         return (
-                          <p key={index} style={{ color: entry.color, margin: '2px 0' }}>
-                            {displayLabel}: {displayValue}
+                          <p key={index} style={{ color: entry.color, margin: '4px 0', fontSize: '13px' }}>
+                            {displayLabel}: <span style={{ fontWeight: '600' }}>{displayValue}</span>
                           </p>
                         )
                       })}
@@ -187,14 +188,17 @@ export default function TrendCharts({
                   )
                 }}
               />
-              <Legend />
+              <Legend 
+                wrapperStyle={{ color: '#94a3b8' }}
+                formatter={(value) => <span style={{ color: '#cbd5e1' }}>{value}</span>}
+              />
               <Area
                 yAxisId="left"
                 type="monotone"
                 dataKey="runs"
-                fill="#0ea5e9"
-                fillOpacity={0.3}
-                stroke="#0ea5e9"
+                fill="#06b6d4"
+                fillOpacity={0.2}
+                stroke="#06b6d4"
                 strokeWidth={2}
                 name="Runs"
               />
@@ -202,9 +206,9 @@ export default function TrendCharts({
                 yAxisId="left"
                 type="monotone"
                 dataKey="drift"
-                stroke="#f97316"
+                stroke="#f59e0b"
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={{ r: 3, fill: '#f59e0b' }}
                 name="Drift Events"
               />
               {validationTrend.length > 0 && (
@@ -212,9 +216,9 @@ export default function TrendCharts({
                   yAxisId="right"
                   type="monotone"
                   dataKey="validation"
-                  stroke="#10b981"
+                  stroke="#22c55e"
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={{ r: 3, fill: '#22c55e' }}
                   strokeDasharray="5 5"
                   name="Validation Pass Rate"
                 />
@@ -222,12 +226,11 @@ export default function TrendCharts({
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <p>No trend data available</p>
+          <div className="flex items-center justify-center h-full">
+            <p className="text-slate-500">No trend data available</p>
           </div>
         )}
       </div>
     </div>
   )
 }
-

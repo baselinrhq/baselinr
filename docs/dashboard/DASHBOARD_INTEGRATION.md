@@ -1,19 +1,19 @@
-# Baselinr Dashboard Integration Guide
+# Baselinr Quality Studio Integration Guide
 
-This document explains how the Phase 2 Dashboard integrates with Baselinr Phase 1.
+This document explains how the Quality Studio integrates with Baselinr core functionality.
 
 ## Overview
 
-The Baselinr Dashboard is a web-based visualization layer that reads profiling data from the Baselinr storage database and presents it through an interactive UI.
+The Baselinr Quality Studio is a web-based no-code interface that provides configuration management and visualization capabilities. It reads profiling data from the Baselinr storage database and presents it through an interactive UI, while also allowing you to configure your entire data quality setup through visual forms.
 
 ```
-Baselinr Phase 1              Baselinr Phase 2
-(Data Collection)                (Visualization)
-─────────────────                ─────────────────
+Baselinr Core              Quality Studio
+(Data Collection)         (Configuration & Visualization)
+─────────────────         ─────────────────────────────
 
-Baselinr CLI                  Dashboard Backend (FastAPI)
+Baselinr CLI              Quality Studio Backend (FastAPI)
     ↓                                    ↓
-Profiling Engine    →  PostgreSQL  ←  Dashboard Frontend (Next.js)
+Profiling Engine    →  PostgreSQL  ←  Quality Studio Frontend (Next.js)
     ↓                     Storage              ↓
 Storage Writer                           User Browser
 ```
@@ -34,7 +34,7 @@ postgresql://baselinr:baselinr@localhost:5433/baselinr
 - `baselinr_results` - Column metrics
 - `baselinr_events` - Drift events
 
-**Phase 2 reads from:**
+**Quality Studio reads from:**
 - All the above tables ✅
 
 ## Workflow Integration
@@ -45,9 +45,9 @@ cd profile_mesh
 baselinr profile --config examples/config.yml
 ```
 
-This creates entries in the database that the dashboard will visualize.
+This creates entries in the database that the Quality Studio will visualize.
 
-### 2. View Results (Phase 2)
+### 2. View Results (Quality Studio)
 ```bash
 # Start dashboard
 cd profile_mesh/dashboard/backend

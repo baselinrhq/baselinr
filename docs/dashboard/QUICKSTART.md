@@ -1,6 +1,6 @@
-# Baselinr Dashboard - Quick Start Guide
+# Baselinr Quality Studio - Quick Start Guide
 
-Get the Baselinr Dashboard running in 5 minutes!
+Get the Baselinr Quality Studio running in 5 minutes!
 
 ## Prerequisites Check
 
@@ -43,9 +43,9 @@ npm install
 npm run dev
 ```
 
-✅ Dashboard running at: **http://localhost:3000**
+✅ Quality Studio running at: **http://localhost:3000**
 
-## 3. Open the Dashboard
+## 3. Open the Quality Studio
 
 Visit **http://localhost:3000** in your browser.
 

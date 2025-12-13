@@ -18,9 +18,9 @@ const sizeStyles = {
 }
 
 const colorStyles = {
-  primary: 'text-primary-600',
+  primary: 'text-accent-500',
   white: 'text-white',
-  gray: 'text-gray-400',
+  gray: 'text-slate-400',
 }
 
 const textSizeStyles = {
@@ -38,27 +38,15 @@ export function LoadingSpinner({
   className,
 }: LoadingSpinnerProps) {
   const spinner = (
-    <svg
-      className={cn('animate-spin', sizeStyles[size], colorStyles[color])}
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
+    <div
+      className={cn(
+        'rounded-full border-2 border-current animate-spin',
+        sizeStyles[size],
+        colorStyles[color]
+      )}
+      style={{ borderTopColor: 'transparent' }}
       aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
+    />
   )
 
   // Inline spinner
@@ -67,7 +55,7 @@ export function LoadingSpinner({
       <span className={cn('inline-flex items-center gap-2', className)}>
         {spinner}
         {text && (
-          <span className={cn('text-gray-600', textSizeStyles[size])}>
+          <span className={cn('text-slate-400', textSizeStyles[size])}>
             {text}
           </span>
         )}
@@ -80,7 +68,7 @@ export function LoadingSpinner({
     return (
       <div
         className={cn(
-          'fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm',
+          'fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-950/80 backdrop-blur-sm',
           className
         )}
         role="status"
@@ -88,7 +76,7 @@ export function LoadingSpinner({
       >
         {spinner}
         {text && (
-          <p className={cn('mt-3 text-gray-600', textSizeStyles[size])}>
+          <p className={cn('mt-3 text-slate-400', textSizeStyles[size])}>
             {text}
           </p>
         )}
@@ -106,7 +94,7 @@ export function LoadingSpinner({
     >
       {spinner}
       {text && (
-        <p className={cn('mt-2 text-gray-600', textSizeStyles[size])}>
+        <p className={cn('mt-2 text-slate-400', textSizeStyles[size])}>
           {text}
         </p>
       )}

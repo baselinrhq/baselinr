@@ -86,7 +86,7 @@ export default function CorrelationView({ rcaResults }: CorrelationViewProps) {
     return (
       <Card>
         <CardBody>
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-slate-400">
             <p>No correlation data available</p>
             <p className="text-sm mt-2">Analyze anomalies to see correlations</p>
           </div>
@@ -103,34 +103,34 @@ export default function CorrelationView({ rcaResults }: CorrelationViewProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold text-gray-900">Correlation Network</h3>
+          <h3 className="text-lg font-semibold text-white">Correlation Network</h3>
         </CardHeader>
         <CardBody>
           <div className="space-y-6">
             {/* Legend */}
             <div className="flex items-center gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-red-500" />
-                <span className="text-gray-700">Anomaly</span>
+                <div className="w-4 h-4 rounded-full bg-rose-500" />
+                <span className="text-slate-300">Anomaly</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-blue-500" />
-                <span className="text-gray-700">Cause</span>
+                <div className="w-4 h-4 rounded-full bg-cyan-500" />
+                <span className="text-slate-300">Cause</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-0.5 bg-gray-400" />
-                <span className="text-gray-700">Correlation</span>
+                <div className="w-8 h-0.5 bg-slate-500" />
+                <span className="text-slate-300">Correlation</span>
               </div>
             </div>
 
             {/* Network visualization placeholder */}
-            <div className="border border-gray-200 rounded-lg p-8 bg-gray-50 min-h-[400px] flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <p className="text-lg font-medium mb-2">Correlation Network Visualization</p>
+            <div className="border border-surface-700/50 rounded-lg p-8 bg-surface-800/50 min-h-[400px] flex items-center justify-center">
+              <div className="text-center text-slate-400">
+                <p className="text-lg font-medium mb-2 text-white">Correlation Network Visualization</p>
                 <p className="text-sm">
                   {nodes.length} nodes, {edges.length} connections
                 </p>
-                <p className="text-xs mt-4 text-gray-400">
+                <p className="text-xs mt-4 text-slate-500">
                   Network graph visualization would be rendered here
                 </p>
               </div>
@@ -139,33 +139,33 @@ export default function CorrelationView({ rcaResults }: CorrelationViewProps) {
             {/* Node list */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Anomalies ({anomalyNodes.length})</h4>
+                <h4 className="text-sm font-semibold text-white mb-3">Anomalies ({anomalyNodes.length})</h4>
                 <div className="space-y-2">
                   {anomalyNodes.map((node) => (
                     <div
                       key={node.id}
-                      className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded"
+                      className="flex items-center gap-2 p-2 bg-surface-700/50 border border-surface-700/50 rounded"
                     >
-                      <div className="w-3 h-3 rounded-full bg-red-500" />
-                      <span className="text-sm text-gray-900">{node.label}</span>
+                      <div className="w-3 h-3 rounded-full bg-rose-500" />
+                      <span className="text-sm text-white">{node.label}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">Causes ({causeNodes.length})</h4>
+                <h4 className="text-sm font-semibold text-white mb-3">Causes ({causeNodes.length})</h4>
                 <div className="space-y-2">
                   {causeNodes
                     .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
                     .map((node) => (
                       <div
                         key={node.id}
-                        className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded"
+                        className="flex items-center justify-between p-2 bg-surface-700/50 border border-surface-700/50 rounded"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                          <span className="text-sm text-gray-900">{node.label}</span>
+                          <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                          <span className="text-sm text-white">{node.label}</span>
                         </div>
                         {node.confidence !== undefined && (
                           <Badge variant="default" size="sm">
@@ -179,24 +179,24 @@ export default function CorrelationView({ rcaResults }: CorrelationViewProps) {
             </div>
 
             {/* Edge statistics */}
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="text-sm font-semibold text-gray-900 mb-3">Correlation Statistics</h4>
+            <div className="border-t border-surface-700/50 pt-4">
+              <h4 className="text-sm font-semibold text-white mb-3">Correlation Statistics</h4>
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-gray-50 rounded">
-                  <p className="text-2xl font-bold text-gray-900">{edges.length}</p>
-                  <p className="text-xs text-gray-600">Total Connections</p>
+                <div className="text-center p-3 bg-surface-700/50 rounded">
+                  <p className="text-2xl font-bold text-white">{edges.length}</p>
+                  <p className="text-xs text-slate-400">Total Connections</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded">
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="text-center p-3 bg-surface-700/50 rounded">
+                  <p className="text-2xl font-bold text-white">
                     {edges.filter((e) => e.type === 'pattern').length}
                   </p>
-                  <p className="text-xs text-gray-600">Pattern Matches</p>
+                  <p className="text-xs text-slate-400">Pattern Matches</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded">
-                  <p className="text-2xl font-bold text-gray-900">
+                <div className="text-center p-3 bg-surface-700/50 rounded">
+                  <p className="text-2xl font-bold text-white">
                     {edges.filter((e) => e.type === 'lineage').length}
                   </p>
-                  <p className="text-xs text-gray-600">Lineage Links</p>
+                  <p className="text-xs text-slate-400">Lineage Links</p>
                 </div>
               </div>
             </div>

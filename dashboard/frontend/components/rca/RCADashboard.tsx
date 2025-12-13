@@ -43,8 +43,8 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
 
   if (error || !statistics) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+      <div className="text-center py-8 text-slate-400">
+        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-500" />
         <p>Failed to load RCA statistics</p>
       </div>
     )
@@ -65,10 +65,10 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Analyses</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{statistics.total_analyses}</p>
+                <p className="text-sm font-medium text-slate-400">Total Analyses</p>
+                <p className="text-3xl font-bold text-white mt-2">{statistics.total_analyses}</p>
               </div>
-              <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
+              <div className="p-3 rounded-lg bg-cyan-500/20 text-cyan-400">
                 <Search className="w-6 h-6" />
               </div>
             </div>
@@ -79,10 +79,10 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Analyzed</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{statistics.analyzed}</p>
+                <p className="text-sm font-medium text-slate-400">Analyzed</p>
+                <p className="text-3xl font-bold text-white mt-2">{statistics.analyzed}</p>
               </div>
-              <div className="p-3 rounded-lg bg-green-50 text-green-600">
+              <div className="p-3 rounded-lg bg-emerald-500/20 text-emerald-400">
                 <CheckCircle className="w-6 h-6" />
               </div>
             </div>
@@ -93,10 +93,10 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{statistics.pending}</p>
+                <p className="text-sm font-medium text-slate-400">Pending</p>
+                <p className="text-3xl font-bold text-white mt-2">{statistics.pending}</p>
               </div>
-              <div className="p-3 rounded-lg bg-yellow-50 text-yellow-600">
+              <div className="p-3 rounded-lg bg-amber-500/20 text-amber-400">
                 <AlertCircle className="w-6 h-6" />
               </div>
             </div>
@@ -107,12 +107,12 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg Causes</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-sm font-medium text-slate-400">Avg Causes</p>
+                <p className="text-3xl font-bold text-white mt-2">
                   {statistics.avg_causes_per_anomaly.toFixed(1)}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-purple-50 text-purple-600">
+              <div className="p-3 rounded-lg bg-purple-500/20 text-purple-400">
                 <TrendingUp className="w-6 h-6" />
               </div>
             </div>
@@ -125,11 +125,11 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
         {/* Status Distribution */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Status Distribution</h3>
+            <h3 className="text-lg font-semibold text-white">Status Distribution</h3>
           </CardHeader>
           <CardBody>
             {statusData.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-slate-400">
                 <p>No data available</p>
               </div>
             ) : (
@@ -149,8 +149,15 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e293b', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#f1f5f9'
+                    }}
+                  />
+                  <Legend wrapperStyle={{ color: '#94a3b8' }} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -160,26 +167,26 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
         {/* Summary Stats */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Summary</h3>
+            <h3 className="text-lg font-semibold text-white">Summary</h3>
           </CardHeader>
           <CardBody>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">Dismissed</span>
+              <div className="flex items-center justify-between p-3 bg-surface-700/50 rounded-lg">
+                <span className="text-sm font-medium text-slate-300">Dismissed</span>
                 <Badge variant="default" size="sm">
                   {statistics.dismissed}
                 </Badge>
               </div>
-              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">Average Causes per Anomaly</span>
-                <span className="text-sm font-semibold text-gray-900">
+              <div className="flex items-center justify-between p-3 bg-surface-700/50 rounded-lg">
+                <span className="text-sm font-medium text-slate-300">Average Causes per Anomaly</span>
+                <span className="text-sm font-semibold text-white">
                   {statistics.avg_causes_per_anomaly.toFixed(2)}
                 </span>
               </div>
               {statistics.total_analyses > 0 && (
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Analysis Completion Rate</span>
-                  <span className="text-sm font-semibold text-gray-900">
+                <div className="flex items-center justify-between p-3 bg-surface-700/50 rounded-lg">
+                  <span className="text-sm font-medium text-slate-300">Analysis Completion Rate</span>
+                  <span className="text-sm font-semibold text-white">
                     {((statistics.analyzed / statistics.total_analyses) * 100).toFixed(1)}%
                   </span>
                 </div>
@@ -193,7 +200,7 @@ export default function RCADashboard({ onAnalyzeNew }: RCADashboardProps) {
       {onAnalyzeNew && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-white">Quick Actions</h3>
           </CardHeader>
           <CardBody>
             <div className="flex items-center gap-4">

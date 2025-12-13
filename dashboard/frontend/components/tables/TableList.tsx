@@ -35,11 +35,11 @@ export default function TableList({
 
   const getSortIcon = (column: string) => {
     if (sortBy !== column) {
-      return <ArrowUpDown className="w-4 h-4 text-gray-400" />
+      return <ArrowUpDown className="w-4 h-4 text-slate-500" />
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="w-4 h-4 text-primary-600" />
-      : <ArrowDown className="w-4 h-4 text-primary-600" />
+      ? <ArrowUp className="w-4 h-4 text-cyan-400" />
+      : <ArrowDown className="w-4 h-4 text-cyan-400" />
   }
 
   const formatTableName = (table: TableListItem) => {
@@ -50,10 +50,10 @@ export default function TableList({
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="glass-card rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-800/60">
             <tr>
               <th className="px-6 py-3 text-left">
                 <Checkbox
@@ -67,63 +67,63 @@ export default function TableList({
                   aria-label="Select all tables"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('table_name')}
-                  className="flex items-center gap-2 hover:text-gray-700"
+                  className="flex items-center gap-2 hover:text-slate-300"
                 >
                   Table Name
                   {getSortIcon('table_name')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Warehouse
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('last_profiled')}
-                  className="flex items-center gap-2 hover:text-gray-700"
+                  className="flex items-center gap-2 hover:text-slate-300"
                 >
                   Last Profiled
                   {getSortIcon('last_profiled')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('row_count')}
-                  className="flex items-center gap-2 hover:text-gray-700"
+                  className="flex items-center gap-2 hover:text-slate-300"
                 >
                   Rows
                   {getSortIcon('row_count')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Columns
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Runs
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 <button
                   onClick={() => handleSort('drift_count')}
-                  className="flex items-center gap-2 hover:text-gray-700"
+                  className="flex items-center gap-2 hover:text-slate-300"
                 >
                   Drift Events
                   {getSortIcon('drift_count')}
                 </button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Validation
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                 Status
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-surface-700/50">
             {tables.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
                   No tables found. Try adjusting your filters.
                 </td>
               </tr>
@@ -137,7 +137,7 @@ export default function TableList({
                 return (
                   <tr
                     key={tableKey}
-                    className={`hover:bg-gray-50 ${isSelected ? 'bg-primary-50' : ''}`}
+                    className={`hover:bg-surface-700/30 transition-colors ${isSelected ? 'bg-cyan-500/10' : ''}`}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Checkbox
@@ -150,7 +150,7 @@ export default function TableList({
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/tables/${encodeURIComponent(table.table_name)}${table.schema_name ? `?schema=${encodeURIComponent(table.schema_name)}` : ''}`}
-                        className="text-sm font-medium text-primary-600 hover:text-primary-800"
+                        className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
                       >
                         {formatTableName(table)}
                       </Link>
@@ -160,18 +160,18 @@ export default function TableList({
                         {table.warehouse_type}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                       {table.last_profiled 
                         ? formatDate(table.last_profiled)
                         : 'Never'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {table.row_count?.toLocaleString() || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {table.column_count || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                       {table.total_runs}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -180,25 +180,25 @@ export default function TableList({
                           {table.drift_count}
                         </Badge>
                       ) : (
-                        <span className="text-sm text-gray-500">0</span>
+                        <span className="text-sm text-slate-500">0</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {table.validation_pass_rate !== null && table.validation_pass_rate !== undefined ? (
                         <div className="flex items-center gap-2">
                           {table.validation_pass_rate >= 95 ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                           ) : table.validation_pass_rate >= 80 ? (
-                            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                            <AlertTriangle className="w-4 h-4 text-amber-400" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-red-600" />
+                            <XCircle className="w-4 h-4 text-rose-400" />
                           )}
-                          <span className="text-sm text-gray-900">
+                          <span className="text-sm text-white">
                             {table.validation_pass_rate.toFixed(1)}%
                           </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">-</span>
+                        <span className="text-sm text-slate-500">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

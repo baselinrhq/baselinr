@@ -72,7 +72,7 @@ export function StorageStatus({
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Storage Status</h3>
+        <h3 className="text-lg font-semibold text-white">Storage Status</h3>
         {onRefresh && (
           <Button
             variant="secondary"
@@ -97,39 +97,39 @@ export function StorageStatus({
 
       {isLoading && !status && (
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          <span className="ml-2 text-sm text-gray-500">Checking status...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-cyan-400" />
+          <span className="ml-2 text-sm text-slate-400">Checking status...</span>
         </div>
       )}
 
       {error && (
         <div className="py-4">
-          <div className="flex items-center gap-2 text-red-600">
+          <div className="flex items-center gap-2 text-rose-400">
             <AlertCircle className="w-5 h-5" />
             <span className="text-sm font-medium">Error checking status</span>
           </div>
-          <p className="mt-1 text-sm text-red-500">{error}</p>
+          <p className="mt-1 text-sm text-rose-300">{error}</p>
         </div>
       )}
 
       {status && !error && (
         <div className="space-y-4">
           {/* Connection Status */}
-          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between py-2 border-b border-surface-700/50">
             <div>
-              <p className="text-sm font-medium text-gray-700">Connection</p>
+              <p className="text-sm font-medium text-slate-300">Connection</p>
               {status.connection_error && (
-                <p className="mt-1 text-xs text-red-600">{status.connection_error}</p>
+                <p className="mt-1 text-xs text-rose-400">{status.connection_error}</p>
               )}
             </div>
             {getConnectionStatusBadge()}
           </div>
 
           {/* Results Table Status */}
-          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between py-2 border-b border-surface-700/50">
             <div>
-              <p className="text-sm font-medium text-gray-700">Results Table</p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="text-sm font-medium text-slate-300">Results Table</p>
+              <p className="mt-0.5 text-xs text-slate-400">
                 Stores profiling results
               </p>
             </div>
@@ -137,10 +137,10 @@ export function StorageStatus({
           </div>
 
           {/* Runs Table Status */}
-          <div className="flex items-center justify-between py-2 border-b border-gray-200">
+          <div className="flex items-center justify-between py-2 border-b border-surface-700/50">
             <div>
-              <p className="text-sm font-medium text-gray-700">Runs Table</p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="text-sm font-medium text-slate-300">Runs Table</p>
+              <p className="mt-0.5 text-xs text-slate-400">
                 Stores run metadata
               </p>
             </div>
@@ -150,7 +150,7 @@ export function StorageStatus({
           {/* Last Checked */}
           {status.last_checked && (
             <div className="pt-2">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-400">
                 Last checked: {formatLastChecked(status.last_checked)}
               </p>
             </div>
@@ -160,8 +160,8 @@ export function StorageStatus({
 
       {!status && !isLoading && !error && (
         <div className="py-4 text-center">
-          <p className="text-sm text-gray-500">No status information available</p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-sm text-slate-400">No status information available</p>
+          <p className="mt-1 text-xs text-slate-500">
             Click Refresh to check storage status
           </p>
         </div>

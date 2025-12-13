@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
+import { Select } from '@/components/ui/Select'
+import { Input } from '@/components/ui/Input'
 import RecommendationCard from './RecommendationCard'
 import type { TableRecommendation } from '@/types/recommendation'
 
@@ -69,7 +71,7 @@ export default function RecommendationList({ recommendations, onApply }: Recomme
       <Card>
         <CardBody>
           <div className="text-center py-12">
-            <p className="text-gray-600">No recommendations available</p>
+            <p className="text-slate-400">No recommendations available</p>
           </div>
         </CardBody>
       </Card>
@@ -83,34 +85,26 @@ export default function RecommendationList({ recommendations, onApply }: Recomme
         <CardBody>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sort by
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'confidence' | 'score' | 'table')}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="confidence">Confidence</option>
-                  <option value="score">Score</option>
-                  <option value="table">Table Name</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Confidence
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={filterConfidence}
-                  onChange={(e) => setFilterConfidence(parseFloat(e.target.value) || 0)}
-                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 w-24"
-                />
-              </div>
+              <Select
+                label="Sort by"
+                value={sortBy}
+                onChange={(value) => setSortBy(value as 'confidence' | 'score' | 'table')}
+                options={[
+                  { value: 'confidence', label: 'Confidence' },
+                  { value: 'score', label: 'Score' },
+                  { value: 'table', label: 'Table Name' },
+                ]}
+              />
+              <Input
+                label="Min Confidence"
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                value={filterConfidence.toString()}
+                onChange={(e) => setFilterConfidence(parseFloat(e.target.value) || 0)}
+                className="w-24"
+              />
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -159,7 +153,7 @@ export default function RecommendationList({ recommendations, onApply }: Recomme
         <Card>
           <CardBody>
             <div className="text-center py-12">
-              <p className="text-gray-600">No recommendations match the current filters</p>
+              <p className="text-slate-400">No recommendations match the current filters</p>
             </div>
           </CardBody>
         </Card>
