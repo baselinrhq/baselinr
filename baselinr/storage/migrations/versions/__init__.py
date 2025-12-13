@@ -8,6 +8,7 @@ from .v5_column_lineage import migration as v5_migration
 from .v6_rca_tables import migration as v6_migration
 from .v7_add_database_name_to_rca import migration as v7_migration
 from .v8_validation import migration as v8_migration
+from .v9_quality_scores import migration as v9_migration
 
 # Register all migrations here
 ALL_MIGRATIONS = [
@@ -19,4 +20,5 @@ ALL_MIGRATIONS = [
     v6_migration,
     v7_migration,
     v8_migration,
+    v9_migration,
 ]

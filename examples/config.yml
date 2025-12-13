@@ -384,6 +384,25 @@ validation:
         table: customers
         column: customer_id
   rules: []
+quality_scoring:
+  enabled: true
+  weights:
+    completeness: 25.0
+    validity: 25.0
+    consistency: 20.0
+    freshness: 15.0
+    uniqueness: 10.0
+    accuracy: 5.0
+  thresholds:
+    healthy: 80.0
+    warning: 60.0
+    critical: 0.0
+  freshness:
+    excellent: 24
+    good: 48
+    acceptable: 168
+  store_history: true
+  history_retention_days: 90
 datasets:
   datasets:
   - database: baselinr

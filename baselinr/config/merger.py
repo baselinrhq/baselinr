@@ -173,11 +173,13 @@ class ConfigMerger:
         Returns:
             List of ValidationRuleConfig
         """
-        rules = []
+        rules: List[ValidationRuleConfig] = []
 
         # Add global rules
         if self.config and self.config.validation and self.config.validation.rules:
-            rules.extend(self.config.validation.rules)
+            for rule in self.config.validation.rules:
+                # rule is already a ValidationRuleConfig object
+                rules.append(rule)
 
         # Add dataset-specific rules
         dataset = self.find_matching_dataset(database, schema, table)

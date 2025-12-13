@@ -854,6 +854,93 @@ def validate_command(args):
         return 1
 
 
+def score_command(args):
+    """Execute score command."""
+    from .cli_output import safe_print
+
+    safe_print("Loading configuration...")
+    logger.info(f"Loading configuration from: {args.config}")
+
+    try:
+        # Load configuration
+        config = ConfigLoader.load_from_file(args.config)
+
+        # Check if quality scoring is enabled
+        if not config.quality_scoring or not config.quality_scoring.enabled:
+            safe_print("[yellow]Quality scoring is disabled in configuration[/yellow]")
+            return 0
+
+        # Create storage connector
+        storage_connector = create_connector(config.storage.connection, config.retry)
+
+        # Initialize quality scorer
+        from .quality.scorer import QualityScorer
+        from .quality.storage import QualityScoreStorage
+
+        scorer = QualityScorer(
+            engine=storage_connector.engine,
+            config=config.quality_scoring,
+            results_table=config.storage.results_table,
+            validation_table="baselinr_validation_results",
+            events_table="baselinr_events",
+            runs_table=config.storage.runs_table,
+        )
+
+        storage = QualityScoreStorage(
+            engine=storage_connector.engine,
+            scores_table="baselinr_quality_scores",
+        )
+
+        # Calculate score(s)
+        if args.table:
+            # Calculate score for specific table
+            safe_print(f"Calculating quality score for table: {args.table}")
+            score = scorer.calculate_table_score(
+                table_name=args.table,
+                schema_name=args.schema,
+                period_days=7,
+            )
+
+            # Store score if configured
+            if config.quality_scoring.store_history:
+                storage.store_score(score)
+
+            # Output results
+            if args.format == "json":
+                import json
+
+                output = json.dumps(score.to_dict(), indent=2, default=str)
+                safe_print(output)
+            else:
+                # Table format (basic for Phase 1)
+                safe_print(f"\nQuality Score for {args.table}")
+                safe_print(f"Overall Score: {score.overall_score:.1f}/100 [{score.status}]")
+                safe_print("Components:")
+                safe_print(f"  Completeness: {score.completeness_score:.1f}")
+                safe_print(f"  Validity: {score.validity_score:.1f}")
+                safe_print(f"  Consistency: {score.consistency_score:.1f}")
+                safe_print(f"  Freshness: {score.freshness_score:.1f}")
+                safe_print(f"  Uniqueness: {score.uniqueness_score:.1f}")
+                safe_print(f"  Accuracy: {score.accuracy_score:.1f}")
+                issues_msg = (
+                    f"Issues: {score.total_issues} total, "
+                    f"{score.critical_issues} critical, "
+                    f"{score.warnings} warnings"
+                )
+                safe_print(issues_msg)
+        else:
+            # Calculate scores for all tables (future: query from runs table)
+            safe_print("[yellow]Table name required. Use --table to specify a table.[/yellow]")
+            return 1
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Score calculation failed: {e}", exc_info=True)
+        safe_print(f"[red]Score calculation failed: {e}[/red]")
+        return 1
+
+
 def query_command(args):
     """Execute query command."""
     from .cli_output import safe_print
@@ -3372,6 +3459,17 @@ def main():
     validate_parser.add_argument("--table", help="Filter validation to specific table")
     validate_parser.add_argument("--output", "-o", help="Output file for results (JSON)")
 
+    # Score command
+    score_parser = subparsers.add_parser("score", help="Calculate and display data quality scores")
+    score_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
+    )
+    score_parser.add_argument("--table", help="Calculate score for specific table")
+    score_parser.add_argument("--schema", help="Filter by schema name")
+    score_parser.add_argument(
+        "--format", choices=["json", "table"], default="json", help="Output format"
+    )
+
     # Migrate command
     migrate_parser = subparsers.add_parser("migrate", help="Manage schema migrations")
     migrate_subparsers = migrate_parser.add_subparsers(
@@ -3866,6 +3964,8 @@ def main():
         return drift_command(args)
     elif args.command == "validate":
         return validate_command(args)
+    elif args.command == "score":
+        return score_command(args)
     elif args.command == "migrate":
         if not args.migrate_command:
             migrate_parser.print_help()
