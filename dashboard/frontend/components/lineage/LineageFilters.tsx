@@ -83,13 +83,13 @@ export default function LineageFilters({
   ).length
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+    <div className="glass-card overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-surface-700/50">
         <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+          <Filter className="w-5 h-5 text-slate-400" />
+          <h3 className="text-base font-semibold text-white">Filters</h3>
           {activeFilterCount > 0 && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+            <span className="px-2 py-0.5 text-xs font-medium bg-cyan-500/20 text-cyan-400 rounded-full">
               {activeFilterCount} active
             </span>
           )}
@@ -97,7 +97,7 @@ export default function LineageFilters({
         <div className="flex items-center gap-2">
           {activeFilterCount > 0 && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={handleClear}
             >
@@ -105,7 +105,7 @@ export default function LineageFilters({
             </Button>
           )}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             type="button"
             onClick={toggleExpanded}
@@ -119,7 +119,7 @@ export default function LineageFilters({
         <div className="p-4 space-y-4">
           {/* Filter Presets */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Quick Filters
             </label>
             <div className="flex flex-wrap gap-2">
@@ -137,20 +137,16 @@ export default function LineageFilters({
           </div>
 
           {/* Provider Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Provider
-            </label>
-            <Select
-              value={filters.providers?.[0] || ''}
-              onChange={(value) => handleFilterChange('providers', value ? [value] : undefined)}
-              options={providerOptions}
-            />
-          </div>
+          <Select
+            label="Provider"
+            value={filters.providers?.[0] || ''}
+            onChange={(value) => handleFilterChange('providers', value ? [value] : undefined)}
+            options={providerOptions}
+          />
 
           {/* Confidence Range */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Confidence Range
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -176,79 +172,59 @@ export default function LineageFilters({
           </div>
 
           {/* Node Type Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Node Type
-            </label>
-            <Select
-              value={filters.node_type || 'both'}
-              onChange={(value) => handleFilterChange('node_type', value as 'table' | 'column' | 'both')}
-              options={nodeTypeOptions}
-            />
-          </div>
+          <Select
+            label="Node Type"
+            value={filters.node_type || 'both'}
+            onChange={(value) => handleFilterChange('node_type', value as 'table' | 'column' | 'both')}
+            options={nodeTypeOptions}
+          />
 
           {/* Schema Filter */}
           {availableSchemas.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Schema
-              </label>
-              <Select
-                value={filters.schemas?.[0] || ''}
-                onChange={(value) => handleFilterChange('schemas', value ? [value] : undefined)}
-                options={[
-                  { value: '', label: 'All Schemas' },
-                  ...availableSchemas.map(s => ({ value: s, label: s })),
-                ]}
-              />
-            </div>
+            <Select
+              label="Schema"
+              value={filters.schemas?.[0] || ''}
+              onChange={(value) => handleFilterChange('schemas', value ? [value] : undefined)}
+              options={[
+                { value: '', label: 'All Schemas' },
+                ...availableSchemas.map(s => ({ value: s, label: s })),
+              ]}
+            />
           )}
 
           {/* Database Filter */}
           {availableDatabases.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Database
-              </label>
-              <Select
-                value={filters.databases?.[0] || ''}
-                onChange={(value) => handleFilterChange('databases', value ? [value] : undefined)}
-                options={[
-                  { value: '', label: 'All Databases' },
-                  ...availableDatabases.map(d => ({ value: d, label: d })),
-                ]}
-              />
-            </div>
+            <Select
+              label="Database"
+              value={filters.databases?.[0] || ''}
+              onChange={(value) => handleFilterChange('databases', value ? [value] : undefined)}
+              options={[
+                { value: '', label: 'All Databases' },
+                ...availableDatabases.map(d => ({ value: d, label: d })),
+              ]}
+            />
           )}
 
           {/* Drift Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Drift Status
-            </label>
-            <Select
-              value={filters.has_drift === true ? 'true' : filters.has_drift === false ? 'false' : ''}
-              onChange={(value) => handleFilterChange('has_drift', value === 'true' ? true : value === 'false' ? false : undefined)}
-              options={[
-                { value: '', label: 'All' },
-                { value: 'true', label: 'With Drift' },
-                { value: 'false', label: 'No Drift' },
-              ]}
-            />
-          </div>
+          <Select
+            label="Drift Status"
+            value={filters.has_drift === true ? 'true' : filters.has_drift === false ? 'false' : ''}
+            onChange={(value) => handleFilterChange('has_drift', value === 'true' ? true : value === 'false' ? false : undefined)}
+            options={[
+              { value: '', label: 'All' },
+              { value: 'true', label: 'With Drift' },
+              { value: 'false', label: 'No Drift' },
+            ]}
+          />
 
           {/* Drift Severity Filter */}
           {filters.has_drift && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Drift Severity
-              </label>
-              <Select
-                value={filters.drift_severity || ''}
-                onChange={(value) => handleFilterChange('drift_severity', value || undefined)}
-                options={severityOptions}
-              />
-            </div>
+            <Select
+              label="Drift Severity"
+              value={filters.drift_severity || ''}
+              onChange={(value) => handleFilterChange('drift_severity', value || undefined)}
+              options={severityOptions}
+            />
           )}
         </div>
       )}

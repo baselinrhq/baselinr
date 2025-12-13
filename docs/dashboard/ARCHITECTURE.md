@@ -1,8 +1,8 @@
-# Baselinr Dashboard Architecture
+# Baselinr Quality Studio Architecture
 
 ## Overview
 
-The Baselinr Dashboard is a full-stack web application that provides visualization and monitoring capabilities for the Baselinr data profiling system.
+The Baselinr Quality Studio is a full-stack web application that provides no-code configuration management, visualization, and monitoring capabilities for the Baselinr data profiling system.
 
 ## Architecture Diagram
 
@@ -12,7 +12,7 @@ The Baselinr Dashboard is a full-stack web application that provides visualizati
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │  Next.js Frontend (Port 3000)                         │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐              │  │
-│  │  │Dashboard │ │   Runs   │ │  Drift   │  Pages       │  │
+│  │  │Overview  │ │   Runs   │ │  Drift   │  Pages       │  │
 │  │  └──────────┘ └──────────┘ └──────────┘              │  │
 │  │  ┌──────────────────────────────────────┐             │  │
 │  │  │  React Query (State & Caching)       │             │  │

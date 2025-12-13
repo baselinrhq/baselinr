@@ -40,7 +40,6 @@ export default function ValidationPage() {
 
   const handleExport = async () => {
     try {
-      // Export functionality - can be enhanced later
       const data = resultsData?.results || []
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -59,20 +58,21 @@ export default function ValidationPage() {
     setShowFailureModal(true)
   }
 
-  // Extract unique warehouses and tables for filter suggestions
-  const warehouses: string[] = [] // Can be populated from summary if needed
+  const warehouses: string[] = []
   const tables = Array.from(new Set(resultsData?.results.map((r) => r.table_name).filter(Boolean) || []))
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="w-8 h-8 text-blue-500" />
-            Validation Dashboard
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-accent-500/10">
+              <Shield className="w-7 h-7 text-accent-400" />
+            </div>
+            Validation Results
           </h1>
-          <p className="text-gray-600 mt-1">View validation results and execution history</p>
+          <p className="text-slate-400 mt-2">View validation results and execution history</p>
         </div>
         <Button onClick={handleExport} variant="primary">
           <Download className="w-4 h-4 mr-2" />
@@ -89,39 +89,37 @@ export default function ValidationPage() {
       />
 
       {/* Main Content with Tabs */}
-      <div className="space-y-4">
-        <Tabs
-          tabs={[
-            { id: 'overview', label: 'Overview' },
-            { id: 'results', label: 'Results' },
-          ]}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-        />
+      <Tabs
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'results', label: 'Results' },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      >
+        {(tab) => (
+          <div className="space-y-6">
+            {tab === 'overview' && (
+              <ValidationOverview
+                warehouse={filters.warehouse}
+                days={filters.days || 30}
+              />
+            )}
 
-        <div className="space-y-6">
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <ValidationOverview
-              warehouse={filters.warehouse}
-              days={filters.days || 30}
-            />
-          )}
-
-          {/* Results Tab */}
-          {activeTab === 'results' && (
-            <ValidationResults
-              results={resultsData?.results || []}
-              onRowClick={handleRowClick}
-              page={page}
-              pageSize={50}
-              total={resultsData?.total || 0}
-              onPageChange={setPage}
-              isLoading={isLoading}
-            />
-          )}
-        </div>
-      </div>
+            {tab === 'results' && (
+              <ValidationResults
+                results={resultsData?.results || []}
+                onRowClick={handleRowClick}
+                page={page}
+                pageSize={50}
+                total={resultsData?.total || 0}
+                onPageChange={setPage}
+                isLoading={isLoading}
+              />
+            )}
+          </div>
+        )}
+      </Tabs>
 
       {/* Failure Samples Modal */}
       {selectedResultId !== null && (
@@ -137,4 +135,3 @@ export default function ValidationPage() {
     </div>
   )
 }
-

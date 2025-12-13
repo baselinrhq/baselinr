@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Filter } from 'lucide-react'
+import { X, Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -78,14 +78,16 @@ export default function RCAFilters({
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200">
+    <div className="glass-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+      <div className="flex items-center justify-between p-4 border-b border-surface-700/50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-surface-700/50">
+            <Filter className="w-4 h-4 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-white">Filters</h3>
           {activeFilterCount > 0 && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+            <span className="px-2 py-0.5 text-xs font-medium bg-accent-500/20 text-accent-400 rounded-full">
               {activeFilterCount} active
             </span>
           )}
@@ -96,7 +98,6 @@ export default function RCAFilters({
               variant="ghost"
               size="sm"
               onClick={handleClear}
-              className="text-sm"
             >
               Clear all
             </Button>
@@ -105,7 +106,8 @@ export default function RCAFilters({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm"
+            icon={isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            iconPosition="right"
           >
             {isExpanded ? 'Collapse' : 'Expand'}
           </Button>
@@ -114,8 +116,8 @@ export default function RCAFilters({
 
       {/* Quick Presets */}
       {isExpanded && (
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <p className="text-sm font-medium text-gray-700 mb-2">Quick Presets</p>
+        <div className="p-4 border-b border-surface-700/50 bg-surface-900/30">
+          <p className="text-sm font-medium text-slate-300 mb-3">Quick Presets</p>
           <div className="flex flex-wrap gap-2">
             {filterPresets.map((preset) => (
               <Button
@@ -123,7 +125,6 @@ export default function RCAFilters({
                 variant="outline"
                 size="sm"
                 onClick={() => handlePreset(preset)}
-                className="text-xs"
               >
                 {preset.name}
               </Button>
@@ -214,7 +215,7 @@ export default function RCAFilters({
 
       {/* Active Filters Display */}
       {activeFilterCount > 0 && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="p-4 border-t border-surface-700/50 bg-surface-900/30">
           <div className="flex flex-wrap gap-2">
             {Object.entries(filters).map(([key, value]) => {
               if (!value || value === '') return null
@@ -229,13 +230,13 @@ export default function RCAFilters({
               return (
                 <span
                   key={key}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-white border border-gray-300 rounded-md text-gray-700"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium bg-surface-700/50 border border-surface-600/50 rounded-lg text-slate-300"
                 >
-                  <span className="text-gray-500">{key}:</span>
+                  <span className="text-slate-500">{key}:</span>
                   {displayValue}
                   <button
                     onClick={() => handleChange(key as keyof RCAFiltersType, undefined)}
-                    className="ml-1 text-gray-400 hover:text-gray-600"
+                    className="ml-1 text-slate-500 hover:text-slate-300 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -248,4 +249,3 @@ export default function RCAFilters({
     </div>
   )
 }
-

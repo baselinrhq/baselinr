@@ -15,15 +15,15 @@ export interface ButtonProps
 
 const variantStyles = {
   primary:
-    'bg-primary-600 text-white hover:bg-primary-700 focus-visible:ring-primary-500 shadow-sm',
+    'bg-accent-600 text-white hover:bg-accent-500 focus-visible:ring-accent-500 shadow-sm shadow-accent-500/25',
   secondary:
-    'bg-gray-100 text-gray-900 hover:bg-gray-200 focus-visible:ring-gray-500',
+    'bg-surface-700 text-slate-200 hover:bg-surface-600 focus-visible:ring-surface-500',
   destructive:
-    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 shadow-sm',
+    'bg-danger-600 text-white hover:bg-danger-500 focus-visible:ring-danger-500 shadow-sm',
   outline:
-    'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus-visible:ring-primary-500',
+    'border border-surface-600 bg-transparent text-slate-300 hover:bg-surface-800 hover:border-surface-500 focus-visible:ring-accent-500',
   ghost:
-    'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-500',
+    'text-slate-400 hover:bg-surface-800 hover:text-slate-200 focus-visible:ring-surface-500',
 }
 
 const sizeStyles = {
@@ -94,8 +94,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         className={cn(
           'inline-flex items-center justify-center font-medium rounded-lg',
-          'transition-colors duration-150',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+          'transition-all duration-150',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-900',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           variantStyles[variant],
           sizeStyles[size],

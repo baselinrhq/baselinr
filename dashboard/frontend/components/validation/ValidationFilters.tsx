@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Filter } from 'lucide-react'
+import { Filter, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -95,14 +95,16 @@ export default function ValidationFilters({
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200">
+    <div className="glass-card overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
+      <div className="flex items-center justify-between p-4 border-b border-surface-700/50">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-surface-700/50">
+            <Filter className="w-4 h-4 text-slate-400" />
+          </div>
+          <h3 className="text-base font-semibold text-white">Filters</h3>
           {activeFilterCount > 0 && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
+            <span className="px-2 py-0.5 text-xs font-medium bg-accent-500/20 text-accent-400 rounded-full">
               {activeFilterCount} active
             </span>
           )}
@@ -113,7 +115,6 @@ export default function ValidationFilters({
               variant="ghost"
               size="sm"
               onClick={handleClear}
-              className="text-sm"
             >
               Clear all
             </Button>
@@ -122,7 +123,8 @@ export default function ValidationFilters({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm"
+            icon={isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            iconPosition="right"
           >
             {isExpanded ? 'Collapse' : 'Expand'}
           </Button>
@@ -131,75 +133,53 @@ export default function ValidationFilters({
 
       {/* Filter Content */}
       {isExpanded && (
-        <div className="p-4 flex flex-wrap gap-4">
-          {/* Warehouse Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Warehouse
-            </label>
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Warehouse Filter */}
             <Select
+              label="Warehouse"
               value={filters.warehouse || ''}
               onChange={(value) => handleChange('warehouse', value)}
               options={warehouseOptions}
             />
-          </div>
 
-          {/* Table Search */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Table
-            </label>
+            {/* Table Search */}
             <SearchInput
+              label="Table"
               value={filters.table || ''}
               onChange={(value) => handleChange('table', value)}
               placeholder="Search tables..."
               suggestions={tables}
             />
-          </div>
 
-          {/* Schema Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Schema
-            </label>
+            {/* Schema Filter */}
             <Input
+              label="Schema"
               type="text"
               value={filters.schema || ''}
               onChange={(e) => handleChange('schema', e.target.value)}
               placeholder="Schema name"
             />
-          </div>
 
-          {/* Rule Type Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Rule Type
-            </label>
+            {/* Rule Type Filter */}
             <Select
+              label="Rule Type"
               value={filters.rule_type || ''}
               onChange={(value) => handleChange('rule_type', value)}
               options={ruleTypeOptions}
             />
-          </div>
 
-          {/* Severity Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Severity
-            </label>
+            {/* Severity Filter */}
             <Select
+              label="Severity"
               value={filters.severity || ''}
               onChange={(value) => handleChange('severity', value)}
               options={severityOptions}
             />
-          </div>
 
-          {/* Status Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
+            {/* Status Filter */}
             <Select
+              label="Status"
               value={filters.passed === true ? 'passed' : filters.passed === false ? 'failed' : ''}
               onChange={(value) => {
                 if (value === 'passed') {
@@ -212,14 +192,10 @@ export default function ValidationFilters({
               }}
               options={statusOptions}
             />
-          </div>
 
-          {/* Days Filter */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Time Range
-            </label>
+            {/* Days Filter */}
             <Select
+              label="Time Range"
               value={filters.days?.toString() || '30'}
               onChange={(value) => handleChange('days', value ? parseInt(value) : undefined)}
               options={timePresets}
@@ -228,10 +204,8 @@ export default function ValidationFilters({
 
           {/* Filter Presets */}
           {filterPresets.length > 0 && (
-            <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quick Filters
-              </label>
+            <div className="pt-4 border-t border-surface-700/50">
+              <p className="text-sm font-medium text-slate-300 mb-3">Quick Filters</p>
               <div className="flex flex-wrap gap-2">
                 {filterPresets.map((preset) => (
                   <Button
@@ -239,7 +213,6 @@ export default function ValidationFilters({
                     variant="outline"
                     size="sm"
                     onClick={() => handlePreset(preset)}
-                    className="text-xs"
                   >
                     {preset.name}
                   </Button>
@@ -252,4 +225,3 @@ export default function ValidationFilters({
     </div>
   )
 }
-

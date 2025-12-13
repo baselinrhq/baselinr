@@ -87,10 +87,10 @@ export function DriftConfig({
       <Card>
         <div className="p-6 space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-white mb-2">
               Drift Detection Strategy
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-400">
               Select the strategy for detecting data drift in your tables
             </p>
           </div>
@@ -107,7 +107,7 @@ export function DriftConfig({
               disabled={isLoading || strategy === 'ml_based'}
             />
             {strategy && (
-              <p className="text-xs text-gray-600 mt-2">{getStrategyDescription(strategy)}</p>
+              <p className="text-xs text-slate-400 mt-2">{getStrategyDescription(strategy)}</p>
             )}
           </FormField>
 
@@ -154,8 +154,8 @@ export function DriftConfig({
           )}
 
           {strategy === 'ml_based' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="text-sm text-yellow-800">
+            <div className="glass-card border-amber-500/30 bg-amber-500/10 rounded-lg p-4">
+              <p className="text-sm text-amber-300">
                 ML-based drift detection is coming soon. This strategy is not yet available.
               </p>
             </div>

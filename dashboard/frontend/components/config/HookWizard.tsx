@@ -129,7 +129,7 @@ export function HookWizard({
       await onSave(hook)
     } catch (err) {
       console.error('Failed to save hook:', err)
-      alert('Failed to save hook. Please try again.')
+      // Error will be handled by the parent component
     } finally {
       setIsSaving(false)
     }
@@ -182,15 +182,15 @@ export function HookWizard({
       case 3:
         return (
           <div className="space-y-4">
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <h3 className="font-medium text-gray-900 mb-2">Test Hook</h3>
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="glass-card border-surface-700/50 p-4">
+              <h3 className="font-medium text-white mb-2">Test Hook</h3>
+              <p className="text-sm text-slate-400 mb-4">
                 Test your hook configuration by sending a test event. This is optional but recommended.
               </p>
               {hookId ? (
                 <HookTestButton hookId={hookId} hook={hook} />
               ) : (
-                <div className="text-sm text-gray-500 italic">
+                <div className="text-sm text-slate-500 italic">
                   Save the hook first to enable testing
                 </div>
               )}
@@ -201,9 +201,9 @@ export function HookWizard({
       case 4:
         return (
           <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-medium text-blue-900 mb-2">Review Configuration</h3>
-              <div className="text-sm text-blue-800 space-y-1">
+            <div className="glass-card border-cyan-500/30 bg-cyan-500/10 p-4">
+              <h3 className="font-medium text-cyan-300 mb-2">Review Configuration</h3>
+              <div className="text-sm text-cyan-200 space-y-1">
                 <div>
                   <strong>Type:</strong> {HOOK_TYPES.find((t) => t.value === hook.type)?.label}
                 </div>
@@ -266,10 +266,10 @@ export function HookWizard({
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                       isActive
-                        ? 'bg-primary-600 text-white'
+                        ? 'bg-cyan-500 text-white'
                         : isCompleted
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 text-gray-600'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-surface-700 text-slate-400'
                     }`}
                   >
                     {isCompleted ? (
@@ -281,7 +281,7 @@ export function HookWizard({
                   {step < totalSteps && (
                     <div
                       className={`flex-1 h-1 mx-2 ${
-                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                        isCompleted ? 'bg-emerald-500' : 'bg-surface-700'
                       }`}
                     />
                   )}
@@ -296,7 +296,7 @@ export function HookWizard({
       <div className="min-h-[300px]">{renderStepContent()}</div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+      <div className="flex items-center justify-between pt-6 border-t border-surface-700/50">
         <Button
           variant="outline"
           onClick={currentStep === 1 ? onClose : handleBack}

@@ -1,8 +1,8 @@
 # Baselinr UI Command
 
-The `baselinr ui` command starts the Baselinr dashboard in **foreground mode**. It launches both the backend API (FastAPI) and frontend UI (Next.js) in your current terminal, making it easy to view profiling runs, drift alerts, and metrics in a web interface.
+The `baselinr ui` command starts the Baselinr Quality Studio in **foreground mode**. It launches both the backend API (FastAPI) and frontend UI (Next.js) in your current terminal, providing a no-code web interface for configuring and managing your data quality setup, as well as viewing profiling runs, drift alerts, and metrics.
 
-This command is an alternative to manually running `dashboard/backend/start.sh` and `dashboard/frontend/start.sh` in separate terminals. It automatically configures the dashboard to use your Baselinr configuration file's database connection.
+This command is an alternative to manually running `dashboard/backend/start.sh` and `dashboard/frontend/start.sh` in separate terminals. It automatically configures the Quality Studio to use your Baselinr configuration file's database connection.
 
 ## Usage
 
@@ -12,7 +12,7 @@ baselinr ui --config config.yml [OPTIONS]
 
 ## Options
 
-*   `--config, -c` (required): Path to your Baselinr configuration file (YAML or JSON). The dashboard will use the `storage.connection` settings from this file to connect to the database.
+*   `--config, -c` (required): Path to your Baselinr configuration file (YAML or JSON). The Quality Studio will use the `storage.connection` settings from this file to connect to the database.
 *   `--port-backend` (default: 8000): Port for the backend API server.
 *   `--port-frontend` (default: 3000): Port for the frontend UI server.
 *   `--host` (default: "0.0.0.0"): Host address for the backend API server. Use "127.0.0.1" to bind only to localhost.
@@ -25,7 +25,7 @@ baselinr ui --config config.yml [OPTIONS]
 baselinr ui --config examples/config.yml
 ```
 
-Starts the dashboard with default ports (backend on 8000, frontend on 3000).
+Starts the Quality Studio with default ports (backend on 8000, frontend on 3000).
 
 ### Custom Ports
 
@@ -33,7 +33,7 @@ Starts the dashboard with default ports (backend on 8000, frontend on 3000).
 baselinr ui --config examples/config.yml --port-backend 8080 --port-frontend 3001
 ```
 
-Starts the dashboard with custom ports.
+Starts the Quality Studio with custom ports.
 
 ### Localhost Only
 
@@ -51,7 +51,7 @@ Binds the backend API only to localhost (not accessible from other machines).
    * Port availability (backend and frontend ports must be free)
    * Database connection (tests connection using your config file)
 
-2. **Configuration**: Builds a database connection string from your Baselinr config file's `storage.connection` settings. The dashboard currently supports PostgreSQL and SQLite.
+2. **Configuration**: Builds a database connection string from your Baselinr config file's `storage.connection` settings. The Quality Studio currently supports PostgreSQL and SQLite.
 
 3. **Process Startup**: Starts both processes in the foreground:
    * Backend: Runs `python main.py` in `dashboard/backend/` with `BASELINR_DB_URL` environment variable set
@@ -75,7 +75,7 @@ pip install -r dashboard/backend/requirements.txt
 
 ### Database
 
-The dashboard requires a PostgreSQL or SQLite database. The connection is configured via your Baselinr config file's `storage.connection` section.
+The Quality Studio requires a PostgreSQL or SQLite database. The connection is configured via your Baselinr config file's `storage.connection` section.
 
 ## Troubleshooting
 

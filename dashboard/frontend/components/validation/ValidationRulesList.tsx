@@ -178,8 +178,8 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
     return (
       <Card>
         <div className="p-6 text-center" role="alert">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-red-600">{errorMessage || 'Failed to load validation rules'}</p>
+          <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+          <p className="text-rose-400">{errorMessage || 'Failed to load validation rules'}</p>
         </div>
       </Card>
     )
@@ -189,9 +189,9 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
     return (
       <Card>
         <div className="p-12 text-center">
-          <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No validation rules</h3>
-          <p className="text-gray-500 mb-4">Create your first validation rule to get started</p>
+          <Shield className="w-16 h-16 text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No validation rules</h3>
+          <p className="text-slate-400 mb-4">Create your first validation rule to get started</p>
           <Button onClick={onCreateRule} variant="primary">
             <Plus className="w-4 h-4 mr-2" />
             Create Rule
@@ -233,7 +233,7 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
             />
           </div>
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-400">
               {filteredRules.length} of {data?.total || 0} rules
             </p>
             <Button onClick={onCreateRule} variant="primary" size="sm">
@@ -252,7 +252,7 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="font-semibold text-white">
                       {rule.schema ? `${rule.schema}.` : ''}
                       {rule.table}
                       {rule.column && `.${rule.column}`}
@@ -274,9 +274,9 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <Badge variant="info">{getRuleTypeLabel(rule.rule_type)}</Badge>
-                    <span className="text-sm text-gray-500">{getRuleSummary(rule)}</span>
+                    <span className="text-sm text-slate-400">{getRuleSummary(rule)}</span>
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-slate-500">
                     Created: {new Date(rule.created_at).toLocaleDateString()}
                     {rule.last_tested && (
                       <> • Last tested: {new Date(rule.last_tested).toLocaleDateString()}</>
@@ -324,7 +324,7 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
       {filteredRules.length === 0 && (searchQuery || typeFilter || severityFilter || statusFilter) && (
         <Card>
           <div className="p-6 text-center">
-            <p className="text-gray-500">No rules match your filters</p>
+            <p className="text-slate-400">No rules match your filters</p>
           </div>
         </Card>
       )}

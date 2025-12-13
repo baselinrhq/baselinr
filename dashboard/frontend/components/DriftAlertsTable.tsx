@@ -23,9 +23,9 @@ interface DriftAlertsTableProps {
 }
 
 const severityColors = {
-  low: 'bg-green-100 text-green-800 border-green-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  high: 'bg-red-100 text-red-800 border-red-200',
+  low: 'bg-success-500/20 text-success-400 border-success-500/30',
+  medium: 'bg-warning-500/20 text-warning-400 border-warning-500/30',
+  high: 'bg-danger-500/20 text-danger-400 border-danger-500/30',
 }
 
 export default function DriftAlertsTable({ alerts, showDetails = false, onRowClick }: DriftAlertsTableProps) {
@@ -33,51 +33,51 @@ export default function DriftAlertsTable({ alerts, showDetails = false, onRowCli
     <div>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50">
+          <thead className="bg-surface-800/50 border-b border-surface-700/50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Severity
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Table
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Column
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Metric
               </th>
               {showDetails && (
                 <>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Baseline
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Current
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     Change
                   </th>
                 </>
               )}
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Detected At
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-surface-700/50">
             {alerts.map((alert) => (
               <tr
                 key={alert.event_id}
                 className={clsx(
-                  'hover:bg-gray-50',
-                  onRowClick && 'cursor-pointer'
+                  'transition-colors',
+                  onRowClick && 'cursor-pointer hover:bg-surface-800/50'
                 )}
                 onClick={() => onRowClick?.(alert.event_id)}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={clsx(
-                    'px-2 py-1 text-xs font-medium rounded border capitalize',
+                    'px-2.5 py-1 text-xs font-medium rounded-full border capitalize',
                     severityColors[alert.severity as keyof typeof severityColors] || severityColors.low
                   )}>
                     {alert.severity}
@@ -86,40 +86,41 @@ export default function DriftAlertsTable({ alerts, showDetails = false, onRowCli
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link 
                     href={`/tables/${alert.table_name}`}
-                    className="text-sm font-medium text-primary-600 hover:text-primary-800"
+                    className="text-sm font-medium text-accent-400 hover:text-accent-300 transition-colors"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {alert.table_name}
                   </Link>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {alert.column_name || '-'}
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300">
+                  {alert.column_name || <span className="text-slate-600">—</span>}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span className="font-mono text-xs bg-surface-700/50 text-slate-300 px-2 py-1 rounded">
                     {alert.metric_name}
                   </span>
                 </td>
                 {showDetails && (
                   <>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {alert.baseline_value?.toFixed(2) || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">
+                      {alert.baseline_value?.toFixed(2) || <span className="text-slate-600">—</span>}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {alert.current_value?.toFixed(2) || '-'}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-300 font-mono">
+                      {alert.current_value?.toFixed(2) || <span className="text-slate-600">—</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {alert.change_percent !== undefined ? (
                         <span className={clsx(
-                          'text-sm font-medium',
-                          alert.change_percent > 0 ? 'text-red-600' : 'text-green-600'
+                          'text-sm font-semibold font-mono',
+                          alert.change_percent > 0 ? 'text-danger-400' : 'text-success-400'
                         )}>
                           {alert.change_percent > 0 ? '+' : ''}{alert.change_percent.toFixed(1)}%
                         </span>
-                      ) : '-'}
+                      ) : <span className="text-slate-600">—</span>}
                     </td>
                   </>
                 )}
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                   {new Date(alert.timestamp).toLocaleString()}
                 </td>
               </tr>
@@ -129,12 +130,14 @@ export default function DriftAlertsTable({ alerts, showDetails = false, onRowCli
       </div>
       
       {alerts.length === 0 && (
-        <div className="text-center py-12">
-          <AlertTriangle className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500">No drift alerts found</p>
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-slate-600" />
+          </div>
+          <p className="text-slate-400 font-medium">No drift alerts found</p>
+          <p className="text-sm text-slate-500 mt-1">Adjust your filters or check back later</p>
         </div>
       )}
     </div>
   )
 }
-

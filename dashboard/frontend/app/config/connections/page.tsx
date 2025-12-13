@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Loader2, AlertCircle } from 'lucide-react'
+import { Plus, Loader2, AlertCircle, CheckCircle, XCircle, X, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConnectionCard } from '@/components/config/ConnectionCard'
 import { ConnectionWizard } from '@/components/config/ConnectionWizard'
@@ -25,6 +26,10 @@ export default function ConnectionsPage() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const [editingConnectionId, setEditingConnectionId] = useState<string | undefined>()
   const [editingConnection, setEditingConnection] = useState<ConnectionConfig | undefined>()
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   // Fetch connections
   const {
@@ -87,9 +92,16 @@ export default function ConnectionsPage() {
     if (confirm('Are you sure you want to delete this connection?')) {
       try {
         await deleteMutation.mutateAsync(id)
+        setNotification({
+          type: 'success',
+          message: 'Connection deleted successfully',
+        })
       } catch (err) {
         console.error('Failed to delete connection:', err)
-        alert('Failed to delete connection. Please try again.')
+        setNotification({
+          type: 'error',
+          message: 'Failed to delete connection. Please try again.',
+        })
       }
     }
   }
@@ -98,10 +110,16 @@ export default function ConnectionsPage() {
     try {
       const connection = await getConnection(id)
       await testMutation.mutateAsync(connection.connection)
-      alert('Connection test successful!')
+      setNotification({
+        type: 'success',
+        message: 'Connection test successful!',
+      })
     } catch (err) {
       console.error('Connection test failed:', err)
-      alert(`Connection test failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      setNotification({
+        type: 'error',
+        message: `Connection test failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      })
     }
   }
 
@@ -110,10 +128,16 @@ export default function ConnectionsPage() {
       try {
         const connection = await getConnection(id)
         updateConfigPath(['source'], connection.connection)
-        alert('Source connection updated successfully!')
+        setNotification({
+          type: 'success',
+          message: 'Source connection updated successfully!',
+        })
       } catch (err) {
         console.error('Failed to set source connection:', err)
-        alert('Failed to set source connection. Please try again.')
+        setNotification({
+          type: 'error',
+          message: 'Failed to set source connection. Please try again.',
+        })
       }
     }
   }
@@ -128,13 +152,68 @@ export default function ConnectionsPage() {
 
   const connections = connectionsData?.connections || []
 
+  // Auto-dismiss notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
+
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
+      {/* Notification Toast */}
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 glass-card border ${
+            notification.type === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10'
+              : 'border-rose-500/30 bg-rose-500/10'
+          } p-4 flex items-start gap-3 shadow-lg min-w-[300px] max-w-md animate-in slide-in-from-top-5`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+          ) : (
+            <XCircle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">
+            <div
+              className={`font-medium ${
+                notification.type === 'success' ? 'text-emerald-300' : 'text-rose-300'
+              }`}
+            >
+              {notification.type === 'success' ? 'Success' : 'Error'}
+            </div>
+            <div
+              className={`text-sm mt-1 ${
+                notification.type === 'success' ? 'text-emerald-400/80' : 'text-rose-400/80'
+              }`}
+            >
+              {notification.message}
+            </div>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Database Connections</h1>
-          <p className="text-gray-600 mt-1">
+          <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+            <Link href="/config" className="hover:text-cyan-400">
+              Configuration
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-white font-medium">Connections</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white">Database Connections</h1>
+          <p className="text-slate-400 mt-1">
             Manage your database connections for data profiling
           </p>
         </div>
@@ -149,23 +228,23 @@ export default function ConnectionsPage() {
       {/* Loading State */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        <div className="glass-card border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <div className="font-medium text-yellow-900">Connection Error</div>
-            <div className="text-sm text-yellow-700 mt-1">
+            <div className="font-medium text-amber-300">Connection Error</div>
+            <div className="text-sm text-amber-400/80 mt-1">
               {error instanceof Error ? (
                 error.message.includes('NetworkError') || error.message.includes('Failed to fetch') ? (
                   <>
                     Unable to connect to the backend API. Please ensure:
                     <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>The backend server is running on <code className="bg-yellow-100 px-1 rounded">http://localhost:8000</code></li>
+                      <li>The backend server is running on <code className="bg-amber-500/10 px-1 rounded text-amber-300">http://localhost:8000</code></li>
                       <li>Check the browser console for more details</li>
                       <li>Verify CORS settings if running on a different port</li>
                     </ul>
@@ -188,8 +267,8 @@ export default function ConnectionsPage() {
 
       {/* Empty State - Show even with error to allow testing wizard */}
       {!isLoading && connections.length === 0 && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
-          <div className="text-gray-400 mb-4">
+        <div className="glass-card p-12 text-center">
+          <div className="text-slate-500 mb-4">
             <svg
               className="w-16 h-16 mx-auto"
               fill="none"
@@ -204,10 +283,10 @@ export default function ConnectionsPage() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <h3 className="text-lg font-medium text-white mb-2">
             No connections yet
           </h3>
-          <p className="text-gray-600 mb-6">
+          <p className="text-slate-400 mb-6">
             Create your first database connection to get started
           </p>
           <Button onClick={handleNewConnection} icon={<Plus className="w-4 h-4" />}>

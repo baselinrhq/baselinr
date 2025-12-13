@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import {
-  Settings,
   HardDrive,
   Table,
   BarChart3,
@@ -10,6 +9,8 @@ import {
   TrendingUp,
   Bell,
   ArrowRight,
+  Database,
+  Eye,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -35,7 +36,7 @@ const configSections: ConfigSection[] = [
     name: 'Connections',
     description: 'Configure database connections for data profiling',
     href: '/config/connections',
-    icon: Settings,
+    icon: Database,
   },
   {
     id: 'storage',
@@ -77,7 +78,7 @@ const configSections: ConfigSection[] = [
     name: 'Anomaly Detection',
     description: 'Configure anomaly detection and expectation learning',
     href: '/config/anomaly',
-    icon: TrendingUp,
+    icon: Eye,
   },
   {
     id: 'hooks',
@@ -190,13 +191,13 @@ export function ConfigHub({ config }: ConfigHubProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-1">Configuration Sections</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-xl font-semibold text-white mb-1">Configuration Sections</h2>
+        <p className="text-sm text-slate-400">
           Manage your Baselinr configuration across all sections
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {configSections.map((section) => {
           const Icon = section.icon
           const status = checkSectionStatus(section.id, config)
@@ -204,25 +205,25 @@ export function ConfigHub({ config }: ConfigHubProps) {
           return (
             <Link key={section.id} href={section.href}>
               <Card hover className="h-full">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-primary-50 rounded-lg">
-                        <Icon className="w-5 h-5 text-primary-600" />
+                      <div className="p-2 bg-surface-700/50 rounded-lg">
+                        <Icon className="w-5 h-5 text-accent-400" />
                       </div>
                       <div>
-                        <h3 className="text-base font-semibold text-gray-900">
+                        <h3 className="text-base font-semibold text-white">
                           {section.name}
                         </h3>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-sm text-gray-600 mb-4">{section.description}</p>
+                  <p className="text-sm text-slate-400 mb-4">{section.description}</p>
 
                   <div className="flex items-center justify-between">
                     {getStatusBadge(status)}
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
+                    <ArrowRight className="w-4 h-4 text-slate-500" />
                   </div>
                 </div>
               </Card>
@@ -235,4 +236,3 @@ export function ConfigHub({ config }: ConfigHubProps) {
 }
 
 export default ConfigHub
-

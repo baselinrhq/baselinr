@@ -163,7 +163,7 @@ export function Select({
       {label && (
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="block text-sm font-medium text-slate-300 mb-2"
         >
           {label}
         </label>
@@ -185,14 +185,14 @@ export function Select({
           disabled={disabled}
           className={cn(
             'w-full flex items-center justify-between gap-2 px-3 py-2 border rounded-lg',
-            'text-left transition-colors',
+            'text-left transition-all bg-surface-800/50',
             'focus:outline-none focus:ring-2',
             disabled
-              ? 'bg-gray-50 text-gray-500 cursor-not-allowed border-gray-200'
+              ? 'bg-surface-900 text-slate-600 cursor-not-allowed border-surface-700'
               : error
-              ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500',
-            isOpen && 'ring-2 ring-primary-500 border-primary-500'
+              ? 'border-danger-500 focus:border-danger-500 focus:ring-danger-500'
+              : 'border-surface-600 focus:border-accent-500 focus:ring-accent-500',
+            isOpen && 'ring-2 ring-accent-500 border-accent-500'
           )}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
@@ -201,7 +201,7 @@ export function Select({
           <span
             className={cn(
               'flex-1 truncate',
-              !selectedOption && 'text-gray-500'
+              selectedOption ? 'text-slate-200' : 'text-slate-500'
             )}
           >
             {selectedOption ? selectedOption.label : placeholder}
@@ -210,7 +210,7 @@ export function Select({
           <div className="flex items-center gap-1">
             {loading && (
               <svg
-                className="w-4 h-4 animate-spin text-gray-400"
+                className="w-4 h-4 animate-spin text-slate-500"
                 fill="none"
                 viewBox="0 0 24 24"
               >
@@ -234,7 +234,7 @@ export function Select({
               <button
                 type="button"
                 onClick={handleClear}
-                className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                className="p-0.5 rounded hover:bg-surface-700 text-slate-500 hover:text-slate-300 transition-colors"
                 aria-label="Clear selection"
               >
                 <X className="w-4 h-4" />
@@ -243,7 +243,7 @@ export function Select({
             
             <ChevronDown
               className={cn(
-                'w-4 h-4 text-gray-400 transition-transform',
+                'w-4 h-4 text-slate-500 transition-transform',
                 isOpen && 'rotate-180'
               )}
             />
@@ -251,11 +251,11 @@ export function Select({
         </button>
 
         {isOpen && (
-          <div className="select-dropdown entering">
+          <div className="absolute z-50 w-full mt-1 bg-surface-800 border border-surface-700 rounded-lg shadow-xl shadow-black/20 overflow-hidden animate-fade-in">
             {searchable && (
-              <div className="p-2 border-b border-gray-100">
+              <div className="p-2 border-b border-surface-700">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input
                     ref={inputRef}
                     type="text"
@@ -263,7 +263,7 @@ export function Select({
                     onChange={e => setSearchQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Search..."
-                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                    className="w-full pl-8 pr-3 py-1.5 text-sm bg-surface-900 border border-surface-600 rounded-md text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent-500 focus:border-accent-500"
                   />
                 </div>
               </div>
@@ -273,10 +273,10 @@ export function Select({
               ref={listRef}
               role="listbox"
               aria-labelledby={label ? id : undefined}
-              className="py-1"
+              className="py-1 max-h-60 overflow-auto"
             >
               {filteredOptions.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-gray-500">
+                <li className="px-3 py-2 text-sm text-slate-500">
                   No options found
                 </li>
               ) : Object.keys(groupedOptions).length === 1 &&
@@ -289,14 +289,17 @@ export function Select({
                     aria-selected={option.value === value}
                     onClick={() => handleSelectOption(option)}
                     className={cn(
-                      'select-option flex items-center justify-between',
-                      option.value === value && 'selected',
-                      index === highlightedIndex && 'highlighted'
+                      'flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-colors',
+                      option.value === value
+                        ? 'bg-accent-500/20 text-accent-300'
+                        : index === highlightedIndex
+                        ? 'bg-surface-700 text-slate-200'
+                        : 'text-slate-300 hover:bg-surface-700/50'
                     )}
                   >
                     <span>{option.label}</span>
                     {option.value === value && (
-                      <Check className="w-4 h-4 text-primary-600" />
+                      <Check className="w-4 h-4 text-accent-400" />
                     )}
                   </li>
                 ))
@@ -305,7 +308,9 @@ export function Select({
                 Object.entries(groupedOptions).map(([group, groupOptions]) => (
                   <li key={group || 'default'}>
                     {group && (
-                      <div className="select-group-label">{group}</div>
+                      <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        {group}
+                      </div>
                     )}
                     <ul>
                       {groupOptions.map((option) => {
@@ -317,14 +322,17 @@ export function Select({
                             aria-selected={option.value === value}
                             onClick={() => handleSelectOption(option)}
                             className={cn(
-                              'select-option flex items-center justify-between',
-                              option.value === value && 'selected',
-                              flatIndex === highlightedIndex && 'highlighted'
+                              'flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-colors',
+                              option.value === value
+                                ? 'bg-accent-500/20 text-accent-300'
+                                : flatIndex === highlightedIndex
+                                ? 'bg-surface-700 text-slate-200'
+                                : 'text-slate-300 hover:bg-surface-700/50'
                             )}
                           >
                             <span>{option.label}</span>
                             {option.value === value && (
-                              <Check className="w-4 h-4 text-primary-600" />
+                              <Check className="w-4 h-4 text-accent-400" />
                             )}
                           </li>
                         )
@@ -339,11 +347,11 @@ export function Select({
       </div>
 
       {error && (
-        <p className="mt-1.5 text-sm text-red-600">{error}</p>
+        <p className="mt-1.5 text-sm text-danger-400">{error}</p>
       )}
 
       {helperText && !error && (
-        <p className="mt-1.5 text-sm text-gray-500">{helperText}</p>
+        <p className="mt-1.5 text-sm text-slate-500">{helperText}</p>
       )}
     </div>
   )

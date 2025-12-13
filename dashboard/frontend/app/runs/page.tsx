@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Filter, Download, GitCompare } from 'lucide-react'
+import { Filter, Download, GitCompare, Activity } from 'lucide-react'
 import { fetchRuns, fetchRunComparison, Run, RunComparison as RunComparisonType } from '@/lib/api'
 import RunsTable from '@/components/runs/RunsTable'
 import RunFilters, { RunFilters as RunFiltersType } from '@/components/runs/RunFilters'
@@ -81,12 +81,17 @@ export default function RunsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Profiling Runs</h1>
-          <p className="text-gray-600 mt-1">View and filter profiling run history</p>
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-accent-500/10">
+              <Activity className="w-7 h-7 text-accent-400" />
+            </div>
+            Run History
+          </h1>
+          <p className="text-slate-400 mt-2">View and filter profiling run history</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -127,13 +132,13 @@ export default function RunsPage() {
 
       {/* Selected Runs Bar */}
       {selectedRuns.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
-          <div className="text-sm text-blue-900">
+        <div className="bg-accent-500/10 border border-accent-500/20 rounded-lg p-4 flex items-center justify-between">
+          <div className="text-sm text-accent-300">
             <span className="font-medium">{selectedRuns.length}</span> run{selectedRuns.length !== 1 ? 's' : ''} selected
             {selectedRuns.length >= 2 && ' - Click "Compare" to view side-by-side comparison'}
           </div>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={() => setSelectedRuns([])}
           >
@@ -148,7 +153,7 @@ export default function RunsPage() {
       )}
 
       {/* Runs Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="glass-card overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-96">
             <LoadingSpinner />
@@ -185,4 +190,3 @@ export default function RunsPage() {
     </div>
   )
 }
-

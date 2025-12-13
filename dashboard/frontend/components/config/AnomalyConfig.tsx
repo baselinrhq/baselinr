@@ -82,14 +82,14 @@ export function AnomalyConfig({
       <div className="space-y-6">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">Anomaly Detection</h3>
+            <h3 className="text-lg font-semibold text-white">Anomaly Detection</h3>
             <Tooltip content="Anomaly detection automatically identifies unusual patterns in your profiling metrics using learned expectations. Multiple detection methods can be enabled simultaneously.">
               <span>
-                <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                <Info className="w-4 h-4 text-slate-400 cursor-help" />
               </span>
             </Tooltip>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-slate-400">
             Configure automatic anomaly detection using learned expectations from historical data.
           </p>
         </div>
@@ -108,7 +108,7 @@ export function AnomalyConfig({
         </FormField>
 
         {enableAnomalyDetection && (
-          <div className="space-y-6 pl-4 border-l-2 border-gray-200">
+          <div className="space-y-6 pl-4 border-l-2 border-surface-700/50">
             {/* Detection Methods */}
             <FormField
               label="Detection Methods"
@@ -121,7 +121,7 @@ export function AnomalyConfig({
                   const isExpanded = expandedMethods.has(method.value)
                   
                   return (
-                    <div key={method.value} className="border border-gray-200 rounded-lg p-3">
+                    <div key={method.value} className="border border-surface-700/50 rounded-lg p-3">
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={isEnabled}
@@ -131,16 +131,16 @@ export function AnomalyConfig({
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div>
-                              <label className="text-sm font-medium text-gray-900">
+                              <label className="text-sm font-medium text-white">
                                 {method.label}
                               </label>
-                              <p className="text-xs text-gray-500 mt-0.5">{method.description}</p>
+                              <p className="text-xs text-slate-400 mt-0.5">{method.description}</p>
                             </div>
                             {isEnabled && (
                               <button
                                 type="button"
                                 onClick={() => toggleMethodExpansion(method.value)}
-                                className="text-xs text-blue-600 hover:text-blue-700"
+                                className="text-xs text-cyan-400 hover:text-cyan-300"
                               >
                                 {isExpanded ? 'Hide settings' : 'Show settings'}
                               </button>
@@ -149,7 +149,7 @@ export function AnomalyConfig({
 
                           {/* Method-specific settings */}
                           {isEnabled && isExpanded && (
-                            <div className="mt-3 pt-3 border-t border-gray-200 space-y-4">
+                            <div className="mt-3 pt-3 border-t border-surface-700/50 space-y-4">
                               {/* IQR Threshold */}
                               {method.value === 'iqr' && (
                                 <FormField
@@ -183,7 +183,7 @@ export function AnomalyConfig({
                                         disabled={isLoading}
                                         className="w-24"
                                       />
-                                      <span className="text-sm text-gray-500">
+                                      <span className="text-sm text-slate-400">
                                         (Standard: 1.5, Lower = more sensitive)
                                       </span>
                                     </div>
@@ -224,7 +224,7 @@ export function AnomalyConfig({
                                         disabled={isLoading}
                                         className="w-24"
                                       />
-                                      <span className="text-sm text-gray-500">
+                                      <span className="text-sm text-slate-400">
                                         (Lower = more sensitive)
                                       </span>
                                     </div>
@@ -265,7 +265,7 @@ export function AnomalyConfig({
                                         disabled={isLoading}
                                         className="w-24"
                                       />
-                                      <span className="text-sm text-gray-500">
+                                      <span className="text-sm text-slate-400">
                                         (Lower = more sensitive)
                                       </span>
                                     </div>
@@ -356,7 +356,7 @@ export function AnomalyConfig({
                                               disabled={isLoading}
                                               className="w-24"
                                             />
-                                            <span className="text-sm text-gray-500">
+                                            <span className="text-sm text-slate-400">
                                               (Lower = more sensitive)
                                             </span>
                                           </div>
@@ -377,8 +377,8 @@ export function AnomalyConfig({
             </FormField>
 
             {enabledMethods.length === 0 && (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
+              <div className="p-4 glass-card border-amber-500/30 bg-amber-500/10 rounded-lg">
+                <p className="text-sm text-amber-300">
                   <strong>Warning:</strong> At least one detection method must be enabled for anomaly detection to work.
                 </p>
               </div>
@@ -387,8 +387,8 @@ export function AnomalyConfig({
         )}
 
         {!enableAnomalyDetection && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+          <div className="p-4 glass-card border-cyan-500/30 bg-cyan-500/10 rounded-lg">
+            <p className="text-sm text-cyan-300">
               <strong>Info:</strong> Enable anomaly detection to automatically identify unusual patterns in your profiling metrics.
               Make sure expectation learning is also enabled for best results.
             </p>

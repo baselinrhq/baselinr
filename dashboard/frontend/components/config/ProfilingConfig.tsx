@@ -69,10 +69,10 @@ export function ProfilingConfig({
     <Card>
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Global Profiling Settings
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-slate-400 mb-6">
             Configure default profiling behavior for all tables. These settings can be overridden at the table or column level.
           </p>
         </div>
@@ -80,7 +80,7 @@ export function ProfilingConfig({
         {/* Metrics Selection */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium text-gray-900">Metrics to Compute</h4>
+            <h4 className="text-sm font-medium text-slate-300">Metrics to Compute</h4>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -114,13 +114,13 @@ export function ProfilingConfig({
           </div>
           
           {errors.metrics && (
-            <p className="text-sm text-red-600">{errors.metrics}</p>
+            <p className="text-sm text-rose-400">{errors.metrics}</p>
           )}
         </div>
 
         {/* Histogram Configuration */}
-        <div className="space-y-4 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-900">Histogram Configuration</h4>
+        <div className="space-y-4 border-t border-surface-700/50 pt-4">
+          <h4 className="text-sm font-medium text-slate-300">Histogram Configuration</h4>
           
           <FormField
             label="Compute Histograms"
@@ -157,8 +157,8 @@ export function ProfilingConfig({
         </div>
 
         {/* Max Distinct Values */}
-        <div className="space-y-4 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-900">Distinct Values</h4>
+        <div className="space-y-4 border-t border-surface-700/50 pt-4">
+          <h4 className="text-sm font-medium text-slate-300">Distinct Values</h4>
           
           <FormField
             label="Max Distinct Values"
@@ -181,8 +181,8 @@ export function ProfilingConfig({
         </div>
 
         {/* Default Sample Ratio */}
-        <div className="space-y-4 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-900">Sampling</h4>
+        <div className="space-y-4 border-t border-surface-700/50 pt-4">
+          <h4 className="text-sm font-medium text-slate-300">Sampling</h4>
           
           <FormField
             label="Default Sample Ratio"
@@ -221,8 +221,8 @@ export function ProfilingConfig({
         </div>
 
         {/* Enrichment Options */}
-        <div className="space-y-4 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-900">Enrichment Options</h4>
+        <div className="space-y-4 border-t border-surface-700/50 pt-4">
+          <h4 className="text-sm font-medium text-slate-300">Enrichment Options</h4>
           
           <FormField
             label="Enable Enrichment"
@@ -286,8 +286,8 @@ export function ProfilingConfig({
 
         {/* Stability Configuration */}
         {profiling.enable_column_stability !== false && (
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="text-sm font-medium text-gray-900">Stability Configuration</h4>
+          <div className="space-y-4 border-t border-surface-700/50 pt-4">
+            <h4 className="text-sm font-medium text-slate-300">Stability Configuration</h4>
             
             <FormField
               label="Stability Window (days)"
@@ -312,8 +312,8 @@ export function ProfilingConfig({
 
         {/* Type Inference Configuration */}
         {profiling.enable_type_inference !== false && (
-          <div className="space-y-4 border-t pt-4">
-            <h4 className="text-sm font-medium text-gray-900">Type Inference Configuration</h4>
+          <div className="space-y-4 border-t border-surface-700/50 pt-4">
+            <h4 className="text-sm font-medium text-slate-300">Type Inference Configuration</h4>
             
             <FormField
               label="Type Inference Sample Size"
@@ -337,8 +337,8 @@ export function ProfilingConfig({
         )}
 
         {/* Lineage Extraction */}
-        <div className="space-y-4 border-t pt-4">
-          <h4 className="text-sm font-medium text-gray-900">Lineage</h4>
+        <div className="space-y-4 border-t border-surface-700/50 pt-4">
+          <h4 className="text-sm font-medium text-slate-300">Lineage</h4>
           
           <FormField
             label="Extract Lineage"

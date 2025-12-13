@@ -67,18 +67,18 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
           )
 
           return (
-            <div key={topLevel} className="border border-gray-200 rounded-lg">
+            <div key={topLevel} className="glass-card border-surface-700/50">
               <button
                 onClick={() => togglePath(topLevel)}
-                className="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-gray-50 rounded-t-lg"
+                className="w-full px-4 py-2 flex items-center justify-between text-left hover:bg-surface-800/30 rounded-t-lg"
               >
                 <div className="flex items-center gap-2">
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   )}
-                  <span className="font-medium text-gray-900">{topLevel}</span>
+                  <span className="font-medium text-white">{topLevel}</span>
                   {hasChanges && (
                     <Badge variant="warning" className="text-xs">
                       {paths.length} change{paths.length !== 1 ? 's' : ''}
@@ -88,16 +88,16 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
               </button>
 
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-200 bg-gray-50 space-y-2">
+                <div className="px-4 pb-4 border-t border-surface-700/50 bg-surface-800/20 space-y-2">
                   {paths.map((path) => {
                     const added = diff.added[path]
                     const removed = diff.removed[path]
                     const changed = diff.changed[path]
 
                     return (
-                      <div key={path} className="bg-white rounded border border-gray-200 p-3">
+                      <div key={path} className="glass-card border-surface-700/50 p-3">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm font-mono text-gray-700">{path}</span>
+                          <span className="text-sm font-mono text-slate-300">{path}</span>
                           {added !== undefined && (
                             <Badge variant="success" className="text-xs">
                               <Plus className="w-3 h-3 mr-1" />
@@ -119,18 +119,18 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
                         </div>
 
                         {added !== undefined && (
-                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm">
-                            <div className="text-green-800 font-medium mb-1">New value:</div>
-                            <pre className="text-green-700 whitespace-pre-wrap font-mono text-xs">
+                          <div className="mt-2 p-2 glass-card border-emerald-500/30 bg-emerald-500/10 rounded text-sm">
+                            <div className="text-emerald-300 font-medium mb-1">New value:</div>
+                            <pre className="text-emerald-200 whitespace-pre-wrap font-mono text-xs">
                               {renderValue(added)}
                             </pre>
                           </div>
                         )}
 
                         {removed !== undefined && (
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm">
-                            <div className="text-red-800 font-medium mb-1">Old value:</div>
-                            <pre className="text-red-700 whitespace-pre-wrap font-mono text-xs">
+                          <div className="mt-2 p-2 glass-card border-rose-500/30 bg-rose-500/10 rounded text-sm">
+                            <div className="text-rose-300 font-medium mb-1">Old value:</div>
+                            <pre className="text-rose-200 whitespace-pre-wrap font-mono text-xs">
                               {renderValue(removed)}
                             </pre>
                           </div>
@@ -138,15 +138,15 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
 
                         {changed !== undefined && (
                           <div className="mt-2 space-y-2">
-                            <div className="p-2 bg-red-50 border border-red-200 rounded text-sm">
-                              <div className="text-red-800 font-medium mb-1">Old:</div>
-                              <pre className="text-red-700 whitespace-pre-wrap font-mono text-xs">
+                            <div className="p-2 glass-card border-rose-500/30 bg-rose-500/10 rounded text-sm">
+                              <div className="text-rose-300 font-medium mb-1">Old:</div>
+                              <pre className="text-rose-200 whitespace-pre-wrap font-mono text-xs">
                                 {renderValue(changed.old)}
                               </pre>
                             </div>
-                            <div className="p-2 bg-green-50 border border-green-200 rounded text-sm">
-                              <div className="text-green-800 font-medium mb-1">New:</div>
-                              <pre className="text-green-700 whitespace-pre-wrap font-mono text-xs">
+                            <div className="p-2 glass-card border-emerald-500/30 bg-emerald-500/10 rounded text-sm">
+                              <div className="text-emerald-300 font-medium mb-1">New:</div>
+                              <pre className="text-emerald-200 whitespace-pre-wrap font-mono text-xs">
                                 {renderValue(changed.new)}
                               </pre>
                             </div>
@@ -169,20 +169,20 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
     return (
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Removed / Old Values</h4>
+          <h4 className="text-sm font-medium text-white mb-2">Removed / Old Values</h4>
           <div className="space-y-2">
             {Object.entries(diff.removed).map(([path, value]) => (
-              <div key={path} className="p-3 bg-red-50 border border-red-200 rounded">
-                <div className="text-xs font-mono text-red-800 mb-1">{path}</div>
-                <pre className="text-xs text-red-700 whitespace-pre-wrap font-mono">
+              <div key={path} className="p-3 glass-card border-rose-500/30 bg-rose-500/10 rounded">
+                <div className="text-xs font-mono text-rose-300 mb-1">{path}</div>
+                <pre className="text-xs text-rose-200 whitespace-pre-wrap font-mono">
                   {renderValue(value)}
                 </pre>
               </div>
             ))}
             {Object.entries(diff.changed).map(([path, change]) => (
-              <div key={path} className="p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <div className="text-xs font-mono text-yellow-800 mb-1">{path}</div>
-                <pre className="text-xs text-yellow-700 whitespace-pre-wrap font-mono">
+              <div key={path} className="p-3 glass-card border-amber-500/30 bg-amber-500/10 rounded">
+                <div className="text-xs font-mono text-amber-300 mb-1">{path}</div>
+                <pre className="text-xs text-amber-200 whitespace-pre-wrap font-mono">
                   {renderValue(change.old)}
                 </pre>
               </div>
@@ -191,20 +191,20 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-900 mb-2">Added / New Values</h4>
+          <h4 className="text-sm font-medium text-white mb-2">Added / New Values</h4>
           <div className="space-y-2">
             {Object.entries(diff.added).map(([path, value]) => (
-              <div key={path} className="p-3 bg-green-50 border border-green-200 rounded">
-                <div className="text-xs font-mono text-green-800 mb-1">{path}</div>
-                <pre className="text-xs text-green-700 whitespace-pre-wrap font-mono">
+              <div key={path} className="p-3 glass-card border-emerald-500/30 bg-emerald-500/10 rounded">
+                <div className="text-xs font-mono text-emerald-300 mb-1">{path}</div>
+                <pre className="text-xs text-emerald-200 whitespace-pre-wrap font-mono">
                   {renderValue(value)}
                 </pre>
               </div>
             ))}
             {Object.entries(diff.changed).map(([path, change]) => (
-              <div key={path} className="p-3 bg-yellow-50 border border-yellow-200 rounded">
-                <div className="text-xs font-mono text-yellow-800 mb-1">{path}</div>
-                <pre className="text-xs text-yellow-700 whitespace-pre-wrap font-mono">
+              <div key={path} className="p-3 glass-card border-amber-500/30 bg-amber-500/10 rounded">
+                <div className="text-xs font-mono text-amber-300 mb-1">{path}</div>
+                <pre className="text-xs text-amber-200 whitespace-pre-wrap font-mono">
                   {renderValue(change.new)}
                 </pre>
               </div>
@@ -220,24 +220,24 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
                        Object.keys(diff.changed).length
 
   return (
-    <div className="bg-white rounded-lg shadow-lg max-w-6xl w-full max-h-[90vh] flex flex-col">
+    <div className="glass-card max-w-6xl w-full max-h-[90vh] flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-surface-700/50 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Configuration Diff</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Comparing version <code className="bg-gray-100 px-1 rounded">{diff.version_id.substring(0, 8)}...</code> with{' '}
-            {diff.compare_with === 'current' ? 'current' : <code className="bg-gray-100 px-1 rounded">{diff.compare_with.substring(0, 8)}...</code>}
+          <h2 className="text-lg font-semibold text-white">Configuration Diff</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            Comparing version <code className="bg-surface-800 px-1 rounded text-cyan-300">{diff.version_id.substring(0, 8)}...</code> with{' '}
+            {diff.compare_with === 'current' ? 'current' : <code className="bg-surface-800 px-1 rounded text-cyan-300">{diff.compare_with.substring(0, 8)}...</code>}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-surface-800 rounded-lg p-1">
             <button
               onClick={() => setSelectedViewMode('tree')}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 selectedViewMode === 'tree'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Tree
@@ -246,8 +246,8 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
               onClick={() => setSelectedViewMode('side-by-side')}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 selectedViewMode === 'side-by-side'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               Side-by-Side
@@ -267,7 +267,7 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
       </div>
 
       {/* Summary */}
-      <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="px-6 py-3 border-b border-surface-700/50 bg-surface-800/30">
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Badge variant="success">
@@ -280,7 +280,7 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
               ~{Object.keys(diff.changed).length} changed
             </Badge>
           </div>
-          <span className="text-gray-600">
+          <span className="text-slate-400">
             {totalChanges} total change{totalChanges !== 1 ? 's' : ''}
           </span>
         </div>
@@ -290,7 +290,7 @@ export function ConfigDiff({ diff, viewMode = 'tree', onClose }: ConfigDiffProps
       <div className="flex-1 overflow-y-auto p-6">
         {totalChanges === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">No differences found between versions.</p>
+            <p className="text-slate-400">No differences found between versions.</p>
           </div>
         ) : selectedViewMode === 'tree' ? (
           renderTreeDiff()

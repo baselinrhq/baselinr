@@ -136,8 +136,8 @@ export function TableSelection({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Table Patterns</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="text-lg font-semibold text-white">Table Patterns</h3>
+          <p className="text-sm text-slate-400 mt-1">
             Configure which tables to profile using patterns or explicit selection
           </p>
         </div>
@@ -153,13 +153,13 @@ export function TableSelection({
       {tables.length === 0 ? (
         <Card>
           <div className="py-12 text-center">
-            <div className="text-gray-400 mb-4">
+            <div className="text-slate-500 mb-4">
               <Database className="w-12 h-12 mx-auto" />
             </div>
-            <h4 className="text-sm font-medium text-gray-900 mb-2">
+            <h4 className="text-sm font-medium text-white mb-2">
               No table patterns configured
             </h4>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-400 mb-4">
               Add a pattern to start profiling tables
             </p>
             <Button
@@ -192,10 +192,10 @@ export function TableSelection({
                       </Badge>
                     )}
                   </div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-1">
+                  <h4 className="text-sm font-medium text-white mb-1">
                     {getPatternSummary(pattern)}
                   </h4>
-                  <div className="text-xs text-gray-500 space-y-1">
+                  <div className="text-xs text-slate-400 space-y-1">
                     {pattern.schema && (
                       <div>Schema: {pattern.schema}</div>
                     )}

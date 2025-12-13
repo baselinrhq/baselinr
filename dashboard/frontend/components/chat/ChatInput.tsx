@@ -47,7 +47,7 @@ export default function ChatInput({
   }
 
   return (
-    <div className="border-t border-gray-200 bg-white px-4 py-4">
+    <div className="border-t border-surface-700/50 bg-surface-900/30 px-4 py-4">
       <div className="flex items-end gap-3">
         <div className="flex-1 relative">
           <textarea
@@ -59,12 +59,12 @@ export default function ChatInput({
             disabled={isLoading || disabled}
             rows={1}
             className="
-              w-full resize-none rounded-xl border border-gray-300 
+              w-full resize-none rounded-xl border border-surface-600 
               px-4 py-3 pr-12
-              focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 
+              bg-surface-800/50 text-white placeholder-slate-500
+              focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 
               focus:outline-none
-              disabled:bg-gray-50 disabled:text-gray-500
-              text-gray-900 placeholder-gray-500
+              disabled:bg-surface-900/50 disabled:text-slate-500
               transition-all
             "
             style={{ minHeight: '48px', maxHeight: '200px' }}
@@ -72,7 +72,7 @@ export default function ChatInput({
           
           {/* Character count hint */}
           {input.length > 100 && (
-            <span className="absolute right-14 bottom-3 text-xs text-gray-400">
+            <span className="absolute right-14 bottom-3 text-xs text-slate-500">
               {input.length}/5000
             </span>
           )}
@@ -83,10 +83,10 @@ export default function ChatInput({
           disabled={!input.trim() || isLoading || disabled}
           className="
             flex-shrink-0 w-12 h-12 rounded-xl
-            bg-primary-600 text-white
+            bg-cyan-500 text-white
             flex items-center justify-center
-            hover:bg-primary-700
-            disabled:bg-gray-300 disabled:cursor-not-allowed
+            hover:bg-cyan-600
+            disabled:bg-surface-700 disabled:text-slate-500 disabled:cursor-not-allowed
             transition-colors
           "
         >
@@ -99,9 +99,9 @@ export default function ChatInput({
       </div>
 
       {/* Help text */}
-      <p className="mt-2 text-xs text-gray-500 text-center">
-        Press <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600">Enter</kbd> to send, 
-        <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 ml-1">Shift+Enter</kbd> for new line
+      <p className="mt-2 text-xs text-slate-500 text-center">
+        Press <kbd className="px-1.5 py-0.5 bg-surface-800 rounded text-slate-300">Enter</kbd> to send, 
+        <kbd className="px-1.5 py-0.5 bg-surface-800 rounded text-slate-300 ml-1">Shift+Enter</kbd> for new line
       </p>
     </div>
   )

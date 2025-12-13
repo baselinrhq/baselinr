@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { StorageConfig } from '@/components/config/StorageConfig'
@@ -128,8 +129,8 @@ export default function StoragePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">Loading storage configuration...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto" />
+          <p className="mt-4 text-sm text-slate-400">Loading storage configuration...</p>
         </div>
       </div>
     )
@@ -141,11 +142,11 @@ export default function StoragePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="p-6 max-w-md">
-          <div className="flex items-center gap-3 text-red-600 mb-4">
+          <div className="flex items-center gap-3 text-rose-400 mb-4">
             <AlertCircle className="w-5 h-5" />
-            <h2 className="text-lg font-semibold">Backend API Not Available</h2>
+            <h2 className="text-lg font-semibold text-white">Backend API Not Available</h2>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-slate-400 mb-4">
             {isBackendNotAvailable 
               ? 'The backend API endpoint is not implemented yet. The storage configuration UI is ready, but requires the backend API to be running.'
               : configError}
@@ -187,8 +188,8 @@ export default function StoragePage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">Initializing storage configuration...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto" />
+          <p className="mt-4 text-sm text-slate-400">Initializing storage configuration...</p>
         </div>
       </div>
     )
@@ -198,17 +199,24 @@ export default function StoragePage() {
     <div className="container mx-auto px-6 py-8 max-w-4xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Storage Configuration</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+          <Link href="/config" className="hover:text-cyan-400">
+            Configuration
+          </Link>
+          <ChevronRight className="w-4 h-4" />
+          <span className="text-white font-medium">Storage</span>
+        </div>
+        <h1 className="text-2xl font-bold text-white">Storage Configuration</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Configure the database connection and table names for storing profiling results
         </p>
       </div>
 
       {/* Success Message */}
       {saveSuccess && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <p className="text-sm font-medium text-green-800">
+        <div className="mb-6 glass-card border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-400" />
+          <p className="text-sm font-medium text-emerald-300">
             Storage configuration saved successfully
           </p>
         </div>
@@ -216,9 +224,9 @@ export default function StoragePage() {
 
       {/* Error Message */}
       {storageErrors.general && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm font-medium text-red-800">{storageErrors.general}</p>
+        <div className="mb-6 glass-card border-rose-500/30 bg-rose-500/10 p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-400" />
+          <p className="text-sm font-medium text-rose-300">{storageErrors.general}</p>
         </div>
       )}
 
@@ -235,7 +243,7 @@ export default function StoragePage() {
             />
 
             {/* Save Button */}
-            <div className="mt-6 pt-6 border-t border-gray-200 flex items-center justify-end gap-4">
+            <div className="mt-6 pt-6 border-t border-surface-700/50 flex items-center justify-end gap-4">
               <Button
                 variant="primary"
                 onClick={handleSave}

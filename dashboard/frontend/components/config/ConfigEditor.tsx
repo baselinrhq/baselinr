@@ -13,8 +13,8 @@ import { isSensitiveField } from '@/lib/utils/sanitize'
 import type { BaselinrConfig } from '@/types/config'
 
 export interface ConfigEditorProps {
-  onSave?: () => Promise<void>
-  onValidate?: () => Promise<boolean>
+  onSave?: (config?: BaselinrConfig) => Promise<void>
+  onValidate?: (config?: BaselinrConfig) => Promise<boolean>
 }
 
 type ViewMode = 'split' | 'visual' | 'yaml'
@@ -176,20 +176,20 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
   if (isLoading && !currentConfig) {
     return (
       <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
-        <span className="ml-3 text-sm text-gray-500">Loading configuration...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-cyan-400" />
+        <span className="ml-3 text-sm text-slate-400">Loading configuration...</span>
       </div>
     )
   }
 
   if (error && !currentConfig) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-red-800">
+      <div className="glass-card border-rose-500/30 bg-rose-500/10 p-4">
+        <div className="flex items-center gap-2 text-rose-300">
           <AlertCircle className="w-5 h-5" />
           <span className="font-medium">Error loading configuration</span>
         </div>
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="mt-1 text-sm text-rose-200">{error}</p>
       </div>
     )
   }
@@ -202,18 +202,18 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
+      <div className="glass-card mx-6 mb-6 flex items-center justify-between p-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold text-gray-900">Configuration Editor</h2>
+          <h2 className="text-lg font-semibold text-white">Configuration Editor</h2>
           
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-surface-800 rounded-lg p-1">
             <button
               onClick={() => setViewMode('split')}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 viewMode === 'split'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Layout className="w-4 h-4 inline mr-1" />
@@ -223,8 +223,8 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
               onClick={() => setViewMode('visual')}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 viewMode === 'visual'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Eye className="w-4 h-4 inline mr-1" />
@@ -234,8 +234,8 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
               onClick={() => setViewMode('yaml')}
               className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
                 viewMode === 'yaml'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-cyan-500 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
               <Code className="w-4 h-4 inline mr-1" />
@@ -266,13 +266,13 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
         <div className="flex items-center gap-3">
           {/* Save Status */}
           {saveStatus === 'success' && (
-            <div className="flex items-center gap-2 text-green-600">
+            <div className="flex items-center gap-2 text-emerald-400">
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm">Saved!</span>
             </div>
           )}
           {saveStatus === 'error' && (
-            <div className="flex items-center gap-2 text-red-600">
+            <div className="flex items-center gap-2 text-rose-400">
               <AlertCircle className="w-4 h-4" />
               <span className="text-sm">Save failed</span>
             </div>
@@ -303,7 +303,7 @@ export function ConfigEditor({ onSave, onValidate }: ConfigEditorProps) {
         {viewMode === 'split' && (
           <div className="grid grid-cols-2 h-full">
             {/* Visual Editor - Left */}
-            <div className="border-r border-gray-200 overflow-y-auto">
+            <div className="border-r border-surface-700/50 overflow-y-auto bg-surface-900/30">
               <VisualConfigEditor
                 config={effectiveConfig}
                 onChange={handleVisualChange}
@@ -378,7 +378,7 @@ function VisualConfigEditor({
 
   if (!config) {
     return (
-      <div className="p-6 text-center text-gray-500">
+      <div className="p-6 text-center text-slate-400">
         <p>No configuration loaded</p>
       </div>
     )
@@ -471,12 +471,12 @@ function VisualConfigEditor({
 
     if (value === null || value === undefined) {
       return (
-        <span className="text-gray-400 italic">
+        <span className="text-slate-500 italic">
           null
           {canEdit && (
             <button
               onClick={() => handleStartEdit(path, value)}
-              className="ml-2 text-xs text-primary-600 hover:text-primary-700"
+              className="ml-2 text-xs text-cyan-400 hover:text-cyan-300"
             >
               (edit)
             </button>
@@ -488,12 +488,12 @@ function VisualConfigEditor({
     if (typeof value === 'string') {
       const stringDisplayValue = typeof displayValue === 'string' ? displayValue : String(displayValue)
       return (
-        <span className="text-green-700">
+        <span className="text-emerald-400">
           &quot;{stringDisplayValue}&quot;
           {canEdit && (
             <button
               onClick={() => handleStartEdit(path, value)}
-              className="ml-2 text-xs text-primary-600 hover:text-primary-700"
+              className="ml-2 text-xs text-cyan-400 hover:text-cyan-300"
             >
               (edit)
             </button>
@@ -504,12 +504,12 @@ function VisualConfigEditor({
 
     if (typeof value === 'number' || typeof value === 'boolean') {
       return (
-        <span className="text-blue-700">
+        <span className="text-cyan-400">
           {String(value)}
           {canEdit && (
             <button
               onClick={() => handleStartEdit(path, value)}
-              className="ml-2 text-xs text-primary-600 hover:text-primary-700"
+              className="ml-2 text-xs text-cyan-400 hover:text-cyan-300"
             >
               (edit)
             </button>
@@ -520,13 +520,13 @@ function VisualConfigEditor({
 
     if (Array.isArray(value)) {
       if (value.length === 0) {
-        return <span className="text-gray-400">[]</span>
+        return <span className="text-slate-500">[]</span>
       }
       return (
         <div className="ml-4">
           {value.map((item, index) => (
             <div key={index} className="ml-2">
-              <span className="text-gray-500">[{index}]</span> {renderValue(item, `${path}[${index}]`, depth + 1)}
+              <span className="text-slate-400">[{index}]</span> {renderValue(item, `${path}[${index}]`, depth + 1)}
             </div>
           ))}
         </div>
@@ -536,7 +536,7 @@ function VisualConfigEditor({
     if (typeof value === 'object') {
       const keys = Object.keys(value)
       if (keys.length === 0) {
-        return <span className="text-gray-400">{'{ }'}</span>
+        return <span className="text-slate-500">{'{ }'}</span>
       }
       return (
         <div className="ml-4 space-y-1">
@@ -544,7 +544,7 @@ function VisualConfigEditor({
             const newPath = path ? `${path}.${key}` : key
             return (
               <div key={key} className="flex items-start gap-2">
-                <span className="text-purple-700 font-medium">{key}:</span>
+                <span className="text-purple-400 font-medium">{key}:</span>
                 <span className="flex-1">{renderValue((value as Record<string, unknown>)[key], newPath, depth + 1)}</span>
               </div>
             )
@@ -553,7 +553,7 @@ function VisualConfigEditor({
       )
     }
 
-    return <span className="text-gray-600">{String(value)}</span>
+    return <span className="text-slate-300">{String(value)}</span>
   }
 
   const configSections = [
@@ -570,8 +570,8 @@ function VisualConfigEditor({
   return (
     <div className="p-6 h-full overflow-y-auto">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Visual Editor</h3>
-        <p className="text-sm text-gray-600">
+        <h3 className="text-lg font-semibold text-white mb-2">Visual Editor</h3>
+        <p className="text-sm text-slate-400">
           View and edit configuration sections. Click &quot;(edit)&quot; on simple values to edit inline. Changes sync to YAML in real-time.
         </p>
       </div>
@@ -579,29 +579,29 @@ function VisualConfigEditor({
       {/* Configuration Sections */}
       <div className="space-y-2">
         {configSections.map((section) => {
-          const sectionData = (config as Record<string, unknown>)[section.key]
+          const sectionData = (config as unknown as Record<string, unknown>)[section.key]
           const isExpanded = expandedSections.has(section.key)
           const hasData = sectionData !== null && sectionData !== undefined
 
           return (
             <div
               key={section.key}
-              className="border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors"
+              className="glass-card border-surface-700/50 hover:border-surface-600 transition-colors"
             >
               <button
                 onClick={() => toggleSection(section.key)}
-                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 rounded-t-lg"
+                className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-surface-800/30 rounded-t-lg"
               >
                 <div className="flex items-center gap-2">
                   {isExpanded ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   )}
-                  <section.icon className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium text-gray-900">{section.label}</span>
+                  <section.icon className="w-4 h-4 text-slate-400" />
+                  <span className="font-medium text-white">{section.label}</span>
                   {hasData && (
-                    <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">
+                    <span className="px-2 py-0.5 text-xs bg-emerald-500/20 text-emerald-400 rounded">
                       Configured
                     </span>
                   )}
@@ -609,20 +609,20 @@ function VisualConfigEditor({
                 <a
                   href={section.path}
                   onClick={(e) => e.stopPropagation()}
-                  className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                  className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
                 >
                   Edit <ExternalLink className="w-3 h-3" />
                 </a>
               </button>
 
               {isExpanded && (
-                <div className="px-4 pb-4 border-t border-gray-200 bg-gray-50">
+                <div className="px-4 pb-4 border-t border-surface-700/50 bg-surface-800/20">
                   {hasData ? (
-                    <div className="mt-3 p-3 bg-white rounded border border-gray-200 font-mono text-sm">
+                    <div className="mt-3 p-3 glass-card border-surface-700/50 font-mono text-sm">
                       {renderValue(sectionData, section.key, 0)}
                     </div>
                   ) : (
-                    <div className="mt-3 p-3 text-sm text-gray-500 italic">
+                    <div className="mt-3 p-3 text-sm text-slate-500 italic">
                       No configuration set
                     </div>
                   )}
@@ -634,29 +634,29 @@ function VisualConfigEditor({
 
         {/* Other/Advanced Settings */}
         {Object.keys(config).some((key) => !configSections.find((s) => s.key === key)) && (
-          <div className="border border-gray-200 rounded-lg bg-white">
+          <div className="glass-card border-surface-700/50">
             <button
               onClick={() => toggleSection('_other')}
-              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 rounded-t-lg"
+              className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-surface-800/30 rounded-t-lg"
             >
               <div className="flex items-center gap-2">
                 {expandedSections.has('_other') ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
-                <span className="font-medium text-gray-900">Other Settings</span>
+                <span className="font-medium text-white">Other Settings</span>
               </div>
             </button>
 
             {expandedSections.has('_other') && (
-              <div className="px-4 pb-4 border-t border-gray-200 bg-gray-50">
-                <div className="mt-3 p-3 bg-white rounded border border-gray-200 font-mono text-sm">
+              <div className="px-4 pb-4 border-t border-surface-700/50 bg-surface-800/20">
+                <div className="mt-3 p-3 glass-card border-surface-700/50 font-mono text-sm">
                   {Object.entries(config)
                     .filter(([key]) => !configSections.find((s) => s.key === key))
                     .map(([key, value]) => (
                       <div key={key} className="mb-2">
-                        <span className="text-purple-700 font-medium">{key}:</span>{' '}
+                        <span className="text-purple-400 font-medium">{key}:</span>{' '}
                         {renderValue(value)}
                       </div>
                     ))}
@@ -668,11 +668,11 @@ function VisualConfigEditor({
       </div>
 
       {errors.length > 0 && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <h4 className="text-sm font-medium text-red-900 mb-2">Validation Errors:</h4>
+        <div className="mt-4 p-4 glass-card border-rose-500/30 bg-rose-500/10">
+          <h4 className="text-sm font-medium text-rose-300 mb-2">Validation Errors:</h4>
           <ul className="list-disc list-inside space-y-1">
             {errors.map((error) => (
-              <li key={error} className="text-sm text-red-700">
+              <li key={error} className="text-sm text-rose-200">
                 {error}
               </li>
             ))}
@@ -680,8 +680,8 @@ function VisualConfigEditor({
         </div>
       )}
 
-      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
+      <div className="mt-4 p-4 glass-card border-cyan-500/30 bg-cyan-500/10">
+        <p className="text-sm text-cyan-200">
           <strong>Tip:</strong> Click on section headers to expand/collapse. Use the &quot;Edit&quot; links to
           navigate to dedicated configuration pages for detailed editing.
         </p>

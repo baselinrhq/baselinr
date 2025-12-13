@@ -8,6 +8,7 @@ export interface CardProps {
   footer?: React.ReactNode
   padding?: 'none' | 'sm' | 'md' | 'lg'
   hover?: boolean
+  variant?: 'default' | 'glass' | 'outline'
   className?: string
 }
 
@@ -18,26 +19,34 @@ const paddingStyles = {
   lg: 'p-8',
 }
 
+const variantStyles = {
+  default: 'bg-surface-800/40 border-surface-700/50',
+  glass: 'bg-surface-800/40 backdrop-blur-md border-surface-700/30',
+  outline: 'bg-transparent border-surface-700',
+}
+
 export function Card({
   children,
   header,
   footer,
   padding = 'md',
   hover = false,
+  variant = 'default',
   className,
 }: CardProps) {
   return (
     <div
       className={cn(
-        'bg-white rounded-lg shadow border border-gray-200',
-        hover && 'transition-shadow hover:shadow-md cursor-pointer',
+        'rounded-xl border transition-all duration-200',
+        variantStyles[variant],
+        hover && 'hover:border-surface-600 hover:shadow-lg hover:shadow-black/20 cursor-pointer',
         className
       )}
     >
       {header && (
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-surface-700/50">
           {typeof header === 'string' ? (
-            <h3 className="text-lg font-semibold text-gray-900">{header}</h3>
+            <h3 className="text-lg font-semibold text-white">{header}</h3>
           ) : (
             header
           )}
@@ -49,7 +58,7 @@ export function Card({
       </div>
       
       {footer && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <div className="px-6 py-4 border-t border-surface-700/50 bg-surface-900/30 rounded-b-xl">
           {footer}
         </div>
       )}
@@ -65,7 +74,7 @@ export interface CardHeaderProps {
 
 export function CardHeader({ children, className }: CardHeaderProps) {
   return (
-    <div className={cn('px-6 py-4 border-b border-gray-200', className)}>
+    <div className={cn('px-6 py-4 border-b border-surface-700/50', className)}>
       {children}
     </div>
   )
@@ -74,10 +83,18 @@ export function CardHeader({ children, className }: CardHeaderProps) {
 export interface CardBodyProps {
   children: React.ReactNode
   className?: string
+  padding?: 'none' | 'sm' | 'md' | 'lg'
 }
 
-export function CardBody({ children, className }: CardBodyProps) {
-  return <div className={cn('p-6', className)}>{children}</div>
+const bodyPaddingStyles = {
+  none: '',
+  sm: 'p-4',
+  md: 'p-6',
+  lg: 'p-8',
+}
+
+export function CardBody({ children, className, padding = 'md' }: CardBodyProps) {
+  return <div className={cn(bodyPaddingStyles[padding], className)}>{children}</div>
 }
 
 export interface CardFooterProps {
@@ -89,7 +106,7 @@ export function CardFooter({ children, className }: CardFooterProps) {
   return (
     <div
       className={cn(
-        'px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg',
+        'px-6 py-4 border-t border-surface-700/50 bg-surface-900/30 rounded-b-xl',
         className
       )}
     >
@@ -105,7 +122,7 @@ export interface CardTitleProps {
 
 export function CardTitle({ children, className }: CardTitleProps) {
   return (
-    <h3 className={cn('text-lg font-semibold text-gray-900', className)}>
+    <h3 className={cn('text-lg font-semibold text-white', className)}>
       {children}
     </h3>
   )
@@ -117,7 +134,7 @@ export interface CardDescriptionProps {
 }
 
 export function CardDescription({ children, className }: CardDescriptionProps) {
-  return <p className={cn('text-sm text-gray-600 mt-1', className)}>{children}</p>
+  return <p className={cn('text-sm text-slate-400 mt-1', className)}>{children}</p>
 }
 
 export default Card

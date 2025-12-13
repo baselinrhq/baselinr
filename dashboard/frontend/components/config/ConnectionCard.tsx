@@ -91,7 +91,7 @@ export function ConnectionCard({
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-lg font-semibold text-white">
                 {connection.name}
               </h3>
               {connection.is_active !== false && (
@@ -107,13 +107,13 @@ export function ConnectionCard({
         </div>
 
         {/* Connection Details */}
-        <div className="text-sm text-gray-600 mb-4 flex-1">
+        <div className="text-sm text-slate-400 mb-4 flex-1">
           <div className="space-y-1">
             <div className="truncate" title={getConnectionSummary()}>
               {getConnectionSummary()}
             </div>
             {connection.last_tested && (
-              <div className="text-xs text-gray-500 mt-2">
+              <div className="text-xs text-slate-500 mt-2">
                 Last tested: {formatDate(connection.last_tested)}
               </div>
             )}
@@ -121,7 +121,7 @@ export function ConnectionCard({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+        <div className="flex items-center gap-2 pt-4 border-t border-surface-700/50">
           <Button
             variant="outline"
             size="sm"
@@ -175,7 +175,7 @@ export function ConnectionCard({
 
         {/* Use as Source button (optional) */}
         {onUseAsSource && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="mt-3 pt-3 border-t border-surface-700/50">
             <Button
               variant="primary"
               size="sm"

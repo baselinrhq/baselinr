@@ -58,24 +58,23 @@ export default function RCAPage() {
 
   // Get full RCA results for correlation view
   const rcaResultsForCorrelation: RCAResult[] = []
-  // Note: In a real implementation, you'd fetch full RCA results for correlation view
-  // For now, we'll use an empty array
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Search className="w-8 h-8 text-blue-500" />
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/10">
+              <Search className="w-7 h-7 text-purple-400" />
+            </div>
             Root Cause Analysis
           </h1>
-          <p className="text-gray-600 mt-1">Analyze anomalies and identify root causes</p>
+          <p className="text-slate-400 mt-2">Analyze anomalies and identify root causes</p>
         </div>
         <Button
           variant="primary"
           onClick={() => {
-            // Trigger new analysis - would open a modal or navigate to analysis page
             console.log('Trigger new analysis')
           }}
         >
@@ -93,51 +92,46 @@ export default function RCAPage() {
       />
 
       {/* Main Content with Tabs */}
-      <div className="space-y-6">
-        <Tabs
-          tabs={[
-            { id: 'dashboard', label: 'Dashboard' },
-            { id: 'list', label: 'List View' },
-            { id: 'timeline', label: 'Timeline' },
-            { id: 'correlation', label: 'Correlation' },
-          ]}
-          activeTab={activeTab}
-          onChange={setActiveTab}
-        />
-        
-        <div className="space-y-6">
-          {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
-            <RCADashboard
-              onAnalyzeNew={() => {
-                // Trigger new analysis
-                console.log('Analyze new anomaly')
-              }}
-            />
-          )}
+      <Tabs
+        tabs={[
+          { id: 'dashboard', label: 'Dashboard' },
+          { id: 'list', label: 'List View' },
+          { id: 'timeline', label: 'Timeline' },
+          { id: 'correlation', label: 'Correlation' },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      >
+        {(tab) => (
+          <div className="space-y-6">
+            {tab === 'dashboard' && (
+              <RCADashboard
+                onAnalyzeNew={() => {
+                  console.log('Analyze new anomaly')
+                }}
+              />
+            )}
 
-          {/* List Tab */}
-          {activeTab === 'list' && (
-            <>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <LoadingSpinner />
-                </div>
-              ) : (
-                <RCAList items={rcaList || []} onRowClick={handleRowClick} />
-              )}
-            </>
-          )}
+            {tab === 'list' && (
+              <>
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <LoadingSpinner />
+                  </div>
+                ) : (
+                  <RCAList items={rcaList || []} onRowClick={handleRowClick} />
+                )}
+              </>
+            )}
 
-          {/* Timeline Tab */}
-          {activeTab === 'timeline' && <RCATimeline />}
+            {tab === 'timeline' && <RCATimeline />}
 
-          {/* Correlation Tab */}
-          {activeTab === 'correlation' && (
-            <CorrelationView rcaResults={rcaResultsForCorrelation} />
-          )}
-        </div>
-      </div>
+            {tab === 'correlation' && (
+              <CorrelationView rcaResults={rcaResultsForCorrelation} />
+            )}
+          </div>
+        )}
+      </Tabs>
 
       {/* Details Modal */}
       {showDetailsModal && selectedAnomalyId && (
@@ -150,4 +144,3 @@ export default function RCAPage() {
     </div>
   )
 }
-

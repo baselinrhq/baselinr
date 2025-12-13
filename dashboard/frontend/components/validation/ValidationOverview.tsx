@@ -59,8 +59,8 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
 
   if (error || !summary) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+      <div className="text-center py-8 text-slate-400">
+        <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-500" />
         <p>Failed to load validation summary</p>
       </div>
     )
@@ -80,7 +80,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
 
   const trend = calculateTrend()
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-600'
+  const trendColor = trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-rose-400' : 'text-slate-400'
 
   // Prepare pie chart data for severity
   const severityData = [
@@ -118,10 +118,10 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Validations</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{summary.total_validations}</p>
+                <p className="text-sm font-medium text-slate-400">Total Validations</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.total_validations}</p>
               </div>
-              <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
+              <div className="p-3 rounded-lg bg-cyan-500/20 text-cyan-400">
                 <CheckCircle className="w-6 h-6" />
               </div>
             </div>
@@ -132,8 +132,8 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Pass Rate</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{summary.pass_rate.toFixed(1)}%</p>
+                <p className="text-sm font-medium text-slate-400">Pass Rate</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.pass_rate.toFixed(1)}%</p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendIcon className={`w-4 h-4 ${trendColor}`} />
                   <span className={`text-xs ${trendColor}`}>
@@ -141,7 +141,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
                   </span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-green-50 text-green-600">
+              <div className="p-3 rounded-lg bg-emerald-500/20 text-emerald-400">
                 <TrendingUp className="w-6 h-6" />
               </div>
             </div>
@@ -152,10 +152,10 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Failed Validations</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{summary.failed_count}</p>
+                <p className="text-sm font-medium text-slate-400">Failed Validations</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.failed_count}</p>
               </div>
-              <div className="p-3 rounded-lg bg-red-50 text-red-600">
+              <div className="p-3 rounded-lg bg-rose-500/20 text-rose-400">
                 <XCircle className="w-6 h-6" />
               </div>
             </div>
@@ -166,10 +166,10 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
           <CardBody padding="md">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">High Severity Failures</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">{summary.by_severity.high || 0}</p>
+                <p className="text-sm font-medium text-slate-400">High Severity Failures</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.by_severity.high || 0}</p>
               </div>
-              <div className="p-3 rounded-lg bg-red-50 text-red-600">
+              <div className="p-3 rounded-lg bg-amber-500/20 text-amber-400">
                 <AlertTriangle className="w-6 h-6" />
               </div>
             </div>
@@ -182,20 +182,28 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
         {/* Pass Rate Trend */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Pass Rate Trend</h3>
+            <h3 className="text-lg font-semibold text-white">Pass Rate Trend</h3>
           </CardHeader>
           <CardBody>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={trendingData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                <Legend />
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis dataKey="date" stroke="#94a3b8" tick={{ fill: '#94a3b8' }} />
+                <YAxis domain={[0, 100]} stroke="#94a3b8" tick={{ fill: '#94a3b8' }} />
+                <Tooltip 
+                  formatter={(value: number) => `${value.toFixed(1)}%`}
+                  contentStyle={{ 
+                    backgroundColor: '#1e293b', 
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#f1f5f9'
+                  }}
+                />
+                <Legend wrapperStyle={{ color: '#94a3b8' }} />
                 <Line
                   type="monotone"
                   dataKey="passRate"
-                  stroke="#3b82f6"
+                  stroke="#22d3ee"
                   strokeWidth={2}
                   name="Pass Rate (%)"
                 />
@@ -207,7 +215,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
         {/* Severity Distribution */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Severity Distribution</h3>
+            <h3 className="text-lg font-semibold text-white">Severity Distribution</h3>
           </CardHeader>
           <CardBody>
             {severityData.length > 0 ? (
@@ -227,11 +235,18 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e293b', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#f1f5f9'
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
+              <div className="flex items-center justify-center h-[300px] text-slate-400">
                 No severity data available
               </div>
             )}
@@ -244,21 +259,28 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
         {/* Rule Type Breakdown */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Rule Type Breakdown</h3>
+            <h3 className="text-lg font-semibold text-white">Rule Type Breakdown</h3>
           </CardHeader>
           <CardBody>
             {ruleTypeData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={ruleTypeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#3b82f6" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} stroke="#94a3b8" tick={{ fill: '#94a3b8' }} />
+                  <YAxis stroke="#94a3b8" tick={{ fill: '#94a3b8' }} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#1e293b', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#f1f5f9'
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#22d3ee" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
+              <div className="flex items-center justify-center h-[300px] text-slate-400">
                 No rule type data available
               </div>
             )}
@@ -268,7 +290,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
         {/* Top Failing Tables */}
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Top Failing Tables</h3>
+            <h3 className="text-lg font-semibold text-white">Top Failing Tables</h3>
           </CardHeader>
           <CardBody>
             {topFailingTables.length > 0 ? (
@@ -276,18 +298,18 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
                 {topFailingTables.map(({ table, count }, index) => (
                   <div
                     key={table}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-surface-700/50 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
-                      <span className="font-medium text-gray-900">{table}</span>
+                      <span className="text-sm font-medium text-slate-400">#{index + 1}</span>
+                      <span className="font-medium text-white">{table}</span>
                     </div>
                     <Badge variant="error">{count} failures</Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-gray-500">
+              <div className="flex items-center justify-center h-[300px] text-slate-400">
                 No failing tables
               </div>
             )}
@@ -299,7 +321,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
       {summary.recent_runs.length > 0 && (
         <Card>
           <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Recent Validation Runs</h3>
+            <h3 className="text-lg font-semibold text-white">Recent Validation Runs</h3>
           </CardHeader>
           <CardBody>
             <div className="space-y-3">
@@ -308,22 +330,22 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
                 return (
                   <div
                     key={run.run_id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-3 bg-surface-700/50 rounded-lg"
                   >
                     <div className="flex items-center gap-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-white">
                           {new Date(run.validated_at).toLocaleString()}
                         </p>
-                        <p className="text-xs text-gray-500">Run ID: {run.run_id.substring(0, 8)}...</p>
+                        <p className="text-xs text-slate-400">Run ID: {run.run_id.substring(0, 8)}...</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-white">
                           {run.passed}/{run.total} passed
                         </p>
-                        <p className="text-xs text-gray-500">{passRate.toFixed(1)}% pass rate</p>
+                        <p className="text-xs text-slate-400">{passRate.toFixed(1)}% pass rate</p>
                       </div>
                       <Badge variant={run.failed > 0 ? 'error' : 'success'}>
                         {run.failed > 0 ? `${run.failed} failed` : 'All passed'}

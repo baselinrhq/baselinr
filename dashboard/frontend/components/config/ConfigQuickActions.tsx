@@ -104,7 +104,7 @@ export function ConfigQuickActions({ onValidate }: ConfigQuickActionsProps) {
 
   return (
     <Card className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Button
@@ -153,13 +153,13 @@ export function ConfigQuickActions({ onValidate }: ConfigQuickActionsProps) {
         <div
           className={`mt-4 p-3 rounded-lg ${
             validationResult.valid
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-red-50 border border-red-200'
+              ? 'bg-emerald-500/10 border border-emerald-500/30'
+              : 'bg-rose-500/10 border border-rose-500/30'
           }`}
         >
           <p
             className={`text-sm ${
-              validationResult.valid ? 'text-green-800' : 'text-red-800'
+              validationResult.valid ? 'text-emerald-300' : 'text-rose-300'
             }`}
           >
             {validationResult.message}

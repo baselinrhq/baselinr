@@ -13,8 +13,10 @@ export interface SearchInputProps {
   value?: string
   onChange: (value: string) => void
   onSearch?: (value: string) => void
+  onSuggestionSelect?: (value: string) => void
   placeholder?: string
-  suggestions?: SearchSuggestion[]
+  label?: string
+  suggestions?: SearchSuggestion[] | string[]
   loading?: boolean
   debounceMs?: number
   disabled?: boolean
@@ -25,7 +27,9 @@ export function SearchInput({
   value: controlledValue,
   onChange,
   onSearch,
+  onSuggestionSelect,
   placeholder = 'Search...',
+  label,
   suggestions = [],
   loading = false,
   debounceMs = 300,
@@ -41,6 +45,11 @@ export function SearchInput({
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   
   const value = controlledValue !== undefined ? controlledValue : internalValue
+
+  // Normalize suggestions to objects
+  const normalizedSuggestions: SearchSuggestion[] = suggestions.map((s) =>
+    typeof s === 'string' ? { value: s, label: s } : s
+  )
 
   // Debounced search callback
   const debouncedSearch = useCallback(
@@ -65,13 +74,13 @@ export function SearchInput({
     }
     
     // Show suggestions when typing
-    if (suggestions.length > 0 && newValue) {
+    if (normalizedSuggestions.length > 0 && newValue) {
       setShowSuggestions(true)
     }
   }
 
   // Filter suggestions based on input
-  const filteredSuggestions = suggestions.filter(
+  const filteredSuggestions = normalizedSuggestions.filter(
     suggestion =>
       suggestion.label.toLowerCase().includes(value.toLowerCase()) ||
       suggestion.value.toLowerCase().includes(value.toLowerCase())
@@ -141,6 +150,7 @@ export function SearchInput({
       setInternalValue(suggestion.value)
     }
     onChange(suggestion.value)
+    onSuggestionSelect?.(suggestion.value)
     onSearch?.(suggestion.value)
     setShowSuggestions(false)
     inputRef.current?.focus()
@@ -159,9 +169,18 @@ export function SearchInput({
 
   return (
     <div ref={containerRef} className={cn('relative w-full', className)}>
+      {label && (
+        <label
+          htmlFor={id}
+          className="block text-sm font-medium text-slate-300 mb-2"
+        >
+          {label}
+        </label>
+      )}
+      
       <div className="relative">
         {/* Search icon */}
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
         
         {/* Input */}
         <input
@@ -179,10 +198,10 @@ export function SearchInput({
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            'w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg',
-            'text-gray-900 placeholder-gray-500',
-            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
-            'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+            'w-full pl-10 pr-10 py-2 bg-surface-800/50 border border-surface-600 rounded-lg',
+            'text-slate-200 placeholder-slate-500',
+            'focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500',
+            'disabled:bg-surface-900 disabled:text-slate-600 disabled:cursor-not-allowed',
             'transition-colors'
           )}
           autoComplete="off"
@@ -194,14 +213,14 @@ export function SearchInput({
         {/* Right side: loading spinner or clear button */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
           {loading && (
-            <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+            <Loader2 className="w-4 h-4 text-slate-500 animate-spin" />
           )}
           
           {!loading && value && (
             <button
               type="button"
               onClick={handleClear}
-              className="p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-0.5 rounded hover:bg-surface-700 text-slate-500 hover:text-slate-300 transition-colors"
               aria-label="Clear search"
             >
               <X className="w-4 h-4" />
@@ -215,7 +234,7 @@ export function SearchInput({
         <ul
           id={`${id}-suggestions`}
           role="listbox"
-          className="search-suggestions entering"
+          className="absolute z-50 w-full mt-1 bg-surface-800 border border-surface-700 rounded-lg shadow-xl shadow-black/20 overflow-hidden py-1 max-h-60 overflow-auto"
         >
           {filteredSuggestions.map((suggestion, index) => (
             <li
@@ -224,14 +243,14 @@ export function SearchInput({
               aria-selected={index === highlightedIndex}
               onClick={() => handleSelectSuggestion(suggestion)}
               className={cn(
-                'search-suggestion-item',
-                index === highlightedIndex && 'highlighted'
+                'flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors',
+                index === highlightedIndex
+                  ? 'bg-surface-700 text-slate-200'
+                  : 'text-slate-300 hover:bg-surface-700/50'
               )}
             >
-              <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span className="text-sm text-gray-900">{suggestion.label}</span>
-              </div>
+              <Search className="w-4 h-4 text-slate-500 flex-shrink-0" />
+              <span className="text-sm">{suggestion.label}</span>
             </li>
           ))}
         </ul>

@@ -51,8 +51,8 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
           <LoadingSpinner />
         </div>
       ) : !samples ? (
-        <div className="text-center py-8 text-gray-500">
-          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+        <div className="text-center py-8 text-slate-400">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-500" />
           <p>Failed to load failure samples</p>
         </div>
       ) : (
@@ -62,12 +62,12 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
             <CardBody>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Failures</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{samples.total_failures.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-slate-400">Total Failures</p>
+                  <p className="text-2xl font-bold text-white mt-1">{samples.total_failures.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Sample Size</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                  <p className="text-sm font-medium text-slate-400">Sample Size</p>
+                  <p className="text-2xl font-bold text-white mt-1">
                     {samples.sample_failures.length} {samples.sample_failures.length < samples.total_failures && `of ${samples.total_failures}`}
                   </p>
                 </div>
@@ -87,14 +87,14 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
           {samples.failure_patterns && Object.keys(samples.failure_patterns).length > 0 && (
             <Card>
               <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Failure Patterns</h3>
+                <h3 className="text-lg font-semibold text-white">Failure Patterns</h3>
               </CardHeader>
               <CardBody>
                 <div className="space-y-2">
                   {Object.entries(samples.failure_patterns).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <span className="text-sm font-medium text-gray-700">{key}:</span>
-                      <span className="text-sm text-gray-900">{String(value)}</span>
+                    <div key={key} className="flex items-center justify-between p-2 bg-surface-700/50 rounded">
+                      <span className="text-sm font-medium text-slate-300">{key}:</span>
+                      <span className="text-sm text-white">{String(value)}</span>
                     </div>
                   ))}
                 </div>
@@ -105,29 +105,29 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
           {/* Sample Failures Table */}
           <Card>
             <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">Sample Failed Rows</h3>
+              <h3 className="text-lg font-semibold text-white">Sample Failed Rows</h3>
             </CardHeader>
             <CardBody>
               {samples.sample_failures.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-surface-800/60">
                       <tr>
                         {Object.keys(samples.sample_failures[0]).map((key) => (
                           <th
                             key={key}
-                            className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            className="px-4 py-2 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
                           >
                             {key}
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-surface-700/50">
                       {samples.sample_failures.map((row, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
+                        <tr key={index} className="hover:bg-surface-700/30 transition-colors">
                           {Object.entries(row).map(([key, value]) => (
-                            <td key={key} className="px-4 py-2 text-sm text-gray-900">
+                            <td key={key} className="px-4 py-2 text-sm text-white">
                               {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                             </td>
                           ))}
@@ -137,8 +137,8 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                <div className="text-center py-8 text-slate-400">
+                  <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-slate-500" />
                   <p>No sample failures available</p>
                   <p className="text-xs mt-1">
                     Detailed failure samples may not be available for all validation types
@@ -150,12 +150,12 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
 
           {/* Note about failure reason */}
           {samples.sample_failures.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-amber-400 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-yellow-900">Limited Sample Data</p>
-                  <p className="text-sm text-yellow-700 mt-1">
+                  <p className="text-sm font-medium text-amber-400">Limited Sample Data</p>
+                  <p className="text-sm text-amber-400/80 mt-1">
                     Detailed failure samples are not available for this validation result. 
                     Check the validation result details for the failure reason.
                   </p>

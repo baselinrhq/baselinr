@@ -32,7 +32,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 ### 📋 [Schemas & CLI](schemas/)
 - **[Query Examples](schemas/QUERY_EXAMPLES.md)** - Query command examples and patterns
 - **[Status Command](schemas/STATUS_COMMAND.md)** - Status command reference and examples
-- **[UI Command](schemas/UI_COMMAND.md)** - Start local dashboard with `baselinr ui`
+- **[UI Command](schemas/UI_COMMAND.md)** - Start Quality Studio with `baselinr ui`
 - **[Schema Reference](schemas/SCHEMA_REFERENCE.md)** - Database schema documentation
 - **[Migration Guide](schemas/MIGRATION_GUIDE.md)** - Schema upgrade procedures
 
@@ -41,12 +41,12 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **[Events & Hooks](architecture/EVENTS_AND_HOOKS.md)** - Event system and hook architecture
 - **[Events Implementation](architecture/EVENTS_IMPLEMENTATION_SUMMARY.md)** - Implementation details
 
-### 🎨 [Dashboard](dashboard/)
-- **[Dashboard Quick Start](dashboard/QUICKSTART.md)** - Dashboard setup guide
-- **[Dashboard README](dashboard/README.md)** - Dashboard overview and features
-- **[Dashboard Architecture](dashboard/ARCHITECTURE.md)** - Dashboard technical architecture
+### 🎨 [Quality Studio](dashboard/)
+- **[Quality Studio Quick Start](dashboard/QUICKSTART.md)** - Quality Studio setup guide
+- **[Quality Studio README](dashboard/README.md)** - Quality Studio overview and features
+- **[Quality Studio Architecture](dashboard/ARCHITECTURE.md)** - Quality Studio technical architecture
 - **[Setup Complete](dashboard/SETUP_COMPLETE.md)** - Post-setup verification
-- **[Dashboard Integration](dashboard/DASHBOARD_INTEGRATION.md)** - Integrating with Baselinr
+- **[Quality Studio Integration](dashboard/DASHBOARD_INTEGRATION.md)** - Integrating with Baselinr
 
 #### Backend
 - **[Backend README](dashboard/backend/README.md)** - Backend API documentation
@@ -80,7 +80,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **Want automatic table discovery?** ✨ **NEW** → See [Smart Table Selection](guides/SMART_TABLE_SELECTION.md)
 - **Need root cause analysis?** ✨ **NEW** → See [Root Cause Analysis](guides/ROOT_CAUSE_ANALYSIS.md)
 - **Using the Python SDK?** → See [Python SDK Guide](guides/PYTHON_SDK.md)
-- **Setting up the dashboard?** → See [Dashboard Quick Start](dashboard/QUICKSTART.md)
+- **Setting up the Quality Studio?** → See [Quality Studio Quick Start](dashboard/QUICKSTART.md)
 - **Setting up Slack alerts?** → See [Slack Alerts Guide](guides/SLACK_ALERTS.md)
 - **Profiling many tables?** → Enable [Parallelism & Batching](guides/PARALLELISM_AND_BATCHING.md)
 - **Using enrichment metrics?** → See [Profiling Enrichment](guides/PROFILING_ENRICHMENT.md)
@@ -88,7 +88,7 @@ Welcome to the Baselinr documentation! This directory contains all documentation
 - **Configuring drift detection?** → Check [Drift Detection Guide](guides/DRIFT_DETECTION.md)
 - **Using statistical tests?** → See [Statistical Drift Detection](guides/STATISTICAL_DRIFT_DETECTION.md)
 - **Checking system status?** → See [Status Command](schemas/STATUS_COMMAND.md)
-- **Starting the dashboard?** → See [UI Command](schemas/UI_COMMAND.md)
+- **Starting the Quality Studio?** → See [UI Command](schemas/UI_COMMAND.md)
 - **Querying metadata?** → See [Query Examples](schemas/QUERY_EXAMPLES.md)
 - **Understanding the architecture?** → Read [Project Overview](architecture/PROJECT_OVERVIEW.md)
 - **Troubleshooting?** → Check the relevant component's README or fix guides

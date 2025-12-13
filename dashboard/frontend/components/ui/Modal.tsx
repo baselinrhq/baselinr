@@ -19,11 +19,11 @@ export interface ModalProps {
 }
 
 const sizeClasses = {
-  sm: 'modal-sm',
-  md: 'modal-md',
-  lg: 'modal-lg',
-  xl: 'modal-xl',
-  full: 'modal-full',
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-[90vw]',
 }
 
 export function Modal({
@@ -55,7 +55,7 @@ export function Modal({
     setTimeout(() => {
       setIsExiting(false)
       onClose()
-    }, 150) // Match animation duration
+    }, 150)
   }, [onClose])
 
   // Handle Escape key
@@ -75,15 +75,11 @@ export function Modal({
   // Focus management
   useEffect(() => {
     if (isOpen) {
-      // Store current focused element
       previousFocusRef.current = document.activeElement as HTMLElement
-      
-      // Focus the modal
       setTimeout(() => {
         modalRef.current?.focus()
       }, 0)
     } else {
-      // Restore focus when closing
       previousFocusRef.current?.focus()
     }
   }, [isOpen])
@@ -139,15 +135,15 @@ export function Modal({
       {/* Backdrop */}
       <div
         className={cn(
-          'modal-backdrop',
-          isExiting ? 'exiting' : 'entering'
+          'fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-150',
+          isExiting ? 'opacity-0' : 'opacity-100'
         )}
         aria-hidden="true"
       />
 
       {/* Modal container */}
       <div
-        className="modal-container"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
         onClick={handleBackdropClick}
         role="presentation"
       >
@@ -160,19 +156,20 @@ export function Modal({
           tabIndex={-1}
           onKeyDown={handleKeyDown}
           className={cn(
-            'modal-content',
+            'w-full bg-surface-800 border border-surface-700 rounded-xl shadow-2xl shadow-black/40',
+            'transition-all duration-150',
+            isExiting ? 'opacity-0 scale-95' : 'opacity-100 scale-100',
             sizeClasses[size],
-            isExiting ? 'exiting' : 'entering',
             className
           )}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-surface-700">
               {title && (
                 <h2
                   id={`${id}-title`}
-                  className="text-lg font-semibold text-gray-900"
+                  className="text-lg font-semibold text-white"
                 >
                   {title}
                 </h2>
@@ -183,8 +180,8 @@ export function Modal({
                   type="button"
                   onClick={handleClose}
                   className={cn(
-                    'p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100',
-                    'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500',
+                    'p-2 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-surface-700',
+                    'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500',
                     !title && 'ml-auto'
                   )}
                   aria-label="Close modal"
@@ -202,7 +199,7 @@ export function Modal({
 
           {/* Footer */}
           {footer && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-700 bg-surface-900/50 rounded-b-xl">
               {footer}
             </div>
           )}
@@ -211,7 +208,6 @@ export function Modal({
     </>
   )
 
-  // Use portal to render at body level
   return createPortal(modalContent, document.body)
 }
 

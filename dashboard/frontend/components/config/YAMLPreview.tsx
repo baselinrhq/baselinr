@@ -7,12 +7,12 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatYAML, validateYAML } from '@/lib/utils/yaml'
 
-// Dynamically import Monaco Editor to avoid SSR issues
+  // Dynamically import Monaco Editor to avoid SSR issues
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-full">
-      <div className="text-sm text-gray-500">Loading editor...</div>
+      <div className="text-sm text-slate-400">Loading editor...</div>
     </div>
   ),
 })
@@ -119,9 +119,9 @@ export function YAMLPreview({
   return (
     <div className={`flex flex-col h-full ${className}`}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-surface-700/50 bg-surface-900/50">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">YAML Preview</span>
+          <span className="text-sm font-medium text-white">YAML Preview</span>
           {validationError && (
             <Badge variant="error" icon={<AlertCircle className="w-3 h-3" />}>
               Syntax Error
@@ -163,7 +163,7 @@ export function YAMLPreview({
           value={editorValue}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
-          theme="vs"
+          theme="vs-dark"
           options={{
             readOnly,
             minimap: { enabled: false },
@@ -187,15 +187,15 @@ export function YAMLPreview({
 
       {/* Error Messages */}
       {(validationError || errors.length > 0) && (
-        <div className="px-4 py-2 border-t border-gray-200 bg-red-50 max-h-32 overflow-y-auto">
+        <div className="px-4 py-2 border-t border-surface-700/50 glass-card border-rose-500/30 bg-rose-500/10 max-h-32 overflow-y-auto">
           {validationError && (
-            <div className="flex items-start gap-2 text-sm text-red-800">
+            <div className="flex items-start gap-2 text-sm text-rose-200">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{validationError}</span>
             </div>
           )}
           {errors.map((error, index) => (
-            <div key={index} className="flex items-start gap-2 text-sm text-red-800 mt-1">
+            <div key={index} className="flex items-start gap-2 text-sm text-rose-200 mt-1">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>
                 Line {error.line}: {error.message}

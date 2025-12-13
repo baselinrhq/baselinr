@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Database, List, Grid, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Database, List, Grid, ChevronLeft, ChevronRight, Table } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { SearchInput } from '@/components/ui'
 import { LoadingSpinner } from '@/components/ui'
@@ -43,7 +43,7 @@ export default function TablesPage() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['tables', filters],
     queryFn: () => fetchTables(filters),
-    staleTime: 30000, // 30 seconds
+    staleTime: 30000,
   })
 
   const handleSort = (column: string) => {
@@ -83,15 +83,17 @@ export default function TablesPage() {
   const totalPages = data ? Math.ceil(data.total / (filters.page_size || 50)) : 0
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Database className="w-6 h-6" />
-            Tables Explorer
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10">
+              <Table className="w-6 h-6 text-emerald-400" />
+            </div>
+            Table Browser
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-slate-400">
             Browse and manage all profiled tables
           </p>
         </div>
@@ -136,19 +138,18 @@ export default function TablesPage() {
 
       {/* Bulk Selection Actions */}
       {selectedTables.size > 0 && (
-        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 flex items-center justify-between">
-          <p className="text-sm font-medium text-primary-900">
+        <div className="bg-accent-500/10 border border-accent-500/20 rounded-lg p-4 flex items-center justify-between">
+          <p className="text-sm font-medium text-accent-300">
             {selectedTables.size} table{selectedTables.size !== 1 ? 's' : ''} selected
           </p>
           <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setSelectedTables(new Set())}
             >
               Clear Selection
             </Button>
-            {/* TODO: Add bulk actions (export, configure, etc.) */}
           </div>
         </div>
       )}
@@ -159,9 +160,9 @@ export default function TablesPage() {
           <LoadingSpinner size="lg" />
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <p className="text-red-800 font-medium">Error loading tables</p>
-          <p className="text-red-600 text-sm mt-1">
+        <div className="glass-card p-6 text-center border-danger-500/20 bg-danger-500/5">
+          <p className="text-danger-400 font-medium">Error loading tables</p>
+          <p className="text-slate-400 text-sm mt-1">
             {error instanceof Error ? error.message : 'Unknown error'}
           </p>
           <Button
@@ -174,21 +175,23 @@ export default function TablesPage() {
           </Button>
         </div>
       ) : data && data.tables.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-12 text-center">
-          <Database className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-900 font-medium mb-1">No tables found</p>
-          <p className="text-gray-500 text-sm">
+        <div className="glass-card p-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mx-auto mb-4">
+            <Database className="w-8 h-8 text-slate-600" />
+          </div>
+          <p className="text-white font-medium mb-1">No tables found</p>
+          <p className="text-slate-400 text-sm">
             Try adjusting your filters or search query
           </p>
         </div>
       ) : data ? (
         <>
           {/* Results Count */}
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          <div className="flex items-center justify-between text-sm text-slate-400">
             <p>
               Showing {((filters.page || 1) - 1) * (filters.page_size || 50) + 1} to{' '}
               {Math.min((filters.page || 1) * (filters.page_size || 50), data.total)} of{' '}
-              {data.total} table{data.total !== 1 ? 's' : ''}
+              <span className="text-slate-300">{data.total}</span> table{data.total !== 1 ? 's' : ''}
             </p>
           </div>
 
@@ -213,9 +216,9 @@ export default function TablesPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white rounded-lg shadow p-4">
-              <div className="text-sm text-gray-600">
-                Page {filters.page || 1} of {totalPages}
+            <div className="flex items-center justify-between glass-card p-4">
+              <div className="text-sm text-slate-400">
+                Page <span className="text-slate-300">{filters.page || 1}</span> of {totalPages}
               </div>
               <div className="flex gap-2">
                 <Button
@@ -244,4 +247,3 @@ export default function TablesPage() {
     </div>
   )
 }
-

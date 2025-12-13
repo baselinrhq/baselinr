@@ -127,7 +127,7 @@ export function RuleList({ rules, onEdit, onDelete, onTest, isLoading }: RuleLis
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-sm text-gray-600">Loading rules...</div>
+        <div className="text-sm text-slate-400">Loading rules...</div>
       </div>
     )
   }
@@ -136,9 +136,9 @@ export function RuleList({ rules, onEdit, onDelete, onTest, isLoading }: RuleLis
     return (
       <Card>
         <div className="py-12 text-center">
-          <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No validation rules</h3>
-          <p className="text-sm text-gray-600">
+          <Shield className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">No validation rules</h3>
+          <p className="text-sm text-slate-400">
             Create your first validation rule to start validating your data
           </p>
         </div>
@@ -187,7 +187,7 @@ export function RuleList({ rules, onEdit, onDelete, onTest, isLoading }: RuleLis
         {filteredRules.length === 0 ? (
           <Card>
             <div className="py-8 text-center">
-              <p className="text-sm text-gray-600">No rules match your filters</p>
+              <p className="text-sm text-slate-400">No rules match your filters</p>
             </div>
           </Card>
         ) : (
@@ -218,11 +218,11 @@ export function RuleList({ rules, onEdit, onDelete, onTest, isLoading }: RuleLis
                         )}
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-white">
                           {rule.table}
-                          {rule.column && <span className="text-gray-600">.{rule.column}</span>}
+                          {rule.column && <span className="text-slate-400">.{rule.column}</span>}
                         </p>
-                        <p className="text-xs text-gray-600">{getRuleSummary(rule)}</p>
+                        <p className="text-xs text-slate-400">{getRuleSummary(rule)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -259,7 +259,7 @@ export function RuleList({ rules, onEdit, onDelete, onTest, isLoading }: RuleLis
       </div>
 
       {/* Summary */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-slate-400">
         Showing {filteredRules.length} of {rules.length} rules
       </div>
     </div>

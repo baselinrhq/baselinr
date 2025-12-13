@@ -60,7 +60,7 @@ describe('BaselineConfig', () => {
     render(<BaselineConfig {...defaultProps} baselines={{ ...defaultProps.baselines, strategy: 'auto' }} />)
     
     expect(screen.getByText(/moving average window/i)).toBeInTheDocument()
-    expect(screen.getByText(/prior period/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/prior period/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/minimum runs required/i)).toBeInTheDocument()
   })
 

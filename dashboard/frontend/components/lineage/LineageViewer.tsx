@@ -74,23 +74,23 @@ export default function LineageViewer({
       ]
     : [];
 
-  // Cytoscape stylesheet
+  // Cytoscape stylesheet - Dark theme
   const stylesheet: cytoscape.Stylesheet[] = [
     {
       selector: 'node',
       style: {
-        'background-color': '#e5e7eb',
+        'background-color': '#334155',
         'label': 'data(label)',
         'text-valign': 'center',
         'text-halign': 'center',
         'font-size': '12px',
         'font-weight': 'normal',
-        'color': '#1f2937',
+        'color': '#f1f5f9',
         'width': 100,
         'height': 50,
         'shape': 'roundrectangle',
         'border-width': 2,
-        'border-color': '#9ca3af',
+        'border-color': '#475569',
       },
     },
     {
@@ -112,32 +112,32 @@ export default function LineageViewer({
     {
       selector: 'node.root',
       style: {
-        'background-color': '#dbeafe',
+        'background-color': '#164e63',
         'border-width': 3,
-        'border-color': '#3b82f6',
+        'border-color': '#22d3ee',
         'font-weight': 'bold',
       },
     },
     {
       selector: 'node.drift-high',
       style: {
-        'background-color': '#fee2e2',
-        'border-color': '#ef4444',
+        'background-color': '#7f1d1d',
+        'border-color': '#f87171',
         'border-width': 3,
       },
     },
     {
       selector: 'node.drift-medium',
       style: {
-        'background-color': '#fef3c7',
-        'border-color': '#f59e0b',
+        'background-color': '#78350f',
+        'border-color': '#fbbf24',
         'border-width': 2,
       },
     },
     {
       selector: 'node.drift-low',
       style: {
-        'background-color': '#fff7ed',
+        'background-color': '#431407',
         'border-color': '#fb923c',
         'border-width': 2,
       },
@@ -146,19 +146,20 @@ export default function LineageViewer({
       selector: 'node:selected',
       style: {
         'border-width': 4,
-        'border-color': '#3b82f6',
+        'border-color': '#22d3ee',
       },
     },
     {
       selector: 'edge',
       style: {
         'width': 2,
-        'line-color': '#9ca3af',
-        'target-arrow-color': '#9ca3af',
+        'line-color': '#64748b',
+        'target-arrow-color': '#64748b',
         'target-arrow-shape': 'triangle',
         'curve-style': 'bezier',
         'label': 'data(label)',
         'font-size': '10px',
+        'color': '#94a3b8',
         'text-rotation': 'autorotate',
         'text-margin-y': -10,
       },
@@ -166,7 +167,8 @@ export default function LineageViewer({
     {
       selector: 'edge.high-confidence',
       style: {
-        'line-color': '#4b5563',
+        'line-color': '#22d3ee',
+        'target-arrow-color': '#22d3ee',
         'width': 3,
         'line-style': 'solid',
       },
@@ -174,7 +176,8 @@ export default function LineageViewer({
     {
       selector: 'edge.medium-confidence',
       style: {
-        'line-color': '#6b7280',
+        'line-color': '#94a3b8',
+        'target-arrow-color': '#94a3b8',
         'width': 2,
         'line-style': 'dashed',
       },
@@ -182,7 +185,8 @@ export default function LineageViewer({
     {
       selector: 'edge.low-confidence',
       style: {
-        'line-color': '#9ca3af',
+        'line-color': '#475569',
+        'target-arrow-color': '#475569',
         'width': 1,
         'line-style': 'dotted',
       },
@@ -277,10 +281,10 @@ export default function LineageViewer({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-center h-full bg-surface-900/50 rounded-lg">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-gray-600">Loading lineage graph...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <div className="text-slate-400">Loading lineage graph...</div>
         </div>
       </div>
     );
@@ -288,17 +292,17 @@ export default function LineageViewer({
 
   if (!graph || graph.nodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-50 rounded-lg">
-        <div className="text-center text-gray-500">
+      <div className="flex items-center justify-center h-full bg-surface-900/50 rounded-lg">
+        <div className="text-center text-slate-400">
           <p className="text-lg mb-2">No lineage data available</p>
-          <p className="text-sm">Select a table to view its lineage</p>
+          <p className="text-sm text-slate-500">Select a table to view its lineage</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full bg-white rounded-lg border border-gray-200">
+    <div className="w-full h-full bg-surface-900/30 rounded-lg border border-surface-700/50">
       <CytoscapeComponent
         elements={elements}
         style={{ width: '100%', height: '100%' }}

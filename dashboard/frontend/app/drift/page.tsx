@@ -62,15 +62,17 @@ export default function DriftPage() {
   const tables = Array.from(new Set(alerts?.map((a) => a.table_name).filter(Boolean) || []))
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <AlertTriangle className="w-8 h-8 text-orange-500" />
-            Drift Detection
+          <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning-500/10">
+              <AlertTriangle className="w-7 h-7 text-warning-400" />
+            </div>
+            Drift Analysis
           </h1>
-          <p className="text-gray-600 mt-1">Monitor data drift events and anomalies</p>
+          <p className="text-slate-400 mt-2">Monitor data drift events and anomalies</p>
         </div>
         <Button onClick={handleExport} variant="primary">
           <Download className="w-4 h-4 mr-2" />
@@ -107,10 +109,10 @@ export default function DriftPage() {
 
             {/* Table View Tab */}
             {activeTab === 'table' && (
-              <div className="bg-white rounded-lg shadow">
+              <div className="glass-card overflow-hidden">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-96">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                    <div className="w-10 h-10 rounded-full border-2 border-accent-500/20 border-t-accent-500 animate-spin" />
                   </div>
                 ) : (
                   <DriftAlertsTable
@@ -144,4 +146,3 @@ export default function DriftPage() {
     </div>
   )
 }
-

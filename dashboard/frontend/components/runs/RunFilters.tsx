@@ -73,117 +73,97 @@ export default function RunFilters({ filters, onChange }: RunFiltersProps) {
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Filters</h3>
+    <div className="glass-card p-6">
+      <h3 className="text-lg font-semibold text-white mb-4">Filters</h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Warehouse */}
-        <div>
-          <Select
-            label="Warehouse"
-            options={warehouseOptions}
-            value={filters.warehouse || ''}
-            onChange={(value) => handleChange('warehouse', value)}
-            placeholder="All Warehouses"
-          />
-        </div>
+        <Select
+          label="Warehouse"
+          options={warehouseOptions}
+          value={filters.warehouse || ''}
+          onChange={(value) => handleChange('warehouse', value)}
+          placeholder="All Warehouses"
+        />
 
         {/* Schema */}
-        <div>
-          <Input
-            label="Schema"
-            type="text"
-            value={filters.schema || ''}
-            onChange={(e) => handleChange('schema', e.target.value)}
-            placeholder="Enter schema name"
-          />
-        </div>
+        <Input
+          label="Schema"
+          type="text"
+          value={filters.schema || ''}
+          onChange={(e) => handleChange('schema', e.target.value)}
+          placeholder="Enter schema name"
+        />
 
         {/* Table */}
-        <div>
-          <Input
-            label="Table"
-            type="text"
-            value={filters.table || ''}
-            onChange={(e) => handleChange('table', e.target.value)}
-            placeholder="Enter table name"
-          />
-        </div>
+        <Input
+          label="Table"
+          type="text"
+          value={filters.table || ''}
+          onChange={(e) => handleChange('table', e.target.value)}
+          placeholder="Enter table name"
+        />
 
         {/* Status */}
-        <div>
-          <Select
-            label="Status"
-            options={statusOptions}
-            value={filters.status || ''}
-            onChange={(value) => handleChange('status', value)}
-            placeholder="All Statuses"
-          />
-        </div>
+        <Select
+          label="Status"
+          options={statusOptions}
+          value={filters.status || ''}
+          onChange={(value) => handleChange('status', value)}
+          placeholder="All Statuses"
+        />
 
         {/* Start Date */}
-        <div>
-          <Input
-            label="Start Date"
-            type="date"
-            value={filters.start_date || ''}
-            onChange={(e) => handleChange('start_date', e.target.value)}
-          />
-        </div>
+        <Input
+          label="Start Date"
+          type="date"
+          value={filters.start_date || ''}
+          onChange={(e) => handleChange('start_date', e.target.value)}
+        />
 
         {/* End Date */}
-        <div>
-          <Input
-            label="End Date"
-            type="date"
-            value={filters.end_date || ''}
-            onChange={(e) => handleChange('end_date', e.target.value)}
-          />
-        </div>
+        <Input
+          label="End Date"
+          type="date"
+          value={filters.end_date || ''}
+          onChange={(e) => handleChange('end_date', e.target.value)}
+        />
 
         {/* Min Duration (seconds) */}
-        <div>
-          <Input
-            label="Min Duration (seconds)"
-            type="number"
-            value={filters.min_duration?.toString() || ''}
-            onChange={(e) => handleChange('min_duration', e.target.value ? parseFloat(e.target.value) : undefined)}
-            placeholder="0"
-            min={0}
-          />
-        </div>
+        <Input
+          label="Min Duration (seconds)"
+          type="number"
+          value={filters.min_duration?.toString() || ''}
+          onChange={(e) => handleChange('min_duration', e.target.value ? parseFloat(e.target.value) : undefined)}
+          placeholder="0"
+          min={0}
+        />
 
         {/* Max Duration (seconds) */}
-        <div>
-          <Input
-            label="Max Duration (seconds)"
-            type="number"
-            value={filters.max_duration?.toString() || ''}
-            onChange={(e) => handleChange('max_duration', e.target.value ? parseFloat(e.target.value) : undefined)}
-            placeholder="∞"
-            min={0}
-          />
-        </div>
+        <Input
+          label="Max Duration (seconds)"
+          type="number"
+          value={filters.max_duration?.toString() || ''}
+          onChange={(e) => handleChange('max_duration', e.target.value ? parseFloat(e.target.value) : undefined)}
+          placeholder="∞"
+          min={0}
+        />
 
         {/* Sort By */}
-        <div>
-          <Select
-            label="Sort By"
-            options={sortByOptions}
-            value={filters.sort_by || 'profiled_at'}
-            onChange={(value) => handleChange('sort_by', value)}
-          />
-        </div>
+        <Select
+          label="Sort By"
+          options={sortByOptions}
+          value={filters.sort_by || 'profiled_at'}
+          onChange={(value) => handleChange('sort_by', value)}
+        />
 
         {/* Sort Order */}
-        <div>
-          <Select
-            label="Sort Order"
-            options={sortOrderOptions}
-            value={filters.sort_order || 'desc'}
-            onChange={(value) => handleChange('sort_order', value)}
-          />
-        </div>
+        <Select
+          label="Sort Order"
+          options={sortOrderOptions}
+          value={filters.sort_order || 'desc'}
+          onChange={(value) => handleChange('sort_order', value)}
+        />
       </div>
 
       <div className="mt-4 flex justify-end gap-2">
@@ -197,4 +177,3 @@ export default function RunFilters({ filters, onChange }: RunFiltersProps) {
     </div>
   )
 }
-

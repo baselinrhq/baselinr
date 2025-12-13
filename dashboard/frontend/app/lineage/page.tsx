@@ -7,11 +7,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { Download } from 'lucide-react'
+import { Download, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { Select } from '@/components/ui/Select'
 import { getLineageGraph, getNodeDetails, getAllTables } from '@/lib/api/lineage'
 import { getLineageGraphWithFilters } from '@/lib/api/lineage'
-import type { LineageGraphResponse, TableInfoResponse, LineageFilters, NodeDetailsResponse } from '@/types/lineage'
+import type { LineageGraphResponse, TableInfoResponse, LineageFilters as LineageFiltersType, NodeDetailsResponse } from '@/types/lineage'
 import type { GetLineageGraphParams } from '@/lib/api/lineage'
 import LineageSearch from '@/components/lineage/LineageSearch'
 import LineageFilters from '@/components/lineage/LineageFilters'
@@ -35,7 +36,7 @@ function LineageContent() {
   const [depth, setDepth] = useState(Number(searchParams.get('depth')) || 3)
   const [confidenceThreshold, setConfidenceThreshold] = useState(0)
   const [layout, setLayout] = useState<'hierarchical' | 'circular' | 'force-directed' | 'breadth-first' | 'grid'>('hierarchical')
-  const [filters, setFilters] = useState<LineageFilters>({})
+  const [filters, setFilters] = useState<LineageFiltersType>({})
   const [viewMode] = useState<'table' | 'column'>('table')
   const [selectedColumn] = useState<string>('')
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -137,15 +138,20 @@ function LineageContent() {
   const availableDatabases = Array.from(new Set(allTables?.map(t => t.database).filter(Boolean) || []))
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="flex-shrink-0 px-6 py-4 border-b border-surface-700/50">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Lineage Explorer</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Visualize and explore data lineage relationships
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/10">
+              <GitBranch className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Data Lineage</h1>
+              <p className="text-sm text-slate-400">
+                Visualize and explore data lineage relationships
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {graph && (
@@ -172,63 +178,62 @@ function LineageContent() {
       </div>
 
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-120px)]">
+      <div className="flex-1 flex min-h-0">
         {/* Left Sidebar - Controls */}
-        <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto space-y-4">
-          {/* Table Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Table
-            </label>
-            <LineageSearch
-              onTableSelect={handleTableSelect}
-              selectedTable={selectedTable}
-            />
-          </div>
-
-          {/* Column Lineage View Toggle */}
-          {selectedTable && (
-            <ColumnLineageView
-              table={selectedTable.table}
-              schema={selectedTable.schema}
-              columns={[]} // TODO: Fetch columns from API
-              onGraphChange={(graph) => {
-                if (graph) {
-                  setGraph(graph)
-                }
-              }}
-            />
-          )}
-
-          {/* Filters */}
-          <LineageFilters
-            filters={filters}
-            onChange={setFilters}
-            availableSchemas={availableSchemas}
-            availableDatabases={availableDatabases}
-          />
-
-          {/* Basic Controls */}
-          <div className="space-y-4 pt-4 border-t border-gray-200">
-            {/* Direction */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Direction
+        <div className="w-80 flex-shrink-0 bg-surface-900/50 border-r border-surface-700/50 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Table Search */}
+            <div className="glass-card p-4">
+              <label className="block text-sm font-medium text-slate-300 mb-3">
+                Select Table
               </label>
-              <select
-                value={direction}
-                onChange={(e) => setDirection(e.target.value as 'upstream' | 'downstream' | 'both')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="both">Both</option>
-                <option value="upstream">Upstream</option>
-                <option value="downstream">Downstream</option>
-              </select>
+              <LineageSearch
+                onTableSelect={handleTableSelect}
+                selectedTable={selectedTable}
+              />
             </div>
+
+            {/* Column Lineage View Toggle */}
+            {selectedTable && (
+              <ColumnLineageView
+                table={selectedTable.table}
+                schema={selectedTable.schema}
+                columns={[]}
+                onGraphChange={(graph) => {
+                  if (graph) {
+                    setGraph(graph)
+                  }
+                }}
+              />
+            )}
+
+            {/* Filters */}
+            <LineageFilters
+              filters={filters}
+              onChange={setFilters}
+              availableSchemas={availableSchemas}
+              availableDatabases={availableDatabases}
+            />
+
+            {/* Basic Controls */}
+            <div className="glass-card p-4 space-y-4">
+              <h3 className="text-sm font-semibold text-white mb-3">Graph Settings</h3>
+            
+            {/* Direction */}
+            <Select
+              label="Direction"
+              value={direction}
+              onChange={(value) => setDirection(value as 'upstream' | 'downstream' | 'both')}
+              options={[
+                { value: 'both', label: 'Both' },
+                { value: 'upstream', label: 'Upstream' },
+                { value: 'downstream', label: 'Downstream' },
+              ]}
+            />
 
             {/* Depth */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Depth: {depth}
               </label>
               <input
@@ -237,9 +242,9 @@ function LineageContent() {
                 max="10"
                 value={depth}
                 onChange={(e) => setDepth(Number(e.target.value))}
-                className="w-full"
+                className="w-full accent-cyan-500"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
                 <span>1</span>
                 <span>10</span>
               </div>
@@ -247,7 +252,7 @@ function LineageContent() {
 
             {/* Confidence Threshold */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Min Confidence: {confidenceThreshold.toFixed(2)}
               </label>
               <input
@@ -257,42 +262,45 @@ function LineageContent() {
                 step="0.1"
                 value={confidenceThreshold}
                 onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
-                className="w-full"
+                className="w-full accent-cyan-500"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
                 <span>0.0</span>
                 <span>1.0</span>
               </div>
             </div>
 
             {/* Layout */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Layout
-              </label>
-              <select
-                value={layout}
-                onChange={(e) => setLayout(e.target.value as 'hierarchical' | 'circular' | 'force-directed' | 'breadth-first' | 'grid')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="hierarchical">Hierarchical</option>
-                <option value="circular">Circular</option>
-                <option value="force-directed">Force-Directed</option>
-                <option value="breadth-first">Breadth-First</option>
-                <option value="grid">Grid</option>
-              </select>
-            </div>
+            <Select
+              label="Layout"
+              value={layout}
+              onChange={(value) => setLayout(value as 'hierarchical' | 'circular' | 'force-directed' | 'breadth-first' | 'grid')}
+              options={[
+                { value: 'hierarchical', label: 'Hierarchical' },
+                { value: 'circular', label: 'Circular' },
+                { value: 'force-directed', label: 'Force-Directed' },
+                { value: 'breadth-first', label: 'Breadth-First' },
+                { value: 'grid', label: 'Grid' },
+              ]}
+            />
 
-            {/* Stats */}
-            {graph && (
-              <div className="pt-4 border-t border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Graph Stats</h3>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div>Nodes: {graph.nodes.length}</div>
-                  <div>Edges: {graph.edges.length}</div>
+              {/* Stats */}
+              {graph && (
+                <div className="pt-4 border-t border-surface-700/50">
+                  <h3 className="text-sm font-semibold text-slate-300 mb-2">Graph Stats</h3>
+                  <div className="space-y-1 text-sm text-slate-400">
+                    <div className="flex justify-between">
+                      <span>Nodes:</span>
+                      <span className="font-mono text-white">{graph.nodes.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Edges:</span>
+                      <span className="font-mono text-white">{graph.edges.length}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -301,8 +309,8 @@ function LineageContent() {
           {loading && (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <div className="text-gray-500">Loading lineage graph...</div>
+                <div className="w-12 h-12 rounded-full border-2 border-accent-500/20 border-t-accent-500 animate-spin mx-auto mb-4" />
+                <div className="text-slate-400">Loading lineage graph...</div>
               </div>
             </div>
           )}
@@ -310,8 +318,8 @@ function LineageContent() {
           {error && (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <div className="text-red-600 font-medium mb-2">Error</div>
-                <div className="text-gray-600">{error}</div>
+                <div className="text-danger-400 font-medium mb-2">Error</div>
+                <div className="text-slate-400">{error}</div>
               </div>
             </div>
           )}
@@ -319,8 +327,11 @@ function LineageContent() {
           {!loading && !error && !selectedTable && (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <div className="text-gray-400 text-lg mb-2">No table selected</div>
-                <div className="text-gray-500 text-sm">
+                <div className="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mx-auto mb-4">
+                  <GitBranch className="w-8 h-8 text-slate-600" />
+                </div>
+                <div className="text-slate-400 text-lg mb-2">No table selected</div>
+                <div className="text-slate-500 text-sm">
                   Search and select a table to view its lineage
                 </div>
               </div>
@@ -329,17 +340,17 @@ function LineageContent() {
 
           {!loading && !error && graph && (
             <div className="h-full flex flex-col">
-              <div className="mb-4 bg-white rounded-lg border border-gray-200 p-4">
+              <div className="mb-4 glass-card p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
+                    <h2 className="text-lg font-semibold text-white">
                       Lineage Graph
                     </h2>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-slate-400">
                       {graph.nodes.length} nodes, {graph.edges.length} relationships
                     </p>
                   </div>
-                  <div className="flex gap-2 text-xs text-gray-500">
+                  <div className="flex gap-2 text-xs text-slate-500">
                     <span>Zoom: Scroll wheel</span>
                     <span>•</span>
                     <span>Pan: Click & drag</span>
@@ -347,7 +358,7 @@ function LineageContent() {
                 </div>
               </div>
 
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 glass-card overflow-hidden">
                 <EnhancedLineageViewer
                   graph={graph}
                   loading={loading}
@@ -361,7 +372,7 @@ function LineageContent() {
 
         {/* Right Sidebar - Impact Analysis & Node Details */}
         {(showImpactPanel || showNodeDetails) && (
-          <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto space-y-4">
+          <div className="w-80 flex-shrink-0 bg-surface-900/50 border-l border-surface-700/50 p-4 overflow-y-auto space-y-4">
             {showImpactPanel && selectedTable && (
               <ImpactAnalysis
                 table={selectedTable.table}
@@ -372,9 +383,9 @@ function LineageContent() {
             )}
 
             {showNodeDetails && nodeDetails && (
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="glass-card p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Node Details</h3>
+                  <h3 className="text-lg font-semibold text-white">Node Details</h3>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -388,41 +399,41 @@ function LineageContent() {
                 </div>
                 <div className="space-y-3 text-sm">
                   <div>
-                    <div className="text-gray-500">Label</div>
-                    <div className="font-medium text-gray-900">{nodeDetails.label}</div>
+                    <div className="text-slate-500">Label</div>
+                    <div className="font-medium text-white">{nodeDetails.label}</div>
                   </div>
                   <div>
-                    <div className="text-gray-500">Type</div>
-                    <div className="font-medium text-gray-900 capitalize">{nodeDetails.type}</div>
+                    <div className="text-slate-500">Type</div>
+                    <div className="font-medium text-white capitalize">{nodeDetails.type}</div>
                   </div>
                   {nodeDetails.table && (
                     <div>
-                      <div className="text-gray-500">Table</div>
-                      <div className="font-medium text-gray-900">{nodeDetails.table}</div>
+                      <div className="text-slate-500">Table</div>
+                      <div className="font-medium text-white">{nodeDetails.table}</div>
                     </div>
                   )}
                   {nodeDetails.column && (
                     <div>
-                      <div className="text-gray-500">Column</div>
-                      <div className="font-medium text-gray-900">{nodeDetails.column}</div>
+                      <div className="text-slate-500">Column</div>
+                      <div className="font-medium text-white">{nodeDetails.column}</div>
                     </div>
                   )}
                   <div>
-                    <div className="text-gray-500">Upstream Count</div>
-                    <div className="font-medium text-gray-900">{nodeDetails.upstream_count}</div>
+                    <div className="text-slate-500">Upstream Count</div>
+                    <div className="font-medium text-white">{nodeDetails.upstream_count}</div>
                   </div>
                   <div>
-                    <div className="text-gray-500">Downstream Count</div>
-                    <div className="font-medium text-gray-900">{nodeDetails.downstream_count}</div>
+                    <div className="text-slate-500">Downstream Count</div>
+                    <div className="font-medium text-white">{nodeDetails.downstream_count}</div>
                   </div>
                   {nodeDetails.providers && nodeDetails.providers.length > 0 && (
                     <div>
-                      <div className="text-gray-500">Providers</div>
+                      <div className="text-slate-500">Providers</div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {nodeDetails.providers.map((provider) => (
                           <span
                             key={provider}
-                            className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded"
+                            className="px-2 py-1 text-xs bg-surface-700 text-slate-300 rounded"
                           >
                             {provider}
                           </span>
@@ -442,7 +453,11 @@ function LineageContent() {
 
 export default function LineagePage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <div className="w-10 h-10 rounded-full border-2 border-accent-500/20 border-t-accent-500 animate-spin" />
+      </div>
+    }>
       <LineageContent />
     </Suspense>
   )

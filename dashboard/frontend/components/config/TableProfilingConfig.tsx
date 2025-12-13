@@ -119,17 +119,17 @@ export function TableProfilingConfig({
     <Card>
       <div className="space-y-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-white mb-4">
             Per-Table Overrides
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-slate-400 mb-6">
             Configure table-specific profiling settings. These override the global settings.
           </p>
         </div>
 
         {tables.length === 0 ? (
           <div className="py-12 text-center">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-400 mb-4">
               No tables configured. Configure tables in the Table Selection page first.
             </p>
           </div>
@@ -149,10 +149,10 @@ export function TableProfilingConfig({
             </FormField>
 
             {selectedTable && (
-              <div className="space-y-4 border-t pt-4">
+              <div className="space-y-4 border-t border-surface-700/50 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">
+                    <h4 className="text-sm font-medium text-white">
                       {getTableSummary(selectedTable)}
                     </h4>
                     {hasOverrides(selectedTable) && (
@@ -177,7 +177,7 @@ export function TableProfilingConfig({
                 {activeTab === 'metrics' && (
                   <div className="space-y-4 pt-4">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-slate-400">
                         Override global metrics for this table. Leave empty to inherit from global settings.
                       </p>
                     </div>
@@ -193,7 +193,7 @@ export function TableProfilingConfig({
                       ))}
                     </div>
                     {selectedTable.metrics && selectedTable.metrics.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">
+                      <p className="text-sm text-slate-500 italic">
                         No metrics selected - will inherit from global settings
                       </p>
                     )}
@@ -237,7 +237,7 @@ export function TableProfilingConfig({
             )}
 
             {selectedTableIndex === null && tables.length > 0 && (
-              <div className="py-6 text-center text-sm text-gray-600">
+              <div className="py-6 text-center text-sm text-slate-400">
                 Select a table above to configure overrides
               </div>
             )}

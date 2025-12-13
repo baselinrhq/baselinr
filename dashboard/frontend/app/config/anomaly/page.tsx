@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle, Activity } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, Activity, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { AnomalyConfig } from '@/components/config/AnomalyConfig'
@@ -63,9 +64,9 @@ export default function AnomalyPage() {
 
   // Get effective config (current + modifications) and extract storage
   const effectiveConfig = currentConfig && modifiedConfig
-    ? deepMerge(currentConfig, modifiedConfig)
-    : currentConfig || {}
-  const storage: StorageConfig | undefined = effectiveConfig?.storage
+    ? deepMerge(currentConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>)
+    : (currentConfig || {}) as unknown as Record<string, unknown>
+  const storage: StorageConfig | undefined = effectiveConfig?.storage as StorageConfig | undefined
 
   // Save mutation
   const saveMutation = useMutation({
@@ -129,7 +130,7 @@ export default function AnomalyPage() {
   if (isConfigLoading && !currentConfig) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
       </div>
     )
   }
@@ -137,16 +138,18 @@ export default function AnomalyPage() {
   // Show error state if config failed to load
   if (configError && !currentConfig) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto p-6 lg:p-8">
         <Card>
           <div className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <AlertCircle className="h-12 w-12 text-rose-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">
               Failed to Load Configuration
             </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              {configError instanceof Error
-                ? configError.message
+            <p className="text-sm text-slate-400 mb-6">
+              {typeof configError === 'string'
+                ? configError
+                : configError && typeof configError === 'object' && 'message' in configError
+                ? String((configError as { message: unknown }).message)
                 : 'Backend API Not Available'}
             </p>
             <Button variant="outline" onClick={() => loadConfig()}>
@@ -162,35 +165,42 @@ export default function AnomalyPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400 mx-auto" />
-          <p className="mt-4 text-sm text-gray-500">Initializing configuration...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-400 mx-auto" />
+          <p className="mt-4 text-sm text-slate-400">Initializing configuration...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-6 py-8 max-w-5xl">
+    <div className="p-6 lg:p-8 max-w-5xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <div className="flex items-center gap-2 text-sm text-slate-400 mb-2">
+            <Link href="/config" className="hover:text-cyan-400">
+              Configuration
+            </Link>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-white font-medium">Anomaly Detection</span>
+          </div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Activity className="w-6 h-6" />
             Anomaly Detection & Expectation Learning
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-slate-400 mt-1">
             Configure automatic anomaly detection and expectation learning from historical data
           </p>
         </div>
         <div className="flex items-center gap-3">
           {saveSuccess && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
+            <div className="flex items-center gap-2 text-sm text-emerald-400">
               <CheckCircle className="w-4 h-4" />
               <span>Saved successfully</span>
             </div>
           )}
           {anomalyErrors.general && (
-            <div className="flex items-center gap-2 text-sm text-red-600">
+            <div className="flex items-center gap-2 text-sm text-rose-400">
               <AlertCircle className="w-4 h-4" />
               <span>{anomalyErrors.general}</span>
             </div>
@@ -208,9 +218,9 @@ export default function AnomalyPage() {
 
       {/* Success Message */}
       {saveSuccess && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-600" />
-          <p className="text-sm font-medium text-green-800">
+        <div className="mb-6 glass-card border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-emerald-400" />
+          <p className="text-sm font-medium text-emerald-300">
             Configuration saved successfully
           </p>
         </div>
@@ -218,9 +228,9 @@ export default function AnomalyPage() {
 
       {/* Error Message */}
       {anomalyErrors.general && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <p className="text-sm font-medium text-red-800">{anomalyErrors.general}</p>
+        <div className="mb-6 glass-card border-rose-500/30 bg-rose-500/10 p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-rose-400" />
+          <p className="text-sm font-medium text-rose-300">{anomalyErrors.general}</p>
         </div>
       )}
 
