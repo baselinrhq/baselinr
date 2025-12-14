@@ -19,6 +19,9 @@ from quality_models import (
     QualityScoresListResponse,
     SchemaScoreResponse,
     SystemScoreResponse,
+    TrendAnalysisResponse,
+    ColumnScoresListResponse,
+    ScoreComparisonResponse,
 )
 from quality_service import QualityService
 from database import DatabaseClient
@@ -180,3 +183,74 @@ async def get_component_breakdown(
         raise HTTPException(
             status_code=500, detail=f"Failed to get component breakdown: {str(e)}"
         )
+
+
+@router.get("/{table_name}/trend", response_model=TrendAnalysisResponse)
+async def get_score_trend(
+    table_name: str,
+    schema: str = Query(None, description="Schema name"),
+    days: int = Query(30, description="Number of days to look back"),
+    quality_service: QualityService = Depends(get_quality_service),
+):
+    """
+    Get trend analysis for a table.
+
+    Returns trend analysis including direction, rate of change, and confidence.
+    """
+    try:
+        trend = quality_service.get_trend_analysis(table_name, schema_name=schema, days=days)
+        if not trend:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Trend analysis not available for table: {table_name} (insufficient data)",
+            )
+        return trend
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get trend analysis: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get trend analysis: {str(e)}")
+
+
+@router.get("/{table_name}/columns", response_model=ColumnScoresListResponse)
+async def get_column_scores(
+    table_name: str,
+    schema: str = Query(None, description="Schema name"),
+    days: int = Query(30, description="Number of days to look back"),
+    quality_service: QualityService = Depends(get_quality_service),
+):
+    """
+    Get column-level scores for a table.
+
+    Returns quality scores for all columns in the specified table.
+    """
+    try:
+        return quality_service.get_column_scores(table_name, schema_name=schema, days=days)
+    except Exception as e:
+        logger.error(f"Failed to get column scores: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get column scores: {str(e)}")
+
+
+@router.get("/compare", response_model=ScoreComparisonResponse)
+async def compare_scores(
+    tables: str = Query(..., description="Comma-separated list of table names to compare"),
+    schema: str = Query(None, description="Schema name"),
+    quality_service: QualityService = Depends(get_quality_service),
+):
+    """
+    Compare scores across multiple tables.
+
+    Returns comparison data including best/worst performers and metrics.
+    """
+    try:
+        table_list = [t.strip() for t in tables.split(",")]
+        if len(table_list) < 2:
+            raise HTTPException(
+                status_code=400, detail="At least 2 tables required for comparison"
+            )
+        return quality_service.compare_scores(table_list, schema_name=schema)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to compare scores: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to compare scores: {str(e)}")

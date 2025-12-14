@@ -277,7 +277,7 @@ export default function QualityScoresPage() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <Link
-                            href={`/tables/${encodeURIComponent(score.table_name)}${
+                            href={`/quality/${encodeURIComponent(score.table_name)}${
                               score.schema_name
                                 ? `?schema=${encodeURIComponent(score.schema_name)}`
                                 : ''
@@ -358,7 +358,7 @@ export default function QualityScoresPage() {
               {processedScores.map((score) => (
                 <Link
                   key={`${score.schema_name || ''}.${score.table_name}`}
-                  href={`/tables/${encodeURIComponent(score.table_name)}${
+                  href={`/quality/${encodeURIComponent(score.table_name)}${
                     score.schema_name
                       ? `?schema=${encodeURIComponent(score.schema_name)}`
                       : ''

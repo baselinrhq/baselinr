@@ -13,6 +13,9 @@ import type {
   ScoreHistoryResponse,
   SchemaScoreResponse,
   SystemScoreResponse,
+  ColumnScoresListResponse,
+  TrendAnalysis,
+  ScoreComparison,
 } from '@/types/quality';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -721,5 +724,56 @@ export async function fetchSchemaScore(schemaName: string): Promise<SchemaScoreR
 
 export async function fetchSystemScore(): Promise<SystemScoreResponse> {
   return fetchAPI<SystemScoreResponse>('/api/quality/scores/system');
+}
+
+export async function fetchColumnScores(
+  tableName: string,
+  schema?: string,
+  days?: number
+): Promise<ColumnScoresListResponse> {
+  const options: FetchOptions = {};
+  if (schema) {
+    options.schema = schema;
+  }
+  if (days) {
+    options.days = days;
+  }
+  return fetchAPI<ColumnScoresListResponse>(
+    `/api/quality/scores/${encodeURIComponent(tableName)}/columns`,
+    options
+  );
+}
+
+export async function fetchScoreTrend(
+  tableName: string,
+  schema?: string,
+  days?: number
+): Promise<TrendAnalysis> {
+  const options: FetchOptions = {};
+  if (schema) {
+    options.schema = schema;
+  }
+  if (days) {
+    options.days = days;
+  }
+  return fetchAPI<TrendAnalysis>(
+    `/api/quality/scores/${encodeURIComponent(tableName)}/trend`,
+    options
+  );
+}
+
+export async function fetchScoreComparison(
+  tables: string[],
+  schema?: string
+): Promise<ScoreComparison> {
+  const options: FetchOptions = {};
+  if (schema) {
+    options.schema = schema;
+  }
+  const tablesParam = tables.map(encodeURIComponent).join(',');
+  return fetchAPI<ScoreComparison>(
+    `/api/quality/scores/compare?tables=${tablesParam}`,
+    options
+  );
 }
 

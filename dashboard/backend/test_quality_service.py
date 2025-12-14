@@ -221,3 +221,79 @@ def test_service_without_db_engine():
     assert service.get_score_history('table1') == []
     assert service.get_schema_score('public') is None
     assert service.get_component_breakdown('table1') is None
+
+
+def test_get_trend_analysis(quality_service, sample_scores):
+    """Test getting trend analysis."""
+    trend = quality_service.get_trend_analysis('table1', 'public', days=30)
+    
+    assert trend is not None
+    assert trend.direction in ['improving', 'degrading', 'stable']
+    assert trend.periods_analyzed == 2
+    assert 0 <= trend.confidence <= 1
+
+
+def test_get_trend_analysis_insufficient_data(quality_service):
+    """Test trend analysis with insufficient data."""
+    trend = quality_service.get_trend_analysis('nonexistent', 'public', days=30)
+    assert trend is None
+
+
+def test_get_column_scores(quality_service, db_engine):
+    """Test getting column scores."""
+    from datetime import datetime, timedelta, timezone
+    from baselinr.quality.storage import QualityScoreStorage
+    from baselinr.quality.models import ColumnQualityScore
+    
+    storage = QualityScoreStorage(db_engine)
+    now = datetime.now(timezone.utc)
+    
+    # Store a column score
+    column_score = ColumnQualityScore(
+        overall_score=85.0,
+        completeness_score=90.0,
+        validity_score=88.0,
+        consistency_score=82.0,
+        freshness_score=95.0,
+        uniqueness_score=85.0,
+        accuracy_score=78.0,
+        status='healthy',
+        table_name='table1',
+        schema_name='public',
+        column_name='email',
+        run_id='run1',
+        calculated_at=now,
+        period_start=now - timedelta(days=7),
+        period_end=now,
+    )
+    storage.store_column_score(column_score)
+    
+    # Get column scores
+    result = quality_service.get_column_scores('table1', 'public', days=30)
+    
+    assert result is not None
+    assert len(result.scores) == 1
+    assert result.scores[0].column_name == 'email'
+    assert result.scores[0].overall_score == 85.0
+
+
+def test_compare_scores(quality_service, sample_scores):
+    """Test comparing scores across tables."""
+    comparison = quality_service.compare_scores(['table1', 'table2'], 'public')
+    
+    assert comparison is not None
+    assert len(comparison.tables) == 2
+    assert comparison.comparison_metrics['best_performer'] == 'table1'
+    assert comparison.comparison_metrics['worst_performer'] == 'table2'
+    assert comparison.comparison_metrics['average_score'] > 0
+    assert 'score_range' in comparison.comparison_metrics
+
+
+def test_compare_scores_single_table(quality_service, sample_scores):
+    """Test comparing scores with single table."""
+    comparison = quality_service.compare_scores(['table1'], 'public')
+    
+    assert comparison is not None
+    assert len(comparison.tables) == 1
+    assert comparison.comparison_metrics['best_performer'] == 'table1'
+    assert comparison.comparison_metrics['worst_performer'] == 'table1'

@@ -63,3 +63,42 @@ export interface SystemScoreResponse {
   critical_count: number
 }
 
+export interface ColumnQualityScore {
+  table_name: string
+  schema_name?: string | null
+  column_name: string
+  overall_score: number
+  status: QualityStatus
+  components: ScoreComponents
+  calculated_at: string
+  run_id?: string | null
+  period_start: string
+  period_end: string
+}
+
+export interface ColumnScoresListResponse {
+  scores: ColumnQualityScore[]
+  total: number
+}
+
+export interface TrendAnalysis {
+  direction: QualityTrend
+  rate_of_change: number
+  confidence: number
+  periods_analyzed: number
+  overall_change: number
+}
+
+export interface ScoreComparison {
+  tables: QualityScore[]
+  comparison_metrics: {
+    best_performer: string
+    worst_performer: string
+    average_score: number
+    score_range: {
+      min: number
+      max: number
+    }
+  }
+}
+

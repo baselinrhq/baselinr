@@ -5,15 +5,17 @@ Service layer for quality scores API operations.
 import sys
 import os
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.engine import Engine
+from sqlalchemy import text
 
 # Add parent directory to path to import baselinr
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from baselinr.quality.storage import QualityScoreStorage
 from baselinr.quality.scorer import QualityScorer
-from baselinr.quality.models import DataQualityScore
+from baselinr.quality.models import DataQualityScore, ColumnQualityScore
+from baselinr.config.schema import QualityScoringConfig
 from quality_models import (
     QualityScoreResponse,
     ScoreComponentResponse,
@@ -22,6 +24,10 @@ from quality_models import (
     SchemaScoreResponse,
     SystemScoreResponse,
     IssuesResponse,
+    TrendAnalysisResponse,
+    ColumnScoreResponse,
+    ColumnScoresListResponse,
+    ScoreComparisonResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -208,9 +214,78 @@ class QualityService:
             logger.error(f"Error getting score history for {table_name}: {e}")
             return []
 
+    def _get_table_weights(self, table_names: List[str], schema_name: Optional[str] = None) -> Dict[str, float]:
+        """
+        Get weights for tables based on row count.
+
+        Args:
+            table_names: List of table names
+            schema_name: Optional schema name
+
+        Returns:
+            Dictionary mapping table_name -> weight (0-1)
+        """
+        weights: Dict[str, float] = {}
+        if not self.db_engine:
+            # Equal weights if no engine
+            weight = 1.0 / len(table_names) if table_names else 1.0
+            return {name: weight for name in table_names}
+
+        try:
+            # Build IN clause with individual parameters for better compatibility
+            placeholders = ','.join([f':table_{i}' for i in range(len(table_names))])
+            conditions = [f"dataset_name IN ({placeholders})"]
+            params: Dict[str, Any] = {f"table_{i}": name for i, name in enumerate(table_names)}
+
+            if schema_name:
+                conditions.append("schema_name = :schema_name")
+                params["schema_name"] = schema_name
+            else:
+                conditions.append("schema_name IS NULL")
+
+            where_clause = " AND ".join(conditions)
+
+            # Get latest row_count for each table
+            query = text(
+                f"""
+                SELECT dataset_name, MAX(row_count) as max_row_count
+                FROM baselinr_runs
+                WHERE {where_clause}
+                GROUP BY dataset_name
+            """
+            )
+
+            row_counts: Dict[str, int] = {}
+            total_rows = 0
+
+            with self.db_engine.connect() as conn:
+                results = conn.execute(query, params).fetchall()
+                for row in results:
+                    table_name = row[0]
+                    row_count = int(row[1]) if row[1] else 0
+                    row_counts[table_name] = row_count
+                    total_rows += row_count
+
+            # Calculate weights (proportional to row count)
+            if total_rows > 0:
+                for table_name in table_names:
+                    row_count = row_counts.get(table_name, 0)
+                    weights[table_name] = row_count / total_rows if total_rows > 0 else 1.0 / len(table_names)
+            else:
+                # Equal weights if no row count data
+                weight = 1.0 / len(table_names) if table_names else 1.0
+                weights = {name: weight for name in table_names}
+
+        except Exception as e:
+            logger.debug(f"Error getting table weights: {e}, using equal weights")
+            weight = 1.0 / len(table_names) if table_names else 1.0
+            weights = {name: weight for name in table_names}
+
+        return weights
+
     def get_schema_score(self, schema_name: str) -> Optional[SchemaScoreResponse]:
         """
-        Calculate aggregated schema-level score.
+        Calculate aggregated schema-level score with weighted averages.
 
         Args:
             schema_name: Name of the schema
@@ -226,9 +301,23 @@ class QualityService:
             if not scores:
                 return None
 
-            # Calculate aggregated metrics
-            total_score = sum(s.overall_score for s in scores)
-            avg_score = total_score / len(scores) if scores else 0.0
+            # Get table weights based on row count
+            table_names = [s.table_name for s in scores]
+            weights = self._get_table_weights(table_names, schema_name)
+
+            # Calculate weighted average for overall score
+            weighted_total = sum(s.overall_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores)
+            avg_score = weighted_total
+
+            # Calculate component-level weighted averages
+            component_scores = {
+                "completeness": sum(s.completeness_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+                "validity": sum(s.validity_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+                "consistency": sum(s.consistency_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+                "freshness": sum(s.freshness_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+                "uniqueness": sum(s.uniqueness_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+                "accuracy": sum(s.accuracy_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores),
+            }
 
             healthy_count = sum(1 for s in scores if s.status == "healthy")
             warning_count = sum(1 for s in scores if s.status == "warning")
@@ -263,7 +352,7 @@ class QualityService:
 
     def get_system_score(self) -> SystemScoreResponse:
         """
-        Calculate system-level aggregated score.
+        Calculate system-level aggregated score with weighted averages.
 
         Returns:
             SystemScoreResponse
@@ -290,9 +379,13 @@ class QualityService:
                     critical_count=0,
                 )
 
-            # Calculate aggregated metrics
-            total_score = sum(s.overall_score for s in scores)
-            avg_score = total_score / len(scores) if scores else 0.0
+            # Get table weights based on row count
+            table_names = [s.table_name for s in scores]
+            weights = self._get_table_weights(table_names)
+
+            # Calculate weighted average for overall score
+            weighted_total = sum(s.overall_score * weights.get(s.table_name, 1.0 / len(scores)) for s in scores)
+            avg_score = weighted_total
 
             healthy_count = sum(1 for s in scores if s.status == "healthy")
             warning_count = sum(1 for s in scores if s.status == "warning")
@@ -357,3 +450,150 @@ class QualityService:
         except Exception as e:
             logger.error(f"Error getting component breakdown for {table_name}: {e}")
             return None
+
+    def get_trend_analysis(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        days: int = 30,
+    ) -> Optional[TrendAnalysisResponse]:
+        """
+        Get trend analysis for a table.
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            days: Number of days to look back
+
+        Returns:
+            TrendAnalysisResponse if analysis can be performed, None otherwise
+        """
+        if not self.storage:
+            return None
+
+        try:
+            scores = self.storage.get_score_history(table_name, schema_name, days)
+            if len(scores) < 2:
+                return None
+
+            # Create scorer instance for trend analysis
+            # Use default config (will be loaded from config if available)
+            from baselinr.config.schema import QualityScoringConfig
+            config = QualityScoringConfig()
+            scorer = QualityScorer(self.db_engine, config)
+
+            trend_data = scorer.analyze_score_trend(scores)
+
+            return TrendAnalysisResponse(
+                direction=trend_data["direction"],
+                rate_of_change=trend_data["rate_of_change"],
+                confidence=trend_data["confidence"],
+                periods_analyzed=trend_data["periods_analyzed"],
+                overall_change=trend_data["overall_change"],
+            )
+        except Exception as e:
+            logger.error(f"Error getting trend analysis for {table_name}: {e}")
+            return None
+
+    def get_column_scores(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        days: int = 30,
+    ) -> ColumnScoresListResponse:
+        """
+        Get column-level scores for a table.
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            days: Number of days to look back
+
+        Returns:
+            ColumnScoresListResponse with column scores
+        """
+        if not self.storage:
+            return ColumnScoresListResponse(scores=[], total=0)
+
+        try:
+            column_scores = self.storage.get_column_scores_for_table(
+                table_name, schema_name, days
+            )
+            responses = []
+            for score in column_scores:
+                responses.append(
+                    ColumnScoreResponse(
+                        table_name=score.table_name,
+                        schema_name=score.schema_name,
+                        column_name=score.column_name,
+                        overall_score=score.overall_score,
+                        status=score.status,
+                        components=ScoreComponentResponse(
+                            completeness=score.completeness_score,
+                            validity=score.validity_score,
+                            consistency=score.consistency_score,
+                            freshness=score.freshness_score,
+                            uniqueness=score.uniqueness_score,
+                            accuracy=score.accuracy_score,
+                        ),
+                        calculated_at=score.calculated_at,
+                        run_id=score.run_id,
+                        period_start=score.period_start,
+                        period_end=score.period_end,
+                    )
+                )
+
+            return ColumnScoresListResponse(scores=responses, total=len(responses))
+        except Exception as e:
+            logger.error(f"Error getting column scores for {table_name}: {e}")
+            return ColumnScoresListResponse(scores=[], total=0)
+
+    def compare_scores(
+        self,
+        table_names: List[str],
+        schema_name: Optional[str] = None,
+    ) -> ScoreComparisonResponse:
+        """
+        Compare scores across multiple tables.
+
+        Args:
+            table_names: List of table names to compare
+            schema_name: Optional schema name
+
+        Returns:
+            ScoreComparisonResponse with comparison data
+        """
+        if not self.storage:
+            return ScoreComparisonResponse(tables=[], comparison_metrics={})
+
+        try:
+            scores = []
+            for table_name in table_names:
+                score = self.storage.get_latest_score(table_name, schema_name)
+                if score:
+                    scores.append(self._convert_score_to_response(score, include_trend=False))
+
+            # Calculate comparison metrics
+            if not scores:
+                return ScoreComparisonResponse(tables=[], comparison_metrics={})
+
+            overall_scores = [s.overall_score for s in scores]
+            best_idx = overall_scores.index(max(overall_scores))
+            worst_idx = overall_scores.index(min(overall_scores))
+
+            comparison_metrics = {
+                "best_performer": scores[best_idx].table_name,
+                "worst_performer": scores[worst_idx].table_name,
+                "average_score": round(sum(overall_scores) / len(overall_scores), 2),
+                "score_range": {
+                    "min": round(min(overall_scores), 2),
+                    "max": round(max(overall_scores), 2),
+                },
+            }
+
+            return ScoreComparisonResponse(
+                tables=scores, comparison_metrics=comparison_metrics
+            )
+        except Exception as e:
+            logger.error(f"Error comparing scores: {e}")
+            return ScoreComparisonResponse(tables=[], comparison_metrics={})
