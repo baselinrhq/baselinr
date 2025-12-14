@@ -128,3 +128,4 @@ describe('QualityScoreCard', () => {
     // Trend section should not show
   })
 })
+

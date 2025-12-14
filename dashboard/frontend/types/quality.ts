@@ -62,3 +62,4 @@ export interface SystemScoreResponse {
   warning_count: number
   critical_count: number
 }
+

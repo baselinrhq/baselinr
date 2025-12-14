@@ -47,3 +47,4 @@ describe('ScoreBadge', () => {
     expect(badge).toBeInTheDocument()
   })
 })
+

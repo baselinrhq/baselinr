@@ -201,3 +201,4 @@ export default function QualityScoreCard({ score, compact = false, className }: 
     </Card>
   )
 }
+
