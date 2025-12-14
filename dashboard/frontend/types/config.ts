@@ -436,6 +436,37 @@ export interface ValidationConfig {
 }
 
 // Main Baselinr configuration
+// Quality scoring configuration
+export interface QualityScoringWeights {
+  completeness?: number
+  validity?: number
+  consistency?: number
+  freshness?: number
+  uniqueness?: number
+  accuracy?: number
+}
+
+export interface QualityScoringThresholds {
+  healthy?: number
+  warning?: number
+  critical?: number
+}
+
+export interface QualityScoringFreshness {
+  excellent?: number
+  good?: number
+  acceptable?: number
+}
+
+export interface QualityScoringConfig {
+  enabled?: boolean
+  weights?: QualityScoringWeights
+  thresholds?: QualityScoringThresholds
+  freshness?: QualityScoringFreshness
+  store_history?: boolean
+  history_retention_days?: number
+}
+
 export interface BaselinrConfig {
   environment?: 'development' | 'test' | 'production'
   source: ConnectionConfig
@@ -454,6 +485,7 @@ export interface BaselinrConfig {
   smart_selection?: any | null
   rca?: RCAConfig
   validation?: ValidationConfig | null
+  quality_scoring?: QualityScoringConfig | null
 }
 
 // API Response Types

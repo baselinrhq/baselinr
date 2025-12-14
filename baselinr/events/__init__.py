@@ -16,6 +16,8 @@ from .events import (
     ProfilingFailed,
     ProfilingSkipped,
     ProfilingStarted,
+    QualityScoreDegraded,
+    QualityScoreThresholdBreached,
     SchemaChangeDetected,
     ValidationFailed,
 )
@@ -30,6 +32,8 @@ __all__ = [
     "ProfilingCompleted",
     "ProfilingFailed",
     "ProfilingSkipped",
+    "QualityScoreDegraded",
+    "QualityScoreThresholdBreached",
     "ValidationFailed",
     "AlertHook",
     "EventBus",

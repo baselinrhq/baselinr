@@ -13,6 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from ..config.schema import QualityScoringConfig
+from ..events import QualityScoreDegraded, QualityScoreThresholdBreached
 from .models import ColumnQualityScore, DataQualityScore, ScoreStatus
 
 logger = logging.getLogger(__name__)
@@ -1047,3 +1048,121 @@ class QualityScorer:
             "periods_analyzed": len(sorted_scores),
             "overall_change": round(overall_change, 2),
         }
+
+    def check_score_thresholds(
+        self, score: DataQualityScore, previous_score: Optional[DataQualityScore] = None
+    ) -> list[QualityScoreThresholdBreached]:
+        """
+        Check if score breaches configured thresholds and return events.
+
+        Args:
+            score: Current quality score
+            previous_score: Optional previous score to determine status change
+
+        Returns:
+            List of QualityScoreThresholdBreached events (empty if no breaches)
+        """
+        from datetime import datetime
+
+        events = []
+        thresholds = self.config.thresholds
+
+        # Determine previous status
+        previous_status = None
+        if previous_score:
+            if previous_score.overall_score >= thresholds.healthy:
+                previous_status = "healthy"
+            elif previous_score.overall_score >= thresholds.warning:
+                previous_status = "warning"
+            else:
+                previous_status = "critical"
+
+        # Check if score crossed critical threshold
+        # Critical is when score < warning threshold (since critical threshold is usually 0)
+        if score.overall_score < thresholds.warning:
+            # Determine if this is a critical breach (score < warning) or warning breach
+            # If score is also below critical threshold, it's critical
+            # Otherwise, if it crossed from healthy to below warning, it's a warning breach
+            if previous_score and previous_score.overall_score >= thresholds.warning:
+                # Crossed from healthy/warning to below warning
+                if score.overall_score < thresholds.critical:
+                    threshold_type = "critical"
+                    threshold_value = thresholds.critical
+                else:
+                    threshold_type = "warning"
+                    threshold_value = thresholds.warning
+
+                events.append(
+                    QualityScoreThresholdBreached(
+                        event_type="QualityScoreThresholdBreached",
+                        timestamp=datetime.utcnow(),
+                        table=score.table_name,
+                        schema=score.schema_name,
+                        current_score=score.overall_score,
+                        threshold_type=threshold_type,
+                        threshold_value=threshold_value,
+                        previous_status=previous_status,
+                        explanation=(
+                            f"Quality score {score.overall_score:.1f} "
+                            f"fell below {threshold_type} threshold "
+                            f"({threshold_value:.1f})"
+                        ),
+                        metadata={},
+                    )
+                )
+
+        return events
+
+    def check_score_degradation(
+        self, current: DataQualityScore, previous: Optional[DataQualityScore]
+    ) -> Optional[QualityScoreDegraded]:
+        """
+        Check if score has degraded significantly and return event.
+
+        Args:
+            current: Current quality score
+            previous: Previous quality score (optional)
+
+        Returns:
+            QualityScoreDegraded event if degradation detected, None otherwise
+        """
+        from datetime import datetime
+
+        if previous is None:
+            return None
+
+        # Calculate score change
+        score_change = current.overall_score - previous.overall_score
+
+        # Check if score dropped significantly (more than 5 points)
+        if score_change < -5.0:
+            thresholds = self.config.thresholds
+
+            # Determine threshold type based on current score
+            if current.overall_score < thresholds.warning:
+                if current.overall_score < thresholds.critical:
+                    threshold_type = "critical"
+                else:
+                    threshold_type = "warning"
+            else:
+                threshold_type = "warning"  # Still a warning even if above threshold
+
+            return QualityScoreDegraded(
+                event_type="QualityScoreDegraded",
+                timestamp=datetime.utcnow(),
+                table=current.table_name,
+                schema=current.schema_name,
+                current_score=current.overall_score,
+                previous_score=previous.overall_score,
+                score_change=score_change,
+                threshold_type=threshold_type,
+                explanation=(
+                    f"Quality score degraded from "
+                    f"{previous.overall_score:.1f} to "
+                    f"{current.overall_score:.1f} "
+                    f"(change: {score_change:.1f})"
+                ),
+                metadata={},
+            )
+
+        return None

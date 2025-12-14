@@ -4,7 +4,7 @@ Storage layer for quality scores.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -17,16 +17,24 @@ logger = logging.getLogger(__name__)
 class QualityScoreStorage:
     """Storage handler for quality scores."""
 
-    def __init__(self, engine: Engine, scores_table: str = "baselinr_quality_scores"):
+    def __init__(
+        self,
+        engine: Engine,
+        scores_table: str = "baselinr_quality_scores",
+        cache_ttl_minutes: int = 5,
+    ):
         """
         Initialize quality score storage.
 
         Args:
             engine: SQLAlchemy engine for database connection
             scores_table: Name of the scores table
+            cache_ttl_minutes: Cache TTL in minutes (default: 5)
         """
         self.engine = engine
         self.scores_table = scores_table
+        self._cache: Dict[Tuple[str, Optional[str]], Tuple[DataQualityScore, datetime]] = {}
+        self._cache_ttl = timedelta(minutes=cache_ttl_minutes)
 
     def store_score(self, score: DataQualityScore) -> None:
         """
@@ -35,6 +43,12 @@ class QualityScoreStorage:
         Args:
             score: DataQualityScore object to store
         """
+        # Invalidate cache for this table
+        cache_key = (score.table_name, score.schema_name)
+        if cache_key in self._cache:
+            del self._cache[cache_key]
+            logger.debug(f"Invalidated cache for {score.table_name}")
+
         with self.engine.connect() as conn:
             insert_query = text(
                 f"""
@@ -97,6 +111,19 @@ class QualityScoreStorage:
         Returns:
             DataQualityScore if found, None otherwise
         """
+        # Check cache first
+        cache_key = (table_name, schema_name)
+        if cache_key in self._cache:
+            cached_score, cached_time = self._cache[cache_key]
+            age = datetime.utcnow() - cached_time
+            if age < self._cache_ttl:
+                logger.debug(f"Cache hit for {table_name}")
+                return cached_score
+            else:
+                # Cache expired, remove it
+                del self._cache[cache_key]
+                logger.debug(f"Cache expired for {table_name}")
+
         conditions = ["table_name = :table_name"]
         params: Dict[str, Any] = {"table_name": table_name}
 
@@ -108,6 +135,8 @@ class QualityScoreStorage:
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
+        # Query optimized with index hint:
+        # should have index on (table_name, schema_name, calculated_at)
         query = text(
             f"""
             SELECT table_name, schema_name, run_id,
@@ -119,7 +148,7 @@ class QualityScoreStorage:
             WHERE {where_clause}
             ORDER BY calculated_at DESC
             LIMIT 1
-        """
+            """
         )
 
         with self.engine.connect() as conn:
@@ -128,7 +157,7 @@ class QualityScoreStorage:
             if not result:
                 return None
 
-            return DataQualityScore(
+            score = DataQualityScore(
                 table_name=result[0],
                 schema_name=result[1],
                 run_id=result[2],
@@ -147,6 +176,12 @@ class QualityScoreStorage:
                 period_start=result[15],
                 period_end=result[16],
             )
+
+            # Cache the result
+            self._cache[cache_key] = (score, datetime.utcnow())
+            logger.debug(f"Cached score for {table_name}")
+
+            return score
 
     def get_score_history(
         self,
@@ -233,7 +268,8 @@ class QualityScoreStorage:
         Returns:
             List of DataQualityScore objects (latest score per table)
         """
-        # Use a subquery to get the latest score for each table in the schema
+        # Optimized query: uses subquery to get latest score per table
+        # Index hint: should have index on (schema_name, table_name, calculated_at)
         query = text(
             f"""
             SELECT s1.table_name, s1.schema_name, s1.run_id,
@@ -252,7 +288,7 @@ class QualityScoreStorage:
                 AND s1.calculated_at = s2.max_calculated_at
             WHERE s1.schema_name = :schema_name
             ORDER BY s1.table_name
-        """
+            """
         )
 
         scores = []

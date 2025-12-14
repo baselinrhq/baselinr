@@ -314,3 +314,61 @@ class ValidationFailed(BaseEvent):
                 "failure_rate": self.failure_rate,
             }
         )
+
+
+@dataclass
+class QualityScoreDegraded(BaseEvent):
+    """Event emitted when a quality score degrades significantly."""
+
+    table: str
+    schema: Optional[str]
+    current_score: float
+    previous_score: float
+    score_change: float
+    threshold_type: str  # 'warning' or 'critical'
+    explanation: Optional[str] = None  # Human-readable explanation
+
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update(
+            {
+                "table": self.table,
+                "schema": self.schema,
+                "current_score": self.current_score,
+                "previous_score": self.previous_score,
+                "score_change": self.score_change,
+                "threshold_type": self.threshold_type,
+                "explanation": self.explanation,
+            }
+        )
+
+
+@dataclass
+class QualityScoreThresholdBreached(BaseEvent):
+    """Event emitted when a quality score crosses a threshold (warning or critical)."""
+
+    table: str
+    schema: Optional[str]
+    current_score: float
+    threshold_type: str  # 'warning' or 'critical'
+    threshold_value: float
+    previous_status: Optional[str] = None  # Previous status before breach
+    explanation: Optional[str] = None  # Human-readable explanation
+
+    def __post_init__(self):
+        """Populate metadata from fields."""
+        if not self.metadata:
+            self.metadata = {}
+        self.metadata.update(
+            {
+                "table": self.table,
+                "schema": self.schema,
+                "current_score": self.current_score,
+                "threshold_type": self.threshold_type,
+                "threshold_value": self.threshold_value,
+                "previous_status": self.previous_status,
+                "explanation": self.explanation,
+            }
+        )

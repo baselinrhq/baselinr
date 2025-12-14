@@ -855,7 +855,27 @@ def validate_command(args):
 
 
 def score_command(args):
-    """Execute score command."""
+    """
+    Execute score command.
+
+    Calculate and display data quality scores for tables. Quality scores combine
+    multiple dimensions (completeness, validity, consistency, freshness, uniqueness,
+    accuracy) into a single actionable score (0-100).
+
+    Examples:
+        # Calculate score for a table
+        baselinr score --config config.yaml --table customers
+
+        # Export score to CSV
+        baselinr score --config config.yaml --table customers --export csv --output scores.csv
+
+        # Export score history
+        baselinr score --config config.yaml --table customers \
+            --history --export json --output history.json
+
+        # Get JSON output
+        baselinr score --config config.yaml --table customers --format json
+    """
     from .cli_output import safe_print
 
     safe_print("Loading configuration...")
@@ -891,6 +911,11 @@ def score_command(args):
             scores_table="baselinr_quality_scores",
         )
 
+        # Create event bus for alerting
+        event_bus = create_event_bus(config)
+        if event_bus:
+            logger.info(f"Event bus initialized with {event_bus.hook_count} hooks")
+
         # Calculate score(s)
         if args.table:
             # Calculate score for specific table
@@ -901,9 +926,175 @@ def score_command(args):
                 period_days=7,
             )
 
+            # Get previous score for alerting (before storing new one)
+            previous_score = None
+            try:
+                previous_score = storage.get_latest_score(args.table, args.schema)
+            except Exception as e:
+                logger.debug(f"Could not fetch previous score for alerting: {e}")
+
+            # Check for threshold breaches and degradation
+            if event_bus:
+                try:
+                    # Check threshold breaches
+                    threshold_events = scorer.check_score_thresholds(score, previous_score)
+                    for event in threshold_events:
+                        event_bus.emit(event)
+                        logger.info(
+                            f"Emitted threshold breach event: "
+                            f"{event.threshold_type} for {args.table}"
+                        )
+
+                    # Check score degradation
+                    degradation_event = scorer.check_score_degradation(score, previous_score)
+                    if degradation_event:
+                        event_bus.emit(degradation_event)
+                        logger.info(f"Emitted score degradation event for {args.table}")
+                except Exception as e:
+                    logger.warning(f"Failed to emit quality score alerts: {e}")
+
             # Store score if configured
             if config.quality_scoring.store_history:
                 storage.store_score(score)
+
+            # Handle export
+            if args.export:
+                if not args.output:
+                    safe_print("[red]Error: --output is required when using --export[/red]")
+                    return 1
+
+                import csv
+                import json
+
+                if args.history:
+                    # Export score history
+                    try:
+                        history = storage.get_score_history(
+                            args.table,
+                            args.schema,
+                            days=config.quality_scoring.history_retention_days,
+                        )
+                        if not history:
+                            safe_print(
+                                f"[yellow]No score history found for table: {args.table}[/yellow]"
+                            )
+                            return 0
+
+                        if args.export == "json":
+                            output = json.dumps(
+                                [s.to_dict() for s in history], indent=2, default=str
+                            )
+                        else:  # csv
+                            # Write CSV
+                            with open(args.output, "w", newline="") as f:
+                                writer = csv.DictWriter(
+                                    f,
+                                    fieldnames=[
+                                        "table_name",
+                                        "schema_name",
+                                        "overall_score",
+                                        "completeness_score",
+                                        "validity_score",
+                                        "consistency_score",
+                                        "freshness_score",
+                                        "uniqueness_score",
+                                        "accuracy_score",
+                                        "status",
+                                        "total_issues",
+                                        "critical_issues",
+                                        "warnings",
+                                        "calculated_at",
+                                        "period_start",
+                                        "period_end",
+                                    ],
+                                )
+                                writer.writeheader()
+                                for s in history:
+                                    writer.writerow(
+                                        {
+                                            "table_name": s.table_name,
+                                            "schema_name": s.schema_name or "",
+                                            "overall_score": s.overall_score,
+                                            "completeness_score": s.completeness_score,
+                                            "validity_score": s.validity_score,
+                                            "consistency_score": s.consistency_score,
+                                            "freshness_score": s.freshness_score,
+                                            "uniqueness_score": s.uniqueness_score,
+                                            "accuracy_score": s.accuracy_score,
+                                            "status": s.status,
+                                            "total_issues": s.total_issues,
+                                            "critical_issues": s.critical_issues,
+                                            "warnings": s.warnings,
+                                            "calculated_at": s.calculated_at.isoformat(),
+                                            "period_start": s.period_start.isoformat(),
+                                            "period_end": s.period_end.isoformat(),
+                                        }
+                                    )
+                            output = f"Exported {len(history)} scores to {args.output}"
+                    except Exception as e:
+                        logger.error(f"Failed to export score history: {e}", exc_info=True)
+                        safe_print(f"[red]Failed to export score history: {e}[/red]")
+                        return 1
+                else:
+                    # Export single score
+                    if args.export == "json":
+                        output = json.dumps(score.to_dict(), indent=2, default=str)
+                    else:  # csv
+                        # Write CSV
+                        with open(args.output, "w", newline="") as f:
+                            writer = csv.DictWriter(
+                                f,
+                                fieldnames=[
+                                    "table_name",
+                                    "schema_name",
+                                    "overall_score",
+                                    "completeness_score",
+                                    "validity_score",
+                                    "consistency_score",
+                                    "freshness_score",
+                                    "uniqueness_score",
+                                    "accuracy_score",
+                                    "status",
+                                    "total_issues",
+                                    "critical_issues",
+                                    "warnings",
+                                    "calculated_at",
+                                    "period_start",
+                                    "period_end",
+                                ],
+                            )
+                            writer.writeheader()
+                            writer.writerow(
+                                {
+                                    "table_name": score.table_name,
+                                    "schema_name": score.schema_name or "",
+                                    "overall_score": score.overall_score,
+                                    "completeness_score": score.completeness_score,
+                                    "validity_score": score.validity_score,
+                                    "consistency_score": score.consistency_score,
+                                    "freshness_score": score.freshness_score,
+                                    "uniqueness_score": score.uniqueness_score,
+                                    "accuracy_score": score.accuracy_score,
+                                    "status": score.status,
+                                    "total_issues": score.total_issues,
+                                    "critical_issues": score.critical_issues,
+                                    "warnings": score.warnings,
+                                    "calculated_at": score.calculated_at.isoformat(),
+                                    "period_start": score.period_start.isoformat(),
+                                    "period_end": score.period_end.isoformat(),
+                                }
+                            )
+                        output = f"Exported score to {args.output}"
+
+                # Write output to file (for JSON) or print message (for CSV)
+                if args.export == "json":
+                    with open(args.output, "w") as f:
+                        f.write(output)
+                    safe_print(f"Exported score to {args.output}")
+                else:
+                    safe_print(output)
+                logger.info(f"Score exported to {args.output}")
+                return 0
 
             # Output results
             if args.format == "json":
@@ -961,8 +1152,9 @@ def score_command(args):
                 )
                 safe_print(issues_msg)
         else:
-            # Calculate scores for all tables (future: query from runs table)
-            safe_print("[yellow]Table name required. Use --table to specify a table.[/yellow]")
+            # This should not happen if --table is required, but keep as fallback
+            safe_print("[red]Error: --table is required. Use --table to specify a table.[/red]")
+            safe_print("\nExample: baselinr score --config config.yaml --table customers")
             return 1
 
         return 0
@@ -3550,14 +3742,68 @@ def main():
     validate_parser.add_argument("--output", "-o", help="Output file for results (JSON)")
 
     # Score command
-    score_parser = subparsers.add_parser("score", help="Calculate and display data quality scores")
+    score_parser = subparsers.add_parser(
+        "score",
+        help="Calculate and display data quality scores",
+        description=(
+            "Calculate comprehensive data quality scores that combine multiple "
+            "dimensions (completeness, validity, consistency, freshness, "
+            "uniqueness, accuracy) into a single actionable score (0-100). "
+            "Scores help identify and prioritize data quality issues."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  # Calculate score for a table\n"
+            "  baselinr score --config config.yaml --table customers\n\n"
+            "  # Export score to CSV\n"
+            "  baselinr score --config config.yaml --table customers "
+            "--export csv --output scores.csv\n\n"
+            "  # Export score history\n"
+            "  baselinr score --config config.yaml --table customers "
+            "--history --export json --output history.json\n\n"
+            "  # Get JSON output\n"
+            "  baselinr score --config config.yaml --table customers --format json"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     score_parser.add_argument(
         "--config", "-c", required=True, help="Path to configuration file (YAML or JSON)"
     )
-    score_parser.add_argument("--table", help="Calculate score for specific table")
-    score_parser.add_argument("--schema", help="Filter by schema name")
     score_parser.add_argument(
-        "--format", choices=["json", "table"], default="json", help="Output format"
+        "--table", required=True, help="Table name to calculate score for", metavar="TABLE"
+    )
+    score_parser.add_argument(
+        "--schema", help="Schema name (optional, filters by schema if provided)"
+    )
+    score_parser.add_argument(
+        "--format",
+        choices=["json", "table"],
+        default="table",
+        help=(
+            "Output format: 'table' for formatted display (default), "
+            "'json' for machine-readable output"
+        ),
+    )
+    score_parser.add_argument(
+        "--export",
+        choices=["csv", "json"],
+        help=(
+            "Export scores to file. Use 'csv' for spreadsheet-compatible "
+            "format or 'json' for structured data. Requires --output."
+        ),
+    )
+    score_parser.add_argument(
+        "--output",
+        help="Output file path for export (required when using --export)",
+        metavar="FILE",
+    )
+    score_parser.add_argument(
+        "--history",
+        action="store_true",
+        help=(
+            "Export score history instead of single score. "
+            "Use with --export to get historical data."
+        ),
     )
 
     # Migrate command

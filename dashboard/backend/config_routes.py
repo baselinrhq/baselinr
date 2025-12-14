@@ -317,3 +317,53 @@ async def to_yaml(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to convert to YAML: {str(e)}")
 
+
+@router.get("/quality")
+async def get_quality_config(config_service: ConfigService = Depends(get_config_service)):
+    """
+    Get quality scoring configuration.
+    
+    Returns the quality_scoring section of the current configuration.
+    """
+    try:
+        config = config_service.load_config()
+        quality_config = config.get("quality_scoring")
+        return quality_config if quality_config is not None else {}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Configuration file not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load quality config: {str(e)}")
+
+
+@router.post("/quality")
+async def save_quality_config(
+    quality_config: dict,
+    config_service: ConfigService = Depends(get_config_service)
+):
+    """
+    Update quality scoring configuration.
+    
+    Updates the quality_scoring section of the configuration and saves it.
+    """
+    try:
+        # Load current config
+        current_config = config_service.load_config()
+        
+        # Update quality_scoring section
+        current_config["quality_scoring"] = quality_config
+        
+        # Validate and save
+        from baselinr.config.schema import BaselinrConfig
+        validated_config = BaselinrConfig(**current_config)
+        
+        saved_config = config_service.save_config(
+            validated_config.model_dump(mode='json'),
+            comment="Updated quality scoring configuration"
+        )
+        
+        return saved_config.get("quality_scoring", {})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save quality config: {str(e)}")
+
