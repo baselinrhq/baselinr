@@ -60,6 +60,31 @@ def _get_status_indicator_rich(
         return Text("●", style="bold #52b788")
 
 
+def _format_score_badge(score: float, status: str) -> "Text":
+    """
+    Format score as a small badge for table displays.
+
+    Args:
+        score: Quality score (0-100)
+        status: Status string ("healthy", "warning", "critical")
+
+    Returns:
+        Rich Text with formatted score badge
+    """
+    if not RICH_AVAILABLE:
+        return Text(f"{score:.1f}")
+
+    # Color mapping matching cli_output.py
+    color_map = {
+        "healthy": "#52b788",  # Soft mint/teal
+        "warning": "#f4a261",  # Soft amber/gold
+        "critical": "#ff8787",  # Soft coral/rose
+    }
+
+    color = color_map.get(status.lower(), "#4a90e2")  # Default to info color
+    return Text(f"{score:.1f}", style=f"bold {color}")
+
+
 def format_status(
     runs_data: List[Dict[str, Any]],
     drift_summary: List[Dict[str, Any]],
@@ -179,10 +204,11 @@ def _format_rich(
         runs_table.add_column("Rows", justify="right")
         runs_table.add_column("Metrics", justify="right")
         runs_table.add_column("Anomalies", justify="right")
+        runs_table.add_column("Score", justify="right")
         runs_table.add_column("Status", justify="center")
 
         if not runs_data:
-            runs_table.add_row("[dim]No runs found[/dim]", "", "", "", "", "", "")
+            runs_table.add_row("[dim]No runs found[/dim]", "", "", "", "", "", "", "")
         else:
             for run in runs_data:
                 table_name = run.get("table_name", "N/A")
@@ -196,6 +222,14 @@ def _format_rich(
                 metrics = str(run.get("metrics_count", 0))
                 anomalies = str(run.get("anomalies_count", 0))
 
+                # Format quality score badge
+                quality_score = run.get("quality_score")
+                quality_status = run.get("quality_status")
+                if quality_score is not None:
+                    score_badge = _format_score_badge(quality_score, quality_status or "healthy")
+                else:
+                    score_badge = Text("[dim]N/A[/dim]")
+
                 # Use Rich Text for modern status indicator with softer colors
                 has_drift = run.get("has_drift", False)
                 has_anomalies = run.get("anomalies_count", 0) > 0
@@ -203,7 +237,7 @@ def _format_rich(
                 status = _get_status_indicator_rich(has_drift, has_anomalies, severity)
 
                 runs_table.add_row(
-                    table_name, schema_name, duration, rows, metrics, anomalies, status
+                    table_name, schema_name, duration, rows, metrics, anomalies, score_badge, status
                 )
 
         output_parts.append(runs_table)

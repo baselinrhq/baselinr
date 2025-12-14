@@ -114,8 +114,15 @@ describe('FailureSamples', () => {
     await waitFor(() => {
       const closeButton = screen.getByRole('button', { name: /close/i })
       closeButton.click()
-      expect(onClose).toHaveBeenCalled()
     })
+
+    // Wait for the modal's exit animation timeout (150ms) before onClose is called
+    await waitFor(
+      () => {
+        expect(onClose).toHaveBeenCalled()
+      },
+      { timeout: 300 }
+    )
   })
 })
 
