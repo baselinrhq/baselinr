@@ -221,3 +221,179 @@ class QualityScoreStorage:
                 )
 
         return scores
+
+    def query_scores_by_schema(self, schema_name: str) -> List[DataQualityScore]:
+        """
+        Get all latest scores for tables in a schema.
+
+        Args:
+            schema_name: Name of the schema
+
+        Returns:
+            List of DataQualityScore objects (latest score per table)
+        """
+        # Use a subquery to get the latest score for each table in the schema
+        query = text(
+            f"""
+            SELECT s1.table_name, s1.schema_name, s1.run_id,
+                   s1.overall_score, s1.completeness_score, s1.validity_score,
+                   s1.consistency_score, s1.freshness_score, s1.uniqueness_score,
+                   s1.accuracy_score, s1.status, s1.total_issues, s1.critical_issues,
+                   s1.warnings, s1.calculated_at, s1.period_start, s1.period_end
+            FROM {self.scores_table} s1
+            INNER JOIN (
+                SELECT table_name, schema_name, MAX(calculated_at) as max_calculated_at
+                FROM {self.scores_table}
+                WHERE schema_name = :schema_name
+                GROUP BY table_name, schema_name
+            ) s2 ON s1.table_name = s2.table_name
+                AND s1.schema_name = s2.schema_name
+                AND s1.calculated_at = s2.max_calculated_at
+            WHERE s1.schema_name = :schema_name
+            ORDER BY s1.table_name
+        """
+        )
+
+        scores = []
+        with self.engine.connect() as conn:
+            results = conn.execute(query, {"schema_name": schema_name}).fetchall()
+
+            for row in results:
+                scores.append(
+                    DataQualityScore(
+                        table_name=row[0],
+                        schema_name=row[1],
+                        run_id=row[2],
+                        overall_score=float(row[3]),
+                        completeness_score=float(row[4]),
+                        validity_score=float(row[5]),
+                        consistency_score=float(row[6]),
+                        freshness_score=float(row[7]),
+                        uniqueness_score=float(row[8]),
+                        accuracy_score=float(row[9]),
+                        status=row[10],
+                        total_issues=int(row[11]),
+                        critical_issues=int(row[12]),
+                        warnings=int(row[13]),
+                        calculated_at=row[14],
+                        period_start=row[15],
+                        period_end=row[16],
+                    )
+                )
+
+        return scores
+
+    def query_all_latest_scores(self, schema_name: Optional[str] = None) -> List[DataQualityScore]:
+        """
+        Get latest score for all tables, optionally filtered by schema.
+
+        Args:
+            schema_name: Optional schema name to filter by
+
+        Returns:
+            List of DataQualityScore objects (latest score per table)
+        """
+        if schema_name:
+            # Filter by schema
+            query = text(
+                f"""
+                SELECT s1.table_name, s1.schema_name, s1.run_id,
+                       s1.overall_score, s1.completeness_score, s1.validity_score,
+                       s1.consistency_score, s1.freshness_score, s1.uniqueness_score,
+                       s1.accuracy_score, s1.status, s1.total_issues, s1.critical_issues,
+                       s1.warnings, s1.calculated_at, s1.period_start, s1.period_end
+                FROM {self.scores_table} s1
+                INNER JOIN (
+                    SELECT table_name, schema_name, MAX(calculated_at) as max_calculated_at
+                    FROM {self.scores_table}
+                    WHERE schema_name = :schema_name
+                    GROUP BY table_name, schema_name
+                ) s2 ON s1.table_name = s2.table_name
+                    AND s1.schema_name = s2.schema_name
+                    AND s1.calculated_at = s2.max_calculated_at
+                WHERE s1.schema_name = :schema_name
+                ORDER BY s1.schema_name, s1.table_name
+            """
+            )
+            params = {"schema_name": schema_name}
+        else:
+            # All schemas
+            query = text(
+                f"""
+                SELECT s1.table_name, s1.schema_name, s1.run_id,
+                       s1.overall_score, s1.completeness_score, s1.validity_score,
+                       s1.consistency_score, s1.freshness_score, s1.uniqueness_score,
+                       s1.accuracy_score, s1.status, s1.total_issues, s1.critical_issues,
+                       s1.warnings, s1.calculated_at, s1.period_start, s1.period_end
+                FROM {self.scores_table} s1
+                INNER JOIN (
+                    SELECT table_name, schema_name, MAX(calculated_at) as max_calculated_at
+                    FROM {self.scores_table}
+                    GROUP BY table_name, schema_name
+                ) s2 ON s1.table_name = s2.table_name
+                    AND (
+                        s1.schema_name = s2.schema_name
+                        OR (s1.schema_name IS NULL AND s2.schema_name IS NULL)
+                    )
+                    AND s1.calculated_at = s2.max_calculated_at
+                ORDER BY s1.schema_name, s1.table_name
+            """
+            )
+            params = {}
+
+        scores = []
+        with self.engine.connect() as conn:
+            results = conn.execute(query, params).fetchall()
+
+            for row in results:
+                scores.append(
+                    DataQualityScore(
+                        table_name=row[0],
+                        schema_name=row[1],
+                        run_id=row[2],
+                        overall_score=float(row[3]),
+                        completeness_score=float(row[4]),
+                        validity_score=float(row[5]),
+                        consistency_score=float(row[6]),
+                        freshness_score=float(row[7]),
+                        uniqueness_score=float(row[8]),
+                        accuracy_score=float(row[9]),
+                        status=row[10],
+                        total_issues=int(row[11]),
+                        critical_issues=int(row[12]),
+                        warnings=int(row[13]),
+                        calculated_at=row[14],
+                        period_start=row[15],
+                        period_end=row[16],
+                    )
+                )
+
+        return scores
+
+    def query_system_scores(self) -> List[DataQualityScore]:
+        """
+        Get latest scores for all tables across all schemas.
+
+        Returns:
+            List of DataQualityScore objects (latest score per table)
+        """
+        return self.query_all_latest_scores(schema_name=None)
+
+    def query_score_trends(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        days: int = 30,
+    ) -> List[DataQualityScore]:
+        """
+        Get historical scores for trend analysis (alias for get_score_history).
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            days: Number of days to look back
+
+        Returns:
+            List of DataQualityScore objects, ordered by calculated_at DESC
+        """
+        return self.get_score_history(table_name, schema_name, days)

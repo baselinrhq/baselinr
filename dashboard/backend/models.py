@@ -120,6 +120,10 @@ class MetricsDashboardResponse(BaseModel):
     data_freshness_hours: Optional[float] = None
     stale_tables_count: int = 0
     validation_trend: List[TableMetricsTrend] = Field(default_factory=list)
+    # Quality scoring metrics
+    system_quality_score: Optional[float] = None
+    quality_score_status: Optional[str] = None
+    quality_trend: Optional[str] = None
 
 
 class TableListItem(BaseModel):
