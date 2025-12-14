@@ -42,12 +42,17 @@ export function Modal({
   const modalRef = useRef<HTMLDivElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
   const [isExiting, setIsExiting] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   // Handle mounting for portal
   useEffect(() => {
     setMounted(true)
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
   }, [])
 
   // Cleanup timeout on unmount only
@@ -57,6 +62,7 @@ export function Modal({
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
       }
+      isMountedRef.current = false
     }
   }, [])
 
@@ -70,8 +76,11 @@ export function Modal({
     setIsExiting(true)
     timeoutRef.current = setTimeout(() => {
       timeoutRef.current = null
-      setIsExiting(false)
-      onClose()
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setIsExiting(false)
+        onClose()
+      }
     }, 150)
   }, [onClose])
 
