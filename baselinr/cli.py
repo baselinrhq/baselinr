@@ -946,20 +946,20 @@ def score_command(args):
                 else:
                     # Fallback to plain text if Rich unavailable
                     safe_print(f"\nQuality Score for {args.table}")
-                    safe_print(f"Overall Score: {score.overall_score:.1f}/100 [{score.status}]")
-                    safe_print("Components:")
-                    safe_print(f"  Completeness: {score.completeness_score:.1f}")
-                    safe_print(f"  Validity: {score.validity_score:.1f}")
-                    safe_print(f"  Consistency: {score.consistency_score:.1f}")
-                    safe_print(f"  Freshness: {score.freshness_score:.1f}")
-                    safe_print(f"  Uniqueness: {score.uniqueness_score:.1f}")
-                    safe_print(f"  Accuracy: {score.accuracy_score:.1f}")
-                    issues_msg = (
-                        f"Issues: {score.total_issues} total, "
-                        f"{score.critical_issues} critical, "
-                        f"{score.warnings} warnings"
-                    )
-                    safe_print(issues_msg)
+                safe_print(f"Overall Score: {score.overall_score:.1f}/100 [{score.status}]")
+                safe_print("Components:")
+                safe_print(f"  Completeness: {score.completeness_score:.1f}")
+                safe_print(f"  Validity: {score.validity_score:.1f}")
+                safe_print(f"  Consistency: {score.consistency_score:.1f}")
+                safe_print(f"  Freshness: {score.freshness_score:.1f}")
+                safe_print(f"  Uniqueness: {score.uniqueness_score:.1f}")
+                safe_print(f"  Accuracy: {score.accuracy_score:.1f}")
+                issues_msg = (
+                    f"Issues: {score.total_issues} total, "
+                    f"{score.critical_issues} critical, "
+                    f"{score.warnings} warnings"
+                )
+                safe_print(issues_msg)
         else:
             # Calculate scores for all tables (future: query from runs table)
             safe_print("[yellow]Table name required. Use --table to specify a table.[/yellow]")

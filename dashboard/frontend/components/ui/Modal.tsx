@@ -78,8 +78,8 @@ export function Modal({
       timeoutRef.current = null
       // Only update state if component is still mounted
       if (isMountedRef.current) {
-        setIsExiting(false)
-        onClose()
+      setIsExiting(false)
+      onClose()
       }
     }, 150)
   }, [onClose])

@@ -118,22 +118,33 @@ class QualityService:
 
         Args:
             table_name: Name of the table
-            schema_name: Optional schema name
+            schema_name: Optional schema name. If provided but no score found,
+                        will try again without schema filter as fallback.
 
         Returns:
             QualityScoreResponse if found, None otherwise
         """
         if not self.storage:
+            logger.warning(f"No storage available for table {table_name}")
             return None
 
         try:
+            logger.debug(f"Fetching score for table: {table_name}, schema: {schema_name}")
             score = self.storage.get_latest_score(table_name, schema_name)
+            
+            # If schema was provided but no score found, try without schema as fallback
+            if not score and schema_name:
+                logger.debug(f"No score found with schema {schema_name}, trying without schema filter")
+                score = self.storage.get_latest_score(table_name, schema_name=None)
+            
             if not score:
+                logger.debug(f"No score found for table: {table_name}, schema: {schema_name}")
                 return None
 
+            logger.debug(f"Found score for {table_name}: {score.overall_score} (schema: {score.schema_name})")
             return self._convert_score_to_response(score, include_trend=True)
         except Exception as e:
-            logger.error(f"Error getting table score for {table_name}: {e}")
+            logger.error(f"Error getting table score for {table_name}: {e}", exc_info=True)
             return None
 
     def get_all_scores(

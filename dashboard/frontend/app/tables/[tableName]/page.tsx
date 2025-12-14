@@ -2,12 +2,16 @@
 
 import { useParams, useSearchParams } from 'next/navigation'
 import { Database } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 import { Tabs, TabPanel } from '@/components/ui'
+import { LoadingSpinner } from '@/components/ui'
 import TableOverviewTab from '@/components/tables/TableOverviewTab'
 import TableDriftTab from '@/components/tables/TableDriftTab'
 import TableValidationTab from '@/components/tables/TableValidationTab'
 import TableLineageTab from '@/components/tables/TableLineageTab'
 import TableConfigTab from '@/components/tables/TableConfigTab'
+import QualityScoreCard from '@/components/quality/QualityScoreCard'
+import { fetchTableScore } from '@/lib/api'
 import { useState } from 'react'
 
 export default function TableMetricsPage() {
@@ -18,6 +22,37 @@ export default function TableMetricsPage() {
   const warehouse = searchParams.get('warehouse') || undefined
 
   const [activeTab, setActiveTab] = useState('overview')
+
+  // Fetch quality score
+  const {
+    data: qualityScore,
+    isLoading: isLoadingScore,
+    error: scoreError,
+  } = useQuery({
+    queryKey: ['quality-score', tableName, schema || null],
+    queryFn: async () => {
+      try {
+        console.log(`[Quality Score] Fetching score for table: ${tableName}, schema: ${schema || 'none'}`)
+        const score = await fetchTableScore(tableName, schema)
+        console.log(`[Quality Score] Successfully fetched score:`, score)
+        return score
+      } catch (error) {
+        // Log error for debugging
+        console.error(`[Quality Score] Error fetching score for ${tableName} (schema: ${schema || 'none'}):`, error)
+        throw error
+      }
+    },
+    staleTime: 30000,
+    retry: (failureCount, error) => {
+      // Don't retry on 404 (score doesn't exist), but retry on other errors
+      if (error instanceof Error && error.message.includes('404')) {
+        console.log(`[Quality Score] 404 error - score not found, not retrying`)
+        return false
+      }
+      console.log(`[Quality Score] Retrying (attempt ${failureCount + 1})`)
+      return failureCount < 2
+    },
+  })
 
   const tabs = [
     {
@@ -48,22 +83,43 @@ export default function TableMetricsPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-          <Database className="w-8 h-8 text-primary-600" />
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+          <Database className="w-8 h-8 text-cyan-400" />
           {tableName}
         </h1>
         {schema && (
-          <p className="text-gray-600 mt-1">
+          <p className="text-slate-400 mt-1">
             Schema: {schema}
           </p>
         )}
       </div>
 
+      {/* Quality Score Card */}
+      {isLoadingScore ? (
+        <div className="flex items-center justify-center py-8">
+          <LoadingSpinner size="md" />
+        </div>
+      ) : scoreError ? (
+        <div className="bg-surface-800/40 border border-surface-700/50 rounded-xl p-4 text-center">
+          <p className="text-sm text-slate-400">
+            {scoreError instanceof Error && scoreError.message.includes('404')
+              ? 'Quality score not available for this table'
+              : 'Error loading quality score'}
+          </p>
+        </div>
+      ) : qualityScore ? (
+        <QualityScoreCard score={qualityScore} />
+      ) : (
+        <div className="bg-surface-800/40 border border-surface-700/50 rounded-xl p-4 text-center">
+          <p className="text-sm text-slate-400">Quality score not available for this table</p>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="glass-card rounded-xl overflow-hidden">
         <div className="px-6 pt-6">
           <Tabs
             tabs={tabs}

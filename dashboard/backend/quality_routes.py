@@ -76,11 +76,14 @@ async def get_table_score(
     Returns the latest quality score for a specific table.
     """
     try:
+        logger.debug(f"API: Getting score for table={table_name}, schema={schema}")
         score = quality_service.get_table_score(table_name, schema_name=schema)
         if not score:
+            logger.debug(f"API: No score found for table={table_name}, schema={schema}")
             raise HTTPException(
                 status_code=404, detail=f"Quality score not found for table: {table_name}"
             )
+        logger.debug(f"API: Found score for {table_name}: {score.overall_score}")
         return score
     except HTTPException:
         raise

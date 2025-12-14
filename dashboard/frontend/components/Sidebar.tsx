@@ -64,6 +64,7 @@ const navigationGroups: NavGroup[] = [
     icon: Shield,
     defaultOpen: true,
     items: [
+      { name: 'Quality Scores', href: '/quality', icon: TrendingUp },
       { name: 'Drift Analysis', href: '/drift', icon: AlertTriangle },
       { name: 'Validation Results', href: '/validation', icon: Shield },
       { name: 'Root Cause Analysis', href: '/rca', icon: Search },

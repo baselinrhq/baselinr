@@ -1,6 +1,7 @@
-import { CheckCircle2, Bell, Clock } from 'lucide-react'
+import { CheckCircle2, Bell, Clock, TrendingUp } from 'lucide-react'
 import KPICard from '@/components/KPICard'
 import { DashboardMetrics } from '@/lib/api'
+import Link from 'next/link'
 
 interface EnhancedKPIsProps {
   metrics: DashboardMetrics
@@ -50,6 +51,28 @@ export default function EnhancedKPIs({ metrics }: EnhancedKPIsProps) {
     return 'rose'
   }
 
+  // Format quality score
+  const formatQualityScore = (score?: number | null): string => {
+    if (score === null || score === undefined) return 'N/A'
+    return score.toFixed(1)
+  }
+
+  // Determine quality score color
+  const getQualityScoreColor = (score?: number | null): 'emerald' | 'amber' | 'rose' => {
+    if (score === null || score === undefined) return 'emerald'
+    if (score >= 80) return 'emerald'
+    if (score >= 60) return 'amber'
+    return 'rose'
+  }
+
+  // Determine quality trend
+  const getQualityTrend = (trend?: string | null): 'up' | 'down' | 'stable' => {
+    if (!trend) return 'stable'
+    if (trend === 'improving') return 'up'
+    if (trend === 'degrading') return 'down'
+    return 'stable'
+  }
+
   return (
     <>
       {/* Validation Pass Rate */}
@@ -81,6 +104,20 @@ export default function EnhancedKPIs({ metrics }: EnhancedKPIsProps) {
           trend={metrics.data_freshness_hours > 48 ? 'down' : 'stable'}
           color={getFreshnessColor(metrics.data_freshness_hours)}
         />
+      )}
+
+      {/* System Quality Score */}
+      {metrics.system_quality_score !== undefined && metrics.system_quality_score !== null && (
+        <Link href="/quality">
+          <KPICard
+            title="System Quality Score"
+            value={formatQualityScore(metrics.system_quality_score)}
+            icon={<TrendingUp className="w-6 h-6" />}
+            trend={getQualityTrend(metrics.quality_trend)}
+            color={getQualityScoreColor(metrics.system_quality_score)}
+            subtitle={metrics.quality_score_status ? `${metrics.quality_score_status}` : undefined}
+          />
+        </Link>
       )}
     </>
   )
