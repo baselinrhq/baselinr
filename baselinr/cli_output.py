@@ -8,6 +8,9 @@ Uses modern soft color palette matching the dashboard style.
 import json
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+if TYPE_CHECKING:
+    from .quality.models import DataQualityScore
+
 try:
     from rich.console import Console
     from rich.panel import Panel
@@ -327,6 +330,259 @@ def extract_histogram_data(metric_data: Any) -> Optional[List[Dict[str, Any]]]:
         pass
 
     return None
+
+
+def get_score_color(score: float, status: str) -> str:
+    """
+    Get color hex code based on score and status.
+
+    Args:
+        score: Quality score (0-100)
+        status: Status string ("healthy", "warning", "critical")
+
+    Returns:
+        Color hex code
+    """
+    if status == "healthy":
+        return COLORS["success"]
+    elif status == "warning":
+        return COLORS["warning"]
+    elif status == "critical":
+        return COLORS["error"]
+    else:
+        # Fallback based on score thresholds
+        if score >= 80:
+            return COLORS["success"]
+        elif score >= 60:
+            return COLORS["warning"]
+        else:
+            return COLORS["error"]
+
+
+def format_score_badge(score: float, status: str) -> "Text":
+    """
+    Format score as a small badge for table displays.
+
+    Args:
+        score: Quality score (0-100)
+        status: Status string ("healthy", "warning", "critical")
+
+    Returns:
+        Rich Text with formatted score badge
+    """
+    if not RICH_AVAILABLE:
+        return Text(f"{score:.1f}")
+
+    color = get_score_color(score, status)
+    return Text(f"{score:.1f}", style=f"bold {color}")
+
+
+def format_trend_indicator(trend: str, percentage: float) -> "Text":
+    """
+    Format trend indicator with arrow and percentage.
+
+    Args:
+        trend: Trend string ("improving", "degrading", "stable")
+        percentage: Percentage change (positive for improvement)
+
+    Returns:
+        Rich Text with trend indicator
+    """
+    if not RICH_AVAILABLE:
+        if trend == "improving":
+            return Text(f"↑ +{percentage:.1f}%")
+        elif trend == "degrading":
+            return Text(f"↓ {percentage:.1f}%")
+        else:
+            return Text("→ 0.0%")
+
+    if trend == "improving":
+        return Text(f"↑ +{percentage:.1f}%", style=f"bold {COLORS['success']}")
+    elif trend == "degrading":
+        return Text(f"↓ {percentage:.1f}%", style=f"bold {COLORS['error']}")
+    else:
+        return Text("→ 0.0%", style="dim")
+
+
+def render_progress_bar(value: float, max_value: float = 100.0, width: int = 20) -> str:
+    """
+    Render a visual progress bar using block characters.
+
+    Args:
+        value: Current value
+        max_value: Maximum value (default 100.0)
+        width: Width of the bar in characters (default 20)
+
+    Returns:
+        String with progress bar (e.g., "██████████░░░░░░░░░░")
+    """
+    if max_value == 0:
+        filled = 0
+    else:
+        filled = int((value / max_value) * width)
+    filled = max(0, min(filled, width))  # Clamp between 0 and width
+
+    bar = "█" * filled + "░" * (width - filled)
+    return bar
+
+
+def format_component_breakdown(
+    score: "DataQualityScore", config: Optional[Any] = None
+) -> Optional[Any]:
+    """
+    Format component breakdown as a Rich Table.
+
+    Args:
+        score: DataQualityScore object
+        config: Optional QualityScoringConfig for weights
+
+    Returns:
+        Rich Table with component breakdown or None if Rich unavailable
+    """
+    if not RICH_AVAILABLE:
+        return None
+
+    try:
+        from rich.table import Table
+    except ImportError:
+        return None
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Component", style="cyan", no_wrap=True)
+    table.add_column("Score", justify="right")
+    table.add_column("Progress", no_wrap=True)
+    if config:
+        table.add_column("Weight", justify="right", style="dim")
+
+    components = [
+        ("Completeness", score.completeness_score, config.weights.completeness if config else None),
+        ("Validity", score.validity_score, config.weights.validity if config else None),
+        ("Consistency", score.consistency_score, config.weights.consistency if config else None),
+        ("Freshness", score.freshness_score, config.weights.freshness if config else None),
+        ("Uniqueness", score.uniqueness_score, config.weights.uniqueness if config else None),
+        ("Accuracy", score.accuracy_score, config.weights.accuracy if config else None),
+    ]
+
+    for component_name, component_score, weight in components:
+        progress_bar = render_progress_bar(component_score, 100.0, 15)
+        score_color = get_score_color(component_score, score.status)
+        score_text = f"[{score_color}]{component_score:.1f}[/{score_color}]"
+
+        if weight is not None:
+            row = [component_name, score_text, progress_bar, f"{weight:.0f}%"]
+        else:
+            row = [component_name, score_text, progress_bar]
+
+        table.add_row(*row)
+
+    return table
+
+
+def format_score_card(
+    score: "DataQualityScore",
+    trend_data: Optional[Dict[str, Any]] = None,
+    config: Optional[Any] = None,
+) -> Optional[Any]:
+    """
+    Format a beautiful score card using Rich Panel.
+
+    Args:
+        score: DataQualityScore object
+        trend_data: Optional trend data from compare_scores()
+        config: Optional QualityScoringConfig for weights
+
+    Returns:
+        Rich Panel with score card or None if Rich unavailable
+    """
+    if not RICH_AVAILABLE:
+        return None
+
+    try:
+        from rich.panel import Panel
+    except ImportError:
+        return None
+
+    # Build card content
+    lines = []
+
+    # Table name
+    table_display = score.table_name
+    if score.schema_name:
+        table_display = f"{table_display} ({score.schema_name})"
+    lines.append(f"Table: {table_display}")
+    lines.append("")
+
+    # Overall score with status and trend
+    score_color = get_score_color(score.overall_score, score.status)
+    score_line = f"Overall Score: [{score_color}]{score.overall_score:.1f}/100[/{score_color}]"
+    score_line += f" [{score.status}]"
+
+    if trend_data:
+        trend = trend_data.get("trend", "stable")
+        percentage = trend_data.get("percentage_change", 0.0)
+        trend_indicator = format_trend_indicator(trend, percentage)
+        score_line += f" {trend_indicator}"
+
+    lines.append(score_line)
+    lines.append("")
+
+    # Components section
+    lines.append("Components:")
+    components = [
+        ("Completeness", score.completeness_score),
+        ("Validity", score.validity_score),
+        ("Consistency", score.consistency_score),
+        ("Freshness", score.freshness_score),
+        ("Uniqueness", score.uniqueness_score),
+        ("Accuracy", score.accuracy_score),
+    ]
+
+    for component_name, component_score in components:
+        progress_bar = render_progress_bar(component_score, 100.0, 15)
+        component_color = get_score_color(component_score, score.status)
+        component_line = (
+            f"  [{component_color}]{component_name:12s}[/{component_color}]  "
+            f"{progress_bar}  {component_score:.1f}/100"
+        )
+        lines.append(component_line)
+
+    lines.append("")
+
+    # Issues summary
+    issues_parts = []
+    if score.critical_issues > 0:
+        issues_parts.append(f"{score.critical_issues} critical")
+    if score.warnings > 0:
+        issues_parts.append(f"{score.warnings} warnings")
+    if issues_parts:
+        issues_line = f"Issues: {', '.join(issues_parts)}"
+    else:
+        issues_line = "Issues: None"
+    lines.append(issues_line)
+
+    # Calculated timestamp
+    try:
+        from datetime import datetime
+
+        if isinstance(score.calculated_at, datetime):
+            timestamp_str = score.calculated_at.strftime("%Y-%m-%d %H:%M:%S UTC")
+        else:
+            timestamp_str = str(score.calculated_at)
+        lines.append(f"Calculated: {timestamp_str}")
+    except Exception:
+        pass
+
+    # Create panel
+    content = "\n".join(lines)
+    border_color = get_score_color(score.overall_score, score.status)
+
+    panel = Panel.fit(
+        content,
+        border_style=border_color,
+        title="[bold]Data Quality Score Card[/bold]",
+    )
+
+    return panel
 
 
 def safe_print(*args, **kwargs) -> None:

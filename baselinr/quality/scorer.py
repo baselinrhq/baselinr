@@ -534,3 +534,60 @@ class QualityScorer:
             logger.debug(f"Error counting drift issues: {e}")
 
         return (total_issues, critical_issues, warnings)
+
+    def compare_scores(
+        self,
+        current: DataQualityScore,
+        previous: Optional[DataQualityScore],
+    ) -> Dict[str, Any]:
+        """
+        Compare two scores and calculate trend.
+
+        Args:
+            current: Current quality score
+            previous: Previous quality score (optional)
+
+        Returns:
+            Dictionary with:
+            - trend: "improving", "degrading", or "stable"
+            - percentage_change: float (positive for improvement)
+            - component_changes: dict of component -> change
+        """
+        if previous is None:
+            return {
+                "trend": "stable",
+                "percentage_change": 0.0,
+                "component_changes": {},
+            }
+
+        # Calculate overall percentage change
+        if previous.overall_score == 0:
+            percentage_change = 100.0 if current.overall_score > 0 else 0.0
+        else:
+            percentage_change = (
+                (current.overall_score - previous.overall_score) / previous.overall_score * 100.0
+            )
+
+        # Determine trend
+        if percentage_change > 1.0:
+            trend = "improving"
+        elif percentage_change < -1.0:
+            trend = "degrading"
+        else:
+            trend = "stable"
+
+        # Calculate per-component changes
+        component_changes = {
+            "completeness": current.completeness_score - previous.completeness_score,
+            "validity": current.validity_score - previous.validity_score,
+            "consistency": current.consistency_score - previous.consistency_score,
+            "freshness": current.freshness_score - previous.freshness_score,
+            "uniqueness": current.uniqueness_score - previous.uniqueness_score,
+            "accuracy": current.accuracy_score - previous.accuracy_score,
+        }
+
+        return {
+            "trend": trend,
+            "percentage_change": round(percentage_change, 2),
+            "component_changes": component_changes,
+        }

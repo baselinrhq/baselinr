@@ -912,22 +912,54 @@ def score_command(args):
                 output = json.dumps(score.to_dict(), indent=2, default=str)
                 safe_print(output)
             else:
-                # Table format (basic for Phase 1)
-                safe_print(f"\nQuality Score for {args.table}")
-                safe_print(f"Overall Score: {score.overall_score:.1f}/100 [{score.status}]")
-                safe_print("Components:")
-                safe_print(f"  Completeness: {score.completeness_score:.1f}")
-                safe_print(f"  Validity: {score.validity_score:.1f}")
-                safe_print(f"  Consistency: {score.consistency_score:.1f}")
-                safe_print(f"  Freshness: {score.freshness_score:.1f}")
-                safe_print(f"  Uniqueness: {score.uniqueness_score:.1f}")
-                safe_print(f"  Accuracy: {score.accuracy_score:.1f}")
-                issues_msg = (
-                    f"Issues: {score.total_issues} total, "
-                    f"{score.critical_issues} critical, "
-                    f"{score.warnings} warnings"
+                # Rich format with trend comparison
+                from .cli_output import format_score_card
+
+                # Fetch previous score for comparison
+                previous_score = None
+                trend_data = None
+                try:
+                    # Get score history and find the previous score (skip the one we just stored)
+                    history = storage.get_score_history(args.table, args.schema, days=30)
+                    # Filter out the current score by comparing calculated_at timestamps
+                    # (allowing small time difference for database precision)
+                    for hist_score in history:
+                        time_diff = abs(
+                            (hist_score.calculated_at - score.calculated_at).total_seconds()
+                        )
+                        # If timestamps are more than 1 second apart, it's a different score
+                        if time_diff > 1.0:
+                            previous_score = hist_score
+                            break
+
+                    if previous_score:
+                        trend_data = scorer.compare_scores(score, previous_score)
+                except Exception as e:
+                    logger.debug(f"Could not fetch previous score for comparison: {e}")
+
+                # Format and display score card
+                score_card = format_score_card(
+                    score, trend_data=trend_data, config=config.quality_scoring
                 )
-                safe_print(issues_msg)
+                if score_card:
+                    safe_print(score_card)
+                else:
+                    # Fallback to plain text if Rich unavailable
+                    safe_print(f"\nQuality Score for {args.table}")
+                    safe_print(f"Overall Score: {score.overall_score:.1f}/100 [{score.status}]")
+                    safe_print("Components:")
+                    safe_print(f"  Completeness: {score.completeness_score:.1f}")
+                    safe_print(f"  Validity: {score.validity_score:.1f}")
+                    safe_print(f"  Consistency: {score.consistency_score:.1f}")
+                    safe_print(f"  Freshness: {score.freshness_score:.1f}")
+                    safe_print(f"  Uniqueness: {score.uniqueness_score:.1f}")
+                    safe_print(f"  Accuracy: {score.accuracy_score:.1f}")
+                    issues_msg = (
+                        f"Issues: {score.total_issues} total, "
+                        f"{score.critical_issues} critical, "
+                        f"{score.warnings} warnings"
+                    )
+                    safe_print(issues_msg)
         else:
             # Calculate scores for all tables (future: query from runs table)
             safe_print("[yellow]Table name required. Use --table to specify a table.[/yellow]")
@@ -2202,6 +2234,20 @@ def _status_single_run(
     # Query recent runs (default: last 7 days, or limit)
     runs = client.query_runs(days=days, limit=limit)
 
+    # Initialize quality score storage if enabled
+    quality_storage = None
+    if config.quality_scoring and config.quality_scoring.enabled:
+        try:
+            from .quality.storage import QualityScoreStorage
+
+            storage_connector = create_connector(config.storage.connection, config.retry)
+            quality_storage = QualityScoreStorage(
+                engine=storage_connector.engine,
+                scores_table="baselinr_quality_scores",
+            )
+        except Exception as e:
+            logger.debug(f"Could not initialize quality score storage: {e}")
+
     # Enrich runs with event data
     runs_data = []
     for run in runs:
@@ -2256,6 +2302,18 @@ def _status_single_run(
         has_drift = len(drift_events) > 0
         severity = drift_events[0].drift_severity if drift_events else None
 
+        # Fetch quality score if available
+        quality_score = None
+        quality_status = None
+        if quality_storage:
+            try:
+                latest_score = quality_storage.get_latest_score(run.dataset_name, run.schema_name)
+                if latest_score:
+                    quality_score = latest_score.overall_score
+                    quality_status = latest_score.status
+            except Exception as e:
+                logger.debug(f"Could not fetch quality score for {run.dataset_name}: {e}")
+
         runs_data.append(
             {
                 "run_id": run.run_id,
@@ -2273,6 +2331,8 @@ def _status_single_run(
                 "anomalies_count": anomalies_count,
                 "has_drift": has_drift,
                 "drift_severity": severity,
+                "quality_score": quality_score,
+                "quality_status": quality_status,
                 # Keep legacy status_indicator for text/JSON formats
                 "status_indicator": (
                     "healthy"
@@ -2308,6 +2368,20 @@ def _status_watch_mode(
         from rich.live import Live
 
         console = Console()
+
+        # Initialize quality score storage if enabled
+        quality_storage = None
+        if config.quality_scoring and config.quality_scoring.enabled:
+            try:
+                from .quality.storage import QualityScoreStorage
+
+                storage_connector = create_connector(config.storage.connection, config.retry)
+                quality_storage = QualityScoreStorage(
+                    engine=storage_connector.engine,
+                    scores_table="baselinr_quality_scores",
+                )
+            except Exception as e:
+                logger.debug(f"Could not initialize quality score storage: {e}")
 
         def generate_status_renderable():
             """Generate Rich renderable for current state."""
@@ -2365,6 +2439,20 @@ def _status_watch_mode(
                 has_drift = len(drift_events) > 0
                 severity = drift_events[0].drift_severity if drift_events else None
 
+                # Fetch quality score if available
+                quality_score = None
+                quality_status = None
+                if quality_storage:
+                    try:
+                        latest_score = quality_storage.get_latest_score(
+                            run.dataset_name, run.schema_name
+                        )
+                        if latest_score:
+                            quality_score = latest_score.overall_score
+                            quality_status = latest_score.status
+                    except Exception as e:
+                        logger.debug(f"Could not fetch quality score for {run.dataset_name}: {e}")
+
                 runs_data.append(
                     {
                         "run_id": run.run_id,
@@ -2381,6 +2469,8 @@ def _status_watch_mode(
                         "metrics_count": metrics_count,
                         "anomalies_count": anomalies_count,
                         "has_drift": has_drift,
+                        "quality_score": quality_score,
+                        "quality_status": quality_status,
                         "drift_severity": severity,
                         # Keep legacy status_indicator for text/JSON formats
                         "status_indicator": (
