@@ -952,6 +952,47 @@ class DatabaseClient:
                 KPI(name="Avg Rows", value=int(stats[2] or 0), change_percent=None, trend="up")
             ]
             
+            # Get quality scores (system-level)
+            system_quality_score = None
+            quality_score_status = None
+            quality_trend = None
+            try:
+                # Import here to avoid circular dependencies
+                import sys
+                import os
+                sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+                from baselinr.quality.storage import QualityScoreStorage
+                from baselinr.quality.scorer import QualityScorer
+                
+                storage = QualityScoreStorage(self.engine)
+                system_scores = storage.query_system_scores()
+                
+                if system_scores:
+                    # Calculate average score
+                    total_score = sum(s.overall_score for s in system_scores)
+                    avg_score = total_score / len(system_scores) if system_scores else 0.0
+                    system_quality_score = round(avg_score, 2)
+                    
+                    # Determine overall status (worst status wins)
+                    critical_count = sum(1 for s in system_scores if s.status == "critical")
+                    warning_count = sum(1 for s in system_scores if s.status == "warning")
+                    
+                    if critical_count > 0:
+                        quality_score_status = "critical"
+                    elif warning_count > 0:
+                        quality_score_status = "warning"
+                    else:
+                        quality_score_status = "healthy"
+                    
+                    # Calculate trend by comparing with previous system score
+                    # Get historical scores for trend calculation
+                    # We'll use a simple approach: compare current avg with previous period
+                    # For now, set trend to None (can be enhanced later with proper historical comparison)
+                    quality_trend = None
+            except Exception as e:
+                # Quality scoring may not be enabled or table may not exist
+                logger.debug(f"Could not get quality scores (may not be enabled): {e}")
+            
             return MetricsDashboardResponse(
                 total_runs=stats[0] or 0,
                 total_tables=stats[1] or 0,
@@ -969,7 +1010,10 @@ class DatabaseClient:
                 active_alerts=active_alerts,
                 data_freshness_hours=data_freshness_hours,
                 stale_tables_count=stale_tables_count,
-                validation_trend=validation_trend
+                validation_trend=validation_trend,
+                system_quality_score=system_quality_score,
+                quality_score_status=quality_score_status,
+                quality_trend=quality_trend
             )
     
     async def get_warehouses(self) -> List[str]:
