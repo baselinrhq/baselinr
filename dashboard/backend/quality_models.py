@@ -70,3 +70,38 @@ class SystemScoreResponse(BaseModel):
     healthy_count: int = Field(..., description="Number of healthy tables")
     warning_count: int = Field(..., description="Number of tables with warning status")
     critical_count: int = Field(..., description="Number of critical tables")
+
+
+class TrendAnalysisResponse(BaseModel):
+    """Trend analysis response."""
+    direction: str = Field(..., description="Trend direction: improving, degrading, or stable")
+    rate_of_change: float = Field(..., description="Percentage change per period")
+    confidence: float = Field(..., description="Confidence level (0-1)")
+    periods_analyzed: int = Field(..., description="Number of periods analyzed")
+    overall_change: float = Field(..., description="Total percentage change")
+
+
+class ColumnScoreResponse(BaseModel):
+    """Column-level quality score response."""
+    table_name: str = Field(..., description="Table name")
+    schema_name: Optional[str] = Field(None, description="Schema name")
+    column_name: str = Field(..., description="Column name")
+    overall_score: float = Field(..., description="Overall quality score (0-100)")
+    status: str = Field(..., description="Status: healthy, warning, or critical")
+    components: ScoreComponentResponse = Field(..., description="Component scores breakdown")
+    calculated_at: datetime = Field(..., description="When the score was calculated")
+    run_id: Optional[str] = Field(None, description="Associated run ID")
+    period_start: datetime = Field(..., description="Period start time")
+    period_end: datetime = Field(..., description="Period end time")
+
+
+class ColumnScoresListResponse(BaseModel):
+    """Response model for list of column scores."""
+    scores: List[ColumnScoreResponse] = Field(default_factory=list, description="List of column scores")
+    total: int = Field(..., description="Total number of column scores")
+
+
+class ScoreComparisonResponse(BaseModel):
+    """Score comparison response."""
+    tables: List[QualityScoreResponse] = Field(default_factory=list, description="Compared table scores")
+    comparison_metrics: Dict = Field(..., description="Comparison metrics including best/worst performers")

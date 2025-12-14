@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from .models import DataQualityScore
+from .models import ColumnQualityScore, DataQualityScore
 
 logger = logging.getLogger(__name__)
 
@@ -398,3 +398,212 @@ class QualityScoreStorage:
             List of DataQualityScore objects, ordered by calculated_at DESC
         """
         return self.get_score_history(table_name, schema_name, days)
+
+    def store_column_score(self, score: ColumnQualityScore) -> None:
+        """
+        Store a column quality score in the database.
+
+        Args:
+            score: ColumnQualityScore object to store
+        """
+        column_scores_table = "baselinr_column_quality_scores"
+        with self.engine.connect() as conn:
+            insert_query = text(
+                f"""
+                INSERT INTO {column_scores_table} (
+                    table_name, schema_name, column_name, run_id,
+                    overall_score, completeness_score, validity_score,
+                    consistency_score, freshness_score, uniqueness_score,
+                    accuracy_score, status, calculated_at, period_start, period_end
+                ) VALUES (
+                    :table_name, :schema_name, :column_name, :run_id,
+                    :overall_score, :completeness_score, :validity_score,
+                    :consistency_score, :freshness_score, :uniqueness_score,
+                    :accuracy_score, :status, :calculated_at, :period_start, :period_end
+                )
+            """
+            )
+
+            conn.execute(
+                insert_query,
+                {
+                    "table_name": score.table_name,
+                    "schema_name": score.schema_name,
+                    "column_name": score.column_name,
+                    "run_id": score.run_id,
+                    "overall_score": score.overall_score,
+                    "completeness_score": score.completeness_score,
+                    "validity_score": score.validity_score,
+                    "consistency_score": score.consistency_score,
+                    "freshness_score": score.freshness_score,
+                    "uniqueness_score": score.uniqueness_score,
+                    "accuracy_score": score.accuracy_score,
+                    "status": score.status,
+                    "calculated_at": score.calculated_at,
+                    "period_start": score.period_start,
+                    "period_end": score.period_end,
+                },
+            )
+
+            conn.commit()
+            logger.debug(
+                f"Stored column quality score for {score.table_name}.{score.column_name} "
+                f"(schema: {score.schema_name}): {score.overall_score:.1f}"
+            )
+
+    def get_latest_column_score(
+        self,
+        table_name: str,
+        column_name: str,
+        schema_name: Optional[str] = None,
+    ) -> Optional[ColumnQualityScore]:
+        """
+        Get the most recent column score for a table.
+
+        Args:
+            table_name: Name of the table
+            column_name: Name of the column
+            schema_name: Optional schema name
+
+        Returns:
+            ColumnQualityScore if found, None otherwise
+        """
+        column_scores_table = "baselinr_column_quality_scores"
+        conditions = [
+            "table_name = :table_name",
+            "column_name = :column_name",
+        ]
+        params: Dict[str, Any] = {
+            "table_name": table_name,
+            "column_name": column_name,
+        }
+
+        if schema_name:
+            conditions.append("schema_name = :schema_name")
+            params["schema_name"] = schema_name
+        else:
+            conditions.append("schema_name IS NULL")
+
+        where_clause = " AND ".join(conditions)
+
+        query = text(
+            f"""
+            SELECT table_name, schema_name, column_name, run_id,
+                   overall_score, completeness_score, validity_score,
+                   consistency_score, freshness_score, uniqueness_score,
+                   accuracy_score, status, calculated_at, period_start, period_end
+            FROM {column_scores_table}
+            WHERE {where_clause}
+            ORDER BY calculated_at DESC
+            LIMIT 1
+        """
+        )
+
+        with self.engine.connect() as conn:
+            result = conn.execute(query, params).fetchone()
+
+            if not result:
+                return None
+
+            return ColumnQualityScore(
+                table_name=result[0],
+                schema_name=result[1],
+                column_name=result[2],
+                run_id=result[3],
+                overall_score=float(result[4]),
+                completeness_score=float(result[5]),
+                validity_score=float(result[6]),
+                consistency_score=float(result[7]),
+                freshness_score=float(result[8]),
+                uniqueness_score=float(result[9]),
+                accuracy_score=float(result[10]),
+                status=result[11],
+                calculated_at=result[12],
+                period_start=result[13],
+                period_end=result[14],
+            )
+
+    def get_column_scores_for_table(
+        self,
+        table_name: str,
+        schema_name: Optional[str] = None,
+        days: int = 30,
+    ) -> List[ColumnQualityScore]:
+        """
+        Get latest column scores for all columns in a table.
+
+        Args:
+            table_name: Name of the table
+            schema_name: Optional schema name
+            days: Number of days to look back
+
+        Returns:
+            List of ColumnQualityScore objects (latest score per column)
+        """
+        column_scores_table = "baselinr_column_quality_scores"
+        conditions = ["table_name = :table_name"]
+        params: Dict[str, Any] = {"table_name": table_name}
+
+        if schema_name:
+            conditions.append("schema_name = :schema_name")
+            params["schema_name"] = schema_name
+        else:
+            conditions.append("schema_name IS NULL")
+
+        # Add time filter
+        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        conditions.append("calculated_at >= :cutoff_date")
+        params["cutoff_date"] = cutoff_date
+
+        where_clause = " AND ".join(conditions)
+
+        # Use subquery to get latest score per column
+        query = text(
+            f"""
+            SELECT s1.table_name, s1.schema_name, s1.column_name, s1.run_id,
+                   s1.overall_score, s1.completeness_score, s1.validity_score,
+                   s1.consistency_score, s1.freshness_score, s1.uniqueness_score,
+                   s1.accuracy_score, s1.status, s1.calculated_at, s1.period_start, s1.period_end
+            FROM {column_scores_table} s1
+            INNER JOIN (
+                SELECT table_name, schema_name, column_name, MAX(calculated_at) as max_calculated_at
+                FROM {column_scores_table}
+                WHERE {where_clause}
+                GROUP BY table_name, schema_name, column_name
+            ) s2 ON s1.table_name = s2.table_name
+                AND s1.column_name = s2.column_name
+                AND (
+                    (s1.schema_name = s2.schema_name)
+                    OR (s1.schema_name IS NULL AND s2.schema_name IS NULL)
+                )
+                AND s1.calculated_at = s2.max_calculated_at
+            ORDER BY s1.column_name
+        """
+        )
+
+        scores = []
+        with self.engine.connect() as conn:
+            results = conn.execute(query, params).fetchall()
+
+            for row in results:
+                scores.append(
+                    ColumnQualityScore(
+                        table_name=row[0],
+                        schema_name=row[1],
+                        column_name=row[2],
+                        run_id=row[3],
+                        overall_score=float(row[4]),
+                        completeness_score=float(row[5]),
+                        validity_score=float(row[6]),
+                        consistency_score=float(row[7]),
+                        freshness_score=float(row[8]),
+                        uniqueness_score=float(row[9]),
+                        accuracy_score=float(row[10]),
+                        status=row[11],
+                        calculated_at=row[12],
+                        period_start=row[13],
+                        period_end=row[14],
+                    )
+                )
+
+        return scores

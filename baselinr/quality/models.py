@@ -70,3 +70,44 @@ class DataQualityScore:
             "period_start": self.period_start.isoformat(),
             "period_end": self.period_end.isoformat(),
         }
+
+
+@dataclass
+class ColumnQualityScore:
+    """Data quality score for a specific column."""
+
+    overall_score: float  # 0-100
+    completeness_score: float
+    validity_score: float
+    consistency_score: float
+    freshness_score: float
+    uniqueness_score: float
+    accuracy_score: float
+    status: str  # "healthy", "warning", "critical"
+    table_name: str
+    schema_name: Optional[str]
+    column_name: str
+    run_id: Optional[str]
+    calculated_at: datetime
+    period_start: datetime
+    period_end: datetime
+
+    def to_dict(self) -> dict:
+        """Convert score to dictionary."""
+        return {
+            "overall_score": self.overall_score,
+            "completeness_score": self.completeness_score,
+            "validity_score": self.validity_score,
+            "consistency_score": self.consistency_score,
+            "freshness_score": self.freshness_score,
+            "uniqueness_score": self.uniqueness_score,
+            "accuracy_score": self.accuracy_score,
+            "status": self.status,
+            "table_name": self.table_name,
+            "schema_name": self.schema_name,
+            "column_name": self.column_name,
+            "run_id": self.run_id,
+            "calculated_at": self.calculated_at.isoformat(),
+            "period_start": self.period_start.isoformat(),
+            "period_end": self.period_end.isoformat(),
+        }
