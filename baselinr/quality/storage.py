@@ -91,7 +91,8 @@ class QualityScoreStorage:
 
         Args:
             table_name: Name of the table
-            schema_name: Optional schema name
+            schema_name: Optional schema name. If None, will try to find score
+                        regardless of schema (matches any schema or NULL)
 
         Returns:
             DataQualityScore if found, None otherwise
@@ -102,10 +103,10 @@ class QualityScoreStorage:
         if schema_name:
             conditions.append("schema_name = :schema_name")
             params["schema_name"] = schema_name
-        else:
-            conditions.append("schema_name IS NULL")
+        # If schema_name is None, don't filter by schema - match any schema or NULL
+        # This allows finding scores even when schema is not known
 
-        where_clause = " AND ".join(conditions)
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
 
         query = text(
             f"""

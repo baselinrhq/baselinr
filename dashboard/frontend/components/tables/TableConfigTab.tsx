@@ -32,12 +32,12 @@ export default function TableConfigTab({
 
   if (error || !config) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+      <div className="bg-surface-800/40 border border-amber-500/20 rounded-lg p-6">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5" />
           <div className="flex-1">
-            <p className="text-yellow-800 font-medium">Configuration Not Available</p>
-            <p className="text-yellow-700 text-sm mt-1">
+            <p className="text-amber-400 font-medium">Configuration Not Available</p>
+            <p className="text-slate-400 text-sm mt-1">
               Table configuration is not yet implemented. Use the configuration pages to manage table settings.
             </p>
             <div className="mt-4">
@@ -62,14 +62,14 @@ export default function TableConfigTab({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="glass-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Settings className="w-5 h-5" />
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Settings className="w-5 h-5 text-cyan-400" />
               Table Configuration
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               {tableName}{schema && ` (${schema})`}
             </p>
           </div>
@@ -86,17 +86,17 @@ export default function TableConfigTab({
       </div>
 
       {/* Configuration Status */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="glass-card p-6">
         <div className="flex items-center gap-3 mb-4">
           {hasConfig ? (
             <>
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <span className="text-sm font-medium text-gray-900">Configuration Active</span>
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span className="text-sm font-medium text-white">Configuration Active</span>
             </>
           ) : (
             <>
-              <AlertCircle className="w-5 h-5 text-yellow-600" />
-              <span className="text-sm font-medium text-gray-900">Using Default Configuration</span>
+              <AlertCircle className="w-5 h-5 text-amber-400" />
+              <span className="text-sm font-medium text-white">Using Default Configuration</span>
             </>
           )}
         </div>
@@ -106,9 +106,9 @@ export default function TableConfigTab({
             {/* Profiling Settings */}
             {config.config.profiling && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Profiling Settings</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <pre className="text-xs text-gray-600 overflow-x-auto">
+                <h3 className="text-sm font-semibold text-slate-300 mb-2">Profiling Settings</h3>
+                <div className="bg-surface-800/50 rounded-lg p-4">
+                  <pre className="text-xs text-slate-300 overflow-x-auto">
                     {JSON.stringify(config.config.profiling, null, 2)}
                   </pre>
                 </div>
@@ -118,9 +118,9 @@ export default function TableConfigTab({
             {/* Column Configuration */}
             {config.config.columns && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Column Configuration</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <pre className="text-xs text-gray-600 overflow-x-auto">
+                <h3 className="text-sm font-semibold text-slate-300 mb-2">Column Configuration</h3>
+                <div className="bg-surface-800/50 rounded-lg p-4">
+                  <pre className="text-xs text-slate-300 overflow-x-auto">
                     {JSON.stringify(config.config.columns, null, 2)}
                   </pre>
                 </div>
@@ -130,9 +130,9 @@ export default function TableConfigTab({
             {/* Other Settings */}
             {Object.keys(config.config).filter(key => !['profiling', 'columns'].includes(key)).length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Other Settings</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <pre className="text-xs text-gray-600 overflow-x-auto">
+                <h3 className="text-sm font-semibold text-slate-300 mb-2">Other Settings</h3>
+                <div className="bg-surface-800/50 rounded-lg p-4">
+                  <pre className="text-xs text-slate-300 overflow-x-auto">
                     {JSON.stringify(
                       Object.fromEntries(
                         Object.entries(config.config).filter(([key]) => !['profiling', 'columns'].includes(key))
@@ -146,8 +146,8 @@ export default function TableConfigTab({
             )}
           </div>
         ) : (
-          <div className="bg-gray-50 rounded-lg p-6 text-center">
-            <p className="text-gray-600 text-sm mb-4">
+          <div className="bg-surface-800/50 rounded-lg p-6 text-center">
+            <p className="text-slate-400 text-sm mb-4">
               This table is using default configuration settings. Configure profiling, sampling, and validation rules
               to customize how this table is monitored.
             </p>
@@ -165,8 +165,8 @@ export default function TableConfigTab({
       </div>
 
       {/* Quick Links */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-4">Related Configuration</h3>
+      <div className="glass-card p-6">
+        <h3 className="text-sm font-semibold text-slate-300 mb-4">Related Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"

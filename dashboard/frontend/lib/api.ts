@@ -7,6 +7,13 @@ import type {
   DriftDetails, 
   DriftImpact 
 } from '@/types/drift';
+import type {
+  QualityScore,
+  QualityScoresListResponse,
+  ScoreHistoryResponse,
+  SchemaScoreResponse,
+  SystemScoreResponse,
+} from '@/types/quality';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -89,6 +96,10 @@ export interface DashboardMetrics {
     timestamp: string;
     value: number;
   }>;
+  // Quality scoring metrics
+  system_quality_score?: number | null;
+  quality_score_status?: string | null;
+  quality_trend?: string | null;
 }
 
 export async function fetchDashboardMetrics(
@@ -662,5 +673,53 @@ export async function fetchValidationFailureSamples(
   }
   
   return response.json();
+}
+
+// Quality Scores API
+export async function fetchQualityScores(
+  options: { schema?: string; status?: string } = {}
+): Promise<QualityScoresListResponse> {
+  return fetchAPI<QualityScoresListResponse>('/api/quality/scores', options);
+}
+
+export async function fetchTableScore(
+  tableName: string,
+  schema?: string
+): Promise<QualityScore> {
+  const options: FetchOptions = {};
+  if (schema) {
+    options.schema = schema;
+  }
+  const url = `/api/quality/scores/${encodeURIComponent(tableName)}`;
+  console.log(`[API] fetchTableScore: ${url}`, options);
+  return fetchAPI<QualityScore>(url, options);
+}
+
+export async function fetchScoreHistory(
+  tableName: string,
+  schema?: string,
+  days?: number
+): Promise<ScoreHistoryResponse> {
+  const options: FetchOptions = {};
+  if (schema) {
+    options.schema = schema;
+  }
+  if (days) {
+    options.days = days;
+  }
+  return fetchAPI<ScoreHistoryResponse>(
+    `/api/quality/scores/${encodeURIComponent(tableName)}/history`,
+    options
+  );
+}
+
+export async function fetchSchemaScore(schemaName: string): Promise<SchemaScoreResponse> {
+  return fetchAPI<SchemaScoreResponse>(
+    `/api/quality/scores/schema/${encodeURIComponent(schemaName)}`
+  );
+}
+
+export async function fetchSystemScore(): Promise<SystemScoreResponse> {
+  return fetchAPI<SystemScoreResponse>('/api/quality/scores/system');
 }
 

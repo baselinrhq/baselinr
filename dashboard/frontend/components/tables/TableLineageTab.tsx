@@ -23,11 +23,11 @@ export default function TableLineageTab({
   return (
     <div className="space-y-6">
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="glass-card p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Direction Toggle */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-300 mb-2">
               Direction
             </label>
             <div className="flex gap-2">
@@ -89,7 +89,7 @@ export default function TableLineageTab({
         </div>
 
         {/* Expand to Full Lineage */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        <div className="mt-4 pt-4 border-t border-surface-700/50">
           <Button
             variant="outline"
             asChild
@@ -103,9 +103,9 @@ export default function TableLineageTab({
       </div>
 
       {/* Lineage Graph */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Lineage</h2>
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 min-h-[400px]">
+      <div className="glass-card p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Data Lineage</h2>
+        <div className="border border-surface-700/50 rounded-lg p-4 bg-surface-800/30 min-h-[400px]">
           <LineageMiniGraph
             table={tableName}
             schema={schema}

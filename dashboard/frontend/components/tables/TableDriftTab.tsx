@@ -38,9 +38,9 @@ export default function TableDriftTab({
 
   if (error || !history) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-        <p className="text-red-800 font-medium">Error loading drift history</p>
-        <p className="text-red-600 text-sm mt-1">
+      <div className="bg-surface-800/40 border border-rose-500/20 rounded-lg p-6 text-center">
+        <p className="text-rose-400 font-medium">Error loading drift history</p>
+        <p className="text-slate-400 text-sm mt-1">
           {error instanceof Error ? error.message : 'Unknown error'}
         </p>
       </div>
@@ -86,27 +86,27 @@ export default function TableDriftTab({
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Total Events</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">
+        <div className="glass-card p-6">
+          <p className="text-sm font-medium text-slate-400">Total Events</p>
+          <p className="text-2xl font-bold text-white mt-2">
             {history.summary.total_events || history.drift_events.length}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Recent (7 days)</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">
+        <div className="glass-card p-6">
+          <p className="text-sm font-medium text-slate-400">Recent (7 days)</p>
+          <p className="text-2xl font-bold text-white mt-2">
             {history.summary.recent_count || 0}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">High Severity</p>
-          <p className="text-2xl font-bold text-red-600 mt-2">
+        <div className="glass-card p-6">
+          <p className="text-sm font-medium text-slate-400">High Severity</p>
+          <p className="text-2xl font-bold text-rose-400 mt-2">
             {history.summary.by_severity?.high || 0}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p className="text-sm font-medium text-gray-600">Affected Columns</p>
-          <p className="text-2xl font-bold text-gray-900 mt-2">
+        <div className="glass-card p-6">
+          <p className="text-sm font-medium text-slate-400">Affected Columns</p>
+          <p className="text-2xl font-bold text-white mt-2">
             {Object.keys(history.summary.by_column || {}).length}
           </p>
         </div>
@@ -115,9 +115,9 @@ export default function TableDriftTab({
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Drift Trend */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-cyan-400" />
             Drift Trend
           </h2>
           <div className="h-64">
@@ -132,7 +132,7 @@ export default function TableDriftTab({
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-slate-500">
                 <p>No trend data available</p>
               </div>
             )}
@@ -140,9 +140,9 @@ export default function TableDriftTab({
         </div>
 
         {/* Severity Distribution */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5" />
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-cyan-400" />
             Severity Distribution
           </h2>
           <div className="h-64">
@@ -167,7 +167,7 @@ export default function TableDriftTab({
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-slate-500">
                 <p>No severity data available</p>
               </div>
             )}
@@ -177,8 +177,8 @@ export default function TableDriftTab({
 
       {/* Column Breakdown */}
       {columnData.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Column-Level Drift Breakdown</h2>
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-4">Column-Level Drift Breakdown</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={columnData} layout="vertical">
@@ -194,13 +194,13 @@ export default function TableDriftTab({
       )}
 
       {/* Filter */}
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="glass-card p-4">
         <div className="flex items-center gap-4">
-          <label className="text-sm font-medium text-gray-700">Filter by Severity:</label>
+          <label className="text-sm font-medium text-slate-300">Filter by Severity:</label>
           <select
             value={severityFilter || ''}
             onChange={(e) => setSeverityFilter(e.target.value || undefined)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+            className="px-3 py-2 bg-surface-800/50 border border-surface-600 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
           >
             <option value="">All Severities</option>
             <option value="low">Low</option>
@@ -211,10 +211,10 @@ export default function TableDriftTab({
       </div>
 
       {/* Drift Events Table */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
+      <div className="glass-card overflow-hidden">
+        <div className="px-6 py-4 border-b border-surface-700/50">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-400" />
             Drift Events ({filteredEvents.length})
           </h2>
         </div>
@@ -239,7 +239,7 @@ export default function TableDriftTab({
               })}
             />
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-slate-500">
               <p>No drift events found{severityFilter ? ` with ${severityFilter} severity` : ''}</p>
             </div>
           )}
