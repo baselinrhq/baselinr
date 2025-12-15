@@ -8,6 +8,7 @@ from .schema import (
     BaselinrConfig,
     ColumnConfig,
     DatasetConfig,
+    DatasetsConfig,
     DriftDetectionConfig,
     TablePattern,
     ValidationRuleConfig,
@@ -28,7 +29,10 @@ class ConfigMerger:
         self.config = config
         self.datasets: List[DatasetConfig] = []
         if config and config.datasets:
-            self.datasets = config.datasets.datasets
+            # ConfigLoader should have already converted DatasetsDirectoryConfig to DatasetsConfig
+            # but we check to be safe for type checking
+            if isinstance(config.datasets, DatasetsConfig):
+                self.datasets = config.datasets.datasets
 
     def find_matching_dataset(
         self, database: Optional[str], schema: Optional[str], table: Optional[str]

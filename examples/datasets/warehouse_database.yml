@@ -1,0 +1,9 @@
+database: warehouse
+profiling:
+  columns:
+    - name: '*_metadata'
+      profiling:
+        enabled: false
+    - name: '*_id'
+      drift:
+        enabled: false

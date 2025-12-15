@@ -637,6 +637,83 @@ schema_change:
 - `similarity_threshold` (float): Similarity threshold for rename detection (default: `0.7`)
 - `suppression` (List[SchemaChangeSuppressionRule]): Suppression rules
 
+## Dataset Configuration
+
+### `datasets`
+
+Dataset-level configuration that consolidates overrides for profiling, drift detection, validation, and anomaly detection. Can be specified inline or as a directory-based structure.
+
+**Type:** `DatasetsConfig` or `DatasetsDirectoryConfig`
+
+**Required:** No
+
+**Example (Inline):**
+```yaml
+datasets:
+  datasets:
+    - table: customers
+      schema: public
+      profiling:
+        partition:
+          key: created_at
+          strategy: latest
+      drift:
+        strategy: statistical
+```
+
+**Example (Directory-Based):**
+```yaml
+datasets:
+  datasets_dir: ./datasets
+  auto_discover: true
+  recursive: true
+  file_pattern: "*.yml"
+  exclude_patterns:
+    - "*.backup.yml"
+```
+
+#### Directory-Based Configuration
+
+When using directory-based configuration, dataset configs are stored in separate YAML files organized in a directory structure similar to dbt projects.
+
+**Directory Structure:**
+```
+config.yml (main config)
+datasets/
+  ├── customers.yml
+  ├── orders.yml
+  ├── analytics/
+  │   ├── _schema.yml (schema-level config)
+  │   ├── events.yml
+  │   └── metrics.yml
+  └── _database.yml (database-level config)
+```
+
+**File Naming Conventions:**
+- `{table_name}.yml` - Table-specific config
+- `{schema_name}_schema.yml` - Schema-level config
+- `{database_name}_database.yml` - Database-level config
+
+**Configuration Options:**
+- `datasets_dir` (str): Path to datasets directory (relative to config file or absolute, default: `./datasets`)
+- `auto_discover` (bool): Automatically discover YAML files (default: `true`)
+- `file_pattern` (str): File pattern to match (default: `*.yml`)
+- `recursive` (bool): Recursively search subdirectories (default: `true`)
+- `exclude_patterns` (List[str]): Patterns to exclude from discovery (e.g., `['*.backup.yml']`)
+
+**Precedence Rules:**
+Configurations are merged with the following precedence (highest to lowest):
+1. Table-level config (most specific)
+2. Schema-level config
+3. Database-level config
+4. Global config defaults
+
+**Benefits:**
+- Single source of truth for each dataset
+- Modular organization by dataset, schema, or database
+- Easier version control and team collaboration
+- Scalable for large numbers of datasets
+
 ## Full Configuration Example
 
 See `examples/config.yml` for a complete configuration example with all options.
