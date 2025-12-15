@@ -118,6 +118,8 @@ class TestPlanBuilder:
     def test_build_plan_no_tables(self, mock_config):
         """Test building plan with no tables configured."""
         mock_config.profiling.tables = []
+        mock_config.profiling.table_discovery = False  # Disable table discovery for this test
+        mock_config.datasets = None  # Ensure no datasets
         builder = PlanBuilder(mock_config)
 
         with pytest.raises(ValueError) as exc_info:

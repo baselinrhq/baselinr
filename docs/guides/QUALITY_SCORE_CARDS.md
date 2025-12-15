@@ -451,3 +451,4 @@ baselinr score --config config.yaml --table customers --history --export json --
 # Analyze trends (using jq)
 cat history.json | jq '.[] | {date: .calculated_at, score: .overall_score}'
 ```
+

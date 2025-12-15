@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config.schema import BaselinrConfig, TablePattern
+from .config.schema import BaselinrConfig, DatasetsConfig, TablePattern
 from .connectors.factory import create_connector
 from .incremental import IncrementalPlan, IncrementalPlanner, TableRunDecision
 from .profiling.table_matcher import TableMatcher
@@ -189,15 +189,51 @@ class PlanBuilder:
         """
         logger.info("Building profiling execution plan...")
 
-        # Validate configuration
-        if not self.config.profiling.tables:
-            raise ValueError(
-                "No tables configured for profiling. "
-                "Add tables to the 'profiling.tables' section in your config."
-            )
+        # Get table patterns from config
+        # Tables can come from:
+        # 1. profiling.tables (table selection patterns)
+        # 2. Datasets section (extract table patterns from dataset configs)
+        table_patterns = self.config.profiling.tables
+
+        # If no table patterns specified, try to extract from datasets section
+        if not table_patterns:
+            if (
+                self.config.datasets
+                and isinstance(self.config.datasets, DatasetsConfig)
+                and self.config.datasets.datasets
+            ):
+                # Extract table patterns from datasets
+                table_patterns = []
+                for dataset in self.config.datasets.datasets:
+                    if dataset.table:
+                        # Create TablePattern from dataset config
+                        # Use schema alias since TablePattern uses populate_by_name=True
+                        pattern = TablePattern(
+                            table=dataset.table,
+                            schema=dataset.schema_,
+                            database=dataset.database,
+                        )  # type: ignore[call-arg]
+                        table_patterns.append(pattern)
+                        logger.debug(
+                            f"Extracted table pattern from dataset: {dataset.table} "
+                            f"(schema: {dataset.schema_}, database: {dataset.database})"
+                        )
 
         # Expand patterns into concrete tables
-        expanded_patterns = self.expand_table_patterns()
+        # Use extracted patterns if we got them from datasets, otherwise use config patterns
+        expanded_patterns = self.expand_table_patterns(
+            patterns=table_patterns if table_patterns else None
+        )
+
+        # Validate that we have some way to determine tables
+        # If no expanded patterns and table discovery is enabled, that's ok
+        # Discovery will happen later. But if we have no patterns and no discovery, we can't proceed
+        if not expanded_patterns and not self.config.profiling.table_discovery:
+            raise ValueError(
+                "No tables configured for profiling. "
+                "Add tables to the 'profiling.tables' section, enable 'profiling.table_discovery', "
+                "or configure tables in the 'datasets' section in your config."
+            )
 
         # Create plan
         plan = ProfilingPlan(
