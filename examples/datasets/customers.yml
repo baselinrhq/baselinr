@@ -1,0 +1,40 @@
+database: baselinr
+schema: public
+table: customers
+profiling:
+  partition:
+    key: created_at
+    strategy: latest
+    metadata_fallback: true
+  sampling:
+    enabled: true
+    method: random
+    fraction: 0.1
+  columns:
+    - name: email
+      metrics:
+        - count
+        - null_count
+        - distinct_count
+      drift:
+        enabled: true
+        thresholds:
+          low: 2.0
+          high: 10.0
+          medium: 5.0
+    - name: '*_id'
+      drift:
+        enabled: false
+drift:
+  strategy: statistical
+validation:
+  rules:
+    - type: format
+      column: email
+      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+      severity: high
+      enabled: true
+    - type: not_null
+      column: customer_id
+      severity: high
+      enabled: true

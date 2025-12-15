@@ -2908,6 +2908,41 @@ def migrate_command(args):
         return 1
 
 
+def migrate_config_command(args):
+    """Migrate inline dataset configs to file-based structure."""
+    from pathlib import Path
+
+    from .config.migrate import ConfigMigrator
+
+    try:
+        # Load config
+        config = ConfigLoader.load_from_file(args.config)
+        config_path = Path(args.config)
+
+        # Create migrator
+        migrator = ConfigMigrator(config, config_path)
+
+        # Perform migration
+        result = migrator.migrate_to_directory(
+            output_dir=args.output_dir, create_backup=not args.no_backup
+        )
+
+        if result["migrated"]:
+            print(f"✓ Migrated {len(result['files_created'])} dataset configs")
+            print(f"  Created files: {', '.join(result['files_created'])}")
+            if result.get("backup_path"):
+                print(f"  Backup created: {result['backup_path']}")
+            return 0
+        else:
+            print(result["message"])
+            return 0
+
+    except Exception as e:
+        logger.error(f"Config migration failed: {e}", exc_info=True)
+        print(f"\n[ERROR] {e}")
+        return 1
+
+
 def recommend_command(args):
     """Execute recommend command to generate smart table and column recommendations."""
     import json
@@ -3828,6 +3863,25 @@ def main():
     validate_parser = migrate_subparsers.add_parser("validate", help="Validate schema integrity")
     validate_parser.add_argument("--config", "-c", required=True, help="Path to configuration file")
 
+    # Migrate config command (for dataset config migration)
+    migrate_config_parser = subparsers.add_parser(
+        "migrate-config",
+        help="Migrate inline dataset configs to file-based structure",
+    )
+    migrate_config_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file"
+    )
+    migrate_config_parser.add_argument(
+        "--output-dir",
+        default="datasets",
+        help="Output directory for dataset files (default: datasets)",
+    )
+    migrate_config_parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Don't create backup of original config",
+    )
+
     # Query command
     query_parser = subparsers.add_parser("query", help="Query profiling metadata")
     query_subparsers = query_parser.add_subparsers(dest="query_command", help="Query type")
@@ -4307,6 +4361,8 @@ def main():
             migrate_parser.print_help()
             return 1
         return migrate_command(args)
+    elif args.command == "migrate-config":
+        return migrate_config_command(args)
     elif args.command == "query":
         if not args.query_command:
             query_parser.print_help()

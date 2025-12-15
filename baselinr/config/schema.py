@@ -7,7 +7,7 @@ warehouse connections, profiling targets, and output settings.
 
 import os
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -1514,6 +1514,16 @@ class DatasetConfig(BaseModel):
         None, description="Anomaly detection configuration overrides"
     )
 
+    # New fields for file-based configs
+    source_file: Optional[str] = Field(
+        None,
+        description="Source file path (set automatically by loader, not user-specified)",
+    )
+    import_from_dbt: Optional[Any] = Field(
+        None,
+        description="dbt package import configuration (for Phase 4)",
+    )
+
     model_config = {"populate_by_name": True}
 
     @model_validator(mode="after")
@@ -1532,6 +1542,31 @@ class DatasetsConfig(BaseModel):
     datasets: List[DatasetConfig] = Field(
         default_factory=list,
         description="List of dataset-specific configuration overrides",
+    )
+
+
+class DatasetsDirectoryConfig(BaseModel):
+    """Configuration for directory-based dataset configuration files."""
+
+    datasets_dir: str = Field(
+        "./datasets",
+        description="Path to datasets directory (relative to config file or absolute)",
+    )
+    auto_discover: bool = Field(
+        True,
+        description="Automatically discover YAML files in directory",
+    )
+    file_pattern: str = Field(
+        "*.yml",
+        description="File pattern to match (supports glob patterns)",
+    )
+    recursive: bool = Field(
+        True,
+        description="Recursively search subdirectories",
+    )
+    exclude_patterns: Optional[List[str]] = Field(
+        None,
+        description="Patterns to exclude from discovery (e.g., ['*.backup.yml'])",
     )
 
 
@@ -1581,21 +1616,26 @@ class BaselinrConfig(BaseModel):
     quality_scoring: Optional["QualityScoringConfig"] = Field(
         None, description="Quality scoring configuration"
     )
-    datasets: Optional[DatasetsConfig] = Field(
+    datasets: Optional[Union[DatasetsConfig, DatasetsDirectoryConfig]] = Field(
         None,
         description=(
-            "Dataset-level configuration overrides. Consolidates table-specific "
-            "overrides for profiling, drift, validation, and anomaly detection in one place. "
-            "Can be specified as a list directly or as a DatasetsConfig object."
+            "Dataset-level configuration. Can be inline (DatasetsConfig) or "
+            "directory-based (DatasetsDirectoryConfig)."
         ),
     )
 
     @field_validator("datasets", mode="before")
     @classmethod
     def validate_datasets(cls, v: Any) -> Any:
-        """Normalize datasets field to accept either a list or DatasetsConfig."""
+        """Normalize datasets field to accept list, DatasetsConfig, or DatasetsDirectoryConfig."""
         if v is None:
             return None
+
+        # If it's already a DatasetsDirectoryConfig, return as-is
+        if isinstance(v, DatasetsDirectoryConfig):
+            return v
+        if isinstance(v, dict) and "datasets_dir" in v:
+            return DatasetsDirectoryConfig(**v)
 
         # Helper to coerce any item into a DatasetConfig
         def to_dataset_config(item: Any) -> DatasetConfig:

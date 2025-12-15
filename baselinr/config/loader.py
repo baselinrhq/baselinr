@@ -13,7 +13,8 @@ from typing import Any, Dict
 
 import yaml  # type: ignore[import-untyped]
 
-from .schema import BaselinrConfig
+from .dataset_loader import DatasetFileLoader
+from .schema import BaselinrConfig, DatasetsConfig, DatasetsDirectoryConfig
 
 logger = logging.getLogger(__name__)
 
@@ -56,12 +57,22 @@ class ConfigLoader:
         # Expand environment variables in config values (e.g., ${OPENAI_API_KEY})
         config_dict = ConfigLoader._expand_env_vars(config_dict)
 
-        # Validate and return
+        # Validate and create config
         try:
-            return BaselinrConfig(**config_dict)
+            config = BaselinrConfig(**config_dict)
         except Exception as e:
             logger.error(f"Configuration validation failed: {e}")
             raise ValueError(f"Invalid configuration: {e}")
+
+        # If datasets is a directory config, load from directory
+        if isinstance(config.datasets, DatasetsDirectoryConfig):
+            loader = DatasetFileLoader(config_file_path=path)
+            dataset_configs = loader.load_from_directory(config.datasets)
+
+            # Replace directory config with loaded datasets
+            config.datasets = DatasetsConfig(datasets=dataset_configs)
+
+        return config
 
     @staticmethod
     def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
