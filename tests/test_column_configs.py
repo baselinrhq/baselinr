@@ -105,36 +105,32 @@ class TestColumnConfigDependencies:
 class TestTablePatternWithColumns:
     """Tests for TablePattern with column configurations."""
 
-    def test_table_pattern_with_columns(self):
-        """Test TablePattern with column configurations."""
+    def test_table_pattern_rejects_columns(self):
+        """Test that TablePattern rejects column configurations (must be in datasets section)."""
         columns = [
             ColumnConfig(name="email", metrics=["count", "null_count"]),
             ColumnConfig(name="age", metrics=["count", "mean", "stddev"]),
         ]
-        pattern = TablePattern(table="customers", schema="public", columns=columns)
-
-        assert pattern.table == "customers"
-        assert pattern.columns is not None
-        assert len(pattern.columns) == 2
+        # TablePattern no longer supports columns field
+        with pytest.raises(ValueError, match="no longer supports.*columns"):
+            TablePattern(table="customers", schema="public", columns=columns)
 
     def test_table_pattern_without_columns(self):
-        """Test TablePattern without columns (backward compatible)."""
+        """Test TablePattern without columns (columns must be in datasets section)."""
         pattern = TablePattern(table="customers", schema="public")
 
         assert pattern.table == "customers"
-        assert pattern.columns is None  # Should be None, not empty list
+        # TablePattern no longer has columns field
 
-    def test_table_pattern_with_column_patterns(self):
-        """Test TablePattern with column name patterns."""
+    def test_table_pattern_rejects_column_patterns(self):
+        """Test that TablePattern rejects column patterns (must be in datasets section)."""
         columns = [
             ColumnConfig(name="*_id", metrics=["count", "null_count"]),
             ColumnConfig(name="email*", pattern_type="wildcard"),
         ]
-        pattern = TablePattern(table="customers", schema="public", columns=columns)
-
-        assert len(pattern.columns) == 2
-        assert pattern.columns[0].name == "*_id"
-        assert pattern.columns[1].pattern_type == "wildcard"
+        # TablePattern no longer supports columns field
+        with pytest.raises(ValueError, match="no longer supports.*columns"):
+            TablePattern(table="customers", schema="public", columns=columns)
 
 
 class TestColumnConfigPatterns:

@@ -163,7 +163,7 @@ class TestTablePatternColumns:
     """Tests for TablePattern with column configurations."""
 
     def test_table_pattern_column_config_roundtrip(self):
-        """Test that column configs can be serialized and deserialized."""
+        """Test that TablePattern rejects columns (must be in datasets section)."""
         columns = [
             ColumnConfig(name="email", metrics=["count", "null_count"]),
             ColumnConfig(
@@ -171,18 +171,7 @@ class TestTablePatternColumns:
                 drift=ColumnDriftConfig(enabled=True, thresholds={"low": 5.0, "medium": 15.0}),
             ),
         ]
-        pattern = TablePattern(table="customers", schema="public", columns=columns)
-
-        # Serialize
-        pattern_dict = pattern.model_dump()
-
-        # Deserialize
-        pattern_restored = TablePattern(**pattern_dict)
-
-        assert pattern_restored.table == "customers"
-        assert pattern_restored.columns is not None
-        assert len(pattern_restored.columns) == 2
-        assert pattern_restored.columns[0].name == "email"
-        assert pattern_restored.columns[1].drift is not None
-        assert pattern_restored.columns[1].drift.enabled is True
+        # TablePattern no longer supports columns field
+        with pytest.raises(ValueError, match="no longer supports.*columns"):
+            TablePattern(table="customers", schema="public", columns=columns)
 

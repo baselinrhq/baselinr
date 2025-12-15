@@ -120,14 +120,12 @@ class ConfigResolver:
         # Start with table pattern and build up: database → schema → table
         merged = table_pattern.model_copy(deep=True)
 
-        # Store original table columns to rebuild in correct order
-        table_columns = list(table_pattern.columns) if table_pattern.columns else []
-        database_columns = []
-        schema_columns = []
-
+        # NOTE: ConfigResolver is deprecated. Use ConfigMerger instead.
+        # This code is kept for backward compatibility but TablePattern no longer
+        # has partition, sampling, or columns fields.
         # Store original table partition and sampling to check if schema should override database
-        table_has_partition = table_pattern.partition is not None
-        table_has_sampling = table_pattern.sampling is not None
+        table_has_partition = False  # TablePattern no longer has partition
+        table_has_sampling = False  # TablePattern no longer has sampling
 
         # Apply database config first (lowest priority)
         if database_config:
@@ -138,8 +136,6 @@ class ConfigResolver:
                 table_has_partition=table_has_partition,
                 table_has_sampling=table_has_sampling,
             )
-            if database_config.columns:
-                database_columns = list(database_config.columns)
 
         # Apply schema config second (medium priority, overrides database)
         if schema_config:
@@ -150,13 +146,9 @@ class ConfigResolver:
                 table_has_partition=table_has_partition,
                 table_has_sampling=table_has_sampling,
             )
-            if schema_config.columns:
-                schema_columns = list(schema_config.columns)
 
-        # Rebuild column list in correct order: table → schema → database
-        # ColumnMatcher checks in order, so higher priority must come first
-        if table_columns or schema_columns or database_columns:
-            merged.columns = table_columns + schema_columns + database_columns
+        # NOTE: Column merging removed - TablePattern no longer has columns field.
+        # Columns must be configured in datasets section.
 
         # Table config is already in merged (highest priority)
         return merged
@@ -187,7 +179,10 @@ class ConfigResolver:
         # Deep copy table pattern to avoid modifying original
         merged = table_pattern.model_copy(deep=True)
 
-        # Merge partition config
+        # NOTE: ConfigResolver is deprecated. TablePattern no longer has partition/sampling.
+        # Partition and sampling configs must be in datasets section.
+        # This code is kept for backward compatibility but will not work correctly.
+        # Merge partition config (deprecated - TablePattern no longer has partition)
         # Precedence: table → schema → database
         # When merging database into table: table wins (database only fills if table is None)
         # When merging schema into (table+database): schema overrides database, but table still wins
@@ -196,12 +191,12 @@ class ConfigResolver:
             if is_schema:
                 # Schema merge: schema should override database (even if database already set it)
                 # Always override when schema is merging (schema overrides database)
-                merged.partition = config.partition.model_copy(deep=True)
-            elif merged.partition is None:
+                pass  # TablePattern no longer has partition field
+            elif False:  # merged.partition is None - TablePattern no longer has partition
                 # Database merge or first merge: fill if empty
-                merged.partition = config.partition.model_copy(deep=True)
+                pass  # TablePattern no longer has partition field
 
-        # Merge sampling config
+        # Merge sampling config (deprecated - TablePattern no longer has sampling)
         # Precedence: table → schema → database
         # Schema should override database, but table still wins
         if config.sampling and not table_has_sampling:
@@ -209,10 +204,10 @@ class ConfigResolver:
             if is_schema:
                 # Schema merge: schema should override database (even if database already set it)
                 # Always override when schema is merging (schema overrides database)
-                merged.sampling = config.sampling.model_copy(deep=True)
-            elif merged.sampling is None:
+                pass  # TablePattern no longer has sampling field
+            elif False:  # merged.sampling is None - TablePattern no longer has sampling
                 # Database merge or first merge: fill if empty
-                merged.sampling = config.sampling.model_copy(deep=True)
+                pass  # TablePattern no longer has sampling field
 
         # Column configs are handled in resolve_table_config to ensure correct order.
         # Don't modify columns here - they'll be rebuilt in resolve_table_config.
@@ -273,9 +268,10 @@ class ConfigResolver:
         Returns:
             Merged TablePattern
         """
+        # NOTE: ConfigResolver is deprecated. TablePattern no longer has partition/sampling.
         # For backward compatibility, check original table pattern state
-        table_has_partition = table_pattern.partition is not None
-        table_has_sampling = table_pattern.sampling is not None
+        table_has_partition = False  # TablePattern no longer has partition
+        table_has_sampling = False  # TablePattern no longer has sampling
         return self._merge_config_into_pattern(
             schema_config,
             table_pattern,

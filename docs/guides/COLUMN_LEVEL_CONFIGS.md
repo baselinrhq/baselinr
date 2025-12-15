@@ -123,27 +123,44 @@ columns:
 By default, all columns are profiled. When you specify `columns`, only matching columns are profiled (unless `include_defaults` is used).
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: email
-        - name: age
-        - name: name
-      # Only email, age, and name will be profiled
+      schema: public
+      profiling:
+        columns:
+          - name: email
+          - name: age
+          - name: name
+          # Only email, age, and name will be profiled
+```
+
+Or using directory-based structure:
+
+```yaml
+# datasets/customers.yml
+table: customers
+schema: public
+profiling:
+  columns:
+    - name: email
+    - name: age
+    - name: name
 ```
 
 To profile everything except specific columns:
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: "*"              # Profile all columns
-        - name: internal_notes   # Except this one
-          profiling:
-            enabled: false
+      schema: public
+      profiling:
+        columns:
+          - name: "*"              # Profile all columns
+          - name: internal_notes   # Except this one
+            profiling:
+              enabled: false
 ```
 
 ### Custom Metrics Per Column
@@ -151,19 +168,21 @@ profiling:
 Override table-level metrics for specific columns:
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: email
-          # Only compute these metrics for email
-          metrics: [count, null_count, distinct_count]
-        - name: age
-          # Full metrics for age
-          metrics: [count, mean, stddev, min, max, null_ratio]
-        - name: metadata_json
-          # Minimal metrics for large JSON columns
-          metrics: [count, null_count]
+      schema: public
+      profiling:
+        columns:
+          - name: email
+            # Only compute these metrics for email
+            metrics: [count, null_count, distinct_count]
+          - name: age
+            # Full metrics for age
+            metrics: [count, mean, stddev, min, max, null_ratio]
+          - name: metadata_json
+            # Minimal metrics for large JSON columns
+            metrics: [count, null_count]
 ```
 
 **Available Metrics**:
@@ -188,17 +207,19 @@ profiling:
 Override global drift thresholds for specific columns:
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: lifetime_value
-          drift:
-            enabled: true
-            thresholds:
-              low: 5.0      # 5% change = low severity
-              medium: 10.0  # 10% change = medium severity
-              high: 20.0    # 20% change = high severity
+      schema: public
+      profiling:
+        columns:
+          - name: lifetime_value
+            drift:
+              enabled: true
+              thresholds:
+                low: 5.0      # 5% change = low severity
+                medium: 10.0  # 10% change = medium severity
+                high: 20.0    # 20% change = high severity
 ```
 
 ### Disable Drift Detection Per Column
@@ -206,16 +227,18 @@ profiling:
 Skip drift detection for specific columns:
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: internal_notes
-          drift:
-            enabled: false  # No drift detection for this column
-        - name: "*_id"
-          drift:
-            enabled: false  # No drift for ID columns
+      schema: public
+      profiling:
+        columns:
+          - name: internal_notes
+            drift:
+              enabled: false  # No drift detection for this column
+          - name: "*_id"
+            drift:
+              enabled: false  # No drift for ID columns
 ```
 
 ### Per-Column Drift Strategy
@@ -467,35 +490,42 @@ Schema-level configs support all the same options as table-level configs (partit
 
 ```yaml
 profiling:
-  schemas:
-    - schema: analytics
-      database: warehouse  # Optional: database-specific schema config
-      partition:
-        strategy: latest
-        key: date
-      sampling:
-        enabled: true
-        fraction: 0.1
-      columns:
-        - name: "*_id"
-          drift:
-            enabled: false  # All ID columns in analytics schema skip drift
-        - name: "*_metadata"
-          profiling:
-            enabled: false  # Skip metadata columns
-      # Filter fields also supported
-      min_rows: 100
-      table_types: [table]
-      exclude_patterns: ["*_temp"]
-
   tables:
     - table: orders
-      schema: analytics  # Inherits schema-level configs
-      columns:
-        - name: total_amount  # Override/add table-specific config
-          drift:
-            thresholds:
-              low: 1.0
+      schema: analytics
+
+datasets:
+  datasets:
+    - schema: analytics
+      database: warehouse  # Optional: database-specific schema config
+      profiling:
+        partition:
+          strategy: latest
+          key: date
+        sampling:
+          enabled: true
+          fraction: 0.1
+        columns:
+          - name: "*_id"
+            drift:
+              enabled: false  # All ID columns in analytics schema skip drift
+          - name: "*_metadata"
+            profiling:
+              enabled: false  # Skip metadata columns
+        # Filter fields also supported
+        min_rows: 100
+        table_types: [table]
+        exclude_patterns: ["*_temp"]
+
+    - table: orders
+      schema: analytics
+      database: warehouse
+      profiling:
+        columns:
+          - name: total_amount  # Override/add table-specific config
+            drift:
+              thresholds:
+                low: 1.0
 ```
 
 ### How Schema Configs Work
@@ -511,25 +541,31 @@ Apply column configurations to all tables in a schema:
 
 ```yaml
 profiling:
-  schemas:
-    - schema: analytics
-      columns:
-        - name: "*_id"
-          drift:
-            enabled: false  # All ID columns skip drift detection
-        - name: "*_metadata"
-          profiling:
-            enabled: false  # Skip metadata columns
-  
   tables:
     - table: orders
-      schema: analytics  # Inherits schema-level column configs
+      schema: analytics
     - table: customers
-      schema: analytics  # Also inherits schema-level column configs
-      columns:
-        - name: email  # Add table-specific override
-          drift:
-            enabled: true
+      schema: analytics
+
+datasets:
+  datasets:
+    - schema: analytics
+      profiling:
+        columns:
+          - name: "*_id"
+            drift:
+              enabled: false  # All ID columns skip drift detection
+          - name: "*_metadata"
+            profiling:
+              enabled: false  # Skip metadata columns
+  
+    - table: customers
+      schema: analytics
+      profiling:
+        columns:
+          - name: email  # Add table-specific override
+            drift:
+              enabled: true
 ```
 
 ### Example: Schema-Level Sampling
@@ -538,11 +574,17 @@ Apply sampling configuration to all tables in a schema:
 
 ```yaml
 profiling:
-  schemas:
+  tables:
+    - select_schema: true
+      schema: staging
+
+datasets:
+  datasets:
     - schema: staging
-      sampling:
-        enabled: true
-        fraction: 0.1  # All staging tables sample 10%
+      profiling:
+        sampling:
+          enabled: true
+          fraction: 0.1  # All staging tables sample 10%
   
   tables:
     - select_schema: true
@@ -588,23 +630,25 @@ profiling:
 
 ### Schema Config with select_schema
 
-Schema configs work with `select_schema` to apply to all tables:
+Schema-level dataset configs work with `select_schema` to apply to all tables:
 
 ```yaml
 profiling:
-  schemas:
-    - schema: analytics
-      partition:
-        strategy: latest
-        key: date
-      columns:
-        - name: "*_temp"
-          profiling:
-            enabled: false
-  
   tables:
     - select_schema: true
-      schema: analytics  # All tables in analytics schema inherit configs
+      schema: analytics  # All tables in analytics schema
+
+datasets:
+  datasets:
+    - schema: analytics
+      profiling:
+        partition:
+          strategy: latest
+          key: date
+        columns:
+          - name: "*_temp"
+            profiling:
+              enabled: false
 ```
 
 ## Database-Level Configuration
@@ -618,36 +662,36 @@ Database-level configs support all the same options as schema-level configs (par
 ### Database Configuration Structure
 
 ```yaml
-profiling:
-  databases:
+datasets:
+  datasets:
     - database: warehouse
-      partition:
-        strategy: latest
-        key: date
-      sampling:
-        enabled: true
-        fraction: 0.05  # All tables in warehouse database sample 5%
-      columns:
-        - name: "*_id"
-          drift:
-            enabled: false  # All ID columns in warehouse database skip drift
-        - name: "*_temp"
-          profiling:
-            enabled: false  # Skip temp columns in all tables
-      # Filter fields also supported
-      min_rows: 100
-      table_types: [table]
-      exclude_patterns: ["*_temp", "*_test"]
+      profiling:
+        partition:
+          strategy: latest
+          key: date
+        sampling:
+          enabled: true
+          fraction: 0.05  # All tables in warehouse database sample 5%
+        columns:
+          - name: "*_id"
+            drift:
+              enabled: false  # All ID columns in warehouse database skip drift
+          - name: "*_temp"
+            profiling:
+              enabled: false  # Skip temp columns in all tables
+        # Filter fields also supported
+        min_rows: 100
+        table_types: [table]
+        exclude_patterns: ["*_temp", "*_test"]
 
-  schemas:
     - schema: analytics
       database: warehouse  # Inherits database-level configs
-      columns:
-        - name: "*_metadata"
-          profiling:
-            enabled: false  # Schema-level override
+      profiling:
+        columns:
+          - name: "*_metadata"
+            profiling:
+              enabled: false  # Schema-level override
 
-  tables:
     - table: orders
       schema: analytics
       database: warehouse  # Inherits both database and schema configs
@@ -665,28 +709,29 @@ profiling:
 Apply policies at the database level that can be overridden at schema or table level:
 
 ```yaml
-profiling:
-  databases:
+datasets:
+  datasets:
     - database: warehouse
-      columns:
-        - name: "*_id"
-          drift:
-            enabled: false  # Database-level: disable drift for all ID columns
+      profiling:
+        columns:
+          - name: "*_id"
+            drift:
+              enabled: false  # Database-level: disable drift for all ID columns
   
-  schemas:
     - schema: analytics
       database: warehouse
-      columns:
-        - name: "customer_id"
-          drift:
-            enabled: true  # Schema-level: override for customer_id in analytics schema
+      profiling:
+        columns:
+          - name: "customer_id"
+            drift:
+              enabled: true  # Schema-level: override for customer_id in analytics schema
   
-  tables:
     - table: orders
       schema: analytics
       database: warehouse
-      columns:
-        - name: "customer_id"
+      profiling:
+        columns:
+          - name: "customer_id"
           drift:
             enabled: false  # Table-level: override again for orders table
             thresholds:
@@ -699,15 +744,17 @@ Apply consistent sampling strategy across all tables in a database:
 
 ```yaml
 profiling:
-  databases:
-    - database: staging_db
-      sampling:
-        enabled: true
-        fraction: 0.05  # All tables in staging_db sample 5%
-  
   tables:
     - select_all_schemas: true
-      database: staging_db  # Inherits database-level sampling
+      database: staging_db
+
+datasets:
+  datasets:
+    - database: staging_db
+      profiling:
+        sampling:
+          enabled: true
+          fraction: 0.05  # All tables in staging_db sample 5%
 ```
 
 ### Example: Multi-Level Precedence
@@ -716,36 +763,43 @@ Demonstrate how configurations merge across all levels:
 
 ```yaml
 profiling:
-  databases:
-    - database: warehouse
-      partition:
-        strategy: all  # Database-level default
-      columns:
-        - name: "*_id"
-          drift:
-            enabled: false
-  
-  schemas:
-    - schema: analytics
-      database: warehouse
-      partition:
-        strategy: latest  # Schema-level override
-      columns:
-        - name: "customer_id"
-          drift:
-            enabled: true
-  
   tables:
     - table: orders
       schema: analytics
       database: warehouse
-      partition:
-        strategy: range  # Table-level override
-        key: created_at
-      columns:
-        - name: "customer_id"
-          drift:
-            enabled: false  # Table-level override
+
+datasets:
+  datasets:
+    - database: warehouse
+      profiling:
+        partition:
+          strategy: all  # Database-level default
+        columns:
+          - name: "*_id"
+            drift:
+              enabled: false
+  
+    - schema: analytics
+      database: warehouse
+      profiling:
+        partition:
+          strategy: latest  # Schema-level override
+        columns:
+          - name: "customer_id"
+            drift:
+              enabled: true
+  
+    - table: orders
+      schema: analytics
+      database: warehouse
+      profiling:
+        partition:
+          strategy: range  # Table-level override
+          key: created_at
+        columns:
+          - name: "customer_id"
+            drift:
+              enabled: false  # Table-level override
 ```
 
 **Result**:
@@ -774,9 +828,9 @@ Use database configs for organization-wide policies, and schema configs for sche
 Configurations are merged with the following precedence (highest to lowest):
 
 1. **Column-level config** (most specific)
-2. **Table-level config** (from `profiling.tables`)
-3. **Schema-level config** (from `profiling.schemas`)
-4. **Database-level config** (from `profiling.databases`)
+2. **Table-level dataset config** (from `datasets.datasets[]` with `table` specified)
+3. **Schema-level dataset config** (from `datasets.datasets[]` with `schema` specified)
+4. **Database-level dataset config** (from `datasets.datasets[]` with `database` specified)
 5. **Global config** (defaults from `drift_detection` and `storage` sections)
 
 Example with Database, Schema, and Table Levels:

@@ -139,15 +139,29 @@ class TestPlanBuilder:
         assert "mean" in table_plan.metrics
 
     def test_build_table_plan_with_partition(self, mock_config):
-        """Test building plan with partition configuration."""
-        from baselinr.config.schema import PartitionConfig
+        """Test building plan with partition configuration from datasets section."""
+        from baselinr.config.schema import (
+            DatasetConfig,
+            DatasetProfilingConfig,
+            DatasetsConfig,
+            PartitionConfig,
+        )
 
-        # Create pattern with partition config
+        # Create pattern (no partition - partition comes from datasets)
         pattern = TablePattern(
             table="test_table",
             schema_="public",
-            partition=PartitionConfig(key="date", strategy="latest"),
         )
+
+        # Add dataset config with partition
+        dataset = DatasetConfig(
+            table="test_table",
+            schema_="public",
+            profiling=DatasetProfilingConfig(
+                partition=PartitionConfig(key="date", strategy="latest")
+            ),
+        )
+        mock_config.datasets = DatasetsConfig(datasets=[dataset])
 
         builder = PlanBuilder(mock_config)
         table_plan = builder._build_table_plan(pattern, None)

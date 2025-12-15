@@ -44,8 +44,11 @@ baselinr migrate-config --config config.yml --no-backup
 **What the migration tool does:**
 1. Creates a backup of your original config file (unless `--no-backup` is used)
 2. Extracts all inline dataset configs to individual YAML files
-3. Updates your main config file to reference the datasets directory
-4. Preserves all configuration settings
+3. Migrates `profiling.schemas[]` entries to `{schema}_schema.yml` files
+4. Migrates `profiling.databases[]` entries to `{database}_database.yml` files
+5. Updates your main config file to reference the datasets directory
+6. Removes `profiling.schemas` and `profiling.databases` from the config
+7. Preserves all configuration settings
 
 ### Manual Migration
 
@@ -61,6 +64,12 @@ If you prefer to migrate manually:
    - `datasets/{table_name}.yml` for table-specific configs
    - `datasets/{schema_name}_schema.yml` for schema-level configs
    - `datasets/{database_name}_database.yml` for database-level configs
+
+3. **Migrate profiling.schemas and profiling.databases:**
+   If you have `profiling.schemas[]` or `profiling.databases[]` entries, migrate them to dataset files:
+   - Convert each entry in `profiling.schemas[]` to `datasets/{schema}_schema.yml`
+   - Convert each entry in `profiling.databases[]` to `datasets/{database}_database.yml`
+   - Remove `profiling.schemas` and `profiling.databases` from your config
 
 3. **Update main config:**
    Replace the inline `datasets` section with:
@@ -167,6 +176,66 @@ profiling:
   partition:
     key: order_date
     strategy: latest
+```
+
+### Migrating profiling.schemas and profiling.databases
+
+If you have schema-level or database-level configurations in `profiling.schemas[]` or `profiling.databases[]`, the migration tool will automatically convert them:
+
+**Before:**
+```yaml
+profiling:
+  schemas:
+    - schema: analytics
+      partition:
+        strategy: latest
+        key: date
+      columns:
+        - name: "*_id"
+          drift:
+            enabled: false
+  databases:
+    - database: warehouse
+      sampling:
+        enabled: true
+        fraction: 0.05
+```
+
+**After:**
+```yaml
+profiling:
+  tables:
+    - select_schema: true
+      schema: analytics
+    - select_all_schemas: true
+      database: warehouse
+
+datasets:
+  datasets_dir: ./datasets
+  auto_discover: true
+  recursive: true
+```
+
+**datasets/analytics_schema.yml:**
+```yaml
+schema: analytics
+profiling:
+  partition:
+    strategy: latest
+    key: date
+  columns:
+    - name: "*_id"
+      drift:
+        enabled: false
+```
+
+**datasets/warehouse_database.yml:**
+```yaml
+database: warehouse
+profiling:
+  sampling:
+    enabled: true
+    fraction: 0.05
 ```
 
 ## File Naming Conventions

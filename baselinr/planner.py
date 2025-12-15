@@ -736,9 +736,26 @@ class PlanBuilder:
             "max_distinct_values": self.config.profiling.max_distinct_values,
         }
 
+        # Get merged profiling config from datasets section
+        from .config.merger import ConfigMerger
+
+        merger = ConfigMerger(self.config)
+        profiling_config = merger.merge_profiling_config(
+            table_pattern=pattern,
+            database_name=pattern.database,
+            schema=pattern.schema_,
+            table=pattern.table,
+        )
+
         # Convert partition/sampling configs to dicts
-        partition_dict = pattern.partition.model_dump() if pattern.partition else None
-        sampling_dict = pattern.sampling.model_dump() if pattern.sampling else None
+        partition_dict = (
+            profiling_config["partition"].model_dump()
+            if profiling_config.get("partition")
+            else None
+        )
+        sampling_dict = (
+            profiling_config["sampling"].model_dump() if profiling_config.get("sampling") else None
+        )
 
         status = "ready"
         if decision:

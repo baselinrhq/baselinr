@@ -138,9 +138,11 @@ class TestConfigMerger:
         merger = ConfigMerger(base_config)
 
         merged = merger.merge_profiling_config(table_pattern)
-        # Should return pattern as-is
-        assert merged.table == "customers"
-        assert merged.schema_ == "analytics"
+        # Should return dict with None values
+        assert isinstance(merged, dict)
+        assert merged["partition"] is None
+        assert merged["sampling"] is None
+        assert merged["columns"] is None
 
     def test_merge_profiling_config_with_dataset_partition(self, base_config):
         """Test merging profiling config with dataset partition override."""
@@ -158,12 +160,13 @@ class TestConfigMerger:
         table_pattern = TablePattern(table="customers", schema="analytics", database="warehouse")
         merged = merger.merge_profiling_config(table_pattern)
 
-        assert merged.partition is not None
-        assert merged.partition.strategy == "latest"
-        assert merged.partition.key == "date"
+        assert isinstance(merged, dict)
+        assert merged["partition"] is not None
+        assert merged["partition"].strategy == "latest"
+        assert merged["partition"].key == "date"
 
     def test_merge_profiling_config_table_overrides_dataset(self, base_config):
-        """Test that table pattern overrides dataset config."""
+        """Test that dataset config is returned (table pattern no longer has profiling fields)."""
         dataset = DatasetConfig(
             database="warehouse",
             schema="analytics",
@@ -175,19 +178,19 @@ class TestConfigMerger:
         base_config.datasets = DatasetsConfig(datasets=[dataset])
         merger = ConfigMerger(base_config)
 
-        # Table pattern already has partition
+        # Table pattern no longer has partition field
         table_pattern = TablePattern(
             table="customers",
             schema="analytics",
             database="warehouse",
-            partition=PartitionConfig(strategy="all", key="created_at"),
         )
         merged = merger.merge_profiling_config(table_pattern)
 
-        # Table pattern should win (not overridden by dataset)
-        assert merged.partition is not None
-        assert merged.partition.strategy == "all"
-        assert merged.partition.key == "created_at"
+        # Dataset config should be returned
+        assert isinstance(merged, dict)
+        assert merged["partition"] is not None
+        assert merged["partition"].strategy == "latest"
+        assert merged["partition"].key == "date"
 
     def test_merge_profiling_config_with_dataset_sampling(self, base_config):
         """Test merging profiling config with dataset sampling override."""
@@ -205,9 +208,10 @@ class TestConfigMerger:
         table_pattern = TablePattern(table="customers", schema="analytics", database="warehouse")
         merged = merger.merge_profiling_config(table_pattern)
 
-        assert merged.sampling is not None
-        assert merged.sampling.enabled is True
-        assert merged.sampling.fraction == 0.1
+        assert isinstance(merged, dict)
+        assert merged["sampling"] is not None
+        assert merged["sampling"].enabled is True
+        assert merged["sampling"].fraction == 0.1
 
     def test_merge_profiling_config_with_dataset_columns(self, base_config):
         """Test merging profiling config with dataset column configs."""
@@ -224,20 +228,19 @@ class TestConfigMerger:
         base_config.datasets = DatasetsConfig(datasets=[dataset])
         merger = ConfigMerger(base_config)
 
+        # Table pattern no longer has columns field
         table_pattern = TablePattern(
             table="customers",
             schema="analytics",
             database="warehouse",
-            columns=[ColumnConfig(name="customer_id", drift=ColumnDriftConfig(enabled=False))],
         )
         merged = merger.merge_profiling_config(table_pattern)
 
-        assert merged.columns is not None
-        assert len(merged.columns) == 2
-        # Table columns first (higher priority)
-        assert merged.columns[0].name == "customer_id"
-        # Dataset columns second
-        assert merged.columns[1].name == "email"
+        assert isinstance(merged, dict)
+        assert merged["columns"] is not None
+        assert len(merged["columns"]) == 1
+        # Dataset columns are returned
+        assert merged["columns"][0].name == "email"
 
     def test_merge_drift_config_no_dataset(self, base_config):
         """Test merging drift config when no dataset matches."""
@@ -429,8 +432,8 @@ class TestConfigMerger:
         table_pattern = TablePattern(table="customers", schema="analytics", database="warehouse")
         resolved = merger.resolve_table_config(table_pattern)
 
-        assert resolved["profiling"].partition is not None
-        assert resolved["profiling"].partition.strategy == "latest"
+        assert resolved["profiling"]["partition"] is not None
+        assert resolved["profiling"]["partition"].strategy == "latest"
         assert resolved["drift"].strategy == "statistical"
         assert len(resolved["validation_rules"]) == 1
 

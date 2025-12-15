@@ -11,12 +11,12 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from ..config.merger import ConfigMerger
 from ..config.schema import BaselinrConfig, TablePattern
 from ..connectors.base import BaseConnector
 from ..connectors.factory import create_connector
 from ..events import EventBus, ProfilingCompleted, ProfilingFailed, ProfilingStarted
 from .column_matcher import ColumnMatcher
-from .config_resolver import ConfigResolver
 from .metrics import MetricCalculator
 from .query_builder import QueryBuilder
 
@@ -466,21 +466,6 @@ class ProfileEngine:
             if self.metric_calculator is None:
                 self.metric_calculator = calculator
 
-            # Resolve configs (merge database + schema + table configs)
-            resolver = ConfigResolver(
-                schema_configs=self.config.profiling.schemas,
-                database_configs=self.config.profiling.databases,
-                profiling_config=self.config.profiling,
-            )
-            resolved_pattern = resolver.resolve_table_config(
-                table_pattern=pattern,
-                schema_name=pattern.schema_,
-                database_name=pattern.database,
-            )
-
-            # Use resolved pattern for rest of method
-            pattern = resolved_pattern
-
             # Ensure table name is set (should already be set by planner expansion)
             if pattern.table is None:
                 raise ValueError(f"Table name is required for profiling. Pattern: {pattern}")
@@ -488,6 +473,20 @@ class ProfileEngine:
 
             # Get table metadata using database-specific connector
             table = connector.get_table(table_name, schema=pattern.schema_)
+
+            # Resolve profiling config from datasets section
+            merger = ConfigMerger(self.config)
+            profiling_config = merger.merge_profiling_config(
+                table_pattern=pattern,
+                database_name=pattern.database,
+                schema=pattern.schema_,
+                table=table_name,
+            )
+
+            # Extract merged config values
+            partition_config = profiling_config.get("partition")
+            sampling_config = profiling_config.get("sampling")
+            column_configs = profiling_config.get("columns")
 
             # Create result container
             result = ProfilingResult(
@@ -498,7 +497,6 @@ class ProfileEngine:
             )
 
             # Infer partition key if metadata_fallback is enabled
-            partition_config = pattern.partition
             if partition_config and partition_config.metadata_fallback and not partition_config.key:
                 inferred_key = self.query_builder.infer_partition_key(table)
                 if inferred_key:
@@ -507,7 +505,7 @@ class ProfileEngine:
 
             # Add table metadata
             current_row_count = self._get_row_count(
-                table, partition_config, pattern.sampling, connector
+                table, partition_config, sampling_config, connector
             )
             result.metadata["row_count"] = current_row_count
             result.metadata["column_count"] = len(table.columns)
@@ -515,12 +513,12 @@ class ProfileEngine:
                 partition_config.model_dump() if partition_config else None
             )
             result.metadata["sampling_config"] = (
-                pattern.sampling.model_dump() if pattern.sampling else None
+                sampling_config.model_dump() if sampling_config else None
             )
 
             # Initialize column matcher if column configs exist
             column_matcher = (
-                ColumnMatcher(column_configs=pattern.columns) if pattern.columns else None
+                ColumnMatcher(column_configs=column_configs) if column_configs else None
             )
 
             # Determine which columns to profile
@@ -577,7 +575,7 @@ class ProfileEngine:
                         table=table,
                         column_name=column_name,
                         partition_config=partition_config,
-                        sampling_config=pattern.sampling,
+                        sampling_config=sampling_config,
                     )
 
                     result.add_column_metrics(
@@ -597,7 +595,7 @@ class ProfileEngine:
             # Store list of actually profiled columns for drift/anomaly dependency checking
             result.metadata["profiled_columns"] = list(actually_profiled)
             result.metadata["column_configs"] = (
-                [col.model_dump() for col in pattern.columns] if pattern.columns else None
+                [col.model_dump() for col in column_configs] if column_configs else None
             )
 
             # Store schema snapshot for enrichment metrics (calculated during storage write)
