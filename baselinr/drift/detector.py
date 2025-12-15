@@ -239,13 +239,22 @@ class DriftDetector:
         if current_run_id is None:
             run_ids = self._get_latest_runs(dataset_name, schema_name, limit=1)
             if len(run_ids) < 1:
-                error_msg = f"Need at least 1 run for drift detection, found {len(run_ids)}"
+                schema_hint = f" in schema '{schema_name}'" if schema_name else ""
+                error_msg = (
+                    f"Need at least 1 run for drift detection, found {len(run_ids)}. "
+                    f"No profiling runs found for dataset '{dataset_name}'{schema_hint}. "
+                    f"Run 'baselinr profile' first to create profiling runs."
+                )
                 log_event(
                     logger,
                     "drift_detection_failed",
                     error_msg,
                     level="error",
-                    metadata={"dataset_name": dataset_name, "run_count": len(run_ids)},
+                    metadata={
+                        "dataset_name": dataset_name,
+                        "schema_name": schema_name,
+                        "run_count": len(run_ids),
+                    },
                 )
                 raise ValueError(error_msg)
             current_run_id = run_ids[0]
@@ -470,20 +479,34 @@ class DriftDetector:
     def _get_latest_runs(
         self, dataset_name: str, schema_name: Optional[str], limit: int = 2
     ) -> List[str]:
-        """Get latest run IDs for a dataset."""
-        query = text(
-            f"""
-            SELECT run_id FROM {self.storage_config.runs_table}
-            WHERE dataset_name = :dataset_name
-            {"AND schema_name = :schema_name" if schema_name else ""}
-            ORDER BY profiled_at DESC
-            LIMIT :limit
-        """
-        )
+        """Get latest run IDs for a dataset.
 
-        params = {"dataset_name": dataset_name, "limit": limit}
+        If schema_name is None, matches runs with any schema_name (including NULL).
+        This allows drift detection to work when schema is not specified.
+        """
         if schema_name:
-            params["schema_name"] = schema_name
+            # Match specific schema
+            query = text(
+                f"""
+                SELECT run_id FROM {self.storage_config.runs_table}
+                WHERE dataset_name = :dataset_name
+                AND schema_name = :schema_name
+                ORDER BY profiled_at DESC
+                LIMIT :limit
+            """
+            )
+            params = {"dataset_name": dataset_name, "schema_name": schema_name, "limit": limit}
+        else:
+            # Match any schema (including NULL) - allows drift detection without schema
+            query = text(
+                f"""
+                SELECT run_id FROM {self.storage_config.runs_table}
+                WHERE dataset_name = :dataset_name
+                ORDER BY profiled_at DESC
+                LIMIT :limit
+            """
+            )
+            params = {"dataset_name": dataset_name, "limit": limit}
 
         with self.engine.connect() as conn:
             result = conn.execute(query, params)
