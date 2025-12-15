@@ -81,17 +81,17 @@ class ConfigMerger:
         database_name: Optional[str] = None,
         schema: Optional[str] = None,
         table: Optional[str] = None,
-    ) -> TablePattern:
+    ) -> Dict[str, Any]:
         """Merge profiling config with dataset overrides.
 
         Args:
-            table_pattern: Table pattern to merge
+            table_pattern: Table pattern (for selection only, no profiling config)
             database_name: Database name (defaults to table_pattern.database)
             schema: Schema name (defaults to table_pattern.schema_)
             table: Table name (defaults to table_pattern.table)
 
         Returns:
-            Merged TablePattern
+            Dict with merged profiling config: partition, sampling, columns
         """
         # Use provided values or fall back to table_pattern
         db = database_name or table_pattern.database
@@ -100,29 +100,28 @@ class ConfigMerger:
 
         dataset = self.find_matching_dataset(db, schema_name, table_name)
         if not dataset or not dataset.profiling:
-            return table_pattern
+            return {
+                "partition": None,
+                "sampling": None,
+                "columns": None,
+            }
 
-        # Create a copy to avoid modifying original
-        merged = deepcopy(table_pattern)
+        # Get merged config from dataset
+        merged_config = {
+            "partition": (
+                deepcopy(dataset.profiling.partition) if dataset.profiling.partition else None
+            ),
+            "sampling": (
+                deepcopy(dataset.profiling.sampling) if dataset.profiling.sampling else None
+            ),
+            "columns": (
+                [deepcopy(col) for col in dataset.profiling.columns]
+                if dataset.profiling.columns
+                else None
+            ),
+        }
 
-        # Merge partition config (only if table_pattern doesn't have one)
-        if dataset.profiling.partition and merged.partition is None:
-            merged.partition = deepcopy(dataset.profiling.partition)
-
-        # Merge sampling config (only if table_pattern doesn't have one)
-        if dataset.profiling.sampling and merged.sampling is None:
-            merged.sampling = deepcopy(dataset.profiling.sampling)
-
-        # Merge column configs (append dataset columns to table columns)
-        if dataset.profiling.columns:
-            if merged.columns is None:
-                merged.columns = []
-            # Table columns come first (higher priority)
-            merged.columns = list(merged.columns) + [
-                deepcopy(col) for col in dataset.profiling.columns
-            ]
-
-        return merged
+        return merged_config
 
     def merge_drift_config(
         self, database: Optional[str], schema: Optional[str], table: Optional[str]
@@ -248,8 +247,9 @@ class ConfigMerger:
         schema = table_pattern.schema_
         table = table_pattern.table
 
+        profiling_config = self.merge_profiling_config(table_pattern, db, schema, table)
         return {
-            "profiling": self.merge_profiling_config(table_pattern, db, schema, table),
+            "profiling": profiling_config,
             "drift": self.merge_drift_config(db, schema, table),
             "validation_rules": self.get_validation_rules(db, schema, table),
             "anomaly_columns": self.get_anomaly_column_configs(db, schema, table),

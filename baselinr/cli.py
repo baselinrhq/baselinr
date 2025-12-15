@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from .query import MetadataQueryClient
 
 from .config.loader import ConfigLoader
-from .config.schema import BaselinrConfig, HookConfig, SamplingConfig, TablePattern
+from .config.schema import BaselinrConfig, HookConfig, TablePattern
 from .connectors.factory import create_connector
 from .drift.detector import DriftDetector
 from .events import EventBus, LoggingAlertHook, SnowflakeEventHook, SQLEventHook
@@ -4395,7 +4395,13 @@ def main():
 
 
 def _select_tables_from_plan(plan: IncrementalPlan, config: BaselinrConfig):
-    """Convert plan decisions into table patterns for execution."""
+    """Convert plan decisions into table patterns for execution.
+
+    Note: Partition and sampling overrides for incremental runs are now handled
+    via dataset configs in the datasets section. The incremental planner
+    decisions are used to determine which tables to run, but partition/sampling
+    configs come from the datasets section.
+    """
     selected = []
     for decision in plan.decisions:
         if decision.action not in ("full", "partial", "sample"):
@@ -4403,25 +4409,30 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: BaselinrConfig):
         pattern = decision.table
         table_pattern = pattern.model_copy(deep=True)
 
+        # Note: Partition and sampling configs are now in datasets section.
+        # For partial runs, the partition config should be defined in the dataset
+        # with strategy "specific_values" and the values set there.
+        # For sampling, the dataset config should have sampling enabled.
+        # The incremental planner decisions are used to determine which tables
+        # to run, but the actual partition/sampling configs come from datasets.
+
         if decision.action == "partial" and decision.changed_partitions:
-            if not table_pattern.partition or not table_pattern.partition.key:
+            # Check if partition config exists in datasets
+            from .config.merger import ConfigMerger
+
+            merger = ConfigMerger(config)
+            profiling_config = merger.merge_profiling_config(
+                table_pattern=table_pattern,
+                database_name=table_pattern.database,
+                schema=table_pattern.schema_,
+                table=table_pattern.table,
+            )
+            if not profiling_config.get("partition") or not profiling_config["partition"].key:
                 logger.warning(
-                    "Partial run requested for %s but no partition key configured; "
+                    "Partial run requested for %s but no partition key configured in datasets; "
                     "falling back to full scan",
                     pattern.table,
                 )
-            else:
-                table_pattern.partition.strategy = "specific_values"
-                table_pattern.partition.values = decision.changed_partitions
-
-        if decision.action == "sample":
-            sample_fraction = config.incremental.cost_controls.sample_fraction
-            table_pattern.sampling = SamplingConfig(
-                enabled=True,
-                method="random",
-                fraction=sample_fraction,
-                max_rows=None,
-            )
 
         selected.append(table_pattern)
     return selected

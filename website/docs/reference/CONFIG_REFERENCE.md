@@ -214,14 +214,6 @@ profiling:
   tables:
     - table: customers
       schema: public
-      partition:
-        key: order_date
-        strategy: latest
-      sampling:
-        enabled: true
-        method: random
-        fraction: 0.01
-        max_rows: 1000000
   max_distinct_values: 1000
   compute_histograms: true
   histogram_bins: 10
@@ -235,8 +227,10 @@ profiling:
     - histogram
 ```
 
+**Note:** Dataset-level profiling configuration (partition, sampling, columns) must be defined in the `datasets` section, not in `profiling.tables`. See [Dataset Configuration](#dataset-configuration) for details.
+
 **Fields:**
-- `tables` (List[TablePattern]): List of tables to profile (default: `[]`)
+- `tables` (List[TablePattern]): List of tables to profile (default: `[]`). TablePattern only contains table selection fields (table, schema, pattern, etc.). Profiling configuration must be in the `datasets` section.
 - `table_discovery` (bool): Enable automatic table discovery (default: `true` when patterns used)
 - `discovery_options` (DiscoveryOptionsConfig): Options for table discovery (see below)
 - `max_distinct_values` (int): Maximum distinct values to compute (default: `1000`)
@@ -303,12 +297,10 @@ Configuration for a single table or table selection pattern.
   **Precedence:**
 - `override_priority` (Optional[int]): Higher priority overrides lower priority matches
   (default: explicit=100, patterns=10, schema=5, database=1)
-  
-  **Existing fields:**
-- `partition` (Optional[PartitionConfig]): Partition configuration
-- `sampling` (Optional[SamplingConfig]): Sampling configuration
 
-**Note:** Either `table`, `pattern`, `select_schema`, or `select_all_schemas` must be specified.
+**Note:** 
+- Either `table`, `pattern`, `select_schema`, or `select_all_schemas` must be specified.
+- **TablePattern only contains table selection fields.** Profiling configuration (partition, sampling, columns) must be defined in the `datasets` section. See [Dataset Configuration](#dataset-configuration) for details.
 
 #### PartitionConfig
 

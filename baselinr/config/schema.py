@@ -373,17 +373,6 @@ class TablePattern(BaseModel):
         ),
     )
 
-    # Existing fields
-    partition: Optional[PartitionConfig] = None
-    sampling: Optional[SamplingConfig] = None
-
-    # Column-level configuration
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description="Column-level configurations for profiling, drift, and anomaly detection. "
-        "If not specified, all columns are profiled with table-level defaults.",
-    )
-
     model_config = {"populate_by_name": True}
 
     @field_validator("pattern_type")
@@ -393,6 +382,19 @@ class TablePattern(BaseModel):
         if v is not None and v not in ["wildcard", "regex"]:
             raise ValueError("pattern_type must be 'wildcard' or 'regex'")
         return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_old_profiling_fields(cls, data: Any) -> Any:
+        """Reject old profiling fields that should be in datasets section."""
+        if isinstance(data, dict):
+            if "partition" in data or "sampling" in data or "columns" in data:
+                raise ValueError(
+                    "TablePattern no longer supports 'partition', 'sampling', or 'columns' fields. "
+                    "These must be defined in the 'datasets' section. "
+                    "Use 'baselinr migrate-config' to migrate your configuration."
+                )
+        return data
 
     @model_validator(mode="after")
     def validate_table_or_pattern(self):
@@ -589,16 +591,20 @@ class ProfilingConfig(BaseModel):
     """Profiling behavior configuration."""
 
     tables: List[TablePattern] = Field(default_factory=list)
-    schemas: Optional[List[SchemaConfig]] = Field(
-        None,
-        description="Schema-level configurations that apply to all tables in specified schemas",
-    )
-    databases: Optional[List[DatabaseConfig]] = Field(
-        None,
-        description=(
-            "Database-level configurations that apply to all schemas/tables in specified databases"
-        ),
-    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_old_schema_database_fields(cls, data: Any) -> Any:
+        """Reject old schemas/databases fields that should be in datasets section."""
+        if isinstance(data, dict):
+            if "schemas" in data or "databases" in data:
+                raise ValueError(
+                    "ProfilingConfig no longer supports 'schemas' or 'databases' fields. "
+                    "These must be defined in the 'datasets' section. "
+                    "Use 'baselinr migrate-config' to migrate your configuration."
+                )
+        return data
+
     max_distinct_values: int = Field(1000)
     compute_histograms: bool = Field(True)
     histogram_bins: int = Field(10)

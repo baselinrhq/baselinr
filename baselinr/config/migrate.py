@@ -11,7 +11,11 @@ from typing import Any, Dict
 
 import yaml  # type: ignore[import-untyped]
 
-from .schema import BaselinrConfig, DatasetConfig, DatasetsConfig
+from .schema import (
+    BaselinrConfig,
+    DatasetConfig,
+    DatasetsConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +77,35 @@ class ConfigMigrator:
         for dataset in self.config.datasets.datasets:
             file_path = self._create_dataset_file(dataset, datasets_path)
             files_created.append(str(file_path))
+
+        # Load raw config to check for profiling.schemas and profiling.databases
+        with open(self.config_file_path, "r") as f:
+            if self.config_file_path.suffix in [".yaml", ".yml"]:
+                raw_config = yaml.safe_load(f)
+            else:
+                raw_config = json.load(f)
+
+        # Migrate profiling.schemas if present
+        if (
+            raw_config.get("profiling")
+            and isinstance(raw_config["profiling"], dict)
+            and raw_config["profiling"].get("schemas")
+        ):
+            schema_files = self._migrate_schema_configs(
+                datasets_path, raw_config["profiling"]["schemas"]
+            )
+            files_created.extend(schema_files)
+
+        # Migrate profiling.databases if present
+        if (
+            raw_config.get("profiling")
+            and isinstance(raw_config["profiling"], dict)
+            and raw_config["profiling"].get("databases")
+        ):
+            database_files = self._migrate_database_configs(
+                datasets_path, raw_config["profiling"]["databases"]
+            )
+            files_created.extend(database_files)
 
         # Update main config file
         updated_config = self._update_config_file(output_dir)
@@ -137,6 +170,13 @@ class ConfigMigrator:
             "recursive": True,
         }
 
+        # Remove profiling.schemas and profiling.databases if present
+        if "profiling" in config_dict:
+            if "schemas" in config_dict["profiling"]:
+                del config_dict["profiling"]["schemas"]
+            if "databases" in config_dict["profiling"]:
+                del config_dict["profiling"]["databases"]
+
         # Write updated config
         with open(self.config_file_path, "w") as f:
             if self.config_file_path.suffix in [".yaml", ".yml"]:
@@ -145,3 +185,135 @@ class ConfigMigrator:
                 json.dump(config_dict, f, indent=2)
 
         return True
+
+    def _migrate_schema_configs(self, output_dir: Path, schema_configs: list[dict]) -> list[str]:
+        """Migrate profiling.schemas[] to dataset files.
+
+        Args:
+            output_dir: Directory to create schema config files
+            schema_configs: List of schema config dicts from raw YAML
+
+        Returns:
+            List of created file paths
+        """
+        if not schema_configs:
+            return []
+
+        files_created = []
+        for schema_config_dict in schema_configs:
+            # Convert schema config dict to dataset dict
+            dataset_dict = {
+                "schema": schema_config_dict.get("schema") or schema_config_dict.get("schema_"),
+            }
+            if schema_config_dict.get("database"):
+                dataset_dict["database"] = schema_config_dict["database"]
+
+            # Add profiling config if present
+            profiling_dict = {}
+            if schema_config_dict.get("partition"):
+                profiling_dict["partition"] = schema_config_dict["partition"]
+            if schema_config_dict.get("sampling"):
+                profiling_dict["sampling"] = schema_config_dict["sampling"]
+            if schema_config_dict.get("columns"):
+                profiling_dict["columns"] = schema_config_dict["columns"]
+            if profiling_dict:
+                dataset_dict["profiling"] = profiling_dict
+
+            # Add filters if present
+            if "profiling" not in dataset_dict:
+                dataset_dict["profiling"] = {}
+            profiling_section = dataset_dict["profiling"]
+            assert isinstance(profiling_section, dict)
+            if schema_config_dict.get("table_types"):
+                profiling_section["table_types"] = schema_config_dict["table_types"]
+            if schema_config_dict.get("min_rows"):
+                profiling_section["min_rows"] = schema_config_dict["min_rows"]
+            if schema_config_dict.get("max_rows"):
+                profiling_section["max_rows"] = schema_config_dict["max_rows"]
+            if schema_config_dict.get("required_columns"):
+                profiling_section["required_columns"] = schema_config_dict["required_columns"]
+            if schema_config_dict.get("modified_since_days"):
+                profiling_section["modified_since_days"] = schema_config_dict["modified_since_days"]
+            if schema_config_dict.get("exclude_patterns"):
+                profiling_section["exclude_patterns"] = schema_config_dict["exclude_patterns"]
+
+            # Generate filename
+            schema_name = dataset_dict.get("schema") or "unknown"
+            filename = f"{schema_name}_schema.yml"
+            file_path = output_dir / filename
+
+            # Write to file
+            with open(file_path, "w") as f:
+                yaml.dump(dataset_dict, f, default_flow_style=False, sort_keys=False)
+
+            logger.info(f"Created schema config file: {file_path}")
+            files_created.append(str(file_path))
+
+        return files_created
+
+    def _migrate_database_configs(
+        self, output_dir: Path, database_configs: list[dict]
+    ) -> list[str]:
+        """Migrate profiling.databases[] to dataset files.
+
+        Args:
+            output_dir: Directory to create database config files
+            database_configs: List of database config dicts from raw YAML
+
+        Returns:
+            List of created file paths
+        """
+        if not database_configs:
+            return []
+
+        files_created = []
+        for database_config_dict in database_configs:
+            # Convert database config dict to dataset dict
+            dataset_dict = {
+                "database": database_config_dict.get("database"),
+            }
+
+            # Add profiling config if present
+            profiling_dict = {}
+            if database_config_dict.get("partition"):
+                profiling_dict["partition"] = database_config_dict["partition"]
+            if database_config_dict.get("sampling"):
+                profiling_dict["sampling"] = database_config_dict["sampling"]
+            if database_config_dict.get("columns"):
+                profiling_dict["columns"] = database_config_dict["columns"]
+            if profiling_dict:
+                dataset_dict["profiling"] = profiling_dict
+
+            # Add filters if present
+            if "profiling" not in dataset_dict:
+                dataset_dict["profiling"] = {}
+            profiling_section = dataset_dict["profiling"]
+            assert isinstance(profiling_section, dict)
+            if database_config_dict.get("table_types"):
+                profiling_section["table_types"] = database_config_dict["table_types"]
+            if database_config_dict.get("min_rows"):
+                profiling_section["min_rows"] = database_config_dict["min_rows"]
+            if database_config_dict.get("max_rows"):
+                profiling_section["max_rows"] = database_config_dict["max_rows"]
+            if database_config_dict.get("required_columns"):
+                profiling_section["required_columns"] = database_config_dict["required_columns"]
+            if database_config_dict.get("modified_since_days"):
+                profiling_section["modified_since_days"] = database_config_dict[
+                    "modified_since_days"
+                ]
+            if database_config_dict.get("exclude_patterns"):
+                profiling_section["exclude_patterns"] = database_config_dict["exclude_patterns"]
+
+            # Generate filename
+            database_name = dataset_dict.get("database") or "unknown"
+            filename = f"{database_name}_database.yml"
+            file_path = output_dir / filename
+
+            # Write to file
+            with open(file_path, "w") as f:
+                yaml.dump(dataset_dict, f, default_flow_style=False, sort_keys=False)
+
+            logger.info(f"Created database config file: {file_path}")
+            files_created.append(str(file_path))
+
+        return files_created
