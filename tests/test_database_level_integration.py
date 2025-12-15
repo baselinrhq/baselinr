@@ -101,24 +101,20 @@ class TestDatabaseLevelConfigResolution:
         """Test that database column configs merge with table column configs."""
         database_dataset = DatasetConfig(
             database="warehouse",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="*_id", drift=ColumnDriftConfig(enabled=False)),
-                    ColumnConfig(
-                        name="*_temp", profiling=ColumnProfilingConfig(enabled=False)
-                    ),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="*_id", pattern_type="wildcard", drift=ColumnDriftConfig(enabled=False)),
+                ColumnConfig(
+                    name="*_temp", pattern_type="wildcard", profiling=ColumnProfilingConfig(enabled=False)
+                ),
+            ],
         )
         table_dataset = DatasetConfig(
             table="orders",
             schema="analytics",
             database="warehouse",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="total_amount", drift=ColumnDriftConfig(enabled=True)),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="total_amount", drift=ColumnDriftConfig(enabled=True)),
+            ],
         )
         config = BaselinrConfig(
             source=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),
@@ -150,22 +146,22 @@ class TestDatabaseLevelConfigResolution:
             database="warehouse",
             profiling=DatasetProfilingConfig(
                 partition=PartitionConfig(strategy="all", key="date"),
-                columns=[
-                    ColumnConfig(name="*_id", drift=ColumnDriftConfig(enabled=False)),
-                ],
             ),
+            columns=[
+                ColumnConfig(name="*_id", pattern_type="wildcard", drift=ColumnDriftConfig(enabled=False)),
+            ],
         )
         schema_dataset = DatasetConfig(
             schema="analytics",
             database="warehouse",
             profiling=DatasetProfilingConfig(
                 partition=PartitionConfig(strategy="latest", key="timestamp"),
-                columns=[
-                    ColumnConfig(
-                        name="customer_id", drift=ColumnDriftConfig(enabled=True)
-                    ),
-                ],
             ),
+            columns=[
+                ColumnConfig(
+                    name="customer_id", drift=ColumnDriftConfig(enabled=True)
+                ),
+            ],
         )
         table_dataset = DatasetConfig(
             table="orders",
@@ -173,13 +169,13 @@ class TestDatabaseLevelConfigResolution:
             database="warehouse",
             profiling=DatasetProfilingConfig(
                 partition=PartitionConfig(strategy="all", key="created_at"),
-                columns=[
-                    ColumnConfig(
-                        name="customer_id",
-                        drift=ColumnDriftConfig(enabled=False, thresholds={"low": 1.0}),
-                    ),
-                ],
             ),
+            columns=[
+                ColumnConfig(
+                    name="customer_id",
+                    drift=ColumnDriftConfig(enabled=False, thresholds={"low": 1.0}),
+                ),
+            ],
         )
         config = BaselinrConfig(
             source=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),
@@ -251,11 +247,9 @@ class TestDatabaseLevelConfigResolution:
         """Test that database-level dataset config applies to all schemas in the database."""
         database_dataset = DatasetConfig(
             database="warehouse",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="*_id", drift=ColumnDriftConfig(enabled=False)),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="*_id", pattern_type="wildcard", drift=ColumnDriftConfig(enabled=False)),
+            ],
         )
         config = BaselinrConfig(
             source=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),

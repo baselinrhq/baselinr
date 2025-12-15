@@ -187,11 +187,22 @@ class ColumnProfilingConfig(BaseModel):
     )
 
 
+class ColumnValidationConfig(BaseModel):
+    """Column-level validation configuration."""
+
+    rules: Optional[List["ValidationRuleConfig"]] = Field(
+        None, description="Validation rules specific to this column"
+    )
+
+
 class ColumnConfig(BaseModel):
-    """Column-level configuration for profiling, drift, and anomaly detection.
+    """Column-level configuration for profiling, drift, validation, and anomaly detection.
 
     Supports both explicit column names and patterns (wildcards/regex).
     When patterns are used, multiple columns may match a single configuration.
+
+    All column-level configuration should be unified in a single `columns` field
+    at the dataset level, with profiling, drift, validation, and anomaly configs nested.
     """
 
     name: str = Field(..., description="Column name or pattern (supports wildcards: *, ?)")
@@ -206,6 +217,9 @@ class ColumnConfig(BaseModel):
     )
     drift: Optional[ColumnDriftConfig] = Field(
         None, description="Drift detection configuration for this column"
+    )
+    validation: Optional[ColumnValidationConfig] = Field(
+        None, description="Validation configuration for this column"
     )
     anomaly: Optional[ColumnAnomalyConfig] = Field(
         None, description="Anomaly detection configuration for this column"
@@ -438,93 +452,6 @@ class TablePattern(BaseModel):
         return self
 
 
-class SchemaConfig(BaseModel):
-    """Schema-level configuration that applies to all tables in a schema."""
-
-    database: Optional[str] = Field(None, description="Database name")
-    schema_: Optional[str] = Field(None, alias="schema")
-
-    # Table-level options (same as TablePattern but without selection)
-    partition: Optional[PartitionConfig] = None
-    sampling: Optional[SamplingConfig] = None
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description="Column-level configurations applied to all tables in this schema",
-    )
-
-    # Filters (same as TablePattern)
-    table_types: Optional[List[str]] = Field(
-        None, description="Filter by table type: 'table', 'view', 'materialized_view', etc."
-    )
-    min_rows: Optional[int] = Field(
-        None, gt=0, description="Only profile tables with at least N rows"
-    )
-    max_rows: Optional[int] = Field(
-        None, gt=0, description="Only profile tables with at most N rows"
-    )
-    required_columns: Optional[List[str]] = Field(
-        None, description="Tables must have these columns"
-    )
-    modified_since_days: Optional[int] = Field(
-        None, gt=0, description="Only profile tables modified in last N days"
-    )
-    exclude_patterns: Optional[List[str]] = Field(
-        None, description="Patterns to exclude from matches"
-    )
-
-    model_config = {"populate_by_name": True}
-
-    @model_validator(mode="after")
-    def validate_schema(self):
-        """Ensure schema is specified."""
-        if self.schema_ is None:
-            raise ValueError("Schema name is required for SchemaConfig")
-        return self
-
-
-class DatabaseConfig(BaseModel):
-    """Database-level configuration that applies to all schemas/tables in a database."""
-
-    database: str = Field(..., description="Database name (required)")
-
-    # Schema-level options (same as SchemaConfig but without schema field)
-    partition: Optional[PartitionConfig] = None
-    sampling: Optional[SamplingConfig] = None
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description="Column-level configurations applied to all tables in this database",
-    )
-
-    # Filters (same as SchemaConfig)
-    table_types: Optional[List[str]] = Field(
-        None, description="Filter by table type: 'table', 'view', 'materialized_view', etc."
-    )
-    min_rows: Optional[int] = Field(
-        None, gt=0, description="Only profile tables with at least N rows"
-    )
-    max_rows: Optional[int] = Field(
-        None, gt=0, description="Only profile tables with at most N rows"
-    )
-    required_columns: Optional[List[str]] = Field(
-        None, description="Tables must have these columns"
-    )
-    modified_since_days: Optional[int] = Field(
-        None, gt=0, description="Only profile tables modified in last N days"
-    )
-    exclude_patterns: Optional[List[str]] = Field(
-        None, description="Patterns to exclude from matches"
-    )
-
-    model_config = {"populate_by_name": True}
-
-    @model_validator(mode="after")
-    def validate_database(self):
-        """Ensure database is specified."""
-        if not self.database:
-            raise ValueError("Database name is required for DatabaseConfig")
-        return self
-
-
 class DiscoveryOptionsConfig(BaseModel):
     """Configuration options for table discovery."""
 
@@ -709,7 +636,11 @@ class StorageConfig(BaseModel):
 
 
 class DriftDetectionConfig(BaseModel):
-    """Drift detection configuration."""
+    """Drift detection configuration.
+
+    This is the global/default drift detection configuration.
+    Dataset-specific drift overrides must be defined in the `datasets` section.
+    """
 
     strategy: str = Field("absolute_threshold")
 
@@ -1343,7 +1274,12 @@ class ValidationConfig(BaseModel):
         default_factory=list, description="List of validation provider configurations"
     )
     rules: List[ValidationRuleConfig] = Field(
-        default_factory=list, description="List of top-level validation rules"
+        default_factory=list,
+        description=(
+            "List of top-level validation rules. "
+            "DEPRECATED: Validation rules must be defined in the datasets section. "
+            "This field is ignored. Use 'baselinr migrate-config' to migrate rules to datasets."
+        ),
     )
 
 
@@ -1435,7 +1371,10 @@ class DatasetProfilingConfig(BaseModel):
     )
     columns: Optional[List[ColumnConfig]] = Field(
         None,
-        description="Column-level configurations for profiling, drift, and anomaly detection",
+        description=(
+            "IGNORED: Column-level configurations must be in the top-level `columns` field. "
+            "This field is ignored. Use 'baselinr migrate-config' to migrate."
+        ),
     )
     metrics: Optional[List[str]] = Field(
         None, description="List of metrics to compute (overrides table-level metrics)"
@@ -1462,7 +1401,11 @@ class DatasetDriftConfig(BaseModel):
         None, description="Override baseline selection strategy and windows"
     )
     columns: Optional[List[ColumnConfig]] = Field(
-        None, description="Column-level drift detection configurations"
+        None,
+        description=(
+            "IGNORED: Column-level drift configurations must be in the top-level `columns` field. "
+            "This field is ignored. Use 'baselinr migrate-config' to migrate."
+        ),
     )
 
     @field_validator("strategy")
@@ -1480,15 +1423,30 @@ class DatasetValidationConfig(BaseModel):
     """Dataset-level validation configuration overrides."""
 
     rules: Optional[List[ValidationRuleConfig]] = Field(
-        None, description="Validation rules specific to this dataset"
+        None,
+        description=(
+            "Table-level validation rules (rules without a column specified). "
+            "Column-specific validation rules should be in "
+            "the top-level `columns[].validation.rules` field."
+        ),
     )
 
 
 class DatasetAnomalyConfig(BaseModel):
-    """Dataset-level anomaly detection configuration overrides."""
+    """Dataset-level anomaly detection configuration overrides.
+
+    Column-level anomaly detection configurations must be in the top-level `columns` field.
+    Global anomaly settings (feature flags, default methods, thresholds) remain in the
+    `storage` section.
+    """
 
     columns: Optional[List[ColumnConfig]] = Field(
-        None, description="Column-level anomaly detection configurations"
+        None,
+        description=(
+            "IGNORED: Column-level anomaly configurations must be in "
+            "the top-level `columns` field. This field is ignored. "
+            "Use 'baselinr migrate-config' to migrate."
+        ),
     )
 
 
@@ -1498,6 +1456,9 @@ class DatasetConfig(BaseModel):
     This allows specifying table/schema/database-specific overrides for
     profiling, drift detection, validation, and anomaly detection in one place,
     reducing duplication compared to specifying overrides in each feature section.
+
+    Column-level configuration should be unified in the `columns` field at the top level,
+    with profiling, drift, validation, and anomaly configs nested within each column.
     """
 
     database: Optional[str] = Field(
@@ -1506,18 +1467,35 @@ class DatasetConfig(BaseModel):
     schema_: Optional[str] = Field(None, alias="schema", description="Schema name")
     table: Optional[str] = Field(None, description="Table name")
 
-    # Feature-specific overrides
+    # Unified column-level configuration (Phase 3.5)
+    # All column configs (profiling, drift, validation, anomaly) should be here
+    columns: Optional[List[ColumnConfig]] = Field(
+        None,
+        description=(
+            "Unified column-level configurations. "
+            "Each column can have profiling, drift, validation, and anomaly configs nested. "
+            "This replaces the old structure where columns were in profiling.columns, "
+            "anomaly.columns, and validation.rules separately."
+        ),
+    )
+
+    # Feature-specific overrides (non-column level)
     profiling: Optional[DatasetProfilingConfig] = Field(
-        None, description="Profiling configuration overrides"
+        None, description="Profiling configuration overrides (partition, sampling, metrics)"
     )
     drift: Optional[DatasetDriftConfig] = Field(
-        None, description="Drift detection configuration overrides"
+        None,
+        description="Drift detection configuration overrides (strategy, thresholds, baselines)",
     )
     validation: Optional[DatasetValidationConfig] = Field(
-        None, description="Validation configuration overrides"
+        None, description="Validation configuration overrides (table-level rules only)"
     )
     anomaly: Optional[DatasetAnomalyConfig] = Field(
-        None, description="Anomaly detection configuration overrides"
+        None,
+        description=(
+            "Anomaly detection configuration overrides "
+            "(no columns field - use top-level columns)"
+        ),
     )
 
     # New fields for file-based configs
@@ -1534,11 +1512,20 @@ class DatasetConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_dataset_identifier(self):
-        """Ensure at least one of database, schema, or table is specified."""
+        """Ensure at least one of database, schema, or table is specified.
+
+        Exception: Allow all None values for global dataset configs (used for global rules).
+        """
+        # Allow all None for global configs (used for global validation rules, etc.)
         if not (self.database or self.schema_ or self.table):
-            raise ValueError(
-                "DatasetConfig must specify at least one of: database, schema, or table"
-            )
+            # Check if this is a meaningful global config (has some configuration)
+            if not (
+                self.profiling or self.drift or self.validation or self.anomaly or self.columns
+            ):
+                raise ValueError(
+                    "DatasetConfig must specify at least one of: database, schema, or table, "
+                    "or provide configuration (profiling, drift, validation, anomaly, columns)"
+                )
         return self
 
 

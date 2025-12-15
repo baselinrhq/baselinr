@@ -10,31 +10,45 @@ profiling:
     enabled: true
     method: random
     fraction: 0.1
-  columns:
-    - name: email
+drift:
+  strategy: statistical
+columns:
+  - name: email
+    profiling:
+      enabled: true
       metrics:
         - count
         - null_count
         - distinct_count
-      drift:
-        enabled: true
-        thresholds:
-          low: 2.0
-          high: 10.0
-          medium: 5.0
-    - name: '*_id'
-      drift:
-        enabled: false
-drift:
-  strategy: statistical
-validation:
-  rules:
-    - type: format
-      column: email
-      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
-      severity: high
+    drift:
       enabled: true
-    - type: not_null
-      column: customer_id
-      severity: high
+      strategy: absolute_threshold
+      thresholds:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
+    validation:
+      rules:
+        - type: format
+          pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+          severity: high
+          enabled: true
+    anomaly:
       enabled: true
+      methods: [control_limits, iqr]
+  - name: customer_id
+    profiling:
+      enabled: true
+    drift:
+      enabled: true
+    validation:
+      rules:
+        - type: not_null
+          severity: high
+          enabled: true
+    anomaly:
+      enabled: false
+  - name: '*_id'
+    pattern_type: wildcard
+    drift:
+      enabled: false
