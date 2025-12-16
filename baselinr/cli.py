@@ -243,8 +243,17 @@ def profile_command(args):
         # Expand patterns before building incremental plan
         expanded_patterns = plan_builder.expand_table_patterns()
         if not expanded_patterns:
-            log_event(ctx.logger, "no_tables_expanded", "No tables found matching patterns")
-            return 0
+            log_event(
+                ctx.logger,
+                "no_tables_expanded",
+                "No tables found matching patterns",
+                level="error",
+            )
+            safe_print(
+                "[red]Error: No tables found matching patterns. "
+                "Check your configuration and ensure tables exist in the database.[/red]"
+            )
+            return 1
 
         # Final validation: ensure all expanded patterns have table names
         invalid = [p for p in expanded_patterns if p.table is None]
@@ -256,7 +265,11 @@ def profile_command(args):
             expanded_patterns = [p for p in expanded_patterns if p.table is not None]
             if not expanded_patterns:
                 ctx.logger.error("No valid patterns remaining after filtering invalid patterns")
-                return 0
+                safe_print(
+                    "[red]Error: No valid patterns remaining "
+                    "after filtering invalid patterns.[/red]"
+                )
+                return 1
 
         # Pass expanded patterns to incremental planner
         incremental_plan = plan_builder.get_tables_to_run(
@@ -264,8 +277,17 @@ def profile_command(args):
         )
         tables_to_profile = _select_tables_from_plan(incremental_plan, config)
         if not tables_to_profile:
-            log_event(ctx.logger, "incremental_noop", "No tables selected for this run")
-            return 0
+            log_event(
+                ctx.logger,
+                "incremental_noop",
+                "No tables selected for this run",
+                level="error",
+            )
+            safe_print(
+                "[red]Error: No tables selected for profiling. "
+                "Check incremental profiling configuration.[/red]"
+            )
+            return 1
 
         # Create profiling engine with run context
         engine = ProfileEngine(config, event_bus=event_bus, run_context=ctx)
