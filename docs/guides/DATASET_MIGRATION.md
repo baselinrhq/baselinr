@@ -337,8 +337,42 @@ After migration:
 - Consider using schema-level or database-level configs for common settings
 - Set up CI/CD to validate dataset configurations
 
+## Final Notes
+
+### After Migration
+
+Once you've migrated to the file-based structure:
+
+1. **Remove old config sections**: The migration tool automatically removes migrated sections, but verify:
+   - `profiling.schemas[]` should be removed (migrated to `{schema}_schema.yml` files)
+   - `profiling.databases[]` should be removed (migrated to `{database}_database.yml` files)
+   - `validation.rules[]` should be removed (migrated to dataset files)
+   - Inline `datasets.datasets[]` should be removed (migrated to individual files)
+
+2. **Verify configuration**: Always validate after migration:
+   ```bash
+   baselinr validate-config --config config.yml
+   ```
+
+3. **Test profiling**: Run a test profile to ensure everything works:
+   ```bash
+   baselinr profile --dry-run
+   ```
+
+4. **Update workflows**: 
+   - Update CI/CD pipelines to validate dataset files
+   - Update team documentation to reference new file locations
+   - Consider using the dashboard UI for managing dataset configs
+
+### Important Reminders
+
+- **`profiling.tables[]` is still valid**: This section is for table selection patterns, not dataset-specific configs. It remains in the main config file.
+- **Global defaults stay in `config.yml`**: Only dataset-specific overrides go in the `datasets/` directory.
+- **File naming matters**: Use exact naming conventions (`{table}.yml`, `{schema}_schema.yml`, `{database}_database.yml`).
+- **Precedence is important**: Table-level configs override schema-level, which override database-level, which override global defaults.
+
 ## Related Documentation
 
 - [Configuration Reference](../../website/docs/reference/CONFIG_REFERENCE.md) - Complete config reference
-- [Dataset Configuration Guide](DATASET_CONFIGURATION.md) - Detailed dataset config guide (coming soon)
+- [Dataset Configuration Guide](DATASET_CONFIGURATION.md) - Detailed dataset config guide
 - [Best Practices Guide](BEST_PRACTICES.md) - Configuration best practices

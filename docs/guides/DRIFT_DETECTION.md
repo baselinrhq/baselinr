@@ -4,6 +4,13 @@ Baselinr provides a flexible, configurable drift detection system to identify ch
 
 ## Overview
 
+**Where to configure**
+- Global defaults: `drift_detection` in `config.yml`
+- Dataset overrides: files in `datasets/` (`{table}.yml`, `{schema}_schema.yml`, `{database}_database.yml`)
+- Column overrides: inside the table file under `columns`
+
+Precedence: table > schema > database > global.
+
 Drift detection compares profiling results from different runs to identify:
 - **Schema changes**: Added or removed columns
 - **Statistical changes**: Changes in metrics like mean, count, null percentage, etc.

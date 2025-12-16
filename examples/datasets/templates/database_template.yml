@@ -1,0 +1,16 @@
+database: <database_name>
+
+profiling:
+  max_distinct_values: 2000
+  compute_histograms: true
+
+drift:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+validation:
+  enabled: true
+

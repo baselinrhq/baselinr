@@ -4,6 +4,13 @@ Baselinr provides a comprehensive data validation system that allows you to defi
 
 ## Overview
 
+**Where to configure**
+- Global defaults: `validation` in `config.yml` (enablement, providers, global settings)
+- Dataset rules: files in `datasets/` (`{table}.yml`, `{schema}_schema.yml`, `{database}_database.yml`)
+- Column overrides: inside table files under `columns`
+
+Precedence: table > schema > database > global.
+
 Data validation in Baselinr is built on a provider-based architecture, similar to the lineage system. The built-in provider offers common validators for format, range, enum, null checks, uniqueness, and referential integrity. Future providers (Great Expectations, Soda, etc.) can be integrated as optional dependencies.
 
 ## Key Concepts
@@ -17,7 +24,7 @@ Data validation in Baselinr is built on a provider-based architecture, similar t
 
 ### Basic Configuration
 
-Enable validation in your `config.yml`. Validation rules should be defined in the `datasets` section:
+Enable validation in your `config.yml`. Define validation rules in dataset files:
 
 ```yaml
 validation:
@@ -25,16 +32,17 @@ validation:
   providers:
     - type: builtin
 
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      validation:
-        rules:
-          - column: email
-            type: format
-            pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-            severity: high
+# datasets/customers.yml
+database: warehouse
+schema: public
+table: customers
+
+validation:
+  rules:
+    - column: email
+      type: format
+      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      severity: high
 ```
 
 **Important**: 
