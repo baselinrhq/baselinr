@@ -17,20 +17,30 @@ Data validation in Baselinr is built on a provider-based architecture, similar t
 
 ### Basic Configuration
 
-Enable validation in your `config.yml`:
+Enable validation in your `config.yml`. Validation rules should be defined in the `datasets` section:
 
 ```yaml
 validation:
   enabled: true
   providers:
     - type: builtin
-      rules:
-        - table: customers
-          column: email
-          type: format
-          pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-          severity: high
+
+datasets:
+  datasets:
+    - table: customers
+      schema: public
+      validation:
+        rules:
+          - column: email
+            type: format
+            pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            severity: high
 ```
+
+**Important**: 
+- Validation rules **must** be defined in the `datasets` section. The old `validation.rules[]` field is no longer supported.
+- The `validation.providers[]` section is for provider configuration (e.g., Great Expectations suite config), not dataset rules
+- Use `baselinr migrate-config` to migrate existing `validation.rules[]` to the datasets section
 
 ### Rule Types
 
@@ -132,21 +142,29 @@ validation:
   enabled: true
   providers:
     - type: builtin
-      rules:
-        # Format validation
-        - table: customers
-          column: email
-          type: format
-          pattern: "email"
-          severity: high
-        
-        # Range validation
-        - table: orders
-          column: total_amount
-          type: range
-          min: 0
-          max: 1000000
-          severity: medium
+
+datasets:
+  datasets:
+    # Format validation for customers table
+    - table: customers
+      schema: public
+      validation:
+        rules:
+          - column: email
+            type: format
+            pattern: "email"
+            severity: high
+    
+    # Range validation for orders table
+    - table: orders
+      schema: public
+      validation:
+        rules:
+          - column: total_amount
+            type: range
+            min: 0
+            max: 1000000
+            severity: medium
         
         # Enum validation
         - table: orders

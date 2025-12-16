@@ -94,21 +94,17 @@ class TestSchemaLevelConfigResolution:
         """Test that schema column configs merge with table column configs."""
         schema_dataset = DatasetConfig(
             schema="analytics",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="*_id", drift=ColumnDriftConfig(enabled=False)),
-                    ColumnConfig(name="*_metadata", profiling=ColumnProfilingConfig(enabled=False)),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="*_id", pattern_type="wildcard", drift=ColumnDriftConfig(enabled=False)),
+                ColumnConfig(name="*_metadata", pattern_type="wildcard", profiling=ColumnProfilingConfig(enabled=False)),
+            ],
         )
         table_dataset = DatasetConfig(
             table="orders",
             schema="analytics",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="total_amount", drift=ColumnDriftConfig(enabled=True)),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="total_amount", drift=ColumnDriftConfig(enabled=True)),
+            ],
         )
         config = BaselinrConfig(
             source=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),
@@ -133,11 +129,9 @@ class TestSchemaLevelConfigResolution:
         """Test that schema-level dataset config applies to multiple tables in same schema."""
         schema_dataset = DatasetConfig(
             schema="analytics",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="*_id", drift=ColumnDriftConfig(enabled=False)),
-                ],
-            ),
+            columns=[
+                ColumnConfig(name="*_id", pattern_type="wildcard", drift=ColumnDriftConfig(enabled=False)),
+            ],
         )
         config = BaselinrConfig(
             source=ConnectionConfig(type=DatabaseType.SQLITE, database=":memory:"),

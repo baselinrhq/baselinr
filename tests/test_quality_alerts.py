@@ -301,3 +301,4 @@ class TestEventMetadata:
         assert event.explanation is not None
         assert "75.0" in event.explanation
         assert "85.0" in event.explanation
+

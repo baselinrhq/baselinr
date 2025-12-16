@@ -13,6 +13,7 @@ from typing import List, Optional
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from ..config.merger import ConfigMerger
 from ..config.schema import BaselinrConfig, ValidationRuleConfig
 from ..events import EventBus, ValidationFailed
 from ..integrations.validation.base import ValidationResult, ValidationRule
@@ -269,7 +270,10 @@ class ValidationExecutor:
 
     def _load_rules_from_config(self) -> List[ValidationRule]:
         """
-        Load validation rules from configuration.
+        Load validation rules from configuration using ConfigMerger.
+
+        Rules are loaded from the datasets section. Provider-level rules
+        in validation.providers[] are still supported for provider configuration.
 
         Returns:
             List of ValidationRule objects
@@ -281,7 +285,51 @@ class ValidationExecutor:
 
         validation_config = self.config.validation
 
-        # Load rules from providers
+        # Use ConfigMerger to load rules from datasets section
+        merger = ConfigMerger(self.config)
+
+        # Collect all unique (database, schema, table) combinations from datasets
+        # to load rules for each dataset
+        dataset_identifiers = set()
+        if merger.datasets:
+            for dataset in merger.datasets:
+                dataset_identifiers.add((dataset.database, dataset.schema_, dataset.table))
+
+        # Also check for global rules (dataset with no table/schema/database)
+        # by checking with None, None, None
+        dataset_identifiers.add((None, None, None))
+
+        # Load rules for each dataset
+        for database, schema, table in dataset_identifiers:
+            rule_configs = merger.get_validation_rules(database, schema, table)
+            for rule_config in rule_configs:
+                # rule_config is already a ValidationRuleConfig object
+                if not rule_config.table:
+                    # Skip rules without table (they need table context to be useful)
+                    continue
+
+                # Use schema from rule config, dataset context, or source config
+                rule_schema = schema or self.config.source.schema_
+
+                rule = ValidationRule(
+                    rule_type=rule_config.type,
+                    table=rule_config.table,
+                    schema=rule_schema,
+                    column=rule_config.column,
+                    config={
+                        "pattern": rule_config.pattern,
+                        "min_value": rule_config.min_value,
+                        "max_value": rule_config.max_value,
+                        "allowed_values": rule_config.allowed_values,
+                        "references": rule_config.references,
+                    },
+                    severity=rule_config.severity,
+                    enabled=rule_config.enabled,
+                )
+                rules.append(rule)
+
+        # Load rules from providers (provider-level rules are different from dataset rules)
+        # These are for provider configuration (e.g., Great Expectations suite config)
         for provider_config in validation_config.providers:
             if not isinstance(provider_config, dict):
                 continue
@@ -323,32 +371,6 @@ class ValidationExecutor:
                     enabled=rule_config.enabled,
                 )
                 rules.append(rule)
-
-        # Also load rules from top-level rules list
-        for rule_config in validation_config.rules:
-            # rule_config is already a ValidationRuleConfig object
-            if not rule_config.table:
-                logger.warning("Validation rule missing table name, skipping")
-                continue
-
-            schema = self.config.source.schema_
-
-            rule = ValidationRule(
-                rule_type=rule_config.type,
-                table=rule_config.table,
-                schema=schema,
-                column=rule_config.column,
-                config={
-                    "pattern": rule_config.pattern,
-                    "min_value": rule_config.min_value,
-                    "max_value": rule_config.max_value,
-                    "allowed_values": rule_config.allowed_values,
-                    "references": rule_config.references,
-                },
-                severity=rule_config.severity,
-                enabled=rule_config.enabled,
-            )
-            rules.append(rule)
 
         return rules
 

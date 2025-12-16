@@ -99,34 +99,40 @@ class ConfigMerger:
         table_name = table or table_pattern.table
 
         dataset = self.find_matching_dataset(db, schema_name, table_name)
-        if not dataset or not dataset.profiling:
+        if not dataset:
             return {
                 "partition": None,
                 "sampling": None,
                 "columns": None,
             }
 
-        # Get merged config from dataset
-        merged_config = {
-            "partition": (
+        # Get partition and sampling from profiling config
+        partition = None
+        sampling = None
+        if dataset.profiling:
+            partition = (
                 deepcopy(dataset.profiling.partition) if dataset.profiling.partition else None
-            ),
-            "sampling": (
-                deepcopy(dataset.profiling.sampling) if dataset.profiling.sampling else None
-            ),
-            "columns": (
-                [deepcopy(col) for col in dataset.profiling.columns]
-                if dataset.profiling.columns
-                else None
-            ),
-        }
+            )
+            sampling = deepcopy(dataset.profiling.sampling) if dataset.profiling.sampling else None
 
-        return merged_config
+        # Get columns from unified columns field (Phase 3.5)
+        columns = None
+        if dataset.columns:
+            columns = [deepcopy(col) for col in dataset.columns]
+
+        return {
+            "partition": partition,
+            "sampling": sampling,
+            "columns": columns,
+        }
 
     def merge_drift_config(
         self, database: Optional[str], schema: Optional[str], table: Optional[str]
     ) -> Optional[DriftDetectionConfig]:
         """Merge drift detection config with dataset overrides.
+
+        All dataset-level drift configuration must be in the `datasets` section.
+        The global `drift_detection` section should only contain default values.
 
         Args:
             database: Database name
@@ -136,12 +142,13 @@ class ConfigMerger:
         Returns:
             Merged DriftDetectionConfig or None if no config
         """
-        # Start with global config
+        # Start with global config (defaults only)
         if not self.config:
             return None
         base_config = self.config.drift_detection
         merged = deepcopy(base_config)
 
+        # Get dataset-specific overrides from datasets section
         dataset = self.find_matching_dataset(database, schema, table)
         if not dataset or not dataset.drift:
             return merged
@@ -156,17 +163,31 @@ class ConfigMerger:
                 merged.absolute_threshold = {}
             merged.absolute_threshold.update(dataset.drift.absolute_threshold)
 
+        if dataset.drift.standard_deviation:
+            if merged.standard_deviation is None:
+                merged.standard_deviation = {}
+            merged.standard_deviation.update(dataset.drift.standard_deviation)
+
         if dataset.drift.statistical:
             if merged.statistical is None:
                 merged.statistical = {}
             merged.statistical.update(dataset.drift.statistical)
+
+        if dataset.drift.baselines:
+            if merged.baselines is None:
+                merged.baselines = {}
+            merged.baselines.update(dataset.drift.baselines)
 
         return merged
 
     def get_validation_rules(
         self, database: Optional[str], schema: Optional[str], table: Optional[str]
     ) -> List[ValidationRuleConfig]:
-        """Get validation rules (global + dataset-specific).
+        """Get validation rules from datasets section.
+
+        All validation rules must be defined in the `datasets` section.
+        Column-specific rules should be in `columns[].validation.rules`.
+        Table-level rules (without column) should be in `validation.rules`.
 
         Args:
             database: Database name
@@ -178,21 +199,56 @@ class ConfigMerger:
         """
         rules: List[ValidationRuleConfig] = []
 
-        # Add global rules
-        if self.config and self.config.validation and self.config.validation.rules:
-            for rule in self.config.validation.rules:
-                # rule is already a ValidationRuleConfig object
-                rules.append(rule)
+        # Get global rules (dataset with no table/schema/database specified)
+        global_dataset = self.find_matching_dataset(None, None, None)
+        if global_dataset:
+            # Get table-level rules from validation.rules
+            if global_dataset.validation and global_dataset.validation.rules:
+                for rule in global_dataset.validation.rules:
+                    rule_copy = deepcopy(rule)
+                    # Set table name if not provided and we have a table context
+                    if rule_copy.table is None and table:
+                        rule_copy.table = table
+                    rules.append(rule_copy)
 
-        # Add dataset-specific rules
+            # Get column-level rules from columns[].validation.rules (Phase 3.5)
+            if global_dataset.columns:
+                for col in global_dataset.columns:
+                    if col.validation and col.validation.rules:
+                        for rule in col.validation.rules:
+                            rule_copy = deepcopy(rule)
+                            # Set table and column from context
+                            if rule_copy.table is None and table:
+                                rule_copy.table = table
+                            if rule_copy.column is None:
+                                rule_copy.column = col.name
+                            rules.append(rule_copy)
+
+        # Add dataset-specific rules (more specific matches override global)
+        # Only process if it's a different dataset than the global one
         dataset = self.find_matching_dataset(database, schema, table)
-        if dataset and dataset.validation and dataset.validation.rules:
-            for rule in dataset.validation.rules:
-                # Set table name if not provided
-                rule_copy = deepcopy(rule)
-                if rule_copy.table is None and table:
-                    rule_copy.table = table
-                rules.append(rule_copy)
+        if dataset and dataset != global_dataset:
+            # Get table-level rules from validation.rules
+            if dataset.validation and dataset.validation.rules:
+                for rule in dataset.validation.rules:
+                    # Set table name if not provided
+                    rule_copy = deepcopy(rule)
+                    if rule_copy.table is None and table:
+                        rule_copy.table = table
+                    rules.append(rule_copy)
+
+            # Get column-level rules from columns[].validation.rules (Phase 3.5)
+            if dataset.columns:
+                for col in dataset.columns:
+                    if col.validation and col.validation.rules:
+                        for rule in col.validation.rules:
+                            rule_copy = deepcopy(rule)
+                            # Set table and column from context
+                            if rule_copy.table is None and table:
+                                rule_copy.table = table
+                            if rule_copy.column is None:
+                                rule_copy.column = col.name
+                            rules.append(rule_copy)
 
         return rules
 
@@ -200,6 +256,8 @@ class ConfigMerger:
         self, database: Optional[str], schema: Optional[str], table: Optional[str]
     ) -> List[ColumnConfig]:
         """Get anomaly column configs from dataset.
+
+        Column configs are read from the unified `columns` field (Phase 3.5).
 
         Args:
             database: Database name
@@ -210,15 +268,19 @@ class ConfigMerger:
             List of ColumnConfig with anomaly settings
         """
         dataset = self.find_matching_dataset(database, schema, table)
-        if not dataset or not dataset.anomaly or not dataset.anomaly.columns:
+        if not dataset or not dataset.columns:
             return []
 
-        return [deepcopy(col) for col in dataset.anomaly.columns]
+        # Filter columns that have anomaly config
+        anomaly_cols = [col for col in dataset.columns if col.anomaly]
+        return [deepcopy(col) for col in anomaly_cols]
 
     def get_drift_column_configs(
         self, database: Optional[str], schema: Optional[str], table: Optional[str]
     ) -> List[ColumnConfig]:
         """Get drift column configs from dataset.
+
+        Column configs are read from the unified `columns` field (Phase 3.5).
 
         Args:
             database: Database name
@@ -229,10 +291,12 @@ class ConfigMerger:
             List of ColumnConfig with drift settings
         """
         dataset = self.find_matching_dataset(database, schema, table)
-        if not dataset or not dataset.drift or not dataset.drift.columns:
+        if not dataset or not dataset.columns:
             return []
 
-        return [deepcopy(col) for col in dataset.drift.columns]
+        # Filter columns that have drift config
+        drift_cols = [col for col in dataset.columns if col.drift]
+        return [deepcopy(col) for col in drift_cols]
 
     def resolve_table_config(self, table_pattern: TablePattern) -> Dict[str, Any]:
         """Resolve complete table config with all feature overrides.

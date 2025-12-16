@@ -264,3 +264,4 @@ class TestExportFormat:
         
         for field in required_fields:
             assert field in score_dict
+

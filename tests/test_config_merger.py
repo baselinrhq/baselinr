@@ -8,6 +8,8 @@ from baselinr.config.schema import (
     ColumnAnomalyConfig,
     ColumnConfig,
     ColumnDriftConfig,
+    ColumnProfilingConfig,
+    ColumnValidationConfig,
     ConnectionConfig,
     DatabaseType,
     DatasetAnomalyConfig,
@@ -219,11 +221,9 @@ class TestConfigMerger:
             database="warehouse",
             schema="analytics",
             table="customers",
-            profiling=DatasetProfilingConfig(
-                columns=[
-                    ColumnConfig(name="email", drift=ColumnDriftConfig(enabled=False)),
-                ]
-            ),
+            columns=[
+                ColumnConfig(name="email", drift=ColumnDriftConfig(enabled=False)),
+            ],
         )
         base_config.datasets = DatasetsConfig(datasets=[dataset])
         merger = ConfigMerger(base_config)
@@ -286,47 +286,71 @@ class TestConfigMerger:
 
     def test_get_validation_rules_no_dataset(self, base_config):
         """Test getting validation rules when no dataset matches."""
-        base_config.validation = ValidationConfig(
-            enabled=True,
-            rules=[
-                ValidationRuleConfig(
-                    type="not_null", table="customers", column="customer_id", severity="high"
+        # Rules must be in datasets section, not validation.rules[]
+        # Global rules can be in a dataset with no table/schema/database (all None)
+        # Column-specific rules should be in columns[].validation.rules (Phase 3.5)
+        global_dataset = DatasetConfig(
+            columns=[
+                ColumnConfig(
+                    name="customer_id",
+                    validation=ColumnValidationConfig(
+                        rules=[
+                            ValidationRuleConfig(
+                                type="not_null", severity="high"
+                            )
+                        ]
+                    )
                 )
-            ],
+            ]
         )
+        base_config.datasets = DatasetsConfig(datasets=[global_dataset])
         merger = ConfigMerger(base_config)
 
         rules = merger.get_validation_rules("warehouse", "analytics", "customers")
+        # Global column rules should be returned
         assert len(rules) == 1
         assert rules[0].type == "not_null"
+        assert rules[0].column == "customer_id"
 
     def test_get_validation_rules_with_dataset(self, base_config):
         """Test getting validation rules with dataset-specific rules."""
-        base_config.validation = ValidationConfig(
-            enabled=True,
-            rules=[
-                ValidationRuleConfig(
-                    type="not_null", table="customers", column="customer_id", severity="high"
+        # Global rules in a dataset with no table/schema/database (all None)
+        # Column-specific rules should be in columns[].validation.rules (Phase 3.5)
+        global_dataset = DatasetConfig(
+            columns=[
+                ColumnConfig(
+                    name="customer_id",
+                    validation=ColumnValidationConfig(
+                        rules=[
+                            ValidationRuleConfig(
+                                type="not_null", severity="high"
+                            )
+                        ]
+                    )
                 )
-            ],
+            ]
         )
+        # Dataset-specific rules
         dataset = DatasetConfig(
             database="warehouse",
             schema="analytics",
             table="customers",
-            validation=DatasetValidationConfig(
-                rules=[
-                    ValidationRuleConfig(
-                        type="format",
-                        table="customers",
-                        column="email",
-                        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
-                        severity="high",
+            columns=[
+                ColumnConfig(
+                    name="email",
+                    validation=ColumnValidationConfig(
+                        rules=[
+                            ValidationRuleConfig(
+                                type="format",
+                                pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+                                severity="high",
+                            )
+                        ]
                     )
-                ]
-            ),
+                )
+            ],
         )
-        base_config.datasets = DatasetsConfig(datasets=[dataset])
+        base_config.datasets = DatasetsConfig(datasets=[global_dataset, dataset])
         merger = ConfigMerger(base_config)
 
         rules = merger.get_validation_rules("warehouse", "analytics", "customers")
@@ -366,16 +390,14 @@ class TestConfigMerger:
             database="warehouse",
             schema="analytics",
             table="customers",
-            anomaly=DatasetAnomalyConfig(
-                columns=[
-                    ColumnConfig(
-                        name="total_amount",
-                        anomaly=ColumnAnomalyConfig(
-                            enabled=True, methods=["control_limits", "iqr"]
-                        ),
-                    )
-                ]
-            ),
+            columns=[
+                ColumnConfig(
+                    name="total_amount",
+                    anomaly=ColumnAnomalyConfig(
+                        enabled=True, methods=["control_limits", "iqr"]
+                    ),
+                )
+            ],
         )
         base_config.datasets = DatasetsConfig(datasets=[dataset])
         merger = ConfigMerger(base_config)
@@ -390,14 +412,12 @@ class TestConfigMerger:
             database="warehouse",
             schema="analytics",
             table="customers",
-            drift=DatasetDriftConfig(
-                columns=[
-                    ColumnConfig(
-                        name="email",
-                        drift=ColumnDriftConfig(enabled=False),
-                    )
-                ]
-            ),
+            columns=[
+                ColumnConfig(
+                    name="email",
+                    drift=ColumnDriftConfig(enabled=False),
+                )
+            ],
         )
         base_config.datasets = DatasetsConfig(datasets=[dataset])
         merger = ConfigMerger(base_config)

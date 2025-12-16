@@ -4,22 +4,34 @@ Baselinr supports fine-grained column-level configurations for profiling, drift 
 
 ## Overview
 
-Column-level configurations follow a dbt-like nested pattern, where column configurations are nested under table definitions in your `config.yml`:
+Column-level configurations are unified in a single `columns` field at the dataset level. All column configs (profiling, drift, validation, anomaly) are nested within each column definition:
 
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
       schema: public
       columns:
         - name: email
-          metrics: [count, null_count, distinct_count]
+          profiling:
+            enabled: true
+            metrics: [count, null_count, distinct_count]
           drift:
             enabled: true
             thresholds:
               low: 2.0
               medium: 5.0
               high: 10.0
+          validation:
+            rules:
+              - type: format
+                pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                severity: high
+              - type: not_null
+                severity: high
+          anomaly:
+            enabled: true
+            methods: [control_limits, iqr]
 ```
 
 ## Key Features
@@ -33,33 +45,56 @@ profiling:
 
 ## Configuration Structure
 
-### Column Configuration Schema
+### Unified Column Configuration Schema
+
+All column-level configuration is unified in a single `columns` field at the dataset level:
 
 ```yaml
-columns:
-  - name: <column_name_or_pattern>    # Required
-    pattern_type: wildcard | regex     # Optional (default: wildcard)
-    metrics: [<list_of_metrics>]       # Optional (overrides table-level)
-    profiling:                         # Optional
-      enabled: true | false            # Default: true
-    drift:                             # Optional
-      enabled: true | false            # Default: true
-      strategy: <strategy_name>        # Override drift strategy
-      thresholds:                      # Per-column thresholds
-        low: <float>
-        medium: <float>
-        high: <float>
-      baselines:                       # Override baseline selection
-        strategy: <strategy>
-        windows: {...}
-    anomaly:                           # Optional
-      enabled: true | false            # Default: true
-      methods: [<list_of_methods>]     # Override enabled methods
-      thresholds:                      # Per-column thresholds
-        iqr_threshold: <float>
-        mad_threshold: <float>
-        ewma_deviation_threshold: <float>
+datasets:
+  datasets:
+    - table: <table_name>
+      schema: <schema_name>
+      columns:
+        - name: <column_name_or_pattern>    # Required
+          pattern_type: wildcard | regex     # Optional (default: wildcard)
+          metrics: [<list_of_metrics>]       # Optional (overrides table-level)
+          profiling:                         # Optional
+            enabled: true | false            # Default: true
+          drift:                             # Optional
+            enabled: true | false            # Default: true
+            strategy: <strategy_name>        # Override drift strategy
+            thresholds:                      # Per-column thresholds
+              low: <float>
+              medium: <float>
+              high: <float>
+            baselines:                       # Override baseline selection
+              strategy: <strategy>
+              windows: {...}
+          validation:                         # Optional (Phase 3.5)
+            rules:                           # Column-specific validation rules
+              - type: format | range | enum | not_null | unique | referential
+                pattern: <regex_pattern>      # For format rules
+                min_value: <float>            # For range rules
+                max_value: <float>            # For range rules
+                allowed_values: [...]        # For enum rules
+                severity: low | medium | high
+                enabled: true | false
+          anomaly:                           # Optional
+            enabled: true | false            # Default: true
+            methods: [<list_of_methods>]     # Override enabled methods
+            thresholds:                      # Per-column thresholds
+              iqr_threshold: <float>
+              mad_threshold: <float>
+              ewma_deviation_threshold: <float>
 ```
+
+**Important**: The unified `columns` field replaces the old structure. The following fields are no longer supported:
+- `profiling.columns[]` - Use top-level `columns` field instead
+- `drift.columns[]` - Use top-level `columns` field instead
+- `anomaly.columns[]` - Use top-level `columns` field instead
+- `validation.rules[]` with column specified - Use `columns[].validation.rules` instead
+
+Use `baselinr migrate-config` to automatically consolidate column configs.
 
 ## Column Selection
 

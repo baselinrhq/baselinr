@@ -13,9 +13,12 @@ Drift detection compares profiling results from different runs to identify:
 
 Drift detection can be configured at multiple levels:
 
-1. **Global configuration** (`drift_detection` section) - Applies to all tables and columns
-2. **Type-specific thresholds** - Adjusts sensitivity based on column data type (numeric, categorical, etc.)
-3. **Column-level configuration** - Per-column drift settings (see [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md))
+1. **Global configuration** (`drift_detection` section) - Default values that apply to all tables and columns
+2. **Dataset-level overrides** (`datasets` section) - Table/schema/database-specific drift settings
+3. **Type-specific thresholds** - Adjusts sensitivity based on column data type (numeric, categorical, etc.)
+4. **Column-level configuration** - Per-column drift settings (see [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md))
+
+**Important**: Dataset-level drift overrides (strategy, thresholds, baselines) must be defined in the `datasets` section, not in the global `drift_detection` section. The global section should only contain default values.
 
 ### Global Configuration
 
@@ -606,23 +609,33 @@ For fine-grained control, you can configure drift detection per column using col
 
 **Example**:
 ```yaml
-profiling:
-  tables:
+datasets:
+  datasets:
     - table: customers
-      columns:
-        - name: lifetime_value
-          drift:
-            enabled: true
-            thresholds:
-              low: 5.0
-              medium: 10.0
-              high: 20.0
-        - name: "*_id"
-          drift:
-            enabled: false  # Skip drift for ID columns
+      schema: public
+      drift:
+        strategy: absolute_threshold
+        absolute_threshold:
+          low_threshold: 5.0
+          medium_threshold: 15.0
+          high_threshold: 30.0
+      profiling:
+        columns:
+          - name: lifetime_value
+            drift:
+              enabled: true
+              thresholds:
+                low: 5.0
+                medium: 10.0
+                high: 20.0
+          - name: "*_id"
+            drift:
+              enabled: false  # Skip drift for ID columns
 ```
 
-**Important**: Column-level drift detection requires that the column was profiled. If `profiling.enabled: false` for a column, drift detection is automatically skipped for that column.
+**Important**: 
+- Dataset-level drift overrides must be in the `datasets` section
+- Column-level drift detection requires that the column was profiled. If `profiling.enabled: false` for a column, drift detection is automatically skipped for that column.
 
 **See Also**: [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md) for complete documentation on column-level configurations for profiling, drift, and anomaly detection.
 

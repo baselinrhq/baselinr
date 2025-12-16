@@ -41,13 +41,6 @@ storage:
   anomaly_regime_shift_window: 3
   anomaly_regime_shift_sensitivity: 0.05
 profiling:
-  tables:
-  - schema_: public
-    table: customers
-  - schema_: public
-    table: customer_summary
-  - schema_: public
-    table: customer_analytics
   max_distinct_values: 1000
   compute_histograms: true
   histogram_bins: 10
@@ -348,42 +341,8 @@ validation:
   enabled: true
   providers:
   - type: builtin
-    rules:
-    - type: format
-      table: customers
-      column: email
-      pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
-      severity: high
-    - type: not_null
-      table: customers
-      column: customer_id
-      severity: high
-    - type: unique
-      table: customers
-      column: email
-      severity: high
-    - type: range
-      table: orders
-      column: total_amount
-      severity: medium
-      max_value: 1000000
-      min_value: 0
-    - type: enum
-      table: orders
-      column: status
-      severity: high
-      allowed_values:
-      - Delivered
-      - In Transit
-      - Processing
-    - type: referential
-      table: orders
-      column: customer_id
-      severity: high
-      references:
-        table: customers
-        column: customer_id
-  rules: []
+  # Column-specific validation rules are now in datasets[].columns[].validation.rules
+  # Table-level rules (without column) can be in datasets[].validation.rules
 quality_scoring:
   enabled: true
   weights:
@@ -407,3 +366,163 @@ datasets:
   datasets_dir: ./datasets
   auto_discover: true
   recursive: true
+  # Example inline dataset configs (can also be in separate files in ./datasets directory)
+  datasets:
+    # Customers table with unified column configuration
+    - table: customers
+      schema: public
+      profiling:
+        sampling:
+          enabled: true
+          fraction: 0.1
+      columns:
+        # Unified column config with profiling, drift, validation, and anomaly
+        - name: customer_id
+          profiling:
+            enabled: true
+            metrics: [count, null_count, distinct_count]
+          drift:
+            enabled: true
+            thresholds:
+              low: 2.0
+              medium: 5.0
+              high: 10.0
+          validation:
+            rules:
+              - type: not_null
+                severity: high
+              - type: unique
+                severity: high
+          anomaly:
+            enabled: false
+        - name: email
+          profiling:
+            enabled: true
+            metrics: [count, null_count, distinct_count, min_length, max_length]
+          drift:
+            enabled: true
+            strategy: absolute_threshold
+            thresholds:
+              low: 3.0
+              medium: 8.0
+              high: 15.0
+          validation:
+            rules:
+              - type: format
+                pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+                severity: high
+              - type: not_null
+                severity: high
+              - type: unique
+                severity: high
+          anomaly:
+            enabled: true
+            methods: [control_limits, iqr]
+        - name: created_at
+          profiling:
+            enabled: true
+          drift:
+            enabled: false
+          anomaly:
+            enabled: true
+            methods: [seasonality]
+        # Pattern-based column config
+        - name: '*_id'
+          pattern_type: wildcard
+          drift:
+            enabled: false
+          validation:
+            rules:
+              - type: not_null
+                severity: medium
+    # Orders table with unified column configuration
+    - table: orders
+      schema: public
+      drift:
+        strategy: statistical
+      columns:
+        - name: order_id
+          profiling:
+            enabled: true
+          drift:
+            enabled: true
+          validation:
+            rules:
+              - type: not_null
+                severity: high
+              - type: unique
+                severity: high
+        - name: customer_id
+          profiling:
+            enabled: true
+          drift:
+            enabled: true
+          validation:
+            rules:
+              - type: not_null
+                severity: high
+              - type: referential
+                references:
+                  table: customers
+                  column: customer_id
+                severity: high
+        - name: total_amount
+          profiling:
+            enabled: true
+            metrics: [count, null_count, min, max, mean, stddev]
+          drift:
+            enabled: true
+            thresholds:
+              low: 5.0
+              medium: 15.0
+              high: 30.0
+          validation:
+            rules:
+              - type: range
+                min_value: 0
+                max_value: 1000000
+                severity: medium
+              - type: not_null
+                severity: high
+          anomaly:
+            enabled: true
+            methods: [control_limits, iqr, mad]
+            thresholds:
+              iqr_threshold: 2.0
+              mad_threshold: 3.5
+        - name: status
+          profiling:
+            enabled: true
+          drift:
+            enabled: true
+          validation:
+            rules:
+              - type: enum
+                allowed_values:
+                  - Delivered
+                  - In Transit
+                  - Processing
+                severity: high
+    # Customer summary table (minimal config)
+    - table: customer_summary
+      schema: public
+      profiling:
+        partition:
+          strategy: latest
+          key: date
+    # Customer analytics table
+    - table: customer_analytics
+      schema: public
+      profiling:
+        sampling:
+          enabled: true
+          fraction: 0.2
+      columns:
+        - name: metric_value
+          profiling:
+            enabled: true
+          drift:
+            enabled: true
+          anomaly:
+            enabled: true
+            methods: [control_limits, ewma]

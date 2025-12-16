@@ -1,9 +1,10 @@
 database: warehouse
-profiling:
-  columns:
-    - name: '*_metadata'
-      profiling:
-        enabled: false
-    - name: '*_id'
-      drift:
-        enabled: false
+columns:
+  - name: '*_metadata'
+    pattern_type: wildcard
+    profiling:
+      enabled: false
+  - name: '*_id'
+    pattern_type: wildcard
+    drift:
+      enabled: false

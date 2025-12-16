@@ -48,17 +48,44 @@ class ConfigMigrator:
         Returns:
             Migration report with details
         """
-        if not self.config.datasets or not isinstance(self.config.datasets, DatasetsConfig):
-            return {
-                "migrated": False,
-                "message": "No inline dataset configs found",
-                "files_created": [],
-            }
+        # Check if there's anything to migrate
+        # Load raw config to check for things to migrate
+        with open(self.config_file_path, "r") as f:
+            if self.config_file_path.suffix in [".yaml", ".yml"]:
+                raw_config = yaml.safe_load(f) or {}
+            else:
+                raw_config = json.load(f) or {}
 
-        if not self.config.datasets.datasets:
+        has_inline_datasets = (
+            self.config.datasets
+            and isinstance(self.config.datasets, DatasetsConfig)
+            and self.config.datasets.datasets
+        )
+        has_validation_rules = (
+            raw_config.get("validation")
+            and isinstance(raw_config["validation"], dict)
+            and raw_config["validation"].get("rules")
+        )
+        has_profiling_schemas = (
+            raw_config.get("profiling")
+            and isinstance(raw_config["profiling"], dict)
+            and raw_config["profiling"].get("schemas")
+        )
+        has_profiling_databases = (
+            raw_config.get("profiling")
+            and isinstance(raw_config["profiling"], dict)
+            and raw_config["profiling"].get("databases")
+        )
+
+        if not (
+            has_inline_datasets
+            or has_validation_rules
+            or has_profiling_schemas
+            or has_profiling_databases
+        ):
             return {
                 "migrated": False,
-                "message": "No inline dataset configs found",
+                "message": "No configs found to migrate",
                 "files_created": [],
             }
 
@@ -74,16 +101,10 @@ class ConfigMigrator:
 
         # Migrate each dataset
         files_created = []
-        for dataset in self.config.datasets.datasets:
-            file_path = self._create_dataset_file(dataset, datasets_path)
-            files_created.append(str(file_path))
-
-        # Load raw config to check for profiling.schemas and profiling.databases
-        with open(self.config_file_path, "r") as f:
-            if self.config_file_path.suffix in [".yaml", ".yml"]:
-                raw_config = yaml.safe_load(f)
-            else:
-                raw_config = json.load(f)
+        if has_inline_datasets and isinstance(self.config.datasets, DatasetsConfig):
+            for dataset in self.config.datasets.datasets:
+                file_path = self._create_dataset_file(dataset, datasets_path)
+                files_created.append(str(file_path))
 
         # Migrate profiling.schemas if present
         if (
@@ -106,6 +127,17 @@ class ConfigMigrator:
                 datasets_path, raw_config["profiling"]["databases"]
             )
             files_created.extend(database_files)
+
+        # Migrate validation.rules[] if present
+        if (
+            raw_config.get("validation")
+            and isinstance(raw_config["validation"], dict)
+            and raw_config["validation"].get("rules")
+        ):
+            validation_files = self._migrate_validation_rules(
+                datasets_path, raw_config["validation"]["rules"]
+            )
+            files_created.extend(validation_files)
 
         # Update main config file
         updated_config = self._update_config_file(output_dir)
@@ -135,12 +167,118 @@ class ConfigMigrator:
         # Convert dataset to dict (excluding source_file)
         dataset_dict = dataset.model_dump(exclude={"source_file"}, exclude_none=True)
 
+        # Phase 3.5: Consolidate column configs into unified columns field
+        dataset_dict = self._consolidate_column_configs(dataset_dict)
+
         # Write to file
         with open(file_path, "w") as f:
             yaml.dump(dataset_dict, f, default_flow_style=False, sort_keys=False)
 
         logger.info(f"Created dataset file: {file_path}")
         return file_path
+
+    def _consolidate_column_configs(self, dataset_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Consolidate column configs from profiling.columns, drift.columns, anomaly.columns.
+
+        Consolidates into unified columns field.
+
+        Args:
+            dataset_dict: Dataset config dictionary
+
+        Returns:
+            Updated dataset dict with consolidated columns
+        """
+        # Collect all column configs from different locations
+        columns_by_name: Dict[str, Dict[str, Any]] = {}
+
+        # Collect from profiling.columns
+        if "profiling" in dataset_dict and isinstance(dataset_dict["profiling"], dict):
+            profiling_cols = dataset_dict["profiling"].get("columns", [])
+            for col in profiling_cols:
+                col_name = col.get("name")
+                if col_name:
+                    if col_name not in columns_by_name:
+                        columns_by_name[col_name] = {"name": col_name}
+                    # Merge profiling, drift, anomaly configs from this column
+                    if "profiling" in col:
+                        columns_by_name[col_name]["profiling"] = col["profiling"]
+                    if "drift" in col:
+                        columns_by_name[col_name]["drift"] = col["drift"]
+                    if "anomaly" in col:
+                        columns_by_name[col_name]["anomaly"] = col["anomaly"]
+                    if "pattern_type" in col:
+                        columns_by_name[col_name]["pattern_type"] = col["pattern_type"]
+                    if "metrics" in col:
+                        columns_by_name[col_name]["metrics"] = col["metrics"]
+
+        # Collect from drift.columns
+        if "drift" in dataset_dict and isinstance(dataset_dict["drift"], dict):
+            drift_cols = dataset_dict["drift"].get("columns", [])
+            for col in drift_cols:
+                col_name = col.get("name")
+                if col_name:
+                    if col_name not in columns_by_name:
+                        columns_by_name[col_name] = {"name": col_name}
+                    # Merge drift config
+                    if "drift" in col:
+                        columns_by_name[col_name]["drift"] = col["drift"]
+                    if "pattern_type" in col:
+                        columns_by_name[col_name]["pattern_type"] = col.get("pattern_type")
+
+        # Collect from anomaly.columns
+        if "anomaly" in dataset_dict and isinstance(dataset_dict["anomaly"], dict):
+            anomaly_cols = dataset_dict["anomaly"].get("columns", [])
+            for col in anomaly_cols:
+                col_name = col.get("name")
+                if col_name:
+                    if col_name not in columns_by_name:
+                        columns_by_name[col_name] = {"name": col_name}
+                    # Merge anomaly config
+                    if "anomaly" in col:
+                        columns_by_name[col_name]["anomaly"] = col["anomaly"]
+                    if "pattern_type" in col:
+                        columns_by_name[col_name]["pattern_type"] = col.get("pattern_type")
+
+        # Collect column-specific validation rules from validation.rules
+        if "validation" in dataset_dict and isinstance(dataset_dict["validation"], dict):
+            validation_rules = dataset_dict["validation"].get("rules", [])
+            for rule in validation_rules:
+                rule_col = rule.get("column")
+                if rule_col:
+                    if rule_col not in columns_by_name:
+                        columns_by_name[rule_col] = {"name": rule_col}
+                    # Add validation config if not exists
+                    if "validation" not in columns_by_name[rule_col]:
+                        columns_by_name[rule_col]["validation"] = {"rules": []}
+                    columns_by_name[rule_col]["validation"]["rules"].append(rule)
+
+        # If we have consolidated columns, add them to top-level and remove from nested locations
+        if columns_by_name:
+            dataset_dict["columns"] = list(columns_by_name.values())
+
+            # Remove columns from nested locations (keep other fields)
+            if "profiling" in dataset_dict and isinstance(dataset_dict["profiling"], dict):
+                if "columns" in dataset_dict["profiling"]:
+                    del dataset_dict["profiling"]["columns"]
+            if "drift" in dataset_dict and isinstance(dataset_dict["drift"], dict):
+                if "columns" in dataset_dict["drift"]:
+                    del dataset_dict["drift"]["columns"]
+            if "anomaly" in dataset_dict and isinstance(dataset_dict["anomaly"], dict):
+                if "columns" in dataset_dict["anomaly"]:
+                    del dataset_dict["anomaly"]["columns"]
+
+            # Remove column-specific rules from validation.rules (keep table-level rules)
+            if "validation" in dataset_dict and isinstance(dataset_dict["validation"], dict):
+                if "rules" in dataset_dict["validation"]:
+                    # Keep only table-level rules (rules without column)
+                    table_level_rules = [
+                        rule
+                        for rule in dataset_dict["validation"]["rules"]
+                        if not rule.get("column")
+                    ]
+                    dataset_dict["validation"]["rules"] = table_level_rules
+
+        return dataset_dict
 
     def _generate_filename(self, dataset: DatasetConfig) -> str:
         """Generate filename for dataset config."""
@@ -176,6 +314,15 @@ class ConfigMigrator:
                 del config_dict["profiling"]["schemas"]
             if "databases" in config_dict["profiling"]:
                 del config_dict["profiling"]["databases"]
+
+        # Remove validation.rules[] if present (migrated to datasets)
+        if "validation" in config_dict and isinstance(config_dict["validation"], dict):
+            if "rules" in config_dict["validation"]:
+                # Remove the rules list entirely - rules are now in datasets section
+                del config_dict["validation"]["rules"]
+                logger.info(
+                    "validation.rules[] migrated to datasets section and removed from config."
+                )
 
         # Write updated config
         with open(self.config_file_path, "w") as f:
@@ -314,6 +461,120 @@ class ConfigMigrator:
                 yaml.dump(dataset_dict, f, default_flow_style=False, sort_keys=False)
 
             logger.info(f"Created database config file: {file_path}")
+            files_created.append(str(file_path))
+
+        return files_created
+
+    def _migrate_validation_rules(
+        self, output_dir: Path, validation_rules: list[dict]
+    ) -> list[str]:
+        """Migrate validation.rules[] to dataset files.
+
+        Groups rules by table and creates dataset files for each table.
+        Global rules (without table) go into _global.yml.
+
+        Args:
+            output_dir: Directory to create validation rule files
+            validation_rules: List of validation rule dicts from raw YAML
+
+        Returns:
+            List of created file paths
+        """
+        if not validation_rules:
+            return []
+
+        files_created = []
+        # Group rules by table
+        rules_by_table: Dict[str, list[dict]] = {}
+        global_rules: list[dict] = []
+
+        for rule_dict in validation_rules:
+            table = rule_dict.get("table")
+            if not table:
+                global_rules.append(rule_dict)
+            else:
+                if table not in rules_by_table:
+                    rules_by_table[table] = []
+                rules_by_table[table].append(rule_dict)
+
+        # Create dataset file for global rules
+        if global_rules:
+            global_dataset_dict = {"validation": {"rules": global_rules}}
+            global_file_path = output_dir / "_global.yml"
+            with open(global_file_path, "w") as f:
+                yaml.dump(global_dataset_dict, f, default_flow_style=False, sort_keys=False)
+            logger.info(f"Created global validation rules file: {global_file_path}")
+            files_created.append(str(global_file_path))
+
+        # Create dataset files for table-specific rules
+        # Phase 3.5: Column-specific rules go into columns[].validation.rules
+        for table, rules in rules_by_table.items():
+            dataset_dict: Dict[str, Any] = {"table": table}
+            columns_by_name: Dict[str, Dict[str, Any]] = {}
+            table_level_rules: list[dict] = []
+
+            # Separate column-specific rules from table-level rules
+            for rule_dict in rules:
+                column = rule_dict.get("column")
+                if column:
+                    # Column-specific rule - add to columns[].validation.rules
+                    if column not in columns_by_name:
+                        columns_by_name[column] = {"name": column, "validation": {"rules": []}}
+                    columns_by_name[column]["validation"]["rules"].append(rule_dict)
+                else:
+                    # Table-level rule - keep in validation.rules
+                    table_level_rules.append(rule_dict)
+
+            # Add table-level rules if any
+            if table_level_rules:
+                dataset_dict["validation"] = {"rules": table_level_rules}
+
+            # Add column configs if any
+            if columns_by_name:
+                dataset_dict["columns"] = list(columns_by_name.values())
+
+            filename = f"{table}.yml"
+            file_path = output_dir / filename
+
+            # Check if file already exists (from dataset migration)
+            if file_path.exists():
+                # Merge validation rules into existing file
+                with open(file_path, "r") as f:
+                    existing_dict = yaml.safe_load(f) or {}
+
+                # Merge table-level rules
+                if table_level_rules:
+                    if "validation" not in existing_dict:
+                        existing_dict["validation"] = {}
+                    if "rules" not in existing_dict["validation"]:
+                        existing_dict["validation"]["rules"] = []
+                    existing_dict["validation"]["rules"].extend(table_level_rules)
+
+                # Merge column configs
+                if columns_by_name:
+                    if "columns" not in existing_dict:
+                        existing_dict["columns"] = []
+                    # Merge columns by name
+                    existing_columns = {col.get("name"): col for col in existing_dict["columns"]}
+                    for col_name, col_config in columns_by_name.items():
+                        if col_name in existing_columns:
+                            # Merge validation rules
+                            if "validation" not in existing_columns[col_name]:
+                                existing_columns[col_name]["validation"] = {"rules": []}
+                            existing_columns[col_name]["validation"]["rules"].extend(
+                                col_config["validation"]["rules"]
+                            )
+                        else:
+                            existing_columns[col_name] = col_config
+                    existing_dict["columns"] = list(existing_columns.values())
+
+                dataset_dict = existing_dict
+
+            # Write to file
+            with open(file_path, "w") as f:
+                yaml.dump(dataset_dict, f, default_flow_style=False, sort_keys=False)
+
+            logger.info(f"Created/updated validation rules file: {file_path}")
             files_created.append(str(file_path))
 
         return files_created
