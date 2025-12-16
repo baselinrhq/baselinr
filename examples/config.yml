@@ -366,6 +366,8 @@ datasets:
   datasets_dir: ./datasets
   auto_discover: true
   recursive: true
+  exclude_patterns:
+    - '**/templates/**'  # Exclude template files from being loaded as dataset configs
   # Example inline dataset configs (can also be in separate files in ./datasets directory)
   datasets:
     # Customers table with unified column configuration
