@@ -11,6 +11,9 @@ import { BaselineConfig } from '@/components/config/BaselineConfig'
 import { TypeSpecificThresholds } from '@/components/config/TypeSpecificThresholds'
 import { useConfig } from '@/hooks/useConfig'
 import { DriftDetectionConfig } from '@/types/config'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 /**
  * Deep merge utility for merging config updates
@@ -186,6 +189,25 @@ export default function DriftPage() {
             Save Configuration
           </Button>
         </div>
+      </div>
+
+      {/* Banner linking to datasets */}
+      <div className="glass-card border-amber-500/30 bg-amber-500/10 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-amber-300">
+              Dataset-specific drift configurations
+            </p>
+            <p className="text-xs text-amber-400/80 mt-1">
+              Configure drift detection strategy and thresholds per dataset
+            </p>
+          </div>
+        </div>
+        <Link href="/config/datasets">
+          <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
+            Manage in Datasets
+          </Button>
+        </Link>
       </div>
 
       {/* Main Content */}

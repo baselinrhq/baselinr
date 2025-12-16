@@ -82,7 +82,7 @@ describe('ProfilingPage Integration', () => {
 
     expect(screen.getByText('Profiling Configuration')).toBeInTheDocument()
     expect(screen.getByText('Global Profiling Settings')).toBeInTheDocument()
-    expect(screen.getByText('Per-Table Overrides')).toBeInTheDocument()
+    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
   })
 
   it('updates global settings', async () => {
@@ -118,10 +118,10 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with table profiling config
-    expect(screen.getByText('Per-Table Overrides')).toBeInTheDocument()
-    // The actual table selection and metrics update would require Select component interaction
-    // which is complex to test without more setup. The component is rendered correctly.
+    // Verify the page renders with dataset configuration link
+    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
+    expect(screen.getByText('Manage in Datasets')).toBeInTheDocument()
+    // Table-specific configuration has been moved to the datasets page
   })
 
   it('configures partition for table', async () => {
@@ -133,10 +133,9 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with table profiling config
-    expect(screen.getByText('Per-Table Overrides')).toBeInTheDocument()
-    // The actual table selection and partition configuration would require
-    // more complex interaction with the Select component
+    // Verify the page renders with dataset configuration link
+    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
+    // Table-specific configuration including partitions has been moved to the datasets page
   })
 
   it('configures sampling for table', async () => {
@@ -148,8 +147,9 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders
-    expect(screen.getByText('Per-Table Overrides')).toBeInTheDocument()
+    // Verify the page renders with dataset configuration link
+    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
+    // Table-specific sampling configuration has been moved to the datasets page
   })
 
   it('configures columns for table', async () => {
@@ -161,8 +161,9 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders
-    expect(screen.getByText('Per-Table Overrides')).toBeInTheDocument()
+    // Verify the page renders with dataset configuration link
+    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
+    // Table-specific column configuration has been moved to the datasets page
   })
 
   it('saves configuration', async () => {

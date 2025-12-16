@@ -3,14 +3,12 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle, BarChart3, ChevronRight } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, BarChart3, ChevronRight, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { ProfilingConfig } from '@/components/config/ProfilingConfig'
-import { TableProfilingConfig } from '@/components/config/TableProfilingConfig'
 import { useConfig } from '@/hooks/useConfig'
-import { ProfilingConfig as ProfilingConfigType, TablePattern } from '@/types/config'
-import { getTablePreview } from '@/lib/api/tables'
+import { ProfilingConfig as ProfilingConfigType } from '@/types/config'
 
 /**
  * Deep merge utility for merging config updates
@@ -104,21 +102,6 @@ export default function ProfilingPage() {
     })
   }
 
-  // Handle tables change
-  const handleTablesChange = (tables: TablePattern[]) => {
-    updateConfigPath(['profiling', 'tables'], tables)
-  }
-
-  // Handle get columns for column config
-  const handleGetColumns = async (schema: string, table: string): Promise<string[]> => {
-    try {
-      const preview = await getTablePreview(schema, table)
-      return preview.columns.map((col) => col.name)
-    } catch (error) {
-      console.error('Failed to get table columns:', error)
-      return []
-    }
-  }
 
   // Handle save
   const handleSave = () => {
@@ -204,6 +187,25 @@ export default function ProfilingPage() {
         </div>
       </div>
 
+      {/* Banner linking to datasets */}
+      <div className="glass-card border-cyan-500/30 bg-cyan-500/10 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-cyan-300">
+              Dataset-specific profiling configurations
+            </p>
+            <p className="text-xs text-cyan-400/80 mt-1">
+              Configure partition, sampling, and column-level settings per dataset
+            </p>
+          </div>
+        </div>
+        <Link href="/config/datasets">
+          <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
+            Manage in Datasets
+          </Button>
+        </Link>
+      </div>
+
       {/* Main Content */}
       <div className="space-y-6">
         {/* Global Settings */}
@@ -212,15 +214,6 @@ export default function ProfilingPage() {
           onChange={handleProfilingChange}
           errors={profilingErrors}
           isLoading={isConfigLoading || saveMutation.isPending}
-        />
-
-        {/* Per-Table Overrides */}
-        <TableProfilingConfig
-          tables={profiling?.tables || []}
-          onChange={handleTablesChange}
-          errors={profilingErrors}
-          isLoading={isConfigLoading || saveMutation.isPending}
-          onGetColumns={handleGetColumns}
         />
       </div>
     </div>

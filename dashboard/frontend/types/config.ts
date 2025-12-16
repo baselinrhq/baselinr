@@ -581,3 +581,152 @@ export interface ConfigStatusResponse {
   configured_sections: number
 }
 
+// Dataset Configuration Types
+
+export interface DatasetProfilingConfig {
+  partition?: PartitionConfig | null
+  sampling?: SamplingConfig | null
+  metrics?: string[] | null
+}
+
+export interface DatasetDriftConfig {
+  strategy?: 'absolute_threshold' | 'standard_deviation' | 'statistical' | null
+  thresholds?: Record<string, number> | null
+  baselines?: Record<string, any> | null
+}
+
+export interface DatasetValidationConfig {
+  rules?: ValidationRuleConfig[] | null
+}
+
+export interface DatasetAnomalyConfig {
+  // Column-level anomaly configs are in columns field
+}
+
+export interface DatasetConfig {
+  database?: string | null
+  schema?: string | null
+  table?: string | null
+  columns?: ColumnConfig[] | null
+  profiling?: DatasetProfilingConfig | null
+  drift?: DatasetDriftConfig | null
+  validation?: DatasetValidationConfig | null
+  anomaly?: DatasetAnomalyConfig | null
+  source_file?: string | null
+}
+
+export interface DatasetIdentifier {
+  database?: string | null
+  schema?: string | null
+  table?: string | null
+}
+
+export interface DatasetFileInfo {
+  path: string
+  absolute_path: string
+  exists: boolean
+  modified: boolean
+  error?: string | null
+}
+
+export interface DatasetListItem {
+  dataset_id: string
+  database?: string | null
+  schema?: string | null
+  table?: string | null
+  source_file?: string | null
+  has_profiling: boolean
+  has_drift: boolean
+  has_validation: boolean
+  has_anomaly: boolean
+  has_columns: boolean
+}
+
+export interface DatasetListResponse {
+  datasets: DatasetListItem[]
+  total: number
+}
+
+export interface DatasetConfigResponse {
+  dataset_id: string
+  config: DatasetConfig
+  source_file?: string | null
+}
+
+export interface CreateDatasetRequest {
+  config: DatasetConfig
+  save_to_file: boolean
+  file_path?: string | null
+}
+
+export interface UpdateDatasetRequest {
+  config: DatasetConfig
+  save_to_file?: boolean | null
+}
+
+export interface ConfigPrecedenceInfo {
+  key: string
+  value: any
+  source: string
+  priority: number
+}
+
+export interface DatasetPreviewResponse {
+  merged_config: DatasetConfig
+  precedence: Record<string, string>
+}
+
+export interface DatasetPrecedenceResponse {
+  precedence: ConfigPrecedenceInfo[]
+}
+
+export interface DatasetValidationResponse {
+  valid: boolean
+  errors: string[]
+  warnings: string[]
+}
+
+export interface DatasetFileListResponse {
+  files: DatasetFileInfo[]
+  directory: string
+}
+
+export interface DatasetFileContentResponse {
+  path: string
+  content: string
+  exists: boolean
+}
+
+export interface CreateDatasetFileRequest {
+  path: string
+  content: string
+}
+
+export interface UpdateDatasetFileRequest {
+  content: string
+}
+
+export interface MigrationPreviewRequest {
+  config?: BaselinrConfig | null
+}
+
+export interface MigrationPreviewResponse {
+  changes: Record<string, any>
+  files_to_create: string[]
+  datasets_to_migrate: number
+}
+
+export interface MigrationRequest {
+  config?: BaselinrConfig | null
+  backup: boolean
+  output_dir?: string | null
+}
+
+export interface MigrationResponse {
+  success: boolean
+  migrated: number
+  files_created: string[]
+  backup_path?: string | null
+  errors: string[]
+}
+
