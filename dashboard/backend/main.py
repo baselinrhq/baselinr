@@ -57,6 +57,7 @@ import hook_routes
 import recommendation_routes
 import validation_routes
 import quality_routes
+import dataset_routes
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -93,6 +94,7 @@ app.include_router(hook_routes.router)
 app.include_router(recommendation_routes.router)
 app.include_router(validation_routes.router)
 app.include_router(quality_routes.router)
+app.include_router(dataset_routes.router)
 
 
 # Load config for chat (from environment or default)

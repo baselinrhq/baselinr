@@ -28,6 +28,7 @@ import {
   Eye,
   Wrench,
   Compass,
+  FolderTree,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -92,7 +93,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Connections', href: '/config/connections', icon: Database },
       { name: 'Storage', href: '/config/storage', icon: HardDrive },
       { name: 'Quality Scoring', href: '/config/quality', icon: Gauge },
-      { name: 'Tables', href: '/config/tables', icon: Table },
+      { name: 'Datasets & Tables', href: '/config/datasets', icon: FolderTree },
       { name: 'Profiling', href: '/config/profiling', icon: Layers },
       { name: 'Validation Rules', href: '/config/validation', icon: Shield },
       { name: 'Drift Settings', href: '/config/drift', icon: TrendingUp },

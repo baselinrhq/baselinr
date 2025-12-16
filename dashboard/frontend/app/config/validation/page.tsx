@@ -11,6 +11,9 @@ import { RuleList } from '@/components/validation/RuleList'
 import { RuleWizard } from '@/components/validation/RuleWizard'
 import { useConfig } from '@/hooks/useConfig'
 import { ValidationRuleConfig, ValidationConfig } from '@/types/config'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 /**
  * Deep merge utility for merging config updates
@@ -241,6 +244,25 @@ export default function ValidationPage() {
           </div>
         </Card>
       )}
+
+      {/* Banner linking to datasets */}
+      <div className="glass-card border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <p className="text-sm font-medium text-emerald-300">
+              Dataset-specific validation rules
+            </p>
+            <p className="text-xs text-emerald-400/80 mt-1">
+              Configure validation rules per dataset and column
+            </p>
+          </div>
+        </div>
+        <Link href="/config/datasets">
+          <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
+            Manage in Datasets
+          </Button>
+        </Link>
+      </div>
 
       {/* Validation enabled toggle */}
       <Card>
