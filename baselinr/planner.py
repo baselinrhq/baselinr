@@ -123,13 +123,38 @@ class PlanBuilder:
 
         Args:
             patterns: Optional list of TablePattern objects to expand.
-                     If None, uses config.profiling.tables
+                     If None, uses config.profiling.tables.
+                     If profiling.tables is empty, extracts patterns from datasets section.
 
         Returns:
             List of expanded TablePattern objects with concrete table names
         """
         if patterns is None:
             patterns = self.config.profiling.tables
+
+        # If no table patterns specified, try to extract from datasets section
+        if not patterns:
+            if (
+                self.config.datasets
+                and isinstance(self.config.datasets, DatasetsConfig)
+                and self.config.datasets.datasets
+            ):
+                # Extract table patterns from datasets
+                patterns = []
+                for dataset in self.config.datasets.datasets:
+                    if dataset.table:
+                        # Create TablePattern from dataset config
+                        # Use schema alias since TablePattern uses populate_by_name=True
+                        pattern = TablePattern(
+                            table=dataset.table,
+                            schema=dataset.schema_,
+                            database=dataset.database,
+                        )  # type: ignore[call-arg]
+                        patterns.append(pattern)
+                        logger.debug(
+                            f"Extracted table pattern from dataset: {dataset.table} "
+                            f"(schema: {dataset.schema_}, database: {dataset.database})"
+                        )
 
         if not patterns:
             return []
