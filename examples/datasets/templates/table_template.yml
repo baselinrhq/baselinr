@@ -1,0 +1,37 @@
+database: <database_name>
+schema: <schema_name>
+table: <table_name>
+
+profiling:
+  sampling:
+    enabled: true
+    fraction: 0.1
+  partition:
+    key: <partition_column>
+    strategy: latest
+  columns:
+    - name: <column_name>
+      metrics: [count, null_count, distinct_count]
+      drift:
+        enabled: true
+      validation:
+        rules:
+          - type: format
+            pattern: '^[^@]+@[^@]+\.[^@]+$'
+            severity: medium
+
+drift:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+validation:
+  rules:
+    - type: not_null
+      column: <column_name>
+
+anomaly:
+  enabled: true
+

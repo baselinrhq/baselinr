@@ -1,0 +1,19 @@
+database: <database_name>
+schema: <schema_name>
+
+profiling:
+  default_sample_ratio: 0.05
+  compute_histograms: true
+
+drift:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+
+validation:
+  rules:
+    - type: not_null
+      columns: [<column1>, <column2>]
+

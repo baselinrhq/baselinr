@@ -84,7 +84,25 @@ class DatasetFileLoader:
             if file_path.is_file():
                 # Check exclude patterns
                 if config.exclude_patterns:
-                    if any(file_path.match(exclude) for exclude in config.exclude_patterns):
+                    excluded = False
+                    for exclude in config.exclude_patterns:
+                        # Try pattern matching first
+                        if file_path.match(exclude):
+                            excluded = True
+                            break
+                        # For directory exclusions (e.g., **/templates/**),
+                        # check if directory name is in path
+                        # Extract directory name from pattern (remove wildcards and slashes)
+                        dir_name = (
+                            exclude.replace("**/", "")
+                            .replace("/**", "")
+                            .replace("*", "")
+                            .strip("/")
+                        )
+                        if dir_name and dir_name in file_path.parts:
+                            excluded = True
+                            break
+                    if excluded:
                         continue
                 files.append(file_path)
 
