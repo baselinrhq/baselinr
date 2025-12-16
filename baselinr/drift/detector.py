@@ -8,7 +8,7 @@ and statistical drift in datasets.
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import text
 
@@ -239,12 +239,27 @@ class DriftDetector:
         if current_run_id is None:
             run_ids = self._get_latest_runs(dataset_name, schema_name, limit=1)
             if len(run_ids) < 1:
+                # Check if there are any runs at all, and what dataset names exist
+                available_datasets = self._get_available_datasets()
                 schema_hint = f" in schema '{schema_name}'" if schema_name else ""
-                error_msg = (
-                    f"Need at least 1 run for drift detection, found {len(run_ids)}. "
-                    f"No profiling runs found for dataset '{dataset_name}'{schema_hint}. "
-                    f"Run 'baselinr profile' first to create profiling runs."
-                )
+
+                if not available_datasets:
+                    error_msg = (
+                        f"Need at least 1 run for drift detection, found {len(run_ids)}. "
+                        f"No profiling runs found in database. "
+                        f"Run 'baselinr profile' first to create profiling runs."
+                    )
+                else:
+                    available_list = ", ".join(sorted(available_datasets)[:10])
+                    if len(available_datasets) > 10:
+                        available_list += f" (and {len(available_datasets) - 10} more)"
+                    error_msg = (
+                        f"Need at least 1 run for drift detection, found {len(run_ids)}. "
+                        f"No profiling runs found for dataset '{dataset_name}'{schema_hint}. "
+                        f"Available datasets: {available_list}. "
+                        f"Run 'baselinr profile' first to create profiling runs."
+                    )
+
                 log_event(
                     logger,
                     "drift_detection_failed",
@@ -254,6 +269,7 @@ class DriftDetector:
                         "dataset_name": dataset_name,
                         "schema_name": schema_name,
                         "run_count": len(run_ids),
+                        "available_datasets": list(available_datasets),
                     },
                 )
                 raise ValueError(error_msg)
@@ -511,6 +527,25 @@ class DriftDetector:
         with self.engine.connect() as conn:
             result = conn.execute(query, params)
             return [row[0] for row in result]
+
+    def _get_available_datasets(self) -> Set[str]:
+        """Get all available dataset names from the runs table.
+
+        Used for diagnostic purposes when drift detection fails.
+        """
+        try:
+            query = text(
+                f"""
+                SELECT DISTINCT dataset_name FROM {self.storage_config.runs_table}
+                ORDER BY dataset_name
+            """
+            )
+            with self.engine.connect() as conn:
+                result = conn.execute(query)
+                return {row[0] for row in result}
+        except Exception as e:
+            logger.warning(f"Failed to query available datasets: {e}")
+            return set()
 
     def _get_run_metadata(self, run_id: str) -> Dict[str, Any]:
         """Get metadata for a run."""
