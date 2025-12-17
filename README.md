@@ -11,6 +11,8 @@
 
 **Quality Studio** - Baselinr includes a powerful no-code web interface for setting up and managing your entire data quality configuration. Configure connections, tables, profiling settings, validation rules, drift detection, and more—all through an intuitive visual interface without writing YAML or JSON. The UI provides real-time validation, smart recommendations, and a visual editor with YAML preview, making it easy to get started while maintaining full transparency and control.
 
+**🎮 [Try Quality Studio Demo →](https://demo.baselinr.io)** - Experience the Quality Studio with realistic sample data showcasing all features.
+
 ## 🚀 Features
 
 - **Automated Setup** ✨ **NEW**: Zero-touch configuration—automatically recommends tables and columns to monitor, suggests data quality checks, and can auto-apply configurations to set up complete monitoring in minutes. Or configure everything manually with full control—automation is optional, not required
@@ -259,6 +261,8 @@ baselinr status --config config.yml --json
 ### 8. Start Quality Studio
 
 Launch the Quality Studio web interface to configure your data quality setup, view profiling runs, drift alerts, and metrics:
+
+**🎮 [Try the Demo →](https://demo.baselinr.io)** - Experience Quality Studio with sample data (no installation required)
 
 ```bash
 # Start Quality Studio (foreground mode)

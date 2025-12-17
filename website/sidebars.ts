@@ -132,6 +132,11 @@ const sidebars: SidebarsConfig = {
       items: [
         'dashboard/QUICKSTART',
         'dashboard/README',
+        {
+          type: 'link',
+          label: '🔄 Try Quality Studio Demo',
+          href: 'https://demo.baselinr.io',
+        },
         'dashboard/ARCHITECTURE',
         'dashboard/DASHBOARD_INTEGRATION',
         'dashboard/SETUP_COMPLETE',

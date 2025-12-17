@@ -230,3 +230,4 @@ class TestPerformanceBenchmarks:
         # Storage should complete quickly
         assert storage_time < 1.0  # Less than 1 second
 
+

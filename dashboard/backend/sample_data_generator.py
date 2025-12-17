@@ -1,6 +1,15 @@
 """
 Sample data generator for Baselinr Dashboard.
 
+⚠️ DEPRECATED: This script has been superseded by generate_demo_data.py
+   which includes additional features for demo deployment:
+   - Tables metadata generation
+   - Validation results generation
+   - Lineage relationships
+   - JSON export for Cloudflare Pages demo
+
+   For demo data generation, use: python generate_demo_data.py
+
 Creates realistic sample profiling runs, metrics, and drift events
 for all supported warehouse types.
 """
