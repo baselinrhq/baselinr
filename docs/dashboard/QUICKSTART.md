@@ -2,6 +2,8 @@
 
 Get the Baselinr Quality Studio running in 5 minutes!
 
+**🎮 [Try the Demo →](https://demo.baselinr.io)** - Experience Quality Studio with sample data (no installation required)
+
 ## Prerequisites Check
 
 ✅ Node.js 18+ installed (`node --version`)  

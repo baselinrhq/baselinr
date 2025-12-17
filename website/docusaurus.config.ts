@@ -72,6 +72,11 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          href: 'https://demo.baselinr.io',
+          label: 'Try Demo',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/baselinrhq/baselinr',
           label: 'GitHub',
           position: 'right',
@@ -114,6 +119,10 @@ const config: Config = {
         {
           title: 'Resources',
           items: [
+            {
+              label: 'Quality Studio Demo',
+              href: 'https://demo.baselinr.io',
+            },
             {
               label: 'Configuration Reference',
               to: '/docs/reference/CONFIG_REFERENCE',

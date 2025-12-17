@@ -2,6 +2,20 @@
 
 Quality Studio is Baselinr's no-code web interface for configuring and managing your entire data quality setup. Configure connections, tables, profiling settings, validation rules, drift detection, and more—all through an intuitive visual interface. The Quality Studio also provides comprehensive monitoring and analysis of profiling results, drift alerts, run history, and metrics across multi-warehouse environments.
 
+## 🎮 Try the Demo
+
+**👉 [Try Quality Studio Demo →](https://demo.baselinr.io)**
+
+Experience the Quality Studio with realistic sample data. The demo showcases all features including:
+- Configuration management
+- Profiling results visualization
+- Drift detection alerts
+- Validation results
+- Root cause analysis
+- Metrics dashboards
+
+*Note: The demo uses pre-generated sample data and runs in read-only mode.*
+
 ## 🎯 Features
 
 ### Core Features
