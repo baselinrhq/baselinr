@@ -9,7 +9,9 @@
     "lint": "next lint",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "functions:dev": "wrangler pages dev public",
+    "functions:deploy": "wrangler pages deploy public --project-name=baselinr-demo"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -45,6 +47,7 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.3.0",
     "typescript": "^5.0.0",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "wrangler": "^3.0.0"
   }
 }
