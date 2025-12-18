@@ -1,0 +1,8 @@
+# Cloudflare Pages configuration for Baselinr Demo
+# This file configures Wrangler for local development and deployment
+
+name = "baselinr-demo"
+compatibility_date = "2024-01-01"
+
+# Pages configuration
+# Static assets will be served from public/, and functions from functions/
