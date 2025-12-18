@@ -35,18 +35,24 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/rca", tags=["rca"])
 
-# Global database client instance
+# Global instances
 _db_client = None
+_engine = None
+_demo_mode = False
 
 def get_db_client():
     """Get or create database client instance."""
     global _db_client
+    if _demo_mode:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_rca_service():
     """Get or create RCA service instance."""
+    if _demo_mode:
+        return None
     db_client = get_db_client()
     return RCAService(
         engine=db_client.engine,
@@ -60,6 +66,8 @@ def get_rca_service():
 
 def get_rca_storage():
     """Get or create RCA storage instance."""
+    if _demo_mode:
+        return None
     db_client = get_db_client()
     return RCAStorage(db_client.engine)
 
@@ -166,6 +174,10 @@ async def list_rca_results(
 
     Returns summary information for recent analyses.
     """
+    # Return empty list in demo mode
+    if _demo_mode:
+        return []
+    
     try:
         service = get_rca_service()
         results = service.get_recent_rca_results(limit=limit)
@@ -204,6 +216,16 @@ async def get_rca_statistics():
 
     Returns aggregate statistics about RCA operations.
     """
+    # Return zero stats in demo mode
+    if _demo_mode:
+        return RCAStatisticsResponse(
+            total_analyses=0,
+            analyzed=0,
+            dismissed=0,
+            pending=0,
+            avg_causes_per_anomaly=0.0
+        )
+    
     try:
         service = get_rca_service()
         stats = service.get_rca_statistics()
@@ -496,7 +518,14 @@ def register_routes(app, db_engine):
 
     Args:
         app: FastAPI application instance
-        db_engine: Database engine (kept for compatibility, but not used)
+        db_engine: Database engine (None in demo mode)
     """
+    global _engine, _demo_mode
+    _engine = db_engine
+    _demo_mode = (db_engine is None)
+    
+    if _demo_mode:
+        logger.info("RCA routes registered in demo mode - will return empty data")
+    
     # Simply include the router - routes now use get_db_client() internally
     app.include_router(router)

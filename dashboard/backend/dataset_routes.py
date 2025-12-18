@@ -40,6 +40,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/config/datasets", tags=["datasets"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global instances
 _db_client = None
 _config_service = None
@@ -49,6 +52,8 @@ _dataset_service = None
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
@@ -57,6 +62,9 @@ def get_db_client() -> DatabaseClient:
 def get_config_service() -> ConfigService:
     """Get or create config service instance."""
     global _config_service
+    if DEMO_MODE:
+        _config_service = ConfigService(db_engine=None)
+        return _config_service
     if _config_service is None:
         db_client = get_db_client()
         _config_service = ConfigService(db_client.engine)
@@ -140,6 +148,13 @@ async def create_dataset(request: CreateDatasetRequest):
     
     Can save to file or inline in main config.
     """
+    # Prevent dataset creation in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Dataset management is not available in demo mode"
+        )
+    
     try:
         service = get_dataset_service()
         result = service.create_dataset(
@@ -168,6 +183,13 @@ async def update_dataset(dataset_id: str, request: UpdateDatasetRequest):
     Args:
         dataset_id: Dataset identifier
     """
+    # Prevent dataset updates in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Dataset management is not available in demo mode"
+        )
+    
     try:
         service = get_dataset_service()
         result = service.update_dataset(
@@ -196,6 +218,13 @@ async def delete_dataset(dataset_id: str):
     Args:
         dataset_id: Dataset identifier
     """
+    # Prevent dataset deletion in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Dataset management is not available in demo mode"
+        )
+    
     try:
         service = get_dataset_service()
         success = service.delete_dataset(dataset_id)

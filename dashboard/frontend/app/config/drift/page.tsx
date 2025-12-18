@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle, TrendingUp, ChevronRight } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, TrendingUp, ChevronRight, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { DriftConfig } from '@/components/config/DriftConfig'
@@ -11,9 +11,6 @@ import { BaselineConfig } from '@/components/config/BaselineConfig'
 import { TypeSpecificThresholds } from '@/components/config/TypeSpecificThresholds'
 import { useConfig } from '@/hooks/useConfig'
 import { DriftDetectionConfig } from '@/types/config'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 
 /**
  * Deep merge utility for merging config updates

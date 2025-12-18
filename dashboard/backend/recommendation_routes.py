@@ -31,18 +31,27 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_recommendation_service() -> RecommendationService:
     """Dependency to get recommendation service instance."""
+    if DEMO_MODE:
+        logger.info("Recommendation service running in demo mode - will return empty data")
+        return RecommendationService(db_engine=None)
+    
     db_client = get_db_client()
     return RecommendationService(db_client.engine)
 
@@ -150,6 +159,16 @@ async def get_recommendations(
     Returns recommendations for tables to monitor based on query patterns,
     table usage, and other heuristics.
     """
+    # Return empty recommendations in demo mode
+    if DEMO_MODE:
+        return RecommendationReportResponse(
+            recommended_tables=[],
+            excluded_tables=[],
+            total_tables_analyzed=0,
+            recommendation_confidence=0.0,
+            analysis_metadata={}
+        )
+    
     try:
         logger.info(f"Getting recommendations for connection_id={connection_id}, schema={schema}, include_columns={include_columns}")
         
@@ -184,6 +203,10 @@ async def get_column_recommendations(
     
     Returns recommended validation checks for columns in the specified table.
     """
+    # Return empty list in demo mode
+    if DEMO_MODE:
+        return []
+    
     try:
         recommendations = service.get_column_recommendations(
             connection_id=connection_id,
@@ -220,6 +243,16 @@ async def apply_recommendations(
     
     Adds selected tables and column checks to the configuration file.
     """
+    # Return empty success in demo mode
+    if DEMO_MODE:
+        return ApplyRecommendationsResponse(
+            success=False,
+            applied_tables=[],
+            total_tables_applied=0,
+            total_column_checks_applied=0,
+            message="Apply recommendations is not available in demo mode"
+        )
+    
     try:
         result = service.apply_recommendations(
             connection_id=request.connection_id,
@@ -263,6 +296,16 @@ async def refresh_recommendations(
     
     Regenerates recommendations for the specified connection.
     """
+    # Return empty recommendations in demo mode
+    if DEMO_MODE:
+        return RecommendationReportResponse(
+            recommended_tables=[],
+            excluded_tables=[],
+            total_tables_analyzed=0,
+            recommendation_confidence=0.0,
+            analysis_metadata={}
+        )
+    
     try:
         report = service.generate_recommendations(
             connection_id=request.connection_id,

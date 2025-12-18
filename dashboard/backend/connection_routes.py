@@ -22,18 +22,25 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/config/connections", tags=["connections"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_connection_service() -> ConnectionService:
     """Dependency to get connection service instance."""
+    if DEMO_MODE:
+        return ConnectionService(db_engine=None)
     db_client = get_db_client()
     return ConnectionService(db_client.engine)
 
@@ -89,6 +96,13 @@ async def save_connection(
     
     Saves a new database connection with encrypted password.
     """
+    # Prevent connection edits in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Connection management is not available in demo mode"
+        )
+    
     try:
         saved = connection_service.save_connection(request.name, request.connection)
         return SaveConnectionResponse(
@@ -112,6 +126,13 @@ async def update_connection(
     
     Updates an existing database connection with encrypted password.
     """
+    # Prevent connection edits in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Connection management is not available in demo mode"
+        )
+    
     try:
         updated = connection_service.update_connection(
             connection_id,
@@ -140,6 +161,13 @@ async def delete_connection(
     
     Deletes a saved database connection.
     """
+    # Prevent connection edits in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Connection management is not available in demo mode"
+        )
+    
     try:
         deleted = connection_service.delete_connection(connection_id)
         if not deleted:

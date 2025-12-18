@@ -25,18 +25,25 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/config/hooks", tags=["hooks"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_config_service() -> ConfigService:
     """Dependency to get config service instance."""
+    if DEMO_MODE:
+        return ConfigService(db_engine=None)
     db_client = get_db_client()
     return ConfigService(db_client.engine)
 
@@ -112,6 +119,13 @@ async def create_hook(
     
     Creates a new hook and adds it to the configuration.
     """
+    # Prevent hook creation in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Hook management is not available in demo mode"
+        )
+    
     try:
         saved = hook_service.save_hook(None, request.hook)
         return SaveHookResponse(
@@ -142,6 +156,13 @@ async def update_hook(
     
     Updates an existing hook configuration.
     """
+    # Prevent hook updates in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Hook management is not available in demo mode"
+        )
+    
     try:
         saved = hook_service.save_hook(hook_id, request.hook)
         return SaveHookResponse(
@@ -171,6 +192,13 @@ async def delete_hook(
     
     Deletes a hook from the configuration.
     """
+    # Prevent hook deletion in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Hook management is not available in demo mode"
+        )
+    
     try:
         deleted = hook_service.delete_hook(hook_id)
         if not deleted:
@@ -229,6 +257,13 @@ async def set_hooks_enabled(
     
     Enables or disables all hooks globally.
     """
+    # Prevent hook configuration in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Hook management is not available in demo mode"
+        )
+    
     try:
         success = hook_service.set_hooks_enabled(enabled)
         if not success:

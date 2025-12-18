@@ -48,6 +48,7 @@ from lineage_models import (
     LineageImpactResponse,
 )
 from database import DatabaseClient
+from demo_data_service import DemoDataService
 import rca_routes
 import chat_routes
 import config_routes
@@ -59,32 +60,54 @@ import validation_routes
 import quality_routes
 import dataset_routes
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Baselinr Dashboard API",
-    description="Backend API for Baselinr internal dashboard",
+    description="Backend API for Baselinr internal dashboard" + (" - DEMO MODE" if DEMO_MODE else ""),
     version="2.0.0"
 )
 
-# Configure CORS
+# Configure CORS with demo domain support
+allowed_origins = [
+    "http://localhost:3000",  # Next.js default port
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+]
+
+# Add demo domain if in demo mode
+if DEMO_MODE:
+    allowed_origins.extend([
+        "https://demo.baselinr.io",
+        "https://*.pages.dev",  # Cloudflare Pages preview URLs
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js default port
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize database client
-db_client = DatabaseClient()
+# Initialize database client or demo service based on mode
+if DEMO_MODE:
+    logger.info("Starting in DEMO MODE - using DemoDataService")
+    db_client = DemoDataService()
+else:
+    logger.info("Starting in DATABASE MODE - using DatabaseClient")
+    db_client = DatabaseClient()
 
 # Register RCA routes
-rca_routes.register_routes(app, db_client.engine)
+if DEMO_MODE:
+    # In demo mode, register routes with None engine (will return empty data)
+    logger.info("RCA routes enabled in demo mode (returning empty data)")
+    rca_routes.register_routes(app, None)
+elif hasattr(db_client, 'engine'):
+    rca_routes.register_routes(app, db_client.engine)
 
 # Register config and connection routes
 app.include_router(config_routes.router)
@@ -203,8 +226,11 @@ def _load_chat_config():
 
 chat_config = _load_chat_config()
 
-# Register Chat routes
-chat_routes.register_chat_routes(app, db_client.engine, chat_config)
+# Register Chat routes (only if not in demo mode, as chat requires database)
+if not DEMO_MODE and hasattr(db_client, 'engine'):
+    chat_routes.register_chat_routes(app, db_client.engine, chat_config)
+elif DEMO_MODE:
+    logger.info("Chat routes disabled in demo mode")
 
 # Import baselinr visualization components
 # Add parent directory to path to import baselinr
@@ -224,7 +250,37 @@ async def root():
     return {
         "status": "healthy",
         "service": "Baselinr Dashboard API",
-        "version": "2.0.0"
+        "version": "2.0.0",
+        "mode": "demo" if DEMO_MODE else "database"
+    }
+
+
+@app.get("/api/demo/info")
+async def get_demo_info():
+    """Get demo mode information and metadata."""
+    if not DEMO_MODE:
+        raise HTTPException(status_code=404, detail="Demo mode not enabled")
+    
+    # Get demo metadata if available
+    metadata = {}
+    if hasattr(db_client, 'metadata'):
+        metadata = db_client.metadata
+    
+    return {
+        "demo_mode": True,
+        "metadata": metadata,
+        "statistics": {
+            "total_runs": len(db_client.runs_raw) if hasattr(db_client, 'runs_raw') else 0,
+            "total_metrics": len(db_client.metrics_raw) if hasattr(db_client, 'metrics_raw') else 0,
+            "total_drift_events": len(db_client.drift_events_raw) if hasattr(db_client, 'drift_events_raw') else 0,
+            "total_tables": len(db_client.tables_raw) if hasattr(db_client, 'tables_raw') else 0,
+            "total_validation_results": len(db_client.validation_results_raw) if hasattr(db_client, 'validation_results_raw') else 0,
+        },
+        "features": {
+            "read_only": True,
+            "real_time_updates": False,
+            "data_source": "pre-generated_json"
+        }
     }
 
 
@@ -759,6 +815,33 @@ async def get_lineage_graph(
     if not LINEAGE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Lineage visualization not available")
     
+    # In demo mode, return demo lineage data
+    if DEMO_MODE:
+        try:
+            nodes_raw = db_client.lineage_raw.get('nodes', [])
+            edges_raw = db_client.lineage_raw.get('edges', [])
+            
+            # Convert to response models
+            nodes = [LineageNodeResponse(**node) for node in nodes_raw]
+            edges = [LineageEdgeResponse(**edge) for edge in edges_raw]
+            
+            # Find root node
+            root_id = None
+            for node in nodes_raw:
+                if node.get('table') == table and (not schema or node.get('schema') == schema):
+                    root_id = node.get('id')
+                    break
+            
+            return LineageGraphResponse(
+                nodes=nodes,
+                edges=edges,
+                root_id=root_id,
+                direction=direction
+            )
+        except Exception as e:
+            logger.error(f"Failed to get demo lineage graph: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to build lineage graph: {str(e)}")
+    
     try:
         builder = LineageGraphBuilder(db_client.engine)
         graph = builder.build_table_graph(
@@ -1163,6 +1246,27 @@ async def get_all_lineage_tables(
     """
     if not LINEAGE_AVAILABLE:
         raise HTTPException(status_code=503, detail="Lineage visualization not available")
+    
+    # In demo mode, return tables from demo lineage data  
+    if DEMO_MODE:
+        try:
+            nodes = db_client.lineage_raw.get('nodes', [])
+            tables = []
+            for node in nodes[:limit]:
+                if node.get('type') == 'table':
+                    tables.append(TableInfoResponse(
+                        schema=node.get('schema'),
+                        table=node.get('table'),
+                        database=node.get('database'),
+                        row_count=node.get('metadata', {}).get('row_count'),
+                        column_count=node.get('metadata', {}).get('column_count'),
+                        warehouse_type=node.get('metadata', {}).get('warehouse_type')
+                    ))
+            logger.info(f"Demo mode: returning {len(tables)} lineage tables")
+            return tables
+        except Exception as e:
+            logger.error(f"Failed to get demo lineage tables: {e}", exc_info=True)
+            return []
     
     try:
         builder = LineageGraphBuilder(db_client.engine)

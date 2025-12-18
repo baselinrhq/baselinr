@@ -25,13 +25,18 @@ from quality_models import (
 )
 from quality_service import QualityService
 from database import DatabaseClient
+from demo_quality_storage import DemoQualityStorage
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/quality/scores", tags=["quality-scores"])
 
-# Global database client instance
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
+# Global storage instances
 _db_client = None
+_demo_quality_storage = None
 
 
 def get_db_client() -> DatabaseClient:
@@ -42,8 +47,28 @@ def get_db_client() -> DatabaseClient:
     return _db_client
 
 
+def get_demo_quality_storage() -> DemoQualityStorage:
+    """Get or create demo quality storage instance."""
+    global _demo_quality_storage
+    if _demo_quality_storage is None:
+        # Get the data directory relative to this file
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(backend_dir, "demo_data")
+        _demo_quality_storage = DemoQualityStorage(data_dir)
+    return _demo_quality_storage
+
+
 def get_quality_service() -> QualityService:
     """Dependency to get quality service instance."""
+    if DEMO_MODE:
+        # In demo mode, use demo quality storage
+        logger.info("Quality service running in demo mode with demo quality storage")
+        demo_storage = get_demo_quality_storage()
+        # Create a QualityService but override its storage with demo storage
+        service = QualityService(db_engine=None)
+        service.storage = demo_storage
+        return service
+    
     db_client = get_db_client()
     return QualityService(db_client.engine)
 

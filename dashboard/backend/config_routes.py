@@ -36,18 +36,25 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_config_service() -> ConfigService:
     """Dependency to get config service instance."""
+    if DEMO_MODE:
+        return ConfigService(db_engine=None)
     db_client = get_db_client()
     return ConfigService(db_client.engine)
 
@@ -81,6 +88,13 @@ async def save_config(
     Validates and saves the Baselinr configuration to file or database.
     Creates a history entry for this version.
     """
+    # Prevent config saves in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403, 
+            detail="Configuration editing is not available in demo mode"
+        )
+    
     try:
         saved_config = config_service.save_config(
             request.config,
@@ -225,6 +239,13 @@ async def restore_config_version(
     
     Creates a new history entry for the restore action.
     """
+    # Prevent config restore in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Configuration editing is not available in demo mode"
+        )
+    
     if not request.confirm:
         raise HTTPException(status_code=400, detail="Restore must be confirmed")
     
@@ -345,6 +366,13 @@ async def save_quality_config(
     
     Updates the quality_scoring section of the configuration and saves it.
     """
+    # Prevent config edits in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Configuration editing is not available in demo mode"
+        )
+    
     try:
         # Load current config
         current_config = config_service.load_config()

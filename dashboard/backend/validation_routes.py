@@ -26,18 +26,25 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/validation/rules", tags=["validation-rules"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_validation_service() -> ValidationService:
     """Dependency to get validation service instance."""
+    if DEMO_MODE:
+        return ValidationService(db_engine=None)
     db_client = get_db_client()
     return ValidationService(db_client.engine)
 
@@ -133,6 +140,13 @@ async def create_validation_rule(
     
     Creates a new validation rule with the specified configuration.
     """
+    # Prevent rule creation in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Validation rule management is not available in demo mode"
+        )
+    
     try:
         # Validate rule type
         valid_types = ["format", "range", "enum", "not_null", "unique", "referential"]
@@ -194,6 +208,13 @@ async def update_validation_rule(
     
     Updates the specified validation rule. Only provided fields will be updated.
     """
+    # Prevent rule updates in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Validation rule management is not available in demo mode"
+        )
+    
     try:
         # Validate rule type if provided
         if request.rule_type is not None:
@@ -264,6 +285,13 @@ async def delete_validation_rule(
     
     Deletes the specified validation rule by ID.
     """
+    # Prevent rule deletion in demo mode
+    if DEMO_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Validation rule management is not available in demo mode"
+        )
+    
     try:
         deleted = validation_service.delete_rule(rule_id)
         if not deleted:
