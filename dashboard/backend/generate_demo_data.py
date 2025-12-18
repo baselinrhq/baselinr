@@ -449,6 +449,187 @@ def generate_lineage_relationships() -> Dict[str, Any]:
     return lineage_graph
 
 
+def generate_table_quality_scores(
+    tables: List[Dict[str, Any]],
+    runs: List[Dict[str, Any]],
+    validation_results: List[Dict[str, Any]],
+    drift_events: List[Dict[str, Any]],
+    num_scores_per_table: int = 10
+) -> List[Dict[str, Any]]:
+    """Generate realistic table-level quality scores."""
+    print(f"\nGenerating {num_scores_per_table} quality scores per table...")
+    
+    table_quality_scores = []
+    
+    for table in tables:
+        table_name = table["table_name"]
+        schema_name = table["schema_name"]
+        
+        # Get runs for this table
+        table_runs = [r for r in runs 
+                     if r["dataset_name"] == table_name and r["schema_name"] == schema_name]
+        
+        if not table_runs:
+            continue
+        
+        # Sort runs by date (oldest first)
+        table_runs = sorted(table_runs, key=lambda r: r["profiled_at"])
+        
+        # Generate quality scores for the most recent runs
+        recent_runs = table_runs[-num_scores_per_table:]
+        
+        # Initial quality score (varies by table to make it realistic)
+        base_score = random.uniform(70, 95)
+        
+        for idx, run in enumerate(recent_runs):
+            run_date = datetime.fromisoformat(run["profiled_at"])
+            
+            # Add some variation over time (slight improvement trend)
+            trend_adjustment = idx * random.uniform(0.5, 2.0)
+            overall_score = min(100, base_score + trend_adjustment + random.uniform(-3, 3))
+            
+            # Individual component scores (with some variation)
+            completeness_score = min(100, overall_score + random.uniform(-5, 5))
+            validity_score = min(100, overall_score + random.uniform(-8, 3))
+            consistency_score = min(100, overall_score + random.uniform(-6, 4))
+            freshness_score = min(100, overall_score + random.uniform(-4, 6))
+            uniqueness_score = min(100, overall_score + random.uniform(-7, 3))
+            accuracy_score = min(100, overall_score + random.uniform(-10, 2))
+            
+            # Determine status based on overall score
+            if overall_score >= 80:
+                status = "healthy"
+                total_issues = random.randint(0, 5)
+                critical_issues = 0
+                warnings = total_issues
+            elif overall_score >= 60:
+                status = "warning"
+                total_issues = random.randint(5, 15)
+                critical_issues = random.randint(1, 3)
+                warnings = total_issues - critical_issues
+            else:
+                status = "critical"
+                total_issues = random.randint(15, 30)
+                critical_issues = random.randint(5, 10)
+                warnings = total_issues - critical_issues
+            
+            # Period covered by this score (e.g., last 7 days from run date)
+            period_end = run_date
+            period_start = run_date - timedelta(days=7)
+            
+            score = {
+                "table_name": table_name,
+                "schema_name": schema_name,
+                "run_id": run["run_id"],
+                "overall_score": round(overall_score, 2),
+                "completeness_score": round(completeness_score, 2),
+                "validity_score": round(validity_score, 2),
+                "consistency_score": round(consistency_score, 2),
+                "freshness_score": round(freshness_score, 2),
+                "uniqueness_score": round(uniqueness_score, 2),
+                "accuracy_score": round(accuracy_score, 2),
+                "status": status,
+                "total_issues": total_issues,
+                "critical_issues": critical_issues,
+                "warnings": warnings,
+                "calculated_at": run_date.isoformat(),
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat()
+            }
+            
+            table_quality_scores.append(score)
+    
+    print(f"[OK] Generated {len(table_quality_scores)} table quality scores")
+    return table_quality_scores
+
+
+def generate_column_quality_scores(
+    tables: List[Dict[str, Any]],
+    runs: List[Dict[str, Any]],
+    metrics: List[Dict[str, Any]],
+    num_scores_per_table: int = 10
+) -> List[Dict[str, Any]]:
+    """Generate realistic column-level quality scores."""
+    print(f"\nGenerating column quality scores for recent runs...")
+    
+    column_quality_scores = []
+    score_id = 1
+    
+    for table in tables:
+        table_name = table["table_name"]
+        schema_name = table["schema_name"]
+        
+        # Get runs for this table
+        table_runs = [r for r in runs 
+                     if r["dataset_name"] == table_name and r["schema_name"] == schema_name]
+        
+        if not table_runs:
+            continue
+        
+        # Sort runs by date and get recent ones
+        table_runs = sorted(table_runs, key=lambda r: r["profiled_at"])
+        recent_runs = table_runs[-num_scores_per_table:]
+        
+        # Get columns for this table
+        columns = COLUMNS.get(table_name, [])
+        
+        for run in recent_runs:
+            run_date = datetime.fromisoformat(run["profiled_at"])
+            
+            # Generate score for each column
+            for column_name in columns:
+                # Base score varies by column (some columns are naturally higher quality)
+                base_score = random.uniform(70, 95)
+                
+                # Add some variation
+                overall_score = min(100, base_score + random.uniform(-5, 5))
+                
+                # Component scores
+                completeness_score = min(100, overall_score + random.uniform(-5, 5))
+                validity_score = min(100, overall_score + random.uniform(-8, 3))
+                consistency_score = min(100, overall_score + random.uniform(-6, 4))
+                freshness_score = min(100, overall_score + random.uniform(-4, 6))
+                uniqueness_score = min(100, overall_score + random.uniform(-7, 3))
+                accuracy_score = min(100, overall_score + random.uniform(-10, 2))
+                
+                # Determine status
+                if overall_score >= 80:
+                    status = "healthy"
+                elif overall_score >= 60:
+                    status = "warning"
+                else:
+                    status = "critical"
+                
+                # Period covered
+                period_end = run_date
+                period_start = run_date - timedelta(days=7)
+                
+                score = {
+                    "id": score_id,
+                    "table_name": table_name,
+                    "schema_name": schema_name,
+                    "column_name": column_name,
+                    "run_id": run["run_id"],
+                    "overall_score": round(overall_score, 2),
+                    "completeness_score": round(completeness_score, 2),
+                    "validity_score": round(validity_score, 2),
+                    "consistency_score": round(consistency_score, 2),
+                    "freshness_score": round(freshness_score, 2),
+                    "uniqueness_score": round(uniqueness_score, 2),
+                    "accuracy_score": round(accuracy_score, 2),
+                    "status": status,
+                    "calculated_at": run_date.isoformat(),
+                    "period_start": period_start.isoformat(),
+                    "period_end": period_end.isoformat()
+                }
+                
+                column_quality_scores.append(score)
+                score_id += 1
+    
+    print(f"[OK] Generated {len(column_quality_scores)} column quality scores")
+    return column_quality_scores
+
+
 def validate_data_consistency(
     runs: List[Dict[str, Any]],
     metrics: List[Dict[str, Any]],
@@ -508,6 +689,8 @@ def export_to_json(
     tables: List[Dict[str, Any]],
     validation_results: List[Dict[str, Any]],
     lineage: Dict[str, Any],
+    table_quality_scores: List[Dict[str, Any]],
+    column_quality_scores: List[Dict[str, Any]],
     output_dir: str = "demo_data"
 ) -> None:
     """Export all data to JSON files."""
@@ -524,6 +707,8 @@ def export_to_json(
         "tables.json": tables,
         "validation_results.json": validation_results,
         "lineage.json": lineage,
+        "table_quality_scores.json": table_quality_scores,
+        "column_quality_scores.json": column_quality_scores,
     }
     
     for filename, data in datasets.items():
@@ -538,7 +723,7 @@ def export_to_json(
     # Generate metadata
     metadata = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "generator_version": "1.0.0",
+        "generator_version": "1.1.0",
         "statistics": {
             "total_runs": len(runs),
             "total_metrics": len(metrics),
@@ -547,6 +732,8 @@ def export_to_json(
             "total_validation_results": len(validation_results),
             "total_lineage_nodes": len(lineage["nodes"]),
             "total_lineage_edges": len(lineage["edges"]),
+            "total_table_quality_scores": len(table_quality_scores),
+            "total_column_quality_scores": len(column_quality_scores),
         },
         "date_range": {
             "earliest": min(r["profiled_at"] for r in runs),
@@ -591,13 +778,20 @@ def main():
     # Step 6: Generate lineage
     lineage = generate_lineage_relationships()
     
-    # Step 7: Validate data consistency
+    # Step 7: Generate table quality scores
+    table_quality_scores = generate_table_quality_scores(tables, runs, validation_results, drift_events)
+    
+    # Step 8: Generate column quality scores
+    column_quality_scores = generate_column_quality_scores(tables, runs, metrics)
+    
+    # Step 9: Validate data consistency
     if not validate_data_consistency(runs, metrics, drift_events, validation_results):
         print("\n[ERROR] Data validation failed. Please review issues above.")
         return
     
-    # Step 8: Export to JSON
-    export_to_json(runs, metrics, drift_events, tables, validation_results, lineage)
+    # Step 10: Export to JSON
+    export_to_json(runs, metrics, drift_events, tables, validation_results, lineage, 
+                   table_quality_scores, column_quality_scores)
     
     print("\n" + "=" * 70)
     print("Demo Data Generation Complete!")

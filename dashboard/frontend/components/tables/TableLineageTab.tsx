@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { GitBranch, ArrowUp, ArrowDown, Search, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { Input } from '@/components/ui'
+import { Select } from '@/components/ui/Select'
 import LineageMiniGraph from '@/components/lineage/LineageMiniGraph'
 import Link from 'next/link'
 
@@ -60,20 +61,18 @@ export default function TableLineageTab({
 
           {/* Depth Control */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Depth
-            </label>
-            <select
-              value={depth}
-              onChange={(e) => setDepth(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-            >
-              <option value={1}>1 Level</option>
-              <option value={2}>2 Levels</option>
-              <option value={3}>3 Levels</option>
-              <option value={4}>4 Levels</option>
-              <option value={5}>5 Levels</option>
-            </select>
+            <Select
+              label="Depth"
+              value={depth.toString()}
+              onChange={(value) => setDepth(Number(value))}
+              options={[
+                { value: '1', label: '1 Level' },
+                { value: '2', label: '2 Levels' },
+                { value: '3', label: '3 Levels' },
+                { value: '4', label: '4 Levels' },
+                { value: '5', label: '5 Levels' },
+              ]}
+            />
           </div>
 
           {/* Search */}

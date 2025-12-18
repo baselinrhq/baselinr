@@ -2,8 +2,6 @@
 
 This directory contains pre-generated demo data for the Cloudflare Pages deployment of the Quality Studio.
 
-**Full documentation**: See [docs/dashboard/DEMO_DATA.md](../../../../docs/dashboard/DEMO_DATA.md)
-
 ## Generated Files
 
 ### Data Files

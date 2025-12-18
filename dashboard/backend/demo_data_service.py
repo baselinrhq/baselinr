@@ -24,6 +24,7 @@ from models import (
     TableListItem,
     TableListResponse,
     TableOverviewResponse,
+    TableDriftHistoryResponse,
     TableValidationResultsResponse,
     ValidationResultResponse,
     DriftSummaryResponse,
@@ -65,6 +66,8 @@ class DemoDataService:
         self.validation_results_raw = []
         self.lineage_raw = {}
         self.metadata = {}
+        self.table_quality_scores_raw = []
+        self.column_quality_scores_raw = []
         
         # Lookup indices for fast access
         self.runs_by_id = {}
@@ -102,6 +105,18 @@ class DemoDataService:
             with open(os.path.join(self.data_dir, "lineage.json"), 'r') as f:
                 self.lineage_raw = json.load(f)
             
+            # Load table quality scores
+            quality_scores_file = os.path.join(self.data_dir, "table_quality_scores.json")
+            if os.path.exists(quality_scores_file):
+                with open(quality_scores_file, 'r') as f:
+                    self.table_quality_scores_raw = json.load(f)
+            
+            # Load column quality scores
+            column_scores_file = os.path.join(self.data_dir, "column_quality_scores.json")
+            if os.path.exists(column_scores_file):
+                with open(column_scores_file, 'r') as f:
+                    self.column_quality_scores_raw = json.load(f)
+            
             # Load metadata
             with open(os.path.join(self.data_dir, "metadata.json"), 'r') as f:
                 self.metadata = json.load(f)
@@ -135,13 +150,23 @@ class DemoDataService:
         """Parse ISO datetime string to datetime object."""
         if isinstance(date_str, datetime):
             return date_str
-        return datetime.fromisoformat(date_str)
+        dt = datetime.fromisoformat(date_str)
+        # Make timezone-naive for consistent comparison
+        if dt.tzinfo is not None:
+            dt = dt.replace(tzinfo=None)
+        return dt
     
     def _filter_by_date_range(self, items: List[Dict], date_field: str, 
                               start_date: Optional[datetime], end_date: Optional[datetime]) -> List[Dict]:
         """Filter items by date range."""
         if not start_date and not end_date:
             return items
+        
+        # Make filter dates timezone-naive for consistent comparison
+        if start_date and start_date.tzinfo is not None:
+            start_date = start_date.replace(tzinfo=None)
+        if end_date and end_date.tzinfo is not None:
+            end_date = end_date.replace(tzinfo=None)
         
         result = []
         for item in items:
@@ -330,7 +355,7 @@ class DemoDataService:
     
     async def get_table_metrics(
         self,
-        table: str,
+        table_name: str,
         schema: Optional[str] = None,
         warehouse: Optional[str] = None
     ) -> Optional[TableMetricsResponse]:
@@ -338,7 +363,7 @@ class DemoDataService:
         # Find table metadata
         table_meta = None
         for t in self.tables_raw:
-            if t['table_name'] == table:
+            if t['table_name'] == table_name:
                 if schema and t.get('schema_name') != schema:
                     continue
                 if warehouse and t.get('warehouse_type') != warehouse:
@@ -351,7 +376,7 @@ class DemoDataService:
         
         # Get all runs for this table
         table_runs = [r for r in self.runs_raw 
-                     if r['dataset_name'] == table 
+                     if r['dataset_name'] == table_name 
                      and (not schema or r.get('schema_name') == schema)]
         
         if not table_runs:
@@ -397,10 +422,10 @@ class DemoDataService:
                 ))
         
         # Count drift events
-        drift_count = sum(1 for e in self.drift_events_raw if e['table_name'] == table)
+        drift_count = sum(1 for e in self.drift_events_raw if e['table_name'] == table_name)
         
         return TableMetricsResponse(
-            table_name=table,
+            table_name=table_name,
             schema_name=schema,
             warehouse_type=table_meta.get('warehouse_type', 'unknown'),
             last_profiled=self._parse_datetime(latest_run['profiled_at']),
@@ -413,25 +438,36 @@ class DemoDataService:
             columns=column_metrics
         )
     
-    async def get_dashboard_metrics(self) -> MetricsDashboardResponse:
+    async def get_dashboard_metrics(
+        self,
+        warehouse: Optional[str] = None,
+        start_date: Optional[datetime] = None
+    ) -> MetricsDashboardResponse:
         """Get aggregate metrics for dashboard overview."""
+        # Filter runs if warehouse or start_date specified
+        filtered_runs = list(self.runs_raw)
+        if warehouse:
+            filtered_runs = [r for r in filtered_runs if r.get('warehouse_type') == warehouse]
+        if start_date:
+            filtered_runs = self._filter_by_date_range(filtered_runs, 'profiled_at', start_date, None)
+        
         # Count totals
-        total_runs = len(self.runs_raw)
+        total_runs = len(filtered_runs)
         total_tables = len(self.tables_raw)
         total_drift_events = len(self.drift_events_raw)
         
-        # Calculate average row count
-        row_counts = [r.get('row_count', 0) for r in self.runs_raw if r.get('row_count')]
+        # Calculate average row count (use filtered runs)
+        row_counts = [r.get('row_count', 0) for r in filtered_runs if r.get('row_count')]
         avg_row_count = sum(row_counts) / len(row_counts) if row_counts else 0
         
-        # Warehouse breakdown
+        # Warehouse breakdown (use filtered runs)
         warehouse_breakdown = {}
-        for run in self.runs_raw:
+        for run in filtered_runs:
             wh = run.get('warehouse_type', 'unknown')
             warehouse_breakdown[wh] = warehouse_breakdown.get(wh, 0) + 1
         
-        # Calculate KPIs
-        successful_runs = len([r for r in self.runs_raw if r.get('status') in ['completed', 'success']])
+        # Calculate KPIs (use filtered runs)
+        successful_runs = len([r for r in filtered_runs if r.get('status') in ['completed', 'success']])
         success_rate = (successful_runs / total_runs * 100) if total_runs > 0 else 0
         
         kpis = [
@@ -440,13 +476,13 @@ class DemoDataService:
             KPI(name="Total Tables", value=total_tables, trend="stable")
         ]
         
-        # Run trend (last 30 days)
+        # Run trend (last 30 days) - use filtered runs
         now = datetime.now()
         thirty_days_ago = now - timedelta(days=30)
         run_trend = []
         for i in range(30):
             date = thirty_days_ago + timedelta(days=i)
-            count = len([r for r in self.runs_raw 
+            count = len([r for r in filtered_runs 
                         if self._parse_datetime(r['profiled_at']).date() == date.date()])
             run_trend.append(TableMetricsTrend(timestamp=date, value=float(count)))
         
@@ -458,8 +494,8 @@ class DemoDataService:
                         if self._parse_datetime(e['timestamp']).date() == date.date()])
             drift_trend.append(TableMetricsTrend(timestamp=date, value=float(count)))
         
-        # Recent runs
-        recent_runs = await self.get_runs(limit=10, offset=0)
+        # Recent runs (apply same filters)
+        recent_runs = await self.get_runs(warehouse=warehouse, start_date=start_date, limit=10, offset=0)
         
         # Recent drift
         recent_drift = await self.get_drift_alerts(limit=10, offset=0)
@@ -520,10 +556,10 @@ class DemoDataService:
         search: Optional[str] = None,
         has_drift: Optional[bool] = None,
         has_failed_validations: Optional[bool] = None,
-        sort_by: str = "last_profiled",
-        sort_order: str = "desc",
-        limit: int = 50,
-        offset: int = 0
+        sort_by: str = "table_name",
+        sort_order: str = "asc",
+        page: int = 1,
+        page_size: int = 50
     ) -> TableListResponse:
         """Get list of tables with pagination and filtering."""
         filtered = list(self.tables_raw)
@@ -548,7 +584,9 @@ class DemoDataService:
         # Sort
         filtered = self._sort_items(filtered, sort_by, sort_order)
         
-        # Paginate
+        # Paginate (convert page/page_size to limit/offset)
+        offset = (page - 1) * page_size
+        limit = page_size
         paginated = self._paginate(filtered, offset, limit)
         
         # Convert to response models
@@ -578,7 +616,7 @@ class DemoDataService:
     
     async def get_table_overview(
         self,
-        table: str,
+        table_name: str,
         schema: Optional[str] = None,
         warehouse: Optional[str] = None
     ) -> Optional[TableOverviewResponse]:
@@ -586,7 +624,7 @@ class DemoDataService:
         # Find table metadata
         table_meta = None
         for t in self.tables_raw:
-            if t['table_name'] == table:
+            if t['table_name'] == table_name:
                 if schema and t.get('schema_name') != schema:
                     continue
                 if warehouse and t.get('warehouse_type') != warehouse:
@@ -598,15 +636,15 @@ class DemoDataService:
             return None
         
         # Get table metrics
-        metrics_response = await self.get_table_metrics(table, schema, warehouse)
+        metrics_response = await self.get_table_metrics(table_name, schema, warehouse)
         if not metrics_response:
             return None
         
         # Get recent runs
-        table_runs = await self.get_runs(table=table, schema=schema, limit=10)
+        table_runs = await self.get_runs(table=table_name, schema=schema, limit=10)
         
         return TableOverviewResponse(
-            table_name=table,
+            table_name=table_name,
             schema_name=schema,
             warehouse_type=table_meta.get('warehouse_type', 'unknown'),
             last_profiled=metrics_response.last_profiled,
@@ -625,13 +663,14 @@ class DemoDataService:
     
     async def get_table_drift_history(
         self,
-        table: str,
+        table_name: str,
         schema: Optional[str] = None,
+        warehouse: Optional[str] = None,
         limit: int = 100
-    ) -> TableValidationResultsResponse:
+    ) -> TableDriftHistoryResponse:
         """Get drift history for a specific table."""
-        # This should return TableDriftHistoryResponse but using TableValidationResultsResponse for compatibility
-        drift_events = await self.get_drift_alerts(table=table, schema=schema, limit=limit)
+        # Get drift alerts for this table
+        drift_events = await self.get_drift_alerts(table=table_name, schema=schema, limit=limit)
         
         summary = {
             "total_events": len(drift_events),
@@ -642,22 +681,21 @@ class DemoDataService:
             sev = event.severity
             summary["by_severity"][sev] = summary["by_severity"].get(sev, 0) + 1
         
-        # Reusing TableValidationResultsResponse as placeholder
-        return TableValidationResultsResponse(
-            table_name=table,
+        return TableDriftHistoryResponse(
+            table_name=table_name,
             schema_name=schema,
-            validation_results=[],
+            drift_events=drift_events,
             summary=summary
         )
     
     async def get_table_validation_results(
         self,
-        table: str,
+        table_name: str,
         schema: Optional[str] = None,
         limit: int = 100
     ) -> TableValidationResultsResponse:
         """Get validation results for a specific table."""
-        filtered = [v for v in self.validation_results_raw if v.get('table_name') == table]
+        filtered = [v for v in self.validation_results_raw if v.get('table_name') == table_name]
         if schema:
             filtered = [v for v in filtered if v.get('schema_name') == schema]
         
@@ -697,7 +735,7 @@ class DemoDataService:
         }
         
         return TableValidationResultsResponse(
-            table_name=table,
+            table_name=table_name,
             schema_name=schema,
             validation_results=results,
             summary=summary
@@ -706,9 +744,7 @@ class DemoDataService:
     async def get_validation_summary(
         self,
         warehouse: Optional[str] = None,
-        schema: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        days: int = 30
     ) -> ValidationSummaryResponse:
         """Get validation summary statistics."""
         filtered = list(self.validation_results_raw)
@@ -718,11 +754,11 @@ class DemoDataService:
             # Filter by warehouse through run lookup
             run_ids = set(r['run_id'] for r in self.runs_raw if r.get('warehouse_type') == warehouse)
             filtered = [v for v in filtered if v['run_id'] in run_ids]
-        if schema:
-            filtered = [v for v in filtered if v.get('schema_name') == schema]
         
-        # Date range
-        filtered = self._filter_by_date_range(filtered, 'validated_at', start_date, end_date)
+        # Date range filter (last N days)
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            filtered = self._filter_by_date_range(filtered, 'validated_at', cutoff_date, None)
         
         total_validations = len(filtered)
         passed_count = len([v for v in filtered if v.get('passed')])
@@ -775,26 +811,24 @@ class DemoDataService:
     
     async def get_validation_results(
         self,
-        warehouse: Optional[str] = None,
-        schema: Optional[str] = None,
         table: Optional[str] = None,
+        schema: Optional[str] = None,
         rule_type: Optional[str] = None,
-        passed: Optional[bool] = None,
         severity: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        sort_by: str = "validated_at",
-        sort_order: str = "desc",
-        limit: int = 100,
-        offset: int = 0
+        passed: Optional[bool] = None,
+        days: int = 30,
+        page: int = 1,
+        page_size: int = 50
     ) -> ValidationResultsListResponse:
         """Get list of validation results with filters."""
         filtered = list(self.validation_results_raw)
         
+        # Date range filter (last N days)
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            filtered = self._filter_by_date_range(filtered, 'validated_at', cutoff_date, None)
+        
         # Apply filters
-        if warehouse:
-            run_ids = set(r['run_id'] for r in self.runs_raw if r.get('warehouse_type') == warehouse)
-            filtered = [v for v in filtered if v['run_id'] in run_ids]
         if schema:
             filtered = [v for v in filtered if v.get('schema_name') == schema]
         if table:
@@ -806,15 +840,14 @@ class DemoDataService:
         if severity:
             filtered = [v for v in filtered if v.get('severity') == severity]
         
-        # Date range
-        filtered = self._filter_by_date_range(filtered, 'validated_at', start_date, end_date)
-        
         total = len(filtered)
         
-        # Sort
-        filtered = self._sort_items(filtered, sort_by, sort_order)
+        # Sort by validated_at desc
+        filtered = self._sort_items(filtered, 'validated_at', 'desc')
         
-        # Paginate
+        # Paginate (convert page/page_size to limit/offset)
+        offset = (page - 1) * page_size
+        limit = page_size
         paginated = self._paginate(filtered, offset, limit)
         
         # Convert to response models
@@ -950,9 +983,7 @@ class DemoDataService:
     async def get_drift_summary(
         self,
         warehouse: Optional[str] = None,
-        schema: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None
+        days: int = 30
     ) -> DriftSummaryResponse:
         """Get drift summary statistics."""
         filtered = list(self.drift_events_raw)
@@ -960,12 +991,11 @@ class DemoDataService:
         # Apply filters
         if warehouse:
             filtered = [e for e in filtered if e.get('warehouse_type') == warehouse]
-        if schema:
-            run_ids = set(r['run_id'] for r in self.runs_raw if r.get('schema_name') == schema)
-            filtered = [e for e in filtered if e['run_id'] in run_ids]
         
-        # Date range
-        filtered = self._filter_by_date_range(filtered, 'timestamp', start_date, end_date)
+        # Date range filter (last N days)
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            filtered = self._filter_by_date_range(filtered, 'timestamp', cutoff_date, None)
         
         total_events = len(filtered)
         

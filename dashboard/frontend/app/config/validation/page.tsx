@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useMutation } from '@tanstack/react-query'
-import { Save, Loader2, AlertCircle, CheckCircle, Plus, ChevronRight } from 'lucide-react'
+import { Save, Loader2, AlertCircle, CheckCircle, Plus, ChevronRight, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Toggle } from '@/components/ui/Toggle'
@@ -11,9 +11,6 @@ import { RuleList } from '@/components/validation/RuleList'
 import { RuleWizard } from '@/components/validation/RuleWizard'
 import { useConfig } from '@/hooks/useConfig'
 import { ValidationRuleConfig, ValidationConfig } from '@/types/config'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 
 /**
  * Deep merge utility for merging config updates

@@ -64,24 +64,24 @@ export default function LineageMiniGraph({
 
   if (loading) {
     return (
-      <div className="border border-gray-200 rounded-lg p-4 h-64 flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">Loading lineage...</div>
+      <div className="border border-surface-700/50 rounded-lg p-4 h-64 flex items-center justify-center bg-surface-800/30">
+        <div className="text-slate-400">Loading lineage...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="border border-gray-200 rounded-lg p-4 h-64 flex items-center justify-center bg-gray-50">
-        <div className="text-red-500">Error: {error}</div>
+      <div className="border border-surface-700/50 rounded-lg p-4 h-64 flex items-center justify-center bg-surface-800/30">
+        <div className="text-danger-400">Error: {error}</div>
       </div>
     );
   }
 
   if (!graph || graph.nodes.length === 0) {
     return (
-      <div className="border border-gray-200 rounded-lg p-4 h-64 flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">No lineage data available</div>
+      <div className="border border-surface-700/50 rounded-lg p-4 h-64 flex items-center justify-center bg-surface-800/30">
+        <div className="text-slate-400">No lineage data available</div>
       </div>
     );
   }
@@ -95,12 +95,12 @@ export default function LineageMiniGraph({
   );
 
   return (
-    <div className="border border-gray-200 rounded-lg p-4 bg-white">
+    <div className="border border-surface-700/50 rounded-lg p-4 bg-surface-800/30">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-semibold text-gray-700">Lineage</h3>
+        <h3 className="text-sm font-semibold text-white">Lineage</h3>
         <button
           onClick={handleExpand}
-          className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+          className="text-xs text-cyan-400 hover:text-cyan-300 font-medium transition-colors"
         >
           View Full Graph →
         </button>
@@ -109,18 +109,18 @@ export default function LineageMiniGraph({
       <div className="space-y-4 text-sm">
         {upstreamNodes.length > 0 && (
           <div>
-            <div className="text-xs font-semibold text-gray-500 mb-2">
+            <div className="text-xs font-semibold text-slate-400 mb-2">
               Upstream ({upstreamNodes.length})
             </div>
             <div className="space-y-1">
               {upstreamNodes.slice(0, 3).map((node) => (
-                <div key={node.id} className="text-gray-700 pl-2 border-l-2 border-blue-300">
+                <div key={node.id} className="text-slate-200 pl-2 border-l-2 border-cyan-500/50">
                   ↑ {node.label}
-                  {node.schema && <span className="text-gray-400 text-xs ml-1">({node.schema})</span>}
+                  {node.schema && <span className="text-slate-400 text-xs ml-1">({node.schema})</span>}
                 </div>
               ))}
               {upstreamNodes.length > 3 && (
-                <div className="text-gray-400 text-xs pl-2">
+                <div className="text-slate-500 text-xs pl-2">
                   +{upstreamNodes.length - 3} more
                 </div>
               )}
@@ -128,25 +128,25 @@ export default function LineageMiniGraph({
           </div>
         )}
 
-        <div className="text-center py-2 font-medium text-gray-900">
+        <div className="text-center py-2 font-medium text-white">
           {table}
-          {schema && <span className="text-gray-500 text-xs ml-1">({schema})</span>}
+          {schema && <span className="text-slate-400 text-xs ml-1">({schema})</span>}
         </div>
 
         {downstreamNodes.length > 0 && (
           <div>
-            <div className="text-xs font-semibold text-gray-500 mb-2">
+            <div className="text-xs font-semibold text-slate-400 mb-2">
               Downstream ({downstreamNodes.length})
             </div>
             <div className="space-y-1">
               {downstreamNodes.slice(0, 3).map((node) => (
-                <div key={node.id} className="text-gray-700 pl-2 border-l-2 border-green-300">
+                <div key={node.id} className="text-slate-200 pl-2 border-l-2 border-emerald-500/50">
                   ↓ {node.label}
-                  {node.schema && <span className="text-gray-400 text-xs ml-1">({node.schema})</span>}
+                  {node.schema && <span className="text-slate-400 text-xs ml-1">({node.schema})</span>}
                 </div>
               ))}
               {downstreamNodes.length > 3 && (
-                <div className="text-gray-400 text-xs pl-2">
+                <div className="text-slate-500 text-xs pl-2">
                   +{downstreamNodes.length - 3} more
                 </div>
               )}
@@ -155,7 +155,7 @@ export default function LineageMiniGraph({
         )}
 
         {upstreamNodes.length === 0 && downstreamNodes.length === 0 && (
-          <div className="text-center text-gray-400 py-4">
+          <div className="text-center text-slate-400 py-4">
             No immediate dependencies
           </div>
         )}

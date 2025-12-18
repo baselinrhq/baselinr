@@ -25,28 +25,39 @@ from database import DatabaseClient
 
 router = APIRouter(prefix="/api/tables", tags=["tables"])
 
+# Check if demo mode is enabled
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+
 # Global database client instance
 _db_client = None
 
 def get_db_client() -> DatabaseClient:
     """Get or create database client instance."""
     global _db_client
+    if DEMO_MODE:
+        return None
     if _db_client is None:
         _db_client = DatabaseClient()
     return _db_client
 
 def get_config_service() -> ConfigService:
     """Dependency to get config service instance."""
+    if DEMO_MODE:
+        return ConfigService(db_engine=None)
     db_client = get_db_client()
     return ConfigService(db_client.engine)
 
 def get_connection_service() -> ConnectionService:
     """Dependency to get connection service instance."""
+    if DEMO_MODE:
+        return ConnectionService(db_engine=None)
     db_client = get_db_client()
     return ConnectionService(db_client.engine)
 
 def get_discovery_service() -> DiscoveryService:
     """Dependency to get discovery service instance."""
+    if DEMO_MODE:
+        return DiscoveryService(db_engine=None)
     db_client = get_db_client()
     return DiscoveryService(db_client.engine)
 
