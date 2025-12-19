@@ -30,7 +30,7 @@ Scores are classified into three status levels:
 
 - **Healthy** (≥80): Data quality is good, no immediate action needed
 - **Warning** (60-79): Data quality issues detected, review recommended
-- **Critical** (<60): Significant data quality problems, immediate attention required
+- **Critical** (&lt;60): Significant data quality problems, immediate attention required
 
 ## Configuration
 

@@ -51,7 +51,7 @@ curl http://localhost:8000/api/demo/info
 - **Pagination**: offset/limit with total counts
 - **Detail Views**: run details, table metrics, drift details
 - **Aggregations**: dashboard metrics, summaries, trends
-- **Performance**: <5ms response times
+- **Performance**: &lt;5ms response times
 
 ### ❌ What's Disabled in Demo Mode
 

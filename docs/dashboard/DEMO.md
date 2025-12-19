@@ -63,7 +63,7 @@ The Quality Studio demo is a fully functional version that runs entirely on Clou
 - Validation results and summaries
 - Table overview and metrics
 - Quality scores and trends
-- Performance: <5ms response times (Cloudflare Pages Functions)
+- Performance: &lt;5ms response times (Cloudflare Pages Functions)
 
 ### ❌ What's Disabled
 

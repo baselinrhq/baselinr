@@ -166,7 +166,7 @@ This will:
 - **Drift Events**: ~30% of successful runs have drift, with 50% low, 35% medium, 15% high severity
 - **Validations**: ~80% pass rate across 6 rule types (not_null, unique, range, format, enum, referential)
 - **Lineage**: Realistic data pipeline (raw → staging → analytics/production)
-- **Metrics**: Realistic distributions based on column types (IDs have 0% nulls, emails have <3% nulls, etc.)
+- **Metrics**: Realistic distributions based on column types (IDs have 0% nulls, emails have &lt;3% nulls, etc.)
 
 ## Usage in Demo
 

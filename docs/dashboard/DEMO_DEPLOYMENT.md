@@ -127,7 +127,7 @@ The demo will be a fully functional version of the Quality Studio that runs enti
 
 - ✅ `demo_data.py` with DemoDataService class
 - ✅ Unit tests for filtering logic
-- ✅ Performance benchmarks (should be <100ms for most queries)
+- ✅ Performance benchmarks (should be &lt;100ms for most queries)
 
 ### Estimated Time: 6-8 hours
 
