@@ -60,13 +60,16 @@ To use a custom domain (e.g., `baselinr.io`):
 
 ### Build Watch Paths (Optional)
 
-To only trigger builds when website code changes:
+To only trigger builds when website code or documentation changes:
 
 ```
 website/**
+docs/**
 ```
 
-This will prevent builds on changes to other parts of the repository (e.g., dashboard, docs content).
+**Important**: Include `docs/**` because the Docusaurus config sources documentation from `../docs`. Changes to documentation files will affect the website build.
+
+This will prevent builds on changes to other parts of the repository (e.g., dashboard code, Python backend).
 
 ## Local Development
 
