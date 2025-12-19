@@ -13,6 +13,7 @@ eggs/
 lib/
 lib64/
 !dashboard/frontend/lib/
+!dashboard/frontend/functions/lib/
 parts/
 sdist/
 var/
