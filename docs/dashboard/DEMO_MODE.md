@@ -51,7 +51,7 @@ curl http://localhost:8000/api/demo/info
 - **Pagination**: offset/limit with total counts
 - **Detail Views**: run details, table metrics, drift details
 - **Aggregations**: dashboard metrics, summaries, trends
-- **Performance**: <5ms response times
+- **Performance**: &lt;5ms response times
 
 ### ❌ What's Disabled in Demo Mode
 
@@ -219,7 +219,7 @@ python generate_demo_data.py
 
 ### Performance Issues
 
-Demo mode should be very fast (<5ms). If slow:
+Demo mode should be very fast (&lt;5ms). If slow:
 - Check if files are on slow storage
 - Verify JSON files aren't corrupted
 - Try regenerating demo data

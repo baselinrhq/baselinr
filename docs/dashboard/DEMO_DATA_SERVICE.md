@@ -8,7 +8,7 @@
 
 - **Zero Database Dependencies**: Loads all data from JSON files
 - **Full API Compatibility**: Implements all 18 methods from `DatabaseClient`
-- **High Performance**: All queries complete in <5ms (avg 0.59ms)
+- **High Performance**: All queries complete in &lt;5ms (avg 0.59ms)
 - **In-Memory Filtering**: Fast filtering, sorting, and pagination
 - **Async Interface**: Maintains async/await compatibility with FastAPI
 
@@ -172,14 +172,14 @@ Based on benchmarks with 120 runs, 582 metrics, 54 drift events, 95 tables, and 
 - **Initialization**: 4.5ms
 - **Average Query Time**: 0.59ms
 - **Max Query Time**: 4.5ms
-- **All Queries**: <5ms (target was <100ms)
+- **All Queries**: &lt;5ms (target was &lt;100ms)
 
 ### Performance by Operation Type
 
 - **Simple Filters**: 0-1ms
 - **Complex Filters**: 1-2ms
 - **Aggregations**: 2-5ms
-- **Pagination**: <1ms overhead
+- **Pagination**: &lt;1ms overhead
 
 ## Data Loading
 

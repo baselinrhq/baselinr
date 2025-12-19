@@ -1,0 +1,7 @@
+# Cloudflare Pages configuration for Baselinr Website (Docusaurus)
+# Note: For Cloudflare Pages, build settings are configured in the dashboard
+# This file is primarily for local development with `wrangler pages dev`
+
+name = "baselinr-website"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "build"

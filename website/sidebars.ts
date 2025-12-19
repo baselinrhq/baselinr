@@ -178,7 +178,6 @@ const sidebars: SidebarsConfig = {
       items: [
         'architecture/PROJECT_OVERVIEW',
         'architecture/EVENTS_AND_HOOKS',
-        'architecture/EVENTS_IMPLEMENTATION_SUMMARY',
         'architecture/ANOMALY_DETECTION',
         'architecture/EXPECTATION_LEARNING',
       ],

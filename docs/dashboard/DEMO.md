@@ -1,10 +1,14 @@
-# Quality Studio Demo Documentation
+# Quality Studio Demo
+
+**🎮 [Try the Live Demo →](https://demo.baselinr.io)**
 
 Complete guide for the Baselinr Quality Studio demo deployment on Cloudflare Pages.
 
 ## Overview
 
 The Quality Studio demo is a fully functional version that runs entirely on Cloudflare Pages using pre-generated data, with no database dependencies. This provides a fast, zero-cost demo environment for showcasing all features.
+
+**Live Demo URL**: https://demo.baselinr.io
 
 ## Documentation
 
@@ -57,25 +61,48 @@ The Quality Studio demo is a fully functional version that runs entirely on Clou
 - Dashboard metrics and KPIs
 - Drift detection and alerts
 - Validation results and summaries
-- Performance: <5ms response times
+- Table overview and metrics
+- Quality scores and trends
+- Performance: &lt;5ms response times (Cloudflare Pages Functions)
 
 ### ❌ What's Disabled
 
 - RCA routes (requires database)
 - Chat routes (requires database)
 - Write operations (read-only demo)
+- Configuration saving (demo is read-only)
+
+## Demo Limitations
+
+The demo runs in **read-only mode** with the following limitations:
+
+- **No data persistence**: All changes are temporary and reset on page refresh
+- **Pre-generated data**: Uses static JSON files, not a live database
+- **No write operations**: Cannot save configurations or make changes
+- **No chat/RCA**: AI-powered features require database backend
+- **Sample data only**: Data is realistic but not from a real warehouse
+
+These limitations are intentional to provide a fast, zero-cost demo experience.
 
 ## Architecture
 
+The demo uses a serverless architecture on Cloudflare Pages:
+
 ```
-Frontend (Next.js) 
+Next.js Frontend (Static Export)
     ↓
-FastAPI Backend (DEMO_MODE=true)
+Cloudflare Pages Functions
     ↓
-DemoDataService (in-memory)
+DemoDataService (TypeScript)
     ↓
-JSON Files (demo_data/)
+JSON Files (static assets in /demo_data/)
 ```
+
+**Deployment**:
+- **Hosting**: Cloudflare Pages (free tier)
+- **Functions**: Cloudflare Pages Functions (serverless)
+- **Data**: Static JSON files served from `/demo_data/`
+- **Custom Domain**: demo.baselinr.io
 
 ## Performance
 
@@ -132,7 +159,7 @@ python benchmark_demo_service.py
 
 - [x] Implemented `DemoDataService` class (18 methods)
 - [x] Comprehensive unit tests (40+ tests)
-- [x] Performance benchmarks (<5ms queries)
+- [x] Performance benchmarks (&lt;5ms queries)
 - [x] API documentation complete
 
 ### Phase 3: Backend Integration ✓
@@ -142,17 +169,32 @@ python benchmark_demo_service.py
 - [x] Extended CORS for demo domain
 - [x] Integration tests passing
 
-### Phase 4: Cloudflare Pages Functions
+### Phase 4: Cloudflare Pages Functions ✓
 
-- [ ] Convert routes to Pages Functions
-- [ ] Deploy with demo data
-- [ ] Configure custom domain
+- [x] Convert routes to Pages Functions
+- [x] Deploy with demo data
+- [x] Configure custom domain
+- [x] Implement demo-data-service for Cloudflare Pages
 
-### Phase 5: Frontend Configuration
+### Phase 5: Frontend Configuration ✓
 
-- [ ] Update Next.js for Cloudflare Pages
-- [ ] Add demo mode indicators
-- [ ] Configure API client
+- [x] Update Next.js for Cloudflare Pages (static export)
+- [x] Add demo mode indicators
+- [x] Configure API client for Pages Functions
+
+### Phase 6: Cloudflare Deployment ✓
+
+- [x] Deploy to Cloudflare Pages
+- [x] Configure custom domain (demo.baselinr.io)
+- [x] Set up environment variables
+- [x] Verify all endpoints working
+
+### Phase 7: Documentation & Website Integration ✓
+
+- [x] Update website navbar with demo link
+- [x] Update website footer with demo link
+- [x] Create/update demo documentation
+- [x] Update README with demo info
 
 ## Support
 
