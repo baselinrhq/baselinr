@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path')
 const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
 
 const nextConfig = {
@@ -7,6 +8,13 @@ const nextConfig = {
     // ⚠️ Temporarily ignore TypeScript errors during build for Cloudflare deployment
     // Remove this after fixing all TypeScript errors
     ignoreBuildErrors: true,
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': path.resolve(__dirname, './'),
+    }
+    return config
   },
   // Enable static export for Cloudflare Pages deployment
   ...(isDemoMode && {
