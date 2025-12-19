@@ -762,14 +762,14 @@ function ConfigStateTestTab() {
           <CardDescription>Update configuration values</CardDescription>
         </CardHeader>
         <CardBody className="space-y-4">
-          <FormField label="Config Path (dot notation)" hint="e.g., source.database or profiling.metrics">
+          <FormField label="Config Path (dot notation)" helperText="e.g., source.database or profiling.metrics">
             <Input
               value={pathInput}
               onChange={(e) => setPathInput(e.target.value)}
               placeholder="source.database"
             />
           </FormField>
-          <FormField label="Value" hint="Enter value (strings, numbers, booleans, or JSON)">
+          <FormField label="Value" helperText="Enter value (strings, numbers, booleans, or JSON)">
             <Input
               value={valueInput}
               onChange={(e) => setValueInput(e.target.value)}

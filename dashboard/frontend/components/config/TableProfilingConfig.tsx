@@ -7,7 +7,7 @@ import { Select, SelectOption } from '@/components/ui/Select'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Badge } from '@/components/ui/Badge'
 import { Tabs } from '@/components/ui/Tabs'
-import { TablePattern } from '@/types/config'
+import { TablePattern, ColumnConfig as ColumnConfigType } from '@/types/config'
 import { PartitionConfig } from './PartitionConfig'
 import { SamplingConfig } from './SamplingConfig'
 import { ColumnConfig } from './ColumnConfig'
@@ -83,35 +83,44 @@ export function TableProfilingConfig({
     onChange(newTables)
   }
 
+  type TablePatternWithOverrides = TablePattern & {
+    metrics?: string[]
+    partition?: unknown
+    sampling?: unknown
+    columns?: ColumnConfigType[]
+  }
+
   const handleMetricToggle = (metric: string, checked: boolean) => {
-    const currentMetrics = selectedTable?.metrics || []
+    const table = selectedTable as TablePatternWithOverrides
+    const currentMetrics = table?.metrics || []
     if (checked) {
       if (!currentMetrics.includes(metric)) {
-        handleTableChange({ metrics: [...currentMetrics, metric] })
+        handleTableChange({ metrics: [...currentMetrics, metric] } as Partial<TablePattern>)
       }
     } else {
-      handleTableChange({ metrics: currentMetrics.filter((m) => m !== metric) })
+      handleTableChange({ metrics: currentMetrics.filter((m) => m !== metric) } as Partial<TablePattern>)
     }
   }
 
-  const handlePartitionChange = (partition: typeof selectedTable.partition) => {
-    handleTableChange({ partition })
+  const handlePartitionChange = (partition: unknown) => {
+    handleTableChange({ partition } as Partial<TablePattern>)
   }
 
-  const handleSamplingChange = (sampling: typeof selectedTable.sampling) => {
-    handleTableChange({ sampling })
+  const handleSamplingChange = (sampling: unknown) => {
+    handleTableChange({ sampling } as Partial<TablePattern>)
   }
 
-  const handleColumnsChange = (columns: typeof selectedTable.columns) => {
-    handleTableChange({ columns })
+  const handleColumnsChange = (columns: unknown) => {
+    handleTableChange({ columns } as Partial<TablePattern>)
   }
 
   const hasOverrides = (table: TablePattern) => {
+    const tableWithOverrides = table as TablePatternWithOverrides
     return !!(
-      table.metrics ||
-      table.partition ||
-      table.sampling ||
-      (table.columns && table.columns.length > 0)
+      tableWithOverrides.metrics ||
+      tableWithOverrides.partition ||
+      tableWithOverrides.sampling ||
+      (tableWithOverrides.columns && Array.isArray(tableWithOverrides.columns) && tableWithOverrides.columns.length > 0)
     )
   }
 
@@ -186,13 +195,13 @@ export function TableProfilingConfig({
                         <Checkbox
                           key={metric}
                           label={metric.replace(/_/g, ' ')}
-                          checked={selectedTable.metrics?.includes(metric) || false}
+                          checked={((selectedTable as TablePatternWithOverrides).metrics?.includes(metric)) || false}
                           onChange={(e) => handleMetricToggle(metric, e.target.checked)}
                           disabled={isLoading}
                         />
                       ))}
                     </div>
-                    {selectedTable.metrics && selectedTable.metrics.length === 0 && (
+                    {((selectedTable as TablePatternWithOverrides).metrics?.length ?? 0) === 0 && (
                       <p className="text-sm text-slate-500 italic">
                         No metrics selected - will inherit from global settings
                       </p>
@@ -203,7 +212,7 @@ export function TableProfilingConfig({
                 {activeTab === 'partition' && (
                   <div className="pt-4">
                     <PartitionConfig
-                      partition={selectedTable.partition}
+                      partition={(selectedTable as TablePatternWithOverrides).partition}
                       onChange={handlePartitionChange}
                       errors={errors}
                       isLoading={isLoading}
@@ -214,7 +223,7 @@ export function TableProfilingConfig({
                 {activeTab === 'sampling' && (
                   <div className="pt-4">
                     <SamplingConfig
-                      sampling={selectedTable.sampling}
+                      sampling={(selectedTable as TablePatternWithOverrides).sampling}
                       onChange={handleSamplingChange}
                       errors={errors}
                       isLoading={isLoading}
@@ -225,7 +234,7 @@ export function TableProfilingConfig({
                 {activeTab === 'columns' && (
                   <div className="pt-4">
                     <ColumnConfig
-                      columns={selectedTable.columns || []}
+                      columns={(selectedTable as TablePatternWithOverrides).columns || []}
                       onChange={handleColumnsChange}
                       errors={errors}
                       isLoading={isLoading}

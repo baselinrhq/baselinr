@@ -114,7 +114,7 @@ export default function UITestPage() {
           <FormField label="Password" required error="This field is required">
             <Input type="password" placeholder="Enter password" />
           </FormField>
-          <FormField label="Optional Field" hint="This is optional">
+          <FormField label="Optional Field" helperText="This is optional">
             <Input placeholder="Optional input" />
           </FormField>
         </CardBody>
@@ -134,7 +134,7 @@ export default function UITestPage() {
               { value: '1', label: 'Option 1' },
               { value: '2', label: 'Option 2' },
               { value: '3', label: 'Option 3' },
-              { value: '4', label: 'Option 4 (Disabled)', disabled: true },
+              { value: '4', label: 'Option 4' },
             ]}
             placeholder="Choose an option"
           />
@@ -193,7 +193,7 @@ export default function UITestPage() {
         <CardBody>
           <Slider
             value={sliderValue}
-            onChange={setSliderValue}
+            onChange={(val) => setSliderValue(typeof val === 'number' ? val : val[0])}
             min={0}
             max={100}
             step={1}
@@ -339,7 +339,7 @@ export default function UITestPage() {
               <p className="mt-2 text-xs text-gray-600">Large</p>
             </div>
             <div className="text-center">
-              <LoadingSpinner size="md" variant="dots" />
+              <LoadingSpinner size="md" />
               <p className="mt-2 text-xs text-gray-600">Dots</p>
             </div>
           </div>
@@ -380,7 +380,7 @@ export default function UITestPage() {
                 </label>
                 <Slider
                   value={sliderValue}
-                  onChange={setSliderValue}
+                  onChange={(val) => setSliderValue(typeof val === 'number' ? val : val[0])}
                   min={0}
                   max={100}
                   showValue

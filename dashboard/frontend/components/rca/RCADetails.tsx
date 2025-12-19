@@ -253,7 +253,7 @@ export default function RCADetails({ anomalyId, isOpen, onClose }: RCADetailsPro
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="error"
+                    variant="destructive"
                     onClick={() => dismissMutation.mutate(dismissReason || undefined)}
                     disabled={dismissMutation.isPending}
                   >

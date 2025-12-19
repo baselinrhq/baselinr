@@ -1,8 +1,12 @@
 # Cloudflare Pages configuration for Baselinr Demo
-# This file configures Wrangler for local development and deployment
+# Note: For Cloudflare Pages, build settings are configured in the dashboard
+# This file is primarily for local development with `wrangler pages dev`
 
 name = "baselinr-demo"
 compatibility_date = "2024-01-01"
+pages_build_output_dir = "out"
 
-# Pages configuration
-# Static assets will be served from public/, and functions from functions/
+# Environment variables for local development
+[vars]
+NEXT_PUBLIC_DEMO_MODE = "true"
+NEXT_PUBLIC_API_URL = "/api"

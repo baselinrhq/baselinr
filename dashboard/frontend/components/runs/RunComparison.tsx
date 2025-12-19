@@ -25,20 +25,6 @@ export default function RunComparison({ comparison, onClose }: RunComparisonProp
     return `${(seconds / 3600).toFixed(1)}h`
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'success':
-      case 'completed':
-        return 'green'
-      case 'failed':
-        return 'red'
-      case 'drift_detected':
-        return 'orange'
-      default:
-        return 'gray'
-    }
-  }
-
   const getChangeColor = (changePercent: number) => {
     if (changePercent > 0) return 'text-red-600'
     if (changePercent < 0) return 'text-green-600'
@@ -72,7 +58,12 @@ export default function RunComparison({ comparison, onClose }: RunComparisonProp
                 <div key={run.run_id} className="border border-gray-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-gray-500">Run {index + 1}</span>
-                    <Badge color={getStatusColor(run.status)}>{run.status}</Badge>
+                    <Badge variant={
+                      run.status === 'failed' ? 'error' :
+                      run.status === 'completed' || run.status === 'success' ? 'success' :
+                      run.status === 'drift_detected' ? 'warning' :
+                      'default'
+                    }>{run.status}</Badge>
                   </div>
                   <div className="space-y-2 text-sm">
                     <div>
@@ -134,7 +125,7 @@ export default function RunComparison({ comparison, onClose }: RunComparisonProp
               </h3>
               <div className="flex flex-wrap gap-2">
                 {comparisonData.common_columns.map((col) => (
-                  <Badge key={col} color="blue">{col}</Badge>
+                  <Badge key={col} variant="info">{col}</Badge>
                 ))}
               </div>
             </div>
@@ -154,7 +145,7 @@ export default function RunComparison({ comparison, onClose }: RunComparisonProp
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {columns.map((col) => (
-                          <Badge key={col} color="yellow">{col}</Badge>
+                          <Badge key={col} variant="warning">{col}</Badge>
                         ))}
                       </div>
                     </div>

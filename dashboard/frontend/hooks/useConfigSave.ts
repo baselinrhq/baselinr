@@ -42,7 +42,7 @@ export function useConfigSave() {
   // Save mutation with optimistic updates
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { originalConfig, modifiedConfig } = store.getState()
+      const { originalConfig, modifiedConfig } = useConfigStore.getState()
       
       if (!originalConfig) {
         throw new Error('Cannot save: no configuration loaded')
@@ -65,10 +65,10 @@ export function useConfigSave() {
       const previousModified = store.modifiedConfig
 
       // Optimistically update the store
-      const { originalConfig, modifiedConfig } = store.getState()
+      const { originalConfig, modifiedConfig } = useConfigStore.getState()
       if (originalConfig && modifiedConfig) {
         const optimisticConfig = deepMerge(originalConfig, modifiedConfig)
-        store.setState({
+        useConfigStore.setState({
           currentConfig: optimisticConfig,
           originalConfig: JSON.parse(JSON.stringify(optimisticConfig)),
           modifiedConfig: null,
@@ -82,7 +82,7 @@ export function useConfigSave() {
     onError: (error, variables, context) => {
       // Rollback on error
       if (context) {
-        store.setState({
+        useConfigStore.setState({
           currentConfig: context.previousConfig,
           originalConfig: context.previousOriginal,
           modifiedConfig: context.previousModified,
@@ -93,7 +93,7 @@ export function useConfigSave() {
     onSuccess: (data) => {
       // Update with server response
       const savedConfig = data.config
-      store.setState({
+      useConfigStore.setState({
         currentConfig: savedConfig,
         originalConfig: JSON.parse(JSON.stringify(savedConfig)),
         modifiedConfig: null,

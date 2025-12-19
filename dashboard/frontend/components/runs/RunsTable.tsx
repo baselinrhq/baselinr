@@ -105,7 +105,7 @@ export default function RunsTable({
                   <Checkbox
                     checked={allSelected}
                     indeterminate={someSelected}
-                    onChange={(checked) => onSelectAll?.(checked)}
+                    onChange={(e) => onSelectAll?.(e.target.checked)}
                   />
                 </th>
               )}

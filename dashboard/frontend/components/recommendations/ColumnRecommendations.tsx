@@ -54,7 +54,7 @@ export default function ColumnRecommendations({
                       {col.suggested_checks.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {col.suggested_checks.map((check, checkIdx) => {
-                            const checkName = typeof check === 'string' ? check : check.type || JSON.stringify(check)
+                            const checkName: string = typeof check === 'string' ? check : (typeof check === 'object' && check !== null && 'type' in check && typeof check.type === 'string' ? check.type : String(check))
                             return (
                               <Badge key={checkIdx} variant="info" size="sm">
                                 {checkName}
@@ -101,7 +101,7 @@ export default function ColumnRecommendations({
                       {col.suggested_checks.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {col.suggested_checks.map((check, checkIdx) => {
-                            const checkName = typeof check === 'string' ? check : check.type || JSON.stringify(check)
+                            const checkName: string = typeof check === 'string' ? check : (typeof check === 'object' && check !== null && 'type' in check && typeof check.type === 'string' ? check.type : String(check))
                             return (
                               <Badge key={checkIdx} variant="default" size="sm">
                                 {checkName}

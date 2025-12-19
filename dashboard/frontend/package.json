@@ -10,8 +10,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "functions:dev": "wrangler pages dev public",
-    "functions:deploy": "wrangler pages deploy public --project-name=baselinr-demo"
+    "build:demo": "cross-env NEXT_PUBLIC_DEMO_MODE=true next build",
+    "functions:dev": "npm run build:demo && wrangler pages dev out",
+    "functions:deploy": "npm run build:demo && wrangler pages deploy out --project-name=baselinr-demo"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -41,6 +42,7 @@
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/ui": "^4.0.15",
     "autoprefixer": "^10.4.0",
+    "cross-env": "^7.0.3",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0",
     "jsdom": "^27.2.0",

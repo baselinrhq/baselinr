@@ -3,6 +3,7 @@
  */
 
 import type { 
+  DriftAlert,
   DriftSummary, 
   DriftDetails, 
   DriftImpact 
@@ -17,8 +18,9 @@ import type {
   TrendAnalysis,
   ScoreComparison,
 } from '@/types/quality';
+import { getApiUrl } from './demo-mode';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 interface FetchOptions {
   warehouse?: string;
@@ -215,22 +217,6 @@ export async function retryRun(runId: string): Promise<RetryRunResponse> {
   }
   
   return response.json();
-}
-
-export interface DriftAlert {
-  alert_id: string;
-  run_id: string;
-  warehouse: string;
-  schema: string;
-  table: string;
-  column?: string;
-  severity: 'low' | 'medium' | 'high';
-  drift_type: string;
-  detected_at: string;
-  baseline_value?: number | string;
-  current_value?: number | string;
-  change_percentage?: number;
-  message?: string;
 }
 
 export async function fetchDriftAlerts(options: FetchOptions = {}): Promise<DriftAlert[]> {
@@ -504,21 +490,9 @@ export async function fetchTableDriftHistory(
   return response.json();
 }
 
-// Table validation results interfaces
-export interface ValidationResult {
-  id: number;
-  run_id: string;
-  column_name?: string | null;
-  rule_type: string;
-  passed: boolean;
-  failure_reason?: string | null;
-  total_rows?: number | null;
-  failed_rows?: number | null;
-  failure_rate?: number | null;
-  severity?: string | null;
-  validated_at: string;
-}
+import type { ValidationResult, ValidationResultDetails, ValidationFailureSamples } from '@/types/validation';
 
+// Table validation results interfaces
 export interface TableValidationResults {
   table_name: string;
   schema_name?: string | null;
@@ -639,12 +613,6 @@ export async function fetchValidationResults(
   return response.json();
 }
 
-export interface ValidationResultDetails extends ValidationResult {
-  rule_config?: Record<string, unknown>;
-  run_info?: Record<string, unknown>;
-  historical_results: ValidationResult[];
-}
-
 export async function fetchValidationResultDetails(
   resultId: number
 ): Promise<ValidationResultDetails> {
@@ -656,13 +624,6 @@ export async function fetchValidationResultDetails(
   }
   
   return response.json();
-}
-
-export interface ValidationFailureSamples {
-  result_id: number;
-  total_failures: number;
-  sample_failures: Array<Record<string, unknown>>;
-  failure_patterns?: Record<string, unknown>;
 }
 
 export async function fetchValidationFailureSamples(

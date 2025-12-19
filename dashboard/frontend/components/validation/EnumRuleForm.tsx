@@ -78,7 +78,7 @@ export function EnumRuleForm({ rule, onChange, errors }: EnumRuleFormProps) {
         label="Allowed Values"
         error={hasDuplicates ? 'Duplicate values are not allowed' : errors?.allowed_values}
         required
-        helpText="Enter the list of allowed values for this column"
+        helperText="Enter the list of allowed values for this column"
       >
         <div className="space-y-2">
           {values.map((value, index) => (

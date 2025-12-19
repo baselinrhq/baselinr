@@ -29,7 +29,7 @@ interface DriftDetailsProps {
 }
 
 export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsProps) {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'comparison' | 'statistics' | 'impact'>('overview')
 
   const { data: details, isLoading: detailsLoading } = useQuery<DriftDetailsType>({
     queryKey: ['drift-details', eventId],
@@ -73,15 +73,12 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
               { id: 'impact', label: 'Impact Analysis' },
             ]}
             activeTab={activeTab}
-            onChange={setActiveTab}
+            onChange={(tabId) => setActiveTab(tabId as typeof activeTab)}
           />
           
           <div className="space-y-4">
             {/* Overview Tab */}
             {activeTab === 'overview' && (
-            <div className="space-y-4">
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
@@ -179,11 +176,11 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                       </div>
                     </CardBody>
                   </Card>
-                </div>
-              )}
+              </div>
+            )}
 
-              {/* Before/After Comparison Tab */}
-              {activeTab === 'comparison' && (
+            {/* Before/After Comparison Tab */}
+            {activeTab === 'comparison' && (
                 <div className="space-y-4">
                   <Card>
                     <CardHeader>
@@ -282,11 +279,11 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                     </Card>
                   )}
                 </div>
-              )}
+            )}
 
-              {/* Statistical Tests Tab */}
-              {activeTab === 'statistics' && (
-                <div className="space-y-4">
+            {/* Statistical Tests Tab */}
+            {activeTab === 'statistics' && (
+              <div className="space-y-4">
                   {details.statistical_tests && details.statistical_tests.length > 0 ? (
                     <Card>
                       <CardHeader>
@@ -330,12 +327,12 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                       </CardBody>
                     </Card>
                   )}
-                </div>
-              )}
+              </div>
+            )}
 
-              {/* Impact Analysis Tab */}
-              {activeTab === 'impact' && (
-                <div className="space-y-4">
+            {/* Impact Analysis Tab */}
+            {activeTab === 'impact' && (
+              <div className="space-y-4">
                   {impactLoading ? (
                     <div className="flex items-center justify-center h-64">
                       <LoadingSpinner />
@@ -461,10 +458,8 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                       </CardBody>
                     </Card>
                   )}
-                </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
           </div>
         </div>
       )}

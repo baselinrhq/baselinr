@@ -71,7 +71,10 @@ export default function EnhancedLineageViewer({
 
   const handleExportSVG = () => {
     if (cyRef.current) {
-      const svg = cyRef.current.svg({ full: true, bg: '#0f172a' })
+      // svg() method exists at runtime but isn't in TypeScript types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cyInstance = cyRef.current as any
+      const svg = cyInstance.svg({ full: true, bg: '#0f172a' })
       const blob = new Blob([svg], { type: 'image/svg+xml' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -171,7 +174,7 @@ export default function EnhancedLineageViewer({
           loading={loading}
           onNodeClick={handleNodeClick}
           onEdgeClick={onEdgeClick}
-          layout={layout}
+          layout={layout === 'breadth-first' || layout === 'grid' ? 'hierarchical' : layout}
           onCyReady={(cy) => {
             cyRef.current = cy
           }}

@@ -31,7 +31,7 @@ export function SlackHookForm({
         label="Webhook URL"
         required
         error={errors.webhook_url}
-        helpText="Slack webhook URL (supports ${ENV_VAR} syntax)"
+        helperText="Slack webhook URL (supports ${ENV_VAR} syntax)"
       >
         <Input
           type="text"
@@ -44,7 +44,7 @@ export function SlackHookForm({
       <FormField
         label="Channel"
         error={errors.channel}
-        helpText="Optional: Override default channel (e.g., #alerts, @username)"
+        helperText="Optional: Override default channel (e.g., #alerts, @username)"
       >
         <Input
           type="text"
@@ -57,7 +57,7 @@ export function SlackHookForm({
       <FormField
         label="Username"
         error={errors.username}
-        helpText="Display name for the bot"
+        helperText="Display name for the bot"
       >
         <Input
           type="text"
@@ -70,7 +70,7 @@ export function SlackHookForm({
       <FormField
         label="Minimum Severity"
         error={errors.min_severity}
-        helpText="Minimum drift severity to alert"
+        helperText="Minimum drift severity to alert"
       >
         <Select
           options={[
@@ -112,7 +112,7 @@ export function SlackHookForm({
       <FormField
         label="Timeout (seconds)"
         error={errors.timeout}
-        helpText="HTTP request timeout"
+        helperText="HTTP request timeout"
       >
         <Input
           type="number"

@@ -64,8 +64,8 @@ function deepMerge(target: Record<string, unknown>, source: Record<string, unkno
       if (isObject(source[key])) {
         if (!(key in target)) {
           Object.assign(output, { [key]: source[key] })
-        } else {
-          output[key] = deepMerge(target[key], source[key])
+      } else {
+        output[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>)
         }
       } else {
         Object.assign(output, { [key]: source[key] })
@@ -91,9 +91,9 @@ function setNestedValue(obj: Record<string, unknown>, path: string[], value: unk
     if (!(key in current) || !isObject(current[key])) {
       current[key] = {}
     } else {
-      current[key] = { ...current[key] }
+      current[key] = { ...(current[key] as Record<string, unknown>) }
     }
-    current = current[key]
+    current = current[key] as Record<string, unknown>
   }
 
   current[path[path.length - 1]] = value
@@ -117,7 +117,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
     if (!originalConfig || !modifiedConfig) return false
     
     // Merge original with modifications to get full config
-    const mergedConfig = deepMerge(originalConfig, modifiedConfig)
+    const mergedConfig = deepMerge(originalConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>)
     return !deepEqual(originalConfig, mergedConfig)
   },
 
@@ -165,16 +165,16 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     // Start with original config merged with current modifications
     const baseConfig = modifiedConfig 
-      ? deepMerge(originalConfig, modifiedConfig)
-      : { ...originalConfig }
+      ? deepMerge(originalConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>) as unknown as BaselinrConfig
+      : originalConfig
     
     // Set the nested value
-    const updatedConfig = setNestedValue(baseConfig, path, value)
+    const updatedConfig = setNestedValue(baseConfig as unknown as Record<string, unknown>, path, value) as unknown as BaselinrConfig
     
     // Calculate the diff (what changed from original)
-    const diff = getConfigDiff(originalConfig, updatedConfig)
+    const diff = getConfigDiff(originalConfig as unknown as Record<string, unknown>, updatedConfig as unknown as Record<string, unknown>)
     
-    set({ modifiedConfig: diff })
+    set({ modifiedConfig: diff as Partial<BaselinrConfig> })
   },
 
   // Reset modified config to original
@@ -197,7 +197,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     // Merge original with modifications
     const configToSave = modifiedConfig
-      ? deepMerge(originalConfig, modifiedConfig)
+      ? deepMerge(originalConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>) as unknown as BaselinrConfig
       : originalConfig
 
     set({ isLoading: true, error: null })
@@ -236,7 +236,7 @@ export const useConfigStore = create<ConfigStore>((set, get) => ({
 
     // Merge original with modifications
     const configToValidate = modifiedConfig
-      ? deepMerge(originalConfig, modifiedConfig)
+      ? deepMerge(originalConfig as unknown as Record<string, unknown>, modifiedConfig as unknown as Record<string, unknown>) as unknown as BaselinrConfig
       : originalConfig
 
     set({ isLoading: true, error: null })
@@ -289,7 +289,7 @@ function getConfigDiff(original: Record<string, unknown>, updated: Record<string
   const diff: Record<string, unknown> = {}
   const allKeys = new Set([...Object.keys(original), ...Object.keys(updated)])
 
-  for (const key of allKeys) {
+  for (const key of Array.from(allKeys)) {
     const originalValue = original[key]
     const updatedValue = updated[key]
     const currentPath = [...path, key]
@@ -302,7 +302,7 @@ function getConfigDiff(original: Record<string, unknown>, updated: Record<string
       continue
     } else if (!deepEqual(originalValue, updatedValue)) {
       if (isObject(originalValue) && isObject(updatedValue)) {
-        const nestedDiff = getConfigDiff(originalValue, updatedValue, currentPath)
+        const nestedDiff = getConfigDiff(originalValue as Record<string, unknown>, updatedValue as Record<string, unknown>, currentPath)
         if (nestedDiff !== undefined && Object.keys(nestedDiff).length > 0) {
           diff[key] = nestedDiff
         }

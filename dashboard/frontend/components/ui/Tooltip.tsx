@@ -207,45 +207,48 @@ export function Tooltip({
 
   // Clone children with event handlers and ref
   const triggerElement = isValidElement(children)
-    ? cloneElement(children, {
+    ? (cloneElement(children as React.ReactElement, {
         ref: (node: HTMLElement) => {
-          // @ts-expect-error - ref merging
           triggerRef.current = node
           // Handle existing ref
-          const originalRef = (children as React.ReactElement).ref
-          if (typeof originalRef === 'function') {
-            originalRef(node)
-          } else if (originalRef) {
-            originalRef.current = node
+          // Handle existing ref if present
+          const elementWithRef = children as React.ReactElement & { ref?: React.Ref<HTMLElement> }
+          if (elementWithRef.ref) {
+            if (typeof elementWithRef.ref === 'function') {
+              elementWithRef.ref(node)
+            } else if (typeof elementWithRef.ref === 'object' && elementWithRef.ref !== null && 'current' in elementWithRef.ref) {
+              (elementWithRef.ref as React.MutableRefObject<HTMLElement | null>).current = node
+            }
           }
         },
         'aria-describedby': isVisible ? id : undefined,
         ...(trigger === 'hover'
           ? {
-              onMouseEnter: (e: React.MouseEvent) => {
+              onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
                 show()
-                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseEnter?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseEnter?.(e as React.MouseEvent<HTMLElement>)
               },
-              onMouseLeave: (e: React.MouseEvent) => {
+              onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
                 hide()
-                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseLeave?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onMouseLeave?.(e as React.MouseEvent<HTMLElement>)
               },
-              onFocus: (e: React.FocusEvent) => {
+              onFocus: (e: React.FocusEvent<HTMLElement>) => {
                 show()
-                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onFocus?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onFocus?.(e as React.FocusEvent<HTMLElement>)
               },
-              onBlur: (e: React.FocusEvent) => {
+              onBlur: (e: React.FocusEvent<HTMLElement>) => {
                 hide()
-                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onBlur?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onBlur?.(e as React.FocusEvent<HTMLElement>)
               },
             }
           : {
-              onClick: (e: React.MouseEvent) => {
+              onClick: (e: React.MouseEvent<HTMLElement>) => {
                 toggle()
-                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onClick?.(e)
+                ;(children.props as React.HTMLAttributes<HTMLElement>)?.onClick?.(e as React.MouseEvent<HTMLElement>)
               },
             }),
-      } as React.ReactElement)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any) as React.ReactElement)
     : children
 
   // Arrow class based on position

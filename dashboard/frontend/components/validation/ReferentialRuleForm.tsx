@@ -6,7 +6,7 @@ import { FormField } from '@/components/ui/FormField'
 import { Select, SelectOption } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { discoverTables, getTablePreview, TableMetadataResponse } from '@/lib/api/tables'
+import { discoverTables, getTablePreview, TableMetadataResponse, TableInfo } from '@/lib/api/tables'
 import { ValidationRuleConfig } from '@/types/config'
 
 export interface ReferentialRuleFormProps {
@@ -122,7 +122,7 @@ export function ReferentialRuleForm({ rule, onChange, errors, connectionId }: Re
         label="Reference Column"
         error={errors?.references}
         required
-        helpText="Column in the referenced table that should match"
+        helperText="Column in the referenced table that should match"
       >
         {isLoadingColumns ? (
           <LoadingSpinner size="sm" />

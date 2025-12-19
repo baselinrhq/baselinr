@@ -122,7 +122,7 @@ export function StatisticalStrategyConfig({
         <FormField
           label="Sensitivity"
           error={errors?.sensitivity}
-          helpText="Overall sensitivity level for statistical tests"
+          helperText="Overall sensitivity level for statistical tests"
         >
           <Select
             value={sensitivity}
@@ -135,14 +135,14 @@ export function StatisticalStrategyConfig({
         <FormField
           label="Statistical Tests"
           error={errors?.tests}
-          helpText="Select which statistical tests to run"
+          helperText="Select which statistical tests to run"
         >
           <div className="space-y-3">
             {AVAILABLE_TESTS.map((test) => (
               <div key={test.id} className="flex items-start gap-3">
                 <Checkbox
                   checked={tests.includes(test.id)}
-                  onChange={(checked) => handleTestToggle(test.id, checked)}
+                  onChange={(e) => handleTestToggle(test.id, e.target.checked)}
                   disabled={isLoading}
                 />
                 <div className="flex-1">
@@ -163,7 +163,7 @@ export function StatisticalStrategyConfig({
             {tests.includes('ks_test') && (
               <FormField
                 label="KS Test - Alpha (Significance Level)"
-                helpText="Significance level for the Kolmogorov-Smirnov test"
+                helperText="Significance level for the Kolmogorov-Smirnov test"
               >
                 <Input
                   type="number"
@@ -181,7 +181,7 @@ export function StatisticalStrategyConfig({
               <div className="space-y-3">
                 <FormField
                   label="PSI - Buckets"
-                  helpText="Number of buckets for distribution comparison"
+                  helperText="Number of buckets for distribution comparison"
                 >
                   <Input
                     type="number"
@@ -194,7 +194,7 @@ export function StatisticalStrategyConfig({
                 </FormField>
                 <FormField
                   label="PSI - Threshold"
-                  helpText="PSI threshold for drift detection"
+                  helperText="PSI threshold for drift detection"
                 >
                   <Input
                     type="number"
@@ -212,7 +212,7 @@ export function StatisticalStrategyConfig({
             {tests.includes('z_score') && (
               <FormField
                 label="Z-Score - Threshold"
-                helpText="Z-score threshold (standard deviations)"
+                helperText="Z-score threshold (standard deviations)"
               >
                 <Input
                   type="number"
@@ -229,7 +229,7 @@ export function StatisticalStrategyConfig({
             {tests.includes('chi_square') && (
               <FormField
                 label="Chi-Square - Alpha (Significance Level)"
-                helpText="Significance level for the chi-square test"
+                helperText="Significance level for the chi-square test"
               >
                 <Input
                   type="number"
@@ -246,7 +246,7 @@ export function StatisticalStrategyConfig({
             {tests.includes('entropy') && (
               <FormField
                 label="Entropy - Threshold"
-                helpText="Threshold for entropy change detection"
+                helperText="Threshold for entropy change detection"
               >
                 <Input
                   type="number"
@@ -264,7 +264,7 @@ export function StatisticalStrategyConfig({
               <div className="space-y-3">
                 <FormField
                   label="Top-K - K (Number of Categories)"
-                  helpText="Number of top categories to track"
+                  helperText="Number of top categories to track"
                 >
                   <Input
                     type="number"
@@ -277,7 +277,7 @@ export function StatisticalStrategyConfig({
                 </FormField>
                 <FormField
                   label="Top-K - Similarity Threshold"
-                  helpText="Similarity threshold for category stability"
+                  helperText="Similarity threshold for category stability"
                 >
                   <Input
                     type="number"

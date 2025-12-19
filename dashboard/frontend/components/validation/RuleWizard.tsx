@@ -237,7 +237,7 @@ export function RuleWizard({ isOpen, onClose, onSave, initialRule }: RuleWizardP
               <span>Select the table and column to validate</span>
             </div>
 
-            <FormField label="Connection" helpText="Optional: Select a saved connection">
+            <FormField label="Connection" helperText="Optional: Select a saved connection">
               <Select
                 value={connectionId || ''}
                 onChange={(value) => setConnectionId(value || undefined)}
@@ -396,7 +396,7 @@ export function RuleWizard({ isOpen, onClose, onSave, initialRule }: RuleWizardP
 
             <FormField
               label="Enabled"
-              helpText="Disable this rule to temporarily skip validation"
+              helperText="Disable this rule to temporarily skip validation"
             >
               <div className="flex items-center gap-2">
                 <input
@@ -444,7 +444,7 @@ export function RuleWizard({ isOpen, onClose, onSave, initialRule }: RuleWizardP
       isOpen={isOpen}
       onClose={onClose}
       title={isEditMode ? 'Edit Validation Rule' : 'Create Validation Rule'}
-      size="large"
+      size="xl"
     >
       <div className="space-y-6">
         {/* Step indicator */}

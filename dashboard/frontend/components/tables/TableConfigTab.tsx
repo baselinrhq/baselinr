@@ -41,15 +41,15 @@ export default function TableConfigTab({
               Table configuration is not yet implemented. Use the configuration pages to manage table settings.
             </p>
             <div className="mt-4">
-              <Button
-                variant="primary"
-                asChild
-              >
-                <Link href={`/config/tables?table=${encodeURIComponent(tableName)}`}>
-                  <Settings className="w-4 h-4 mr-2" />
+              <Link href={`/config/tables?table=${encodeURIComponent(tableName)}`}>
+                <Button
+                  variant="primary"
+                  icon={<Settings className="w-4 h-4" />}
+                  iconPosition="left"
+                >
                   Configure Table
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -73,15 +73,15 @@ export default function TableConfigTab({
               {tableName}{schema && ` (${schema})`}
             </p>
           </div>
-          <Button
-            variant="primary"
-            asChild
-          >
-            <Link href={`/config/tables?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
-              <ExternalLink className="w-4 h-4 mr-2" />
+          <Link href={`/config/tables?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
+            <Button
+              variant="primary"
+              icon={<ExternalLink className="w-4 h-4" />}
+              iconPosition="left"
+            >
               Edit Configuration
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -151,15 +151,15 @@ export default function TableConfigTab({
               This table is using default configuration settings. Configure profiling, sampling, and validation rules
               to customize how this table is monitored.
             </p>
-            <Button
-              variant="primary"
-              asChild
-            >
-              <Link href={`/config/tables?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
-                <Settings className="w-4 h-4 mr-2" />
+            <Link href={`/config/tables?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
+              <Button
+                variant="primary"
+                icon={<Settings className="w-4 h-4" />}
+                iconPosition="left"
+              >
                 Configure Table
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           </div>
         )}
       </div>
@@ -168,36 +168,36 @@ export default function TableConfigTab({
       <div className="glass-card p-6">
         <h3 className="text-sm font-semibold text-slate-300 mb-4">Related Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button
-            variant="outline"
-            asChild
-            className="justify-start"
-          >
-            <Link href="/config/profiling">
-              <Settings className="w-4 h-4 mr-2" />
+          <Link href="/config/profiling">
+            <Button
+              variant="outline"
+              className="justify-start w-full"
+              icon={<Settings className="w-4 h-4" />}
+              iconPosition="left"
+            >
               Profiling Settings
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            asChild
-            className="justify-start"
-          >
-            <Link href="/config/validation">
-              <Settings className="w-4 h-4 mr-2" />
+            </Button>
+          </Link>
+          <Link href="/config/validation">
+            <Button
+              variant="outline"
+              className="justify-start w-full"
+              icon={<Settings className="w-4 h-4" />}
+              iconPosition="left"
+            >
               Validation Rules
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            asChild
-            className="justify-start"
-          >
-            <Link href="/config/drift">
-              <Settings className="w-4 h-4 mr-2" />
+            </Button>
+          </Link>
+          <Link href="/config/drift">
+            <Button
+              variant="outline"
+              className="justify-start w-full"
+              icon={<Settings className="w-4 h-4" />}
+              iconPosition="left"
+            >
               Drift Detection
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </div>
     </div>

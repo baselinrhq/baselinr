@@ -75,7 +75,7 @@ export function DatasetList({ onCreateNew }: DatasetListProps) {
           <SearchInput
             placeholder="Search datasets..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(value) => setSearchQuery(value)}
           />
         </div>
         <Button

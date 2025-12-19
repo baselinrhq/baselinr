@@ -115,7 +115,7 @@ export default function FilterPanel({ filters, onChange, type = 'runs' }: Filter
 
       <div className="mt-4 flex justify-end gap-2">
         <button
-          onClick={() => onChange({ warehouse: '', schema: '', table: '', status: '', severity: '', days: 30 })}
+          onClick={() => onChange({ warehouse: '', schema: '', table: '', status: '', severity: '', days: '30' })}
           className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           Clear Filters

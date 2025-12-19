@@ -81,7 +81,7 @@ export function RangeRuleForm({ rule, onChange, errors }: RangeRuleFormProps) {
         <FormField
           label="Minimum Value"
           error={rangeError || errors?.min_value}
-          helpText="Leave empty for no minimum"
+          helperText="Leave empty for no minimum"
         >
           <Input
             type="number"
@@ -94,7 +94,7 @@ export function RangeRuleForm({ rule, onChange, errors }: RangeRuleFormProps) {
         <FormField
           label="Maximum Value"
           error={rangeError || errors?.max_value}
-          helpText="Leave empty for no maximum"
+          helperText="Leave empty for no maximum"
         >
           <Input
             type="number"

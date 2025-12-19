@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
 import { Select, SelectOption } from '@/components/ui/Select'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import type { ValidationRule } from '@/types/validationRules'
+import type { ValidationRule, ValidationRulesFilters, ValidationRuleType } from '@/types/validationRules'
 import {
   listValidationRules,
   deleteValidationRule,
@@ -93,10 +93,11 @@ export default function ValidationRulesList({ onCreateRule, onEditRule }: Valida
   const queryClient = useQueryClient()
 
   // Build filters
-  const filters = {
-    rule_type: typeFilter || undefined,
-    severity: severityFilter || undefined,
-    enabled: statusFilter === 'enabled' ? true : statusFilter === 'disabled' ? false : undefined,
+  const filters: ValidationRulesFilters = {
+    ...(typeFilter && { rule_type: typeFilter as ValidationRuleType }),
+    ...(severityFilter && { severity: severityFilter }),
+    ...(statusFilter === 'enabled' && { enabled: true }),
+    ...(statusFilter === 'disabled' && { enabled: false }),
   }
 
   // Fetch rules

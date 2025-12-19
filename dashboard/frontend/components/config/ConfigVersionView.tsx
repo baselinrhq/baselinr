@@ -77,10 +77,10 @@ export function ConfigVersionView({
                 <div className="mt-1 text-white">{versionData.created_by}</div>
               </div>
             )}
-            {versionData.comment && (
+            {versionData.description && (
               <div className="col-span-2">
-                <span className="font-medium text-slate-300">Comment:</span>
-                <div className="mt-1 text-white">{versionData.comment}</div>
+                <span className="font-medium text-slate-300">Description:</span>
+                <div className="mt-1 text-white">{versionData.description}</div>
               </div>
             )}
           </div>

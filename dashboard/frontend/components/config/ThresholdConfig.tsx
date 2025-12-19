@@ -100,7 +100,7 @@ export function ThresholdConfig({
           <FormField
             label={`Low Severity Threshold (${unit})`}
             error={errors?.low_threshold}
-            helpText="Triggers low severity alerts"
+            helperText="Triggers low severity alerts"
           >
             <div className="space-y-2">
               <Slider
@@ -125,7 +125,7 @@ export function ThresholdConfig({
           <FormField
             label={`Medium Severity Threshold (${unit})`}
             error={errors?.medium_threshold}
-            helpText="Triggers medium severity alerts"
+            helperText="Triggers medium severity alerts"
           >
             <div className="space-y-2">
               <Slider
@@ -150,7 +150,7 @@ export function ThresholdConfig({
           <FormField
             label={`High Severity Threshold (${unit})`}
             error={errors?.high_threshold}
-            helpText="Triggers high severity alerts"
+            helperText="Triggers high severity alerts"
           >
             <div className="space-y-2">
               <Slider

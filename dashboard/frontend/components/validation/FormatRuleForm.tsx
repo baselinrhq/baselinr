@@ -98,7 +98,7 @@ export function FormatRuleForm({ rule, onChange, errors }: FormatRuleFormProps) 
           label="Custom Regex Pattern"
           error={patternError || errors?.pattern}
           required
-          helpText="Enter a valid regular expression pattern"
+          helperText="Enter a valid regular expression pattern"
         >
           <Input
             value={customPattern}

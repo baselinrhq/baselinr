@@ -62,9 +62,9 @@ export default function ConfigHubPage() {
           <div className="flex-1">
             <div className="font-medium text-warning-300">Configuration Error</div>
             <div className="text-sm text-warning-400/80 mt-1">
-              {configError instanceof Error ? (
-                configError.message.includes('NetworkError') ||
-                configError.message.includes('Failed to fetch') ? (
+              {typeof configError === 'string' ? (
+                configError.includes('NetworkError') ||
+                configError.includes('Failed to fetch') ? (
                   <>
                     Unable to connect to the backend API. Please ensure:
                     <ul className="list-disc list-inside mt-2 space-y-1">
@@ -79,7 +79,7 @@ export default function ConfigHubPage() {
                     </ul>
                   </>
                 ) : (
-                  configError.message
+                  configError
                 )
               ) : (
                 'Unknown error occurred'
