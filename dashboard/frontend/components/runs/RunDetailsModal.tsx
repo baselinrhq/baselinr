@@ -59,20 +59,6 @@ export default function RunDetailsModal({ run, isOpen, onClose }: RunDetailsModa
     }
   }
 
-  const getStatusColor = (status?: string) => {
-    if (!status) return 'gray'
-    switch (status.toLowerCase()) {
-      case 'success':
-      case 'completed':
-        return 'green'
-      case 'failed':
-        return 'red'
-      case 'drift_detected':
-        return 'orange'
-      default:
-        return 'gray'
-    }
-  }
 
   if (!run) return null
 
@@ -105,7 +91,13 @@ export default function RunDetailsModal({ run, isOpen, onClose }: RunDetailsModa
                   <div className="text-sm text-gray-500">Status</div>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(run.status)}
-                    <Badge color={getStatusColor(run.status)}>{run.status || 'unknown'}</Badge>
+                    <Badge variant={
+                      !run.status ? 'default' :
+                      run.status.toLowerCase() === 'success' || run.status.toLowerCase() === 'completed' ? 'success' :
+                      run.status.toLowerCase() === 'failed' ? 'error' :
+                      run.status.toLowerCase() === 'drift_detected' ? 'warning' :
+                      'default'
+                    }>{run.status || 'unknown'}</Badge>
                   </div>
                 </div>
                 <div>
@@ -242,12 +234,12 @@ export default function RunDetailsModal({ run, isOpen, onClose }: RunDetailsModa
           {/* Tabs */}
           <div className="border-t border-gray-200 pt-4">
             <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
+              activeTab={activeTab}
+              onChange={(tabId) => setActiveTab(tabId)}
               tabs={[
-                { value: 'overview', label: 'Overview' },
-                { value: 'metrics', label: 'Column Metrics' },
-                { value: 'errors', label: 'Error Logs' },
+                { id: 'overview', label: 'Overview' },
+                { id: 'metrics', label: 'Column Metrics' },
+                { id: 'errors', label: 'Error Logs' },
               ]}
             />
           </div>

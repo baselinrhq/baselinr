@@ -209,7 +209,7 @@ export function TabPanel({
 }
 
 // Combined Tabs component with children support
-export interface TabsWithContentProps extends TabsProps {
+export interface TabsWithContentProps extends Omit<TabsProps, 'children'> {
   children?: React.ReactNode
 }
 

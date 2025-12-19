@@ -75,7 +75,8 @@ export default function LineageViewer({
     : [];
 
   // Cytoscape stylesheet - Dark theme
-  const stylesheet: cytoscape.Stylesheet[] = [
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stylesheet: any[] = [
     {
       selector: 'node',
       style: {

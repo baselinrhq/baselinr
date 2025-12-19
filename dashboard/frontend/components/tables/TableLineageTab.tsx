@@ -89,15 +89,15 @@ export default function TableLineageTab({
 
         {/* Expand to Full Lineage */}
         <div className="mt-4 pt-4 border-t border-surface-700/50">
-          <Button
-            variant="outline"
-            asChild
-          >
-            <Link href={`/lineage?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
-              <Maximize2 className="w-4 h-4 mr-2" />
+          <Link href={`/lineage?table=${encodeURIComponent(tableName)}${schema ? `&schema=${encodeURIComponent(schema)}` : ''}`}>
+            <Button
+              variant="outline"
+              icon={<Maximize2 className="w-4 h-4" />}
+              iconPosition="left"
+            >
               Expand to Full Lineage View
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </div>
 

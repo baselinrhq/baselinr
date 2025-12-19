@@ -149,7 +149,7 @@ export default function ValidationRuleModal({ isOpen, onClose, rule }: Validatio
       isOpen={isOpen}
       onClose={onClose}
       title={isEditMode ? 'Edit Validation Rule' : 'Create Validation Rule'}
-      size="large"
+      size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {errors.general && (

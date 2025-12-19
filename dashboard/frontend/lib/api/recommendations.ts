@@ -8,8 +8,9 @@ import type {
   ApplyRecommendationsRequest,
   ApplyRecommendationsResponse,
 } from '@/types/recommendation'
+import { getApiUrl } from '../demo-mode'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiUrl()
 
 export interface RecommendationOptions {
   connection_id: string

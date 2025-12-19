@@ -223,14 +223,14 @@ export default function TableOverviewTab({
           <div className="p-6">
             <RunsTable runs={overview.recent_runs.map(run => ({
               run_id: run.run_id,
-              dataset_name: run.table || run.dataset_name || tableName,
-              schema_name: run.schema,
-              warehouse_type: run.warehouse,
-              profiled_at: run.started_at,
+              dataset_name: run.dataset_name || tableName,
+              schema_name: run.schema_name,
+              warehouse_type: run.warehouse_type,
+              profiled_at: run.profiled_at,
               status: run.status,
-              row_count: run.rows_profiled,
-              column_count: run.metrics_count,
-              has_drift: false
+              row_count: run.row_count,
+              column_count: run.column_count,
+              has_drift: run.has_drift || false
             }))} />
           </div>
         </div>

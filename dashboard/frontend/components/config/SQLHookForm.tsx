@@ -135,7 +135,7 @@ export function SQLHookForm({
               <ConnectionForm
                 connection={hook.connection || { type: 'postgres', database: '' }}
                 onChange={(conn) => updateField('connection', conn)}
-                errors={errors.connection as Record<string, string> | undefined}
+                errors={typeof errors.connection === 'object' && errors.connection !== null ? errors.connection as Record<string, string> : undefined}
               />
               <div className="mt-4">
                 <Button
@@ -155,7 +155,7 @@ export function SQLHookForm({
       <FormField
         label="Table Name"
         error={errors.table_name}
-        helpText="Table name for storing events"
+        helperText="Table name for storing events"
       >
         <Input
           type="text"

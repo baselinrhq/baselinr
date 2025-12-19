@@ -131,9 +131,7 @@ function validateRuleValue(
     }
     // For other rules, null might be acceptable depending on column nullable status
     // For now, we'll pass null values for non-not_null rules
-    if (rule.type !== 'not_null') {
-      return { passed: true }
-    }
+    return { passed: true }
   }
 
   switch (rule.type) {

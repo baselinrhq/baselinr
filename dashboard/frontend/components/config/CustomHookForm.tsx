@@ -41,7 +41,7 @@ export function CustomHookForm({
         label="Module Path"
         required
         error={errors.module}
-        helpText="Python module path (e.g., mypackage.hooks)"
+        helperText="Python module path (e.g., mypackage.hooks)"
       >
         <Input
           type="text"
@@ -55,7 +55,7 @@ export function CustomHookForm({
         label="Class Name"
         required
         error={errors.class_name}
-        helpText="Hook class name"
+        helperText="Hook class name"
       >
         <Input
           type="text"
@@ -68,7 +68,7 @@ export function CustomHookForm({
       <FormField
         label="Parameters (JSON)"
         error={errors.params}
-        helpText="Additional parameters as JSON object"
+        helperText="Additional parameters as JSON object"
       >
         <textarea
           className="w-full min-h-[120px] px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"

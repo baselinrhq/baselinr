@@ -28,8 +28,8 @@ export function DatasetDriftSection({ config, onChange }: DatasetDriftSectionPro
       <FormField label="Strategy">
         <Select
           value={drift.strategy || ''}
-          onChange={(e) => {
-            const strategy = e.target.value as 'absolute_threshold' | 'standard_deviation' | 'statistical' | ''
+          onChange={(value) => {
+            const strategy = value as 'absolute_threshold' | 'standard_deviation' | 'statistical' | ''
             handleChange({ strategy: strategy || null })
           }}
           options={[

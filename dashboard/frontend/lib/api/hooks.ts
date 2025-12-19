@@ -9,8 +9,9 @@ import {
   HookTestResponse,
 } from '@/types/hook'
 import { HookConfig } from '@/types/config'
+import { getApiUrl } from '../demo-mode'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_URL = getApiUrl()
 
 /**
  * Custom error class for hook API errors

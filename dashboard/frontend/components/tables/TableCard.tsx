@@ -139,26 +139,27 @@ export default function TableCard({ table }: TableCardProps) {
 
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-surface-700/50">
-          <Button
-            variant="primary"
-            size="sm"
-            asChild
+          <Link 
+            href={`/tables/${encodeURIComponent(table.table_name)}${table.schema_name ? `?schema=${encodeURIComponent(table.schema_name)}` : ''}`}
             className="flex-1"
           >
-            <Link href={`/tables/${encodeURIComponent(table.table_name)}${table.schema_name ? `?schema=${encodeURIComponent(table.schema_name)}` : ''}`}>
-              <Eye className="w-4 h-4 mr-2" />
+            <Button
+              variant="primary"
+              size="sm"
+              className="w-full"
+              icon={<Eye className="w-4 h-4" />}
+              iconPosition="left"
+            >
               View Details
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <Link href={`/config/tables?table=${encodeURIComponent(table.table_name)}`}>
-              <Settings className="w-4 h-4" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
+          <Link href={`/config/tables?table=${encodeURIComponent(table.table_name)}`}>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Settings className="w-4 h-4" />}
+            />
+          </Link>
         </div>
       </div>
     </div>

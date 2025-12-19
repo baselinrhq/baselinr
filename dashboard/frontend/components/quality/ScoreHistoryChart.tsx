@@ -50,7 +50,7 @@ export default function ScoreHistoryChart({
     .slice()
     .reverse()
     .map((score) => ({
-      date: formatDate(score.calculated_at, 'short'),
+      date: formatDate(score.calculated_at, { month: 'short', day: 'numeric', year: 'numeric' }),
       timestamp: new Date(score.calculated_at).getTime(),
       overall: score.overall_score,
       completeness: score.components.completeness,

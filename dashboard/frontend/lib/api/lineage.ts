@@ -10,8 +10,9 @@ import {
   LineageImpactResponse,
   LineageFilters,
 } from '@/types/lineage';
+import { getApiUrl } from '../demo-mode';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 export interface GetLineageGraphParams {
   table: string;

@@ -37,11 +37,11 @@ const severityOptions = [
   { value: 'high', label: 'High' },
 ]
 
-const filterPresets = [
+const filterPresets: Array<{ id: string; label: string; filters: Partial<LineageFiltersType> }> = [
   { id: 'high-confidence', label: 'High Confidence Only', filters: { confidence_min: 0.8 } },
   { id: 'drift-affected', label: 'Drift Affected', filters: { has_drift: true } },
   { id: 'dbt-only', label: 'dbt Only', filters: { providers: ['dbt_manifest'] } },
-  { id: 'tables-only', label: 'Tables Only', filters: { node_type: 'table' } },
+  { id: 'tables-only', label: 'Tables Only', filters: { node_type: 'table' as const } },
 ]
 
 export default function LineageFilters({
@@ -72,7 +72,7 @@ export default function LineageFilters({
     onChange({
       ...filters,
       ...preset.filters,
-    })
+    } as LineageFiltersType)
     if (onPreset) {
       onPreset(preset.id)
     }

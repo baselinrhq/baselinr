@@ -89,9 +89,9 @@ export function ConfigRollback({
                 <span className="font-medium text-slate-300">Created by:</span> <span className="text-white">{versionData.created_by}</span>
               </div>
             )}
-            {versionData.comment && (
+            {versionData.description && (
               <div>
-                <span className="font-medium text-slate-300">Original comment:</span> <span className="text-white">{versionData.comment}</span>
+                <span className="font-medium text-slate-300">Description:</span> <span className="text-white">{versionData.description}</span>
               </div>
             )}
           </div>
