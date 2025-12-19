@@ -34,6 +34,12 @@ export async function onRequestGet(request: Request): Promise<Response> {
     return jsonResponse(metrics);
   } catch (error) {
     console.error('Error in /api/dashboard/metrics:', error);
-    return errorResponse(error instanceof Error ? error.message : 'Internal server error', 500);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Full error details:', {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      requestUrl: request.url,
+    });
+    return errorResponse(`Error: ${errorMessage}`, 500);
   }
 }

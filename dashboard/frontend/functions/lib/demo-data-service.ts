@@ -56,29 +56,29 @@ class DemoDataService {
     try {
       // Validate baseUrl
       if (!baseUrl || typeof baseUrl !== 'string') {
-        throw new Error(`Invalid baseUrl: ${baseUrl}`);
+        throw new Error(`Invalid baseUrl type: ${typeof baseUrl}, value: ${baseUrl}`);
       }
 
       // Validate that baseUrl is a valid URL
+      let validatedBaseUrl: URL;
       try {
-        new URL(baseUrl);
+        validatedBaseUrl = new URL(baseUrl);
       } catch (urlError) {
-        throw new Error(`Invalid URL string: ${baseUrl}`);
+        const errorMsg = urlError instanceof Error ? urlError.message : String(urlError);
+        throw new Error(`Invalid URL string: "${baseUrl}". Error: ${errorMsg}`);
       }
 
       // Helper function to safely construct and fetch JSON URLs
       const fetchJson = async (path: string, defaultValue: any = []) => {
         try {
-          // Ensure baseUrl doesn't end with slash and path doesn't start with slash
-          const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-          const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-          const fullUrl = `${cleanBaseUrl}/${cleanPath}`;
-          
-          // Validate URL before fetching
+          // Construct full URL using URL constructor to ensure it's valid
+          let fullUrl: string;
           try {
-            new URL(fullUrl);
+            // Use URL constructor to properly join baseUrl and path
+            const url = new URL(path, validatedBaseUrl.toString());
+            fullUrl = url.toString();
           } catch (urlError) {
-            console.error(`Invalid URL constructed: ${fullUrl}`, urlError);
+            console.error(`Error constructing URL for ${path} with base ${validatedBaseUrl}:`, urlError);
             return defaultValue;
           }
 

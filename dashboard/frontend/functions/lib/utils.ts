@@ -7,18 +7,40 @@
  */
 export function getDemoDataBaseUrl(request: Request): string {
   try {
-    if (!request || !request.url) {
-      throw new Error('Invalid request object');
+    if (!request) {
+      throw new Error('Request object is null or undefined');
     }
-    const url = new URL(request.url);
+    if (!request.url) {
+      throw new Error('Request URL is missing');
+    }
+
+    // Log for debugging
+    console.log('Request URL:', request.url);
+
+    let url: URL;
+    try {
+      url = new URL(request.url);
+    } catch (urlError) {
+      const urlErrorMsg = urlError instanceof Error ? urlError.message : String(urlError);
+      throw new Error(`Invalid request.url: "${request.url}". Error: ${urlErrorMsg}`);
+    }
+
     const origin = url.origin;
-    if (!origin) {
-      throw new Error('Could not determine origin from request URL');
+    if (!origin || origin === 'null' || origin === 'undefined') {
+      throw new Error(`Could not determine origin from request URL: ${request.url}. Origin: ${origin}`);
     }
-    return `${origin}/demo_data`;
+
+    const baseUrl = `${origin}/demo_data`;
+    console.log('Constructed baseUrl:', baseUrl);
+    return baseUrl;
   } catch (error) {
-    console.error('Error constructing demo data base URL:', error);
-    throw new Error(`Failed to construct demo data base URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error('Error constructing demo data base URL:', {
+      error: errorMsg,
+      requestUrl: request?.url,
+      requestType: typeof request,
+    });
+    throw new Error(`Failed to construct demo data base URL: ${errorMsg}`);
   }
 }
 
