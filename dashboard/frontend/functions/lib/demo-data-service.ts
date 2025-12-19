@@ -71,7 +71,9 @@ class DemoDataService {
         validatedBaseUrl = new URL(baseUrl);
       } catch (urlError) {
         const errorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-        throw new Error(`Invalid URL string: "${baseUrl}". URL constructor error: ${errorMsg}`);
+        // Include baseUrl in error for debugging, but safely escape it
+        const safeBaseUrl = baseUrl.replace(/"/g, '\\"');
+        throw new Error(`Invalid URL: baseUrl="${safeBaseUrl}", error="${errorMsg}"`);
       }
 
       // Helper function to safely construct and fetch JSON URLs
