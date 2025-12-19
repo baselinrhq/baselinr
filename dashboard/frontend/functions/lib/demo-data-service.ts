@@ -55,8 +55,14 @@ class DemoDataService {
   private async _loadDataInternal(baseUrl: string): Promise<void> {
     try {
       // Validate baseUrl
-      if (!baseUrl || typeof baseUrl !== 'string') {
-        throw new Error(`Invalid baseUrl type: ${typeof baseUrl}, value: ${baseUrl}`);
+      if (baseUrl === undefined || baseUrl === null) {
+        throw new Error(`baseUrl is ${baseUrl === undefined ? 'undefined' : 'null'}`);
+      }
+      if (typeof baseUrl !== 'string') {
+        throw new Error(`Invalid baseUrl type: ${typeof baseUrl}, value: ${JSON.stringify(baseUrl)}`);
+      }
+      if (baseUrl.trim() === '') {
+        throw new Error('baseUrl is an empty string');
       }
 
       // Validate that baseUrl is a valid URL
@@ -65,7 +71,7 @@ class DemoDataService {
         validatedBaseUrl = new URL(baseUrl);
       } catch (urlError) {
         const errorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-        throw new Error(`Invalid URL string: "${baseUrl}". Error: ${errorMsg}`);
+        throw new Error(`Invalid URL string: "${baseUrl}". URL constructor error: ${errorMsg}`);
       }
 
       // Helper function to safely construct and fetch JSON URLs

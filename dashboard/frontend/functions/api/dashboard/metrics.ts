@@ -26,8 +26,22 @@ export async function onRequestGet(request: Request): Promise<Response> {
     }
 
     const service = getDemoDataService();
-    const baseUrl = getDemoDataBaseUrl(request);
-    await service.loadData(baseUrl);
+    let baseUrl: string;
+    try {
+      baseUrl = getDemoDataBaseUrl(request);
+    } catch (baseUrlError) {
+      const errorMsg = baseUrlError instanceof Error ? baseUrlError.message : String(baseUrlError);
+      console.error('Failed to get baseUrl:', errorMsg);
+      return errorResponse(`Failed to construct base URL: ${errorMsg}`, 500);
+    }
+    
+    try {
+      await service.loadData(baseUrl);
+    } catch (loadError) {
+      const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
+      console.error('Failed to load demo data:', errorMsg, 'baseUrl was:', baseUrl);
+      return errorResponse(`Failed to load demo data: ${errorMsg}`, 500);
+    }
 
     const metrics = await service.getDashboardMetrics(filters);
 
