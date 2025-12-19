@@ -6,9 +6,20 @@
  * Get the base URL for demo data files
  */
 export function getDemoDataBaseUrl(request: Request): string {
-  const url = new URL(request.url);
-  const origin = url.origin;
-  return `${origin}/demo_data`;
+  try {
+    if (!request || !request.url) {
+      throw new Error('Invalid request object');
+    }
+    const url = new URL(request.url);
+    const origin = url.origin;
+    if (!origin) {
+      throw new Error('Could not determine origin from request URL');
+    }
+    return `${origin}/demo_data`;
+  } catch (error) {
+    console.error('Error constructing demo data base URL:', error);
+    throw new Error(`Failed to construct demo data base URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }
 
 /**

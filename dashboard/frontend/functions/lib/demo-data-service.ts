@@ -54,14 +54,54 @@ class DemoDataService {
 
   private async _loadDataInternal(baseUrl: string): Promise<void> {
     try {
+      // Validate baseUrl
+      if (!baseUrl || typeof baseUrl !== 'string') {
+        throw new Error(`Invalid baseUrl: ${baseUrl}`);
+      }
+
+      // Validate that baseUrl is a valid URL
+      try {
+        new URL(baseUrl);
+      } catch (urlError) {
+        throw new Error(`Invalid URL string: ${baseUrl}`);
+      }
+
+      // Helper function to safely construct and fetch JSON URLs
+      const fetchJson = async (path: string, defaultValue: any = []) => {
+        try {
+          // Ensure baseUrl doesn't end with slash and path doesn't start with slash
+          const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+          const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+          const fullUrl = `${cleanBaseUrl}/${cleanPath}`;
+          
+          // Validate URL before fetching
+          try {
+            new URL(fullUrl);
+          } catch (urlError) {
+            console.error(`Invalid URL constructed: ${fullUrl}`, urlError);
+            return defaultValue;
+          }
+
+          const response = await fetch(fullUrl);
+          if (!response.ok) {
+            console.warn(`Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
+            return defaultValue;
+          }
+          return await response.json();
+        } catch (error) {
+          console.error(`Error fetching ${path}:`, error);
+          return defaultValue;
+        }
+      };
+
       // Load all JSON files in parallel
       const [runsData, metricsData, driftData, tablesData, validationData, metadataData] = await Promise.all([
-        fetch(`${baseUrl}/runs.json`).then(r => r.json()).catch(() => []),
-        fetch(`${baseUrl}/metrics.json`).then(r => r.json()).catch(() => []),
-        fetch(`${baseUrl}/drift_events.json`).then(r => r.json()).catch(() => []),
-        fetch(`${baseUrl}/tables.json`).then(r => r.json()).catch(() => []),
-        fetch(`${baseUrl}/validation_results.json`).then(r => r.json()).catch(() => []),
-        fetch(`${baseUrl}/metadata.json`).then(r => r.json()).catch(() => null),
+        fetchJson('runs.json', []),
+        fetchJson('metrics.json', []),
+        fetchJson('drift_events.json', []),
+        fetchJson('tables.json', []),
+        fetchJson('validation_results.json', []),
+        fetchJson('metadata.json', null),
       ]);
 
       this.runs = Array.isArray(runsData) ? runsData : [];
