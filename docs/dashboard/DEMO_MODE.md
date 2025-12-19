@@ -219,7 +219,7 @@ python generate_demo_data.py
 
 ### Performance Issues
 
-Demo mode should be very fast (<5ms). If slow:
+Demo mode should be very fast (&lt;5ms). If slow:
 - Check if files are on slow storage
 - Verify JSON files aren't corrupted
 - Try regenerating demo data

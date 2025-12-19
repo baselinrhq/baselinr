@@ -159,7 +159,7 @@ python benchmark_demo_service.py
 
 - [x] Implemented `DemoDataService` class (18 methods)
 - [x] Comprehensive unit tests (40+ tests)
-- [x] Performance benchmarks (<5ms queries)
+- [x] Performance benchmarks (&lt;5ms queries)
 - [x] API documentation complete
 
 ### Phase 3: Backend Integration ✓
