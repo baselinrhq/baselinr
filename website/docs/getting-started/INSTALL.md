@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Before installing Baselinr, ensure you have:
+Before installing Baselinr, ensure you have: 
 
 - **Python 3.10 or higher**
   ```bash
