@@ -1,10 +1,20 @@
+import { Suspense } from 'react'
 import QualityScoreDetailClient from './QualityScoreDetailClient'
 
+// Allow dynamic params for static export (client-side rendering)
+export const dynamicParams = true
+
 // Required for static export with dynamic routes
-export async function generateStaticParams() {
-  return []
+// Return a placeholder to satisfy static export requirements
+// Actual pages will be rendered client-side on-demand
+export async function generateStaticParams(): Promise<Array<{ tableName: string }>> {
+  return [{ tableName: '__placeholder__' }]
 }
 
 export default function QualityScoreDetailPage() {
-  return <QualityScoreDetailClient />
+  return (
+    <Suspense fallback={<div className="p-6"><div className="text-sm text-slate-400">Loading...</div></div>}>
+      <QualityScoreDetailClient />
+    </Suspense>
+  )
 }

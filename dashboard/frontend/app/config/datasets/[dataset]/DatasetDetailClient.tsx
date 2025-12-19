@@ -17,8 +17,17 @@ export default function DatasetDetailClient() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['dataset', datasetId],
     queryFn: () => getDataset(datasetId),
-    enabled: !!datasetId,
+    enabled: !!datasetId && datasetId !== '__placeholder__',
   })
+
+  // Handle placeholder route used for static export
+  if (datasetId === '__placeholder__') {
+    return (
+      <div className="p-6">
+        <div className="text-sm text-slate-400">Loading...</div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

@@ -52,7 +52,17 @@ export default function TableMetricsClient() {
       console.log(`[Quality Score] Retrying (attempt ${failureCount + 1})`)
       return failureCount < 2
     },
+    enabled: tableName !== '__placeholder__',
   })
+
+  // Handle placeholder route used for static export
+  if (tableName === '__placeholder__') {
+    return (
+      <div className="p-6">
+        <div className="text-sm text-slate-400">Loading...</div>
+      </div>
+    )
+  }
 
   const tabs = [
     {

@@ -27,40 +27,51 @@ export default function QualityScoreDetailClient() {
   const schema = searchParams.get('schema') || undefined
   const tableName = params?.tableName ? decodeURIComponent(String(params.tableName)) : ''
 
+  const isPlaceholder = tableName === '__placeholder__'
+
   // Fetch table score
   const { data: score, isLoading: scoreLoading } = useQuery<QualityScore>({
     queryKey: ['table-score', tableName, schema],
     queryFn: () => fetchTableScore(tableName, schema),
-    enabled: !!tableName,
+    enabled: !!tableName && !isPlaceholder,
   })
 
   // Fetch score history
   const { data: history, isLoading: historyLoading } = useQuery({
     queryKey: ['score-history', tableName, schema],
     queryFn: () => fetchScoreHistory(tableName, schema, 90),
-    enabled: !!tableName,
+    enabled: !!tableName && !isPlaceholder,
   })
 
   // Fetch column scores
   const { data: columnScores, isLoading: columnsLoading } = useQuery({
     queryKey: ['column-scores', tableName, schema],
     queryFn: () => fetchColumnScores(tableName, schema, 30),
-    enabled: !!tableName,
+    enabled: !!tableName && !isPlaceholder,
   })
 
   // Fetch score trend
   const { data: trend, isLoading: trendLoading } = useQuery<TrendAnalysis>({
     queryKey: ['score-trend', tableName, schema],
     queryFn: () => fetchScoreTrend(tableName, schema),
-    enabled: !!tableName,
+    enabled: !!tableName && !isPlaceholder,
   })
 
   const isLoading = scoreLoading || historyLoading || columnsLoading || trendLoading
 
   const sortedColumns = useMemo(() => {
-    if (!columnScores) return []
-    return [...columnScores].sort((a, b) => a.score - b.score)
+    if (!columnScores || !columnScores.scores || !Array.isArray(columnScores.scores)) return []
+    return [...columnScores.scores].sort((a, b) => a.overall_score - b.overall_score)
   }, [columnScores])
+
+  // Handle placeholder route used for static export
+  if (isPlaceholder) {
+    return (
+      <div className="p-6">
+        <div className="text-sm text-slate-400">Loading...</div>
+      </div>
+    )
+  }
 
   if (!tableName) {
     return (
@@ -125,10 +136,10 @@ export default function QualityScoreDetailClient() {
             )}
           </h1>
         </div>
-        {trend && (
+        {trend && score && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-slate-400">Trend:</span>
-            <ScoreBadge score={score.score} />
+            <ScoreBadge score={score.overall_score} status={score.status} />
           </div>
         )}
       </div>
@@ -158,7 +169,7 @@ export default function QualityScoreDetailClient() {
             <CardTitle>Dimension Breakdown</CardTitle>
           </CardHeader>
           <CardBody>
-            <ScoreRadarChart score={score} />
+            {score?.components && <ScoreRadarChart currentScore={score.components} />}
           </CardBody>
         </Card>
       </div>
@@ -177,12 +188,14 @@ export default function QualityScoreDetailClient() {
                   {trend.direction}
                 </Badge>
                 <span className="text-sm text-slate-400">Change:</span>
-                <Badge variant={trend.change > 0 ? 'success' : 'error'}>
-                  {trend.change > 0 ? '+' : ''}{trend.change.toFixed(1)}%
+                <Badge variant={trend.overall_change > 0 ? 'success' : 'error'}>
+                  {trend.overall_change > 0 ? '+' : ''}{trend.overall_change.toFixed(1)}%
                 </Badge>
               </div>
-              {trend.summary && (
-                <p className="text-sm text-slate-300">{trend.summary}</p>
+              {trend.periods_analyzed && (
+                <p className="text-sm text-slate-300">
+                  Analyzed {trend.periods_analyzed} period{trend.periods_analyzed !== 1 ? 's' : ''} with {trend.confidence.toFixed(1)}% confidence
+                </p>
               )}
             </div>
           </CardBody>
@@ -198,11 +211,11 @@ export default function QualityScoreDetailClient() {
           <CardBody>
             <div className="space-y-3">
               {sortedColumns.slice(0, 10).map((col) => (
-                <div key={col.column} className="flex items-center justify-between p-3 bg-surface-800/40 rounded-lg">
+                <div key={col.column_name} className="flex items-center justify-between p-3 bg-surface-800/40 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">{col.column}</span>
-                      <ScoreBadge score={col.score} />
+                      <span className="font-medium text-white">{col.column_name}</span>
+                      <ScoreBadge score={col.overall_score} status={col.status} />
                     </div>
                     {col.issues && col.issues.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
