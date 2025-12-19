@@ -23,15 +23,17 @@ describe('StatisticalStrategyConfig', () => {
   it('renders sensitivity selector', () => {
     render(<StatisticalStrategyConfig {...defaultProps} />)
     
-    expect(screen.getByText(/sensitivity/i)).toBeInTheDocument()
+    // Use getAllByText since "Sensitivity" may appear multiple times (label, etc.)
+    expect(screen.getAllByText(/sensitivity/i).length).toBeGreaterThan(0)
   })
 
   it('renders test checkboxes', () => {
     render(<StatisticalStrategyConfig {...defaultProps} />)
     
-    expect(screen.getByText(/kolmogorov-smirnov test/i)).toBeInTheDocument()
-    expect(screen.getByText(/population stability index/i)).toBeInTheDocument()
-    expect(screen.getByText(/chi-square test/i)).toBeInTheDocument()
+    // Use getAllByText since text may appear multiple times (label, description, etc.)
+    expect(screen.getAllByText(/kolmogorov-smirnov test/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/population stability index/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/chi-square test/i).length).toBeGreaterThan(0)
   })
 
   it('shows test parameters for selected tests', () => {

@@ -32,7 +32,7 @@ describe('ConfigRollback', () => {
     },
     created_at: new Date().toISOString(),
     created_by: 'user1',
-    comment: 'Test version',
+    description: 'Test version',
   }
 
   const mockOnConfirm = vi.fn().mockResolvedValue(undefined)
