@@ -21,7 +21,13 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/getting-started/QUICKSTART">
+            href="https://demo.baselinr.io">
+            🎮 Try Demo
+          </Link>
+          <Link
+            className="button button--outline button--secondary button--lg"
+            to="/docs/getting-started/QUICKSTART"
+            style={{marginLeft: '1rem'}}>
             Get Started - 5min ⏱️
           </Link>
           <Link
@@ -60,7 +66,13 @@ export default function Home(): ReactNode {
             <div className={styles.buttons}>
               <Link
                 className="button button--secondary button--lg"
-                to="/docs/getting-started/QUICKSTART">
+                href="https://demo.baselinr.io">
+                🎮 Try Quality Studio Demo
+              </Link>
+              <Link
+                className="button button--outline button--secondary button--lg"
+                to="/docs/getting-started/QUICKSTART"
+                style={{marginLeft: '1rem'}}>
                 View Full Documentation
               </Link>
               <Link
