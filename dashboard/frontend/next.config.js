@@ -10,8 +10,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   webpack: (config) => {
-    // Ensure @ alias works in all environments (supplements tsconfig.json)
-    // Properly merge to avoid conflicts with Next.js internal aliases
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname, './'),

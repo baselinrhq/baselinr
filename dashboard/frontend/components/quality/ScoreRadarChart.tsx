@@ -38,20 +38,6 @@ export default function ScoreRadarChart({
   className,
   title = 'Component Breakdown',
 }: ScoreRadarChartProps) {
-  // Handle undefined currentScore gracefully
-  if (!currentScore) {
-    return (
-      <Card variant="glass" className={cn('bg-surface-900/30', className)}>
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white">{title}</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <p className="text-slate-400 text-sm">No component data available</p>
-        </CardBody>
-      </Card>
-    )
-  }
-
   // Prepare data for radar chart
   const chartData = componentOrder.map((key) => {
     const dataPoint: {

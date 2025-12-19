@@ -23,10 +23,6 @@ export default function ScoreBadge({
   showTooltip = false,
   className,
 }: ScoreBadgeProps) {
-  // Handle undefined/null score gracefully
-  if (score == null || isNaN(score)) {
-    return null
-  }
   const formattedScore = score.toFixed(1)
 
   const badge = (
