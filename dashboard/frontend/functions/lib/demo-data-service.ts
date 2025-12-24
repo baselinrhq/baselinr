@@ -68,12 +68,22 @@ class DemoDataService {
       // Validate that baseUrl is a valid URL
       let validatedBaseUrl: URL;
       try {
+        // Log for debugging
+        console.log('[DEBUG] Attempting to create URL from baseUrl:', {
+          baseUrl,
+          baseUrlType: typeof baseUrl,
+          baseUrlLength: baseUrl.length,
+          firstChar: baseUrl[0],
+          lastChar: baseUrl[baseUrl.length - 1],
+        });
         validatedBaseUrl = new URL(baseUrl);
       } catch (urlError) {
         const errorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-        // Include baseUrl in error for debugging, but safely escape it
-        const safeBaseUrl = baseUrl.replace(/"/g, '\\"');
-        throw new Error(`Invalid URL: baseUrl="${safeBaseUrl}", error="${errorMsg}"`);
+        const errorName = urlError instanceof Error ? urlError.name : 'Unknown';
+        // Create detailed error message
+        const detailedError = `URL_CONSTRUCTOR_FAILED: baseUrl="${baseUrl}", type=${typeof baseUrl}, length=${baseUrl.length}, error="${errorName}: ${errorMsg}"`;
+        console.error('[ERROR]', detailedError);
+        throw new Error(detailedError);
       }
 
       // Helper function to safely construct and fetch JSON URLs

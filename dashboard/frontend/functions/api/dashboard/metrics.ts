@@ -37,10 +37,14 @@ export async function onRequestGet(request: Request): Promise<Response> {
     }
     
     try {
+      console.log('[DEBUG] About to call loadData with baseUrl:', baseUrl);
       await service.loadData(baseUrl);
+      console.log('[DEBUG] loadData completed successfully');
     } catch (loadError) {
       const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
-      return errorResponse(`LOAD_DATA_ERROR: ${errorMsg}`, 500);
+      const errorStack = loadError instanceof Error ? loadError.stack : undefined;
+      console.error('[ERROR] loadData failed:', { errorMsg, errorStack, baseUrl });
+      return errorResponse(`LOAD_DATA_ERROR: ${errorMsg}${errorStack ? '. Stack: ' + errorStack.substring(0, 200) : ''}`, 500);
     }
 
     const metrics = await service.getDashboardMetrics(filters);
