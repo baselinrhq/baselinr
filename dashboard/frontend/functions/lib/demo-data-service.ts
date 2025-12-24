@@ -35,6 +35,8 @@ class DemoDataService {
   public tables: any[] = [];
   public validationResults: any[] = [];
   public metadataData: any = null;
+  public tableQualityScores: any[] = [];
+  public columnQualityScores: any[] = [];
 
   /**
    * Load demo data from JSON files
@@ -124,13 +126,15 @@ class DemoDataService {
       };
 
       // Load all JSON files in parallel
-      const [runsData, metricsData, driftData, tablesData, validationData, metadataData] = await Promise.all([
+      const [runsData, metricsData, driftData, tablesData, validationData, metadataData, tableQualityScoresData, columnQualityScoresData] = await Promise.all([
         fetchJson('runs.json', []),
         fetchJson('metrics.json', []),
         fetchJson('drift_events.json', []),
         fetchJson('tables.json', []),
         fetchJson('validation_results.json', []),
         fetchJson('metadata.json', null),
+        fetchJson('table_quality_scores.json', []),
+        fetchJson('column_quality_scores.json', []),
       ]);
 
       this.runs = Array.isArray(runsData) ? runsData : [];
@@ -139,9 +143,11 @@ class DemoDataService {
       this.tables = Array.isArray(tablesData) ? tablesData : [];
       this.validationResults = Array.isArray(validationData) ? validationData : [];
       this.metadataData = metadataData;
+      this.tableQualityScores = Array.isArray(tableQualityScoresData) ? tableQualityScoresData : [];
+      this.columnQualityScores = Array.isArray(columnQualityScoresData) ? columnQualityScoresData : [];
       this.dataLoaded = true;
       
-      console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations`);
+      console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations, ${this.tableQualityScores.length} table quality scores, ${this.columnQualityScores.length} column quality scores`);
     } catch (error) {
       console.error('Error loading demo data:', error);
       // Initialize with empty arrays if loading fails
@@ -151,6 +157,8 @@ class DemoDataService {
       this.tables = [];
       this.validationResults = [];
       this.metadataData = null;
+      this.tableQualityScores = [];
+      this.columnQualityScores = [];
       throw error;
     }
   }
@@ -745,6 +753,225 @@ class DemoDataService {
       ...event,
       run,
     };
+  }
+
+  /**
+   * Get quality scores list
+   */
+  getQualityScores(filters: { schema?: string; status?: string }): any {
+    let scores = this.tableQualityScores;
+
+    // Get latest score for each table
+    const latestScoresMap = new Map<string, any>();
+    scores.forEach(score => {
+      const key = `${score.schema_name || ''}.${score.table_name}`;
+      const existing = latestScoresMap.get(key);
+      if (!existing || new Date(score.calculated_at) > new Date(existing.calculated_at)) {
+        latestScoresMap.set(key, score);
+      }
+    });
+
+    let filtered = Array.from(latestScoresMap.values());
+
+    if (filters.schema) {
+      filtered = filtered.filter(s => s.schema_name === filters.schema);
+    }
+    if (filters.status) {
+      filtered = filtered.filter(s => s.status === filters.status);
+    }
+
+    // Transform to match QualityScore type
+    return filtered.map(score => ({
+      table_name: score.table_name,
+      schema_name: score.schema_name,
+      overall_score: score.overall_score,
+      status: score.status,
+      components: {
+        completeness: score.completeness_score,
+        validity: score.validity_score,
+        consistency: score.consistency_score,
+        freshness: score.freshness_score,
+        uniqueness: score.uniqueness_score,
+        accuracy: score.accuracy_score,
+      },
+      issues: {
+        total: score.total_issues || 0,
+        critical: score.critical_issues || 0,
+        warnings: score.warnings || 0,
+      },
+      calculated_at: score.calculated_at,
+      run_id: score.run_id || null,
+    }));
+  }
+
+  /**
+   * Get quality score for a specific table
+   */
+  getTableQualityScore(tableName: string, schema?: string): any {
+    let scores = this.tableQualityScores.filter(s => s.table_name === tableName);
+    if (schema) {
+      scores = scores.filter(s => s.schema_name === schema);
+    }
+
+    if (scores.length === 0) {
+      return null;
+    }
+
+    // Get latest score
+    const latest = scores.sort((a, b) => 
+      new Date(b.calculated_at).getTime() - new Date(a.calculated_at).getTime()
+    )[0];
+
+    return {
+      table_name: latest.table_name,
+      schema_name: latest.schema_name,
+      overall_score: latest.overall_score,
+      status: latest.status,
+      components: {
+        completeness: latest.completeness_score,
+        validity: latest.validity_score,
+        consistency: latest.consistency_score,
+        freshness: latest.freshness_score,
+        uniqueness: latest.uniqueness_score,
+        accuracy: latest.accuracy_score,
+      },
+      issues: {
+        total: latest.total_issues || 0,
+        critical: latest.critical_issues || 0,
+        warnings: latest.warnings || 0,
+      },
+      calculated_at: latest.calculated_at,
+      run_id: latest.run_id || null,
+    };
+  }
+
+  /**
+   * Get quality score history for a table
+   */
+  getTableQualityScoreHistory(tableName: string, schema?: string, days?: number): any[] {
+    let scores = this.tableQualityScores.filter(s => s.table_name === tableName);
+    if (schema) {
+      scores = scores.filter(s => s.schema_name === schema);
+    }
+
+    // Filter by date if days specified
+    if (days) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      scores = scores.filter(s => new Date(s.calculated_at) >= cutoffDate);
+    }
+
+    // Sort by date descending
+    scores.sort((a, b) => new Date(b.calculated_at).getTime() - new Date(a.calculated_at).getTime());
+
+    return scores.map(score => ({
+      table_name: score.table_name,
+      schema_name: score.schema_name,
+      overall_score: score.overall_score,
+      status: score.status,
+      components: {
+        completeness: score.completeness_score,
+        validity: score.validity_score,
+        consistency: score.consistency_score,
+        freshness: score.freshness_score,
+        uniqueness: score.uniqueness_score,
+        accuracy: score.accuracy_score,
+      },
+      issues: {
+        total: score.total_issues || 0,
+        critical: score.critical_issues || 0,
+        warnings: score.warnings || 0,
+      },
+      calculated_at: score.calculated_at,
+      run_id: score.run_id || null,
+    }));
+  }
+
+  /**
+   * Get system quality score
+   */
+  getSystemQualityScore(): any {
+    // Get latest score for each table
+    const latestScoresMap = new Map<string, any>();
+    this.tableQualityScores.forEach(score => {
+      const key = `${score.schema_name || ''}.${score.table_name}`;
+      const existing = latestScoresMap.get(key);
+      if (!existing || new Date(score.calculated_at) > new Date(existing.calculated_at)) {
+        latestScoresMap.set(key, score);
+      }
+    });
+
+    const scores = Array.from(latestScoresMap.values());
+    if (scores.length === 0) {
+      return {
+        overall_score: 85,
+        status: 'healthy',
+        total_tables: 0,
+        healthy_count: 0,
+        warning_count: 0,
+        critical_count: 0,
+      };
+    }
+
+    const avgScore = scores.reduce((sum, s) => sum + s.overall_score, 0) / scores.length;
+    const healthy = scores.filter(s => s.status === 'healthy').length;
+    const warning = scores.filter(s => s.status === 'warning').length;
+    const critical = scores.filter(s => s.status === 'critical').length;
+
+    return {
+      overall_score: Math.round(avgScore * 100) / 100,
+      status: avgScore >= 80 ? 'healthy' : avgScore >= 60 ? 'warning' : 'critical',
+      total_tables: scores.length,
+      healthy_count: healthy,
+      warning_count: warning,
+      critical_count: critical,
+    };
+  }
+
+  /**
+   * Get column quality scores for a table
+   */
+  getColumnQualityScores(tableName: string, schema?: string, days?: number): any[] {
+    let scores = this.columnQualityScores.filter(s => s.table_name === tableName);
+    if (schema) {
+      scores = scores.filter(s => s.schema_name === schema);
+    }
+
+    if (days) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      scores = scores.filter(s => new Date(s.calculated_at) >= cutoffDate);
+    }
+
+    // Get latest score for each column
+    const latestScoresMap = new Map<string, any>();
+    scores.forEach(score => {
+      const key = score.column_name;
+      const existing = latestScoresMap.get(key);
+      if (!existing || new Date(score.calculated_at) > new Date(existing.calculated_at)) {
+        latestScoresMap.set(key, score);
+      }
+    });
+
+    return Array.from(latestScoresMap.values()).map(score => ({
+      table_name: score.table_name,
+      schema_name: score.schema_name,
+      column_name: score.column_name,
+      overall_score: score.overall_score,
+      status: score.status,
+      components: {
+        completeness: score.completeness_score,
+        validity: score.validity_score,
+        consistency: score.consistency_score,
+        freshness: score.freshness_score || 0,
+        uniqueness: score.uniqueness_score,
+        accuracy: score.accuracy_score || 0,
+      },
+      calculated_at: score.calculated_at,
+      run_id: score.run_id || null,
+      period_start: score.period_start,
+      period_end: score.period_end,
+    }));
   }
 }
 
