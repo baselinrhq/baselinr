@@ -6,9 +6,15 @@
 import { getDemoDataService } from '../../lib/demo-data-service';
 import { getDemoDataBaseUrl, parseQueryParams, jsonResponse, errorResponse, parseDate, parseIntSafe } from '../../lib/utils';
 
-export async function onRequestGet(request: Request): Promise<Response> {
+export async function onRequestGet(context: any): Promise<Response> {
+  // Handle both context.request and direct request parameter
+  const request = context?.request || context;
 
   try {
+    if (!request || !request.url) {
+      return errorResponse('Request URL is missing', 500);
+    }
+    
     const url = new URL(request.url);
     const params = parseQueryParams(url);
 
@@ -56,7 +62,7 @@ export async function onRequestGet(request: Request): Promise<Response> {
     console.error('Full error details:', {
       message: errorMessage,
       stack: error instanceof Error ? error.stack : undefined,
-      requestUrl: request.url,
+      requestUrl: request?.url,
     });
     return errorResponse(`Error: ${errorMessage}`, 500);
   }

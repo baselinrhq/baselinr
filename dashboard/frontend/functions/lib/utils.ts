@@ -5,8 +5,11 @@
 /**
  * Get the base URL for demo data files
  */
-export function getDemoDataBaseUrl(request: Request): string {
+export function getDemoDataBaseUrl(requestOrContext: Request | any): string {
   try {
+    // Handle both direct Request object and context object
+    const request = requestOrContext?.request || requestOrContext;
+    
     if (!request) {
       throw new Error('Request object is null or undefined');
     }
@@ -14,17 +17,23 @@ export function getDemoDataBaseUrl(request: Request): string {
     let requestUrl: string | undefined = request.url;
     
     // Fallback: construct URL from headers if request.url is undefined
-    if (!requestUrl) {
-      const host = request.headers.get('host');
-      const protocol = request.headers.get('x-forwarded-proto') || 'https';
-      const path = request.headers.get('x-forwarded-uri') || '';
-      
-      if (host) {
-        requestUrl = `${protocol}://${host}${path}`;
-        console.log('Constructed URL from headers:', requestUrl);
-      } else {
-        throw new Error('Cannot determine URL: request.url is undefined and headers are missing');
+    if (!requestUrl && request.headers) {
+      try {
+        const host = request.headers.get('host');
+        const protocol = request.headers.get('x-forwarded-proto') || 'https';
+        const path = request.headers.get('x-forwarded-uri') || '';
+        
+        if (host) {
+          requestUrl = `${protocol}://${host}${path}`;
+          console.log('Constructed URL from headers:', requestUrl);
+        }
+      } catch (headerError) {
+        console.error('Error reading headers:', headerError);
       }
+    }
+    
+    if (!requestUrl) {
+      throw new Error('Cannot determine URL: request.url is undefined and cannot construct from headers');
     }
 
     let url: URL;
@@ -49,7 +58,7 @@ export function getDemoDataBaseUrl(request: Request): string {
       error: errorMsg,
       requestUrl: request?.url,
       requestType: typeof request,
-      headers: request ? Object.fromEntries(request.headers.entries()) : 'no request',
+      hasHeaders: !!request?.headers,
     });
     throw new Error(`Failed to construct demo data base URL: ${errorMsg}`);
   }

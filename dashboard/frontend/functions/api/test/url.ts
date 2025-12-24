@@ -4,26 +4,48 @@
 
 import { jsonResponse, errorResponse } from '../../lib/utils';
 
-export async function onRequestGet(request: Request): Promise<Response> {
+export async function onRequestGet(context: any): Promise<Response> {
   try {
+    // Handle both context.request and direct request parameter
+    const request = context?.request || context;
+    
     const diagnostics: any = {
+      hasContext: !!context,
+      contextType: typeof context,
       hasRequest: !!request,
       requestType: typeof request,
       requestUrl: request?.url || 'MISSING',
       requestUrlType: typeof request?.url,
-      headers: request ? Object.fromEntries(request.headers.entries()) : 'no request',
+      hasHeaders: !!request?.headers,
+      headersType: typeof request?.headers,
+      contextKeys: context ? Object.keys(context) : [],
     };
+
+    // Safely get headers
+    if (request?.headers) {
+      try {
+        diagnostics.headers = Object.fromEntries(request.headers.entries());
+      } catch (headerError) {
+        diagnostics.headersError = headerError instanceof Error ? headerError.message : String(headerError);
+      }
+    } else {
+      diagnostics.headers = 'headers not available';
+    }
 
     // Try to get URL from request.url or construct from headers
     let requestUrl: string | undefined = request?.url;
-    if (!requestUrl) {
-      const host = request?.headers.get('host');
-      const protocol = request?.headers.get('x-forwarded-proto') || 'https';
-      const path = request?.headers.get('x-forwarded-uri') || '';
-      if (host) {
-        requestUrl = `${protocol}://${host}${path}`;
-        diagnostics.constructedFromHeaders = true;
-        diagnostics.constructedUrl = requestUrl;
+    if (!requestUrl && request?.headers) {
+      try {
+        const host = request.headers.get('host');
+        const protocol = request.headers.get('x-forwarded-proto') || 'https';
+        const path = request.headers.get('x-forwarded-uri') || '';
+        if (host) {
+          requestUrl = `${protocol}://${host}${path}`;
+          diagnostics.constructedFromHeaders = true;
+          diagnostics.constructedUrl = requestUrl;
+        }
+      } catch (headerAccessError) {
+        diagnostics.headerAccessError = headerAccessError instanceof Error ? headerAccessError.message : String(headerAccessError);
       }
     }
 
