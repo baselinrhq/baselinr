@@ -10,24 +10,34 @@ export function getDemoDataBaseUrl(request: Request): string {
     if (!request) {
       throw new Error('Request object is null or undefined');
     }
-    if (!request.url) {
-      throw new Error('Request URL is missing');
-    }
 
-    // Log for debugging
-    console.log('Request URL:', request.url);
+    let requestUrl: string | undefined = request.url;
+    
+    // Fallback: construct URL from headers if request.url is undefined
+    if (!requestUrl) {
+      const host = request.headers.get('host');
+      const protocol = request.headers.get('x-forwarded-proto') || 'https';
+      const path = request.headers.get('x-forwarded-uri') || '';
+      
+      if (host) {
+        requestUrl = `${protocol}://${host}${path}`;
+        console.log('Constructed URL from headers:', requestUrl);
+      } else {
+        throw new Error('Cannot determine URL: request.url is undefined and headers are missing');
+      }
+    }
 
     let url: URL;
     try {
-      url = new URL(request.url);
+      url = new URL(requestUrl);
     } catch (urlError) {
       const urlErrorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-      throw new Error(`Invalid request.url: "${request.url}". Error: ${urlErrorMsg}`);
+      throw new Error(`Invalid request URL: "${requestUrl}". Error: ${urlErrorMsg}`);
     }
 
     const origin = url.origin;
     if (!origin || origin === 'null' || origin === 'undefined') {
-      throw new Error(`Could not determine origin from request URL: ${request.url}. Origin: ${origin}`);
+      throw new Error(`Could not determine origin from request URL: ${requestUrl}. Origin: ${origin}`);
     }
 
     const baseUrl = `${origin}/demo_data`;
@@ -39,6 +49,7 @@ export function getDemoDataBaseUrl(request: Request): string {
       error: errorMsg,
       requestUrl: request?.url,
       requestType: typeof request,
+      headers: request ? Object.fromEntries(request.headers.entries()) : 'no request',
     });
     throw new Error(`Failed to construct demo data base URL: ${errorMsg}`);
   }
