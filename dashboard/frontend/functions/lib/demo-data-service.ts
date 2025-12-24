@@ -95,19 +95,30 @@ class DemoDataService {
             // Use URL constructor to properly join baseUrl and path
             const url = new URL(path, validatedBaseUrl.toString());
             fullUrl = url.toString();
+            console.log(`[DEBUG] Fetching ${path} from ${fullUrl}`);
           } catch (urlError) {
             console.error(`Error constructing URL for ${path} with base ${validatedBaseUrl}:`, urlError);
             return defaultValue;
           }
 
           const response = await fetch(fullUrl);
+          console.log(`[DEBUG] Response for ${path}:`, response.status, response.statusText);
           if (!response.ok) {
-            console.warn(`Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
+            console.error(`Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
+            // Try to get response text for debugging
+            try {
+              const text = await response.text();
+              console.error(`Response body: ${text.substring(0, 200)}`);
+            } catch (e) {
+              // Ignore
+            }
             return defaultValue;
           }
-          return await response.json();
+          const data = await response.json();
+          console.log(`[DEBUG] Loaded ${path}:`, Array.isArray(data) ? `${data.length} items` : 'object');
+          return data;
         } catch (error) {
-          console.error(`Error fetching ${path}:`, error);
+          console.error(`Error fetching ${path} from ${validatedBaseUrl}/${path}:`, error);
           return defaultValue;
         }
       };
@@ -129,6 +140,8 @@ class DemoDataService {
       this.validationResults = Array.isArray(validationData) ? validationData : [];
       this.metadataData = metadataData;
       this.dataLoaded = true;
+      
+      console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations`);
     } catch (error) {
       console.error('Error loading demo data:', error);
       // Initialize with empty arrays if loading fails

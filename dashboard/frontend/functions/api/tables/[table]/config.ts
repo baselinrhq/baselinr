@@ -4,10 +4,14 @@
  */
 
 import { parseQueryParams, jsonResponse, errorResponse } from '../../../lib/utils';
+import { getRequest } from '../../../lib/context';
 
-export async function onRequestGet(request: Request): Promise<Response> {
-
+export async function onRequestGet(context: any): Promise<Response> {
   try {
+    const request = getRequest(context);
+    if (!request?.url) {
+      return errorResponse('Request URL is missing', 500);
+    }
     const url = new URL(request.url);
     const params = parseQueryParams(url);
 

@@ -5,10 +5,14 @@
 
 import { getDemoDataService } from '../../lib/demo-data-service';
 import { getDemoDataBaseUrl, jsonResponse, errorResponse } from '../../lib/utils';
+import { getRequest } from '../../lib/context';
 
-export async function onRequestGet(request: Request): Promise<Response> {
-
+export async function onRequestGet(context: any): Promise<Response> {
   try {
+    const request = getRequest(context);
+    if (!request?.url) {
+      return errorResponse('Request URL is missing', 500);
+    }
     // Extract runId from URL path: /api/runs/{runId}
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/').filter(p => p);

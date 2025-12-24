@@ -5,10 +5,11 @@
 
 import { getDemoDataService } from '../lib/demo-data-service';
 import { getDemoDataBaseUrl, jsonResponse, errorResponse } from '../lib/utils';
+import { getRequest } from '../lib/context';
 
-export async function onRequestGet(request: Request): Promise<Response> {
-
+export async function onRequestGet(context: any): Promise<Response> {
   try {
+    const request = getRequest(context);
     const service = getDemoDataService();
     const baseUrl = getDemoDataBaseUrl(request);
     await service.loadData(baseUrl);
