@@ -1,0 +1,31 @@
+{
+  "generated_at": "2025-12-17T02:22:45.172579+00:00",
+  "generator_version": "1.1.0",
+  "statistics": {
+    "total_runs": 120,
+    "total_metrics": 617,
+    "total_drift_events": 58,
+    "total_tables": 95,
+    "total_validation_results": 178,
+    "total_lineage_nodes": 16,
+    "total_lineage_edges": 14,
+    "total_table_quality_scores": 272,
+    "total_column_quality_scores": 1631
+  },
+  "date_range": {
+    "earliest": "2025-10-17T21:22:45.027577+00:00",
+    "latest": "2025-12-17T01:22:45.028578+00:00"
+  },
+  "warehouses": [
+    "bigquery",
+    "redshift",
+    "snowflake",
+    "postgres"
+  ],
+  "schemas": [
+    "analytics",
+    "staging",
+    "raw",
+    "production"
+  ]
+}

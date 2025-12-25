@@ -72,6 +72,9 @@ dagster_home/
 !package-lock.json
 !package.json
 !.eslintrc.json
+# Allow demo data JSON files (needed for Cloudflare Pages deployment)
+!dashboard/backend/demo_data/*.json
+!dashboard/frontend/public/demo_data/*.json
 results/
 output/
 recommendations.yaml
