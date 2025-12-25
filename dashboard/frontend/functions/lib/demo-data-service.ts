@@ -94,17 +94,22 @@ class DemoDataService {
       // The files should be in /demo_data/ but may need special handling
       const fetchJson = async (path: string, defaultValue: any = []) => {
         try {
-          // Construct URL - try different approaches
+          // Construct URL - baseUrl is already a validated URL object
+          // baseUrl should be like "https://example.com/demo_data"
+          // path should be like "runs.json"
+          // Result: "https://example.com/demo_data/runs.json"
           let fullUrl: string;
           
-          // First, try constructing the URL
           try {
-            // Use the baseUrl which should be the origin
-            const url = new URL(path, validatedBaseUrl.toString());
+            // Ensure path doesn't start with / (it shouldn't)
+            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+            // Use validatedBaseUrl as the base - it's already a URL object
+            const url = new URL(cleanPath, validatedBaseUrl);
             fullUrl = url.toString();
             console.log(`[DEBUG] Fetching ${path} from ${fullUrl}`);
           } catch (urlError) {
-            console.error(`Error constructing URL for ${path}:`, urlError);
+            const urlErrorMsg = urlError instanceof Error ? urlError.message : String(urlError);
+            console.error(`Error constructing URL for ${path} with base ${validatedBaseUrl.toString()}:`, urlErrorMsg);
             return defaultValue;
           }
 

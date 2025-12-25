@@ -14,39 +14,66 @@ export function getDemoDataBaseUrl(requestOrContext: Request | any): string {
       throw new Error('Request object is null or undefined');
     }
 
-    let requestUrl: string | undefined = request.url;
+    let origin: string | undefined;
     
-    // Fallback: construct URL from headers if request.url is undefined
-    if (!requestUrl && request.headers) {
+    // Try method 1: Use request.url if it's a valid absolute URL
+    let requestUrl: string | undefined = request.url;
+    if (requestUrl) {
+      try {
+        // Only use request.url if it's an absolute URL (starts with http:// or https://)
+        if (requestUrl.startsWith('http://') || requestUrl.startsWith('https://')) {
+          const url = new URL(requestUrl);
+          origin = url.origin;
+          console.log('Got origin from request.url:', origin);
+        } else {
+          // request.url is relative, ignore it and try other methods
+          console.log('request.url is relative, ignoring:', requestUrl);
+          requestUrl = undefined;
+        }
+      } catch (urlError) {
+        // request.url is invalid, ignore it
+        console.log('request.url is invalid, ignoring:', requestUrl, urlError);
+        requestUrl = undefined;
+      }
+    }
+    
+    // Try method 2: Construct from headers if we don't have an origin yet
+    if (!origin && request.headers) {
       try {
         const host = request.headers.get('host');
-        const protocol = request.headers.get('x-forwarded-proto') || 'https';
-        const path = request.headers.get('x-forwarded-uri') || '';
+        const protocol = request.headers.get('x-forwarded-proto') || 
+                        request.headers.get('cf-visitor')?.includes('https') ? 'https' : 'https';
         
         if (host) {
-          requestUrl = `${protocol}://${host}${path}`;
-          console.log('Constructed URL from headers:', requestUrl);
+          origin = `${protocol}://${host}`;
+          console.log('Constructed origin from headers:', origin);
         }
       } catch (headerError) {
         console.error('Error reading headers:', headerError);
       }
     }
     
-    if (!requestUrl) {
-      throw new Error('Cannot determine URL: request.url is undefined and cannot construct from headers');
+    // Try method 3: Use Cloudflare environment variable (if available)
+    if (!origin && typeof process !== 'undefined' && (process as any).env) {
+      const cfPagesUrl = (process as any).env.CF_PAGES_URL;
+      if (cfPagesUrl) {
+        try {
+          const url = new URL(cfPagesUrl);
+          origin = url.origin;
+          console.log('Got origin from CF_PAGES_URL:', origin);
+        } catch (envUrlError) {
+          console.error('Error parsing CF_PAGES_URL:', envUrlError);
+        }
+      }
+    }
+    
+    if (!origin) {
+      throw new Error('Cannot determine origin: request.url is invalid/relative, headers unavailable, and CF_PAGES_URL not set');
     }
 
-    let url: URL;
-    try {
-      url = new URL(requestUrl);
-    } catch (urlError) {
-      const urlErrorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-      throw new Error(`Invalid request URL: "${requestUrl}". Error: ${urlErrorMsg}`);
-    }
-
-    const origin = url.origin;
-    if (!origin || origin === 'null' || origin === 'undefined') {
-      throw new Error(`Could not determine origin from request URL: ${requestUrl}. Origin: ${origin}`);
+    // Validate origin
+    if (origin === 'null' || origin === 'undefined' || !origin.startsWith('http')) {
+      throw new Error(`Invalid origin: "${origin}"`);
     }
 
     const baseUrl = `${origin}/demo_data`;
@@ -56,9 +83,9 @@ export function getDemoDataBaseUrl(requestOrContext: Request | any): string {
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error('Error constructing demo data base URL:', {
       error: errorMsg,
-      requestUrl: request?.url,
-      requestType: typeof request,
-      hasHeaders: !!request?.headers,
+      requestUrl: requestOrContext?.url || requestOrContext?.request?.url,
+      requestType: typeof requestOrContext,
+      hasHeaders: !!requestOrContext?.headers || !!requestOrContext?.request?.headers,
     });
     throw new Error(`Failed to construct demo data base URL: ${errorMsg}`);
   }
