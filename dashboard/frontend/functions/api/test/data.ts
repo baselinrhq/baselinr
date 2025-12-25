@@ -18,7 +18,17 @@ export async function onRequestGet(context: any): Promise<Response> {
     };
 
     // Test fetching each file
-    const files = ['runs.json', 'metrics.json', 'tables.json', 'drift_events.json', 'validation_results.json', 'metadata.json'];
+    const files = [
+      'runs.json', 
+      'metrics.json', 
+      'tables.json', 
+      'drift_events.json', 
+      'validation_results.json', 
+      'metadata.json',
+      'table_quality_scores.json',
+      'column_quality_scores.json',
+      'lineage.json'
+    ];
     
     for (const file of files) {
       const fullUrl = `${baseUrl}/${file}`;

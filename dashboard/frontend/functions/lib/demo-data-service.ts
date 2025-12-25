@@ -43,8 +43,17 @@ class DemoDataService {
    * Load demo data from JSON files
    */
   async loadData(baseUrl: string): Promise<void> {
+    // If already loaded, check if data is actually present
+    // (in case of previous failed load that set dataLoaded=true with empty arrays)
     if (this.dataLoaded) {
-      return;
+      // If critical data arrays are empty, force a reload
+      if (this.runs.length === 0 && this.tables.length === 0) {
+        console.warn('[WARNING] dataLoaded=true but arrays are empty, forcing reload');
+        this.dataLoaded = false;
+        this.loadPromise = null;
+      } else {
+        return;
+      }
     }
 
     if (this.loadPromise) {
@@ -128,13 +137,24 @@ class DemoDataService {
           if (!response.ok) {
             // If we get 404, the file might not be accessible as static asset
             // This is expected in Cloudflare Pages if routing isn't configured correctly
-            console.error(`Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
-            console.error(`Note: Static files may not be accessible. Consider using /api/demo/data endpoint instead.`);
+            console.error(`[ERROR] Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
+            console.error(`[ERROR] Note: Static files may not be accessible. Consider using /api/demo/data endpoint instead.`);
             return defaultValue;
           }
           
+          const contentType = response.headers.get('content-type');
+          console.log(`[DEBUG] Content-Type for ${path}:`, contentType);
+          
           const data = await response.json();
-          console.log(`[DEBUG] Loaded ${path}:`, Array.isArray(data) ? `${data.length} items` : 'object');
+          const dataLength = Array.isArray(data) ? data.length : (typeof data === 'object' && data !== null ? Object.keys(data).length : 'scalar');
+          const sampleSize = Array.isArray(data) && data.length > 0 ? JSON.stringify(data[0]).substring(0, 100) : (typeof data === 'object' && data !== null ? Object.keys(data).slice(0, 5).join(', ') : String(data).substring(0, 100));
+          console.log(`[DEBUG] Loaded ${path}: type=${Array.isArray(data) ? 'array' : typeof data}, length=${dataLength}, sample=${sampleSize}`);
+          
+          // Warn if we got an empty array when we expected data
+          if (Array.isArray(data) && data.length === 0 && defaultValue !== null) {
+            console.warn(`[WARNING] ${path} returned empty array (expected non-empty)`);
+          }
+          
           return data;
         } catch (error) {
           console.error(`Error fetching ${path} from ${validatedBaseUrl}/${path}:`, error);
@@ -164,9 +184,15 @@ class DemoDataService {
       this.tableQualityScores = Array.isArray(tableQualityScoresData) ? tableQualityScoresData : [];
       this.columnQualityScores = Array.isArray(columnQualityScoresData) ? columnQualityScoresData : [];
       this.lineage = lineageData;
-      this.dataLoaded = true;
       
       console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations, ${this.tableQualityScores.length} table quality scores, ${this.columnQualityScores.length} column quality scores, lineage: ${this.lineage ? 'loaded' : 'none'}`);
+      
+      // Warn if critical data arrays are empty (shouldn't happen if files are accessible)
+      if (this.runs.length === 0 && this.tables.length === 0) {
+        console.warn('[WARNING] Critical data arrays (runs, tables) are empty after load. Files may not be accessible or may be empty.');
+      }
+      
+      this.dataLoaded = true;
     } catch (error) {
       console.error('Error loading demo data:', error);
       // Initialize with empty arrays if loading fails

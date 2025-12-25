@@ -46,6 +46,13 @@ export async function onRequestGet(context: any): Promise<Response> {
       console.log('[DEBUG] About to call loadData with baseUrl:', baseUrl);
       await service.loadData(baseUrl);
       console.log('[DEBUG] loadData completed successfully');
+      
+      // Verify data was actually loaded
+      console.log(`[DEBUG] Data verification: ${service.runs.length} runs, ${service.tables.length} tables, ${service.metrics.length} metrics`);
+      if (service.runs.length === 0 && service.tables.length === 0) {
+        console.warn('[WARNING] Data arrays are empty after loadData. This may indicate fetch failures.');
+        // Don't fail here - let the metrics calculation show zeros, but log the warning
+      }
     } catch (loadError) {
       const errorMsg = loadError instanceof Error ? loadError.message : String(loadError);
       const errorStack = loadError instanceof Error ? loadError.stack : undefined;
