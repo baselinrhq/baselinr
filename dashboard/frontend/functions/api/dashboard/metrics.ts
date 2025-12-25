@@ -60,9 +60,20 @@ export async function onRequestGet(context: any): Promise<Response> {
       return errorResponse(`LOAD_DATA_ERROR: ${errorMsg}${errorStack ? '. Stack: ' + errorStack.substring(0, 200) : ''}`, 500);
     }
 
+    // Add diagnostic info to response temporarily
     const metrics = await service.getDashboardMetrics(filters);
-
-    return jsonResponse(metrics);
+    const diagnosticInfo = {
+      runCount: service.runs.length,
+      tableCount: service.tables.length,
+      metricsCount: service.metrics.length,
+      driftEventsCount: service.driftEvents.length,
+    };
+    
+    // Include diagnostics in response for debugging
+    return jsonResponse({
+      ...metrics,
+      _diagnostics: diagnosticInfo, // Temporary - remove after debugging
+    });
   } catch (error) {
     console.error('Error in /api/dashboard/metrics:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
