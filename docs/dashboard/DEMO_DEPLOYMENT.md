@@ -331,7 +331,7 @@ The demo will be a fully functional version of the Quality Studio that runs enti
    - Graceful error messages
    - Fallback UI states
    - Loading states
-
+ 
 ### Deliverables
 
 - ✅ Fully tested demo

@@ -1,0 +1,342 @@
+{
+  "nodes": [
+    {
+      "id": "analytics.customers",
+      "type": "table",
+      "label": "analytics.customers",
+      "schema": "analytics",
+      "table": "customers",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "snowflake",
+        "row_count": 650469,
+        "column_count": 8
+      }
+    },
+    {
+      "id": "analytics.logistics",
+      "type": "table",
+      "label": "analytics.logistics",
+      "schema": "analytics",
+      "table": "logistics",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 383950,
+        "column_count": 0
+      }
+    },
+    {
+      "id": "analytics.orders",
+      "type": "table",
+      "label": "analytics.orders",
+      "schema": "analytics",
+      "table": "orders",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 472709,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "analytics.products",
+      "type": "table",
+      "label": "analytics.products",
+      "schema": "analytics",
+      "table": "products",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 720925,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "analytics.sales",
+      "type": "table",
+      "label": "analytics.sales",
+      "schema": "analytics",
+      "table": "sales",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 654721,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "production.invoices",
+      "type": "table",
+      "label": "production.invoices",
+      "schema": "production",
+      "table": "invoices",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "snowflake",
+        "row_count": 850238,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "raw.customers",
+      "type": "table",
+      "label": "raw.customers",
+      "schema": "raw",
+      "table": "customers",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "snowflake",
+        "row_count": 611211,
+        "column_count": 8
+      }
+    },
+    {
+      "id": "raw.orders",
+      "type": "table",
+      "label": "raw.orders",
+      "schema": "raw",
+      "table": "orders",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "redshift",
+        "row_count": 227994,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "raw.products",
+      "type": "table",
+      "label": "raw.products",
+      "schema": "raw",
+      "table": "products",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 311887,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "raw.transactions",
+      "type": "table",
+      "label": "raw.transactions",
+      "schema": "raw",
+      "table": "transactions",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "snowflake",
+        "row_count": 625513,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "staging.customers",
+      "type": "table",
+      "label": "staging.customers",
+      "schema": "staging",
+      "table": "customers",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 746317,
+        "column_count": 8
+      }
+    },
+    {
+      "id": "staging.orders",
+      "type": "table",
+      "label": "staging.orders",
+      "schema": "staging",
+      "table": "orders",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "bigquery",
+        "row_count": 774923,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "staging.payments",
+      "type": "table",
+      "label": "staging.payments",
+      "schema": "staging",
+      "table": "payments",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "redshift",
+        "row_count": 950408,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "staging.products",
+      "type": "table",
+      "label": "staging.products",
+      "schema": "staging",
+      "table": "products",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 807319,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "staging.shipments",
+      "type": "table",
+      "label": "staging.shipments",
+      "schema": "staging",
+      "table": "shipments",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "snowflake",
+        "row_count": 626801,
+        "column_count": 6
+      }
+    },
+    {
+      "id": "staging.transactions",
+      "type": "table",
+      "label": "staging.transactions",
+      "schema": "staging",
+      "table": "transactions",
+      "database": null,
+      "metadata": {
+        "warehouse_type": "postgres",
+        "row_count": 966469,
+        "column_count": 6
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "raw.customers",
+      "target": "staging.customers",
+      "relationship_type": "derives_from",
+      "confidence": 0.94,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "raw.orders",
+      "target": "staging.orders",
+      "relationship_type": "derives_from",
+      "confidence": 0.93,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "raw.products",
+      "target": "staging.products",
+      "relationship_type": "derives_from",
+      "confidence": 0.9,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "raw.transactions",
+      "target": "staging.transactions",
+      "relationship_type": "derives_from",
+      "confidence": 0.93,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.customers",
+      "target": "analytics.customers",
+      "relationship_type": "derives_from",
+      "confidence": 0.86,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.orders",
+      "target": "analytics.orders",
+      "relationship_type": "derives_from",
+      "confidence": 0.88,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.products",
+      "target": "analytics.products",
+      "relationship_type": "derives_from",
+      "confidence": 0.91,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.orders",
+      "target": "analytics.sales",
+      "relationship_type": "derives_from",
+      "confidence": 0.89,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.products",
+      "target": "analytics.sales",
+      "relationship_type": "derives_from",
+      "confidence": 0.97,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.orders",
+      "target": "production.invoices",
+      "relationship_type": "derives_from",
+      "confidence": 0.99,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.customers",
+      "target": "production.invoices",
+      "relationship_type": "derives_from",
+      "confidence": 0.86,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.payments",
+      "target": "production.invoices",
+      "relationship_type": "derives_from",
+      "confidence": 0.93,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.shipments",
+      "target": "analytics.logistics",
+      "relationship_type": "derives_from",
+      "confidence": 0.96,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    },
+    {
+      "source": "staging.orders",
+      "target": "analytics.logistics",
+      "relationship_type": "derives_from",
+      "confidence": 0.86,
+      "transformation": null,
+      "provider": "manual",
+      "metadata": {}
+    }
+  ],
+  "root_id": null,
+  "direction": "both"
+}
