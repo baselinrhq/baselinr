@@ -37,6 +37,7 @@ class DemoDataService {
   public metadataData: any = null;
   public tableQualityScores: any[] = [];
   public columnQualityScores: any[] = [];
+  public lineage: any = null;
 
   /**
    * Load demo data from JSON files
@@ -88,34 +89,45 @@ class DemoDataService {
         throw new Error(detailedError);
       }
 
-      // Helper function to safely construct and fetch JSON URLs
+      // Helper function to fetch JSON files
+      // In Cloudflare Pages, we need to fetch from the same origin
+      // The files should be in /demo_data/ but may need special handling
       const fetchJson = async (path: string, defaultValue: any = []) => {
         try {
-          // Construct full URL using URL constructor to ensure it's valid
+          // Construct URL - try different approaches
           let fullUrl: string;
+          
+          // First, try constructing the URL
           try {
-            // Use URL constructor to properly join baseUrl and path
+            // Use the baseUrl which should be the origin
             const url = new URL(path, validatedBaseUrl.toString());
             fullUrl = url.toString();
             console.log(`[DEBUG] Fetching ${path} from ${fullUrl}`);
           } catch (urlError) {
-            console.error(`Error constructing URL for ${path} with base ${validatedBaseUrl}:`, urlError);
+            console.error(`Error constructing URL for ${path}:`, urlError);
             return defaultValue;
           }
 
-          const response = await fetch(fullUrl);
-          console.log(`[DEBUG] Response for ${path}:`, response.status, response.statusText);
+          // Try to fetch the file
+          const response = await fetch(fullUrl, {
+            // Add headers to help with CORS/routing
+            headers: {
+              'Accept': 'application/json',
+            },
+            // Use same-origin credentials
+            credentials: 'same-origin',
+          });
+          
+          console.log(`[DEBUG] Response for ${path}:`, response.status, response.statusText, response.url);
+          
           if (!response.ok) {
+            // If we get 404, the file might not be accessible as static asset
+            // This is expected in Cloudflare Pages if routing isn't configured correctly
             console.error(`Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
-            // Try to get response text for debugging
-            try {
-              const text = await response.text();
-              console.error(`Response body: ${text.substring(0, 200)}`);
-            } catch (e) {
-              // Ignore
-            }
+            console.error(`Note: Static files may not be accessible. Consider using /api/demo/data endpoint instead.`);
             return defaultValue;
           }
+          
           const data = await response.json();
           console.log(`[DEBUG] Loaded ${path}:`, Array.isArray(data) ? `${data.length} items` : 'object');
           return data;
@@ -126,7 +138,7 @@ class DemoDataService {
       };
 
       // Load all JSON files in parallel
-      const [runsData, metricsData, driftData, tablesData, validationData, metadataData, tableQualityScoresData, columnQualityScoresData] = await Promise.all([
+      const [runsData, metricsData, driftData, tablesData, validationData, metadataData, tableQualityScoresData, columnQualityScoresData, lineageData] = await Promise.all([
         fetchJson('runs.json', []),
         fetchJson('metrics.json', []),
         fetchJson('drift_events.json', []),
@@ -135,6 +147,7 @@ class DemoDataService {
         fetchJson('metadata.json', null),
         fetchJson('table_quality_scores.json', []),
         fetchJson('column_quality_scores.json', []),
+        fetchJson('lineage.json', null),
       ]);
 
       this.runs = Array.isArray(runsData) ? runsData : [];
@@ -145,9 +158,10 @@ class DemoDataService {
       this.metadataData = metadataData;
       this.tableQualityScores = Array.isArray(tableQualityScoresData) ? tableQualityScoresData : [];
       this.columnQualityScores = Array.isArray(columnQualityScoresData) ? columnQualityScoresData : [];
+      this.lineage = lineageData;
       this.dataLoaded = true;
       
-      console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations, ${this.tableQualityScores.length} table quality scores, ${this.columnQualityScores.length} column quality scores`);
+      console.log(`[DEBUG] Data loaded: ${this.runs.length} runs, ${this.metrics.length} metrics, ${this.driftEvents.length} drift events, ${this.tables.length} tables, ${this.validationResults.length} validations, ${this.tableQualityScores.length} table quality scores, ${this.columnQualityScores.length} column quality scores, lineage: ${this.lineage ? 'loaded' : 'none'}`);
     } catch (error) {
       console.error('Error loading demo data:', error);
       // Initialize with empty arrays if loading fails
@@ -159,6 +173,7 @@ class DemoDataService {
       this.metadataData = null;
       this.tableQualityScores = [];
       this.columnQualityScores = [];
+      this.lineage = null;
       throw error;
     }
   }

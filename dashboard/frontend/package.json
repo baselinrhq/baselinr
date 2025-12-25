@@ -10,7 +10,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "build:demo": "cross-env NEXT_PUBLIC_DEMO_MODE=true next build",
+    "build:demo": "cross-env NEXT_PUBLIC_DEMO_MODE=true next build && node scripts/copy-routes.js",
     "functions:dev": "npm run build:demo && wrangler pages dev out",
     "functions:deploy": "npm run build:demo && wrangler pages deploy out --project-name=baselinr-demo"
   },
