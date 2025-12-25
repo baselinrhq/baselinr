@@ -77,18 +77,16 @@ class DemoDataService {
         throw new Error('baseUrl is an empty string');
       }
 
-      // Validate that baseUrl is a valid URL
-      let validatedBaseUrl: URL;
+      // Validate that baseUrl is a valid URL (but keep it as a string for fetching)
       try {
         // Log for debugging
-        console.log('[DEBUG] Attempting to create URL from baseUrl:', {
+        console.log('[DEBUG] Validating baseUrl:', {
           baseUrl,
           baseUrlType: typeof baseUrl,
           baseUrlLength: baseUrl.length,
-          firstChar: baseUrl[0],
-          lastChar: baseUrl[baseUrl.length - 1],
         });
-        validatedBaseUrl = new URL(baseUrl);
+        // Validate by creating a URL object (but we'll use the string for fetching)
+        new URL(baseUrl);
       } catch (urlError) {
         const errorMsg = urlError instanceof Error ? urlError.message : String(urlError);
         const errorName = urlError instanceof Error ? urlError.name : 'Unknown';
@@ -100,37 +98,19 @@ class DemoDataService {
 
       // Helper function to fetch JSON files
       // In Cloudflare Pages, we need to fetch from the same origin
-      // The files should be in /demo_data/ but may need special handling
+      // Use string concatenation like the test endpoint (which works)
       const fetchJson = async (path: string, defaultValue: any = []) => {
         try {
-          // Construct URL - baseUrl is already a validated URL object
-          // baseUrl should be like "https://example.com/demo_data"
-          // path should be like "runs.json"
-          // Result: "https://example.com/demo_data/runs.json"
-          let fullUrl: string;
+          // Use string concatenation - baseUrl is already a string like "https://example.com/demo_data"
+          // Ensure baseUrl doesn't end with / and path doesn't start with /
+          const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+          const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+          const fullUrl = `${cleanBaseUrl}/${cleanPath}`;
           
-          try {
-            // Ensure path doesn't start with / (it shouldn't)
-            const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-            // Use validatedBaseUrl as the base - it's already a URL object
-            const url = new URL(cleanPath, validatedBaseUrl);
-            fullUrl = url.toString();
-            console.log(`[DEBUG] Fetching ${path} from ${fullUrl}`);
-          } catch (urlError) {
-            const urlErrorMsg = urlError instanceof Error ? urlError.message : String(urlError);
-            console.error(`Error constructing URL for ${path} with base ${validatedBaseUrl.toString()}:`, urlErrorMsg);
-            return defaultValue;
-          }
+          console.log(`[DEBUG] Fetching ${path} from ${fullUrl}`);
 
-          // Try to fetch the file
-          const response = await fetch(fullUrl, {
-            // Add headers to help with CORS/routing
-            headers: {
-              'Accept': 'application/json',
-            },
-            // Use same-origin credentials
-            credentials: 'same-origin',
-          });
+          // Try to fetch the file (simplified to match test endpoint)
+          const response = await fetch(fullUrl);
           
           console.log(`[DEBUG] Response for ${path}:`, response.status, response.statusText, response.url);
           
@@ -139,6 +119,8 @@ class DemoDataService {
             // This is expected in Cloudflare Pages if routing isn't configured correctly
             console.error(`[ERROR] Failed to fetch ${fullUrl}: ${response.status} ${response.statusText}`);
             console.error(`[ERROR] Note: Static files may not be accessible. Consider using /api/demo/data endpoint instead.`);
+            // Consume the response body to avoid stalled HTTP response warning
+            await response.text().catch(() => {});
             return defaultValue;
           }
           
@@ -157,7 +139,7 @@ class DemoDataService {
           
           return data;
         } catch (error) {
-          console.error(`Error fetching ${path} from ${validatedBaseUrl}/${path}:`, error);
+          console.error(`Error fetching ${path} from ${baseUrl}/${path}:`, error);
           return defaultValue;
         }
       };
