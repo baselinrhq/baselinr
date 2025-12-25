@@ -25,6 +25,18 @@ try {
 
   fs.writeFileSync(outRoutesPath, JSON.stringify(routesConfig, null, 2));
   console.log('✓ Generated _routes.json in out/_routes.json');
+
+  // Verify demo_data files were copied (Next.js should copy from public/)
+  const demoDataDir = path.join(outDir, 'demo_data');
+  if (fs.existsSync(demoDataDir)) {
+    const files = fs.readdirSync(demoDataDir);
+    console.log(`✓ Found ${files.length} demo_data files in out/demo_data/`);
+    if (files.length > 0) {
+      console.log(`  Files: ${files.slice(0, 5).join(', ')}${files.length > 5 ? '...' : ''}`);
+    }
+  } else {
+    console.warn('⚠ Warning: out/demo_data/ directory not found. Demo data files may not be accessible.');
+  }
 } catch (error) {
   console.error('Error generating _routes.json:', error);
   process.exit(1);
