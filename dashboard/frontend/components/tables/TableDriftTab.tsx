@@ -47,12 +47,14 @@ export default function TableDriftTab({
     )
   }
 
+  const driftEvents = Array.isArray(history.drift_events) ? history.drift_events : []
+
   const filteredEvents = severityFilter
-    ? history.drift_events.filter(e => e.severity === severityFilter)
-    : history.drift_events
+    ? driftEvents.filter(e => e.severity === severityFilter)
+    : driftEvents
 
   // Prepare trend data
-  const trendData = history.drift_events.reduce((acc, event) => {
+  const trendData = driftEvents.reduce((acc, event) => {
     const timestamp = event.detected_at || event.timestamp
     if (!timestamp) return acc
     const date = new Date(timestamp).toISOString().split('T')[0]
@@ -68,13 +70,13 @@ export default function TableDriftTab({
     .sort((a, b) => a.date.localeCompare(b.date))
 
   // Severity distribution
-  const severityData = Object.entries(history.summary.by_severity || {}).map(([name, value]) => ({
+  const severityData = Object.entries(history.summary?.by_severity || {}).map(([name, value]) => ({
     name: name.charAt(0).toUpperCase() + name.slice(1),
     value: value as number
   }))
 
   // Column breakdown
-  const columnData = Object.entries(history.summary.by_column || {})
+  const columnData = Object.entries(history.summary?.by_column || {})
     .map(([name, value]) => ({
       name,
       value: value as number
@@ -89,25 +91,25 @@ export default function TableDriftTab({
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Total Events</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {history.summary.total_events || history.drift_events.length}
+            {history.summary?.total_events || driftEvents.length}
           </p>
         </div>
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Recent (7 days)</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {history.summary.recent_count || 0}
+            {history.summary?.recent_count || 0}
           </p>
         </div>
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">High Severity</p>
           <p className="text-2xl font-bold text-rose-400 mt-2">
-            {history.summary.by_severity?.high || 0}
+            {history.summary?.by_severity?.high || 0}
           </p>
         </div>
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Affected Columns</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {Object.keys(history.summary.by_column || {}).length}
+            {Object.keys(history.summary?.by_column || {}).length}
           </p>
         </div>
       </div>

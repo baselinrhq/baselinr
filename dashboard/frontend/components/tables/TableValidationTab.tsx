@@ -49,7 +49,9 @@ export default function TableValidationTab({
     )
   }
 
-  const filteredResults = results.validation_results.filter(result => {
+  const validationResults = Array.isArray(results.validation_results) ? results.validation_results : []
+
+  const filteredResults = validationResults.filter(result => {
     if (ruleTypeFilter && result.rule_type !== ruleTypeFilter) return false
     if (statusFilter === 'passed' && !result.passed) return false
     if (statusFilter === 'failed' && result.passed) return false
@@ -58,15 +60,15 @@ export default function TableValidationTab({
   })
 
   const passFailData = [
-    { name: 'Passed', value: results.summary.passed || 0 },
-    { name: 'Failed', value: results.summary.failed || 0 }
+    { name: 'Passed', value: results.summary?.passed || 0 },
+    { name: 'Failed', value: results.summary?.failed || 0 }
   ]
 
-  const ruleTypeData = Object.entries(results.summary.by_rule_type || {})
+  const ruleTypeData = Object.entries(results.summary?.by_rule_type || {})
     .map(([name, value]) => ({ name, value: value as number }))
     .sort((a, b) => b.value - a.value)
 
-  const uniqueRuleTypes = Array.from(new Set(results.validation_results.map(r => r.rule_type)))
+  const uniqueRuleTypes = Array.from(new Set(validationResults.map(r => r.rule_type)))
 
   return (
     <div className="space-y-6">
@@ -75,25 +77,25 @@ export default function TableValidationTab({
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Total Rules</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {results.summary.total || results.validation_results.length}
+            {results.summary?.total || validationResults.length}
           </p>
         </div>
         <div className="glass-card p-6 border-2 border-emerald-500/30 bg-emerald-500/5">
           <p className="text-sm font-medium text-emerald-400">Passed</p>
           <p className="text-2xl font-bold text-emerald-400 mt-2">
-            {results.summary.passed || 0}
+            {results.summary?.passed || 0}
           </p>
         </div>
         <div className="glass-card p-6 border-2 border-rose-500/30 bg-rose-500/5">
           <p className="text-sm font-medium text-rose-400">Failed</p>
           <p className="text-2xl font-bold text-rose-400 mt-2">
-            {results.summary.failed || 0}
+            {results.summary?.failed || 0}
           </p>
         </div>
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Pass Rate</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {results.summary.pass_rate?.toFixed(1) || '0.0'}%
+            {results.summary?.pass_rate?.toFixed(1) || '0.0'}%
           </p>
         </div>
       </div>

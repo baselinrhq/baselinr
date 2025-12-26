@@ -66,11 +66,14 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
     )
   }
 
+  // Safe access to trending data
+  const trending = Array.isArray(summary.trending) ? summary.trending : []
+
   // Calculate trend
   const calculateTrend = (): 'up' | 'down' | 'stable' => {
-    if (summary.trending.length < 2) return 'stable'
-    const firstHalf = summary.trending.slice(0, Math.floor(summary.trending.length / 2))
-    const secondHalf = summary.trending.slice(Math.floor(summary.trending.length / 2))
+    if (trending.length < 2) return 'stable'
+    const firstHalf = trending.slice(0, Math.floor(trending.length / 2))
+    const secondHalf = trending.slice(Math.floor(trending.length / 2))
     const firstAvg = firstHalf.reduce((sum, d) => sum + d.value, 0) / firstHalf.length
     const secondAvg = secondHalf.reduce((sum, d) => sum + d.value, 0) / secondHalf.length
     if (secondAvg > firstAvg * 1.05) return 'up'
@@ -84,13 +87,13 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
 
   // Prepare pie chart data for severity
   const severityData = [
-    { name: 'Low', value: summary.by_severity.low || 0, color: SEVERITY_COLORS.low },
-    { name: 'Medium', value: summary.by_severity.medium || 0, color: SEVERITY_COLORS.medium },
-    { name: 'High', value: summary.by_severity.high || 0, color: SEVERITY_COLORS.high },
+    { name: 'Low', value: summary.by_severity?.low || 0, color: SEVERITY_COLORS.low },
+    { name: 'Medium', value: summary.by_severity?.medium || 0, color: SEVERITY_COLORS.medium },
+    { name: 'High', value: summary.by_severity?.high || 0, color: SEVERITY_COLORS.high },
   ].filter((d) => d.value > 0)
 
   // Prepare bar chart data for rule types
-  const ruleTypeData = Object.entries(summary.by_rule_type)
+  const ruleTypeData = Object.entries(summary.by_rule_type || {})
     .map(([name, value], index) => ({
       name: name.charAt(0).toUpperCase() + name.slice(1).replace('_', ' '),
       value,
@@ -99,13 +102,13 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
     .sort((a, b) => b.value - a.value)
 
   // Prepare trending chart data
-  const trendingData = summary.trending.map((t) => ({
+  const trendingData = trending.map((t) => ({
     date: new Date(t.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     passRate: Number(t.value.toFixed(2)),
   }))
 
   // Top failing tables
-  const topFailingTables = Object.entries(summary.by_table)
+  const topFailingTables = Object.entries(summary.by_table || {})
     .map(([table, count]) => ({ table, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
@@ -133,7 +136,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-400">Pass Rate</p>
-                <p className="text-3xl font-bold text-white mt-2">{summary.pass_rate.toFixed(1)}%</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.pass_rate?.toFixed(1) || '0.0'}%</p>
                 <div className="flex items-center gap-1 mt-2">
                   <TrendIcon className={`w-4 h-4 ${trendColor}`} />
                   <span className={`text-xs ${trendColor}`}>
@@ -167,7 +170,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-400">High Severity Failures</p>
-                <p className="text-3xl font-bold text-white mt-2">{summary.by_severity.high || 0}</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.by_severity?.high || 0}</p>
               </div>
               <div className="p-3 rounded-lg bg-amber-500/20 text-amber-400">
                 <AlertTriangle className="w-6 h-6" />
@@ -318,7 +321,7 @@ export default function ValidationOverview({ warehouse, days = 30 }: ValidationO
       </div>
 
       {/* Recent Validation Runs */}
-      {summary.recent_runs.length > 0 && (
+      {Array.isArray(summary.recent_runs) && summary.recent_runs.length > 0 && (
         <Card>
           <CardHeader>
             <h3 className="text-lg font-semibold text-white">Recent Validation Runs</h3>
