@@ -14,7 +14,14 @@ export async function generateStaticParams(): Promise<Array<{ tableName: string 
         const tablesData = JSON.parse(fs.readFileSync(demoDataPath, 'utf-8'))
         if (Array.isArray(tablesData)) {
           // Extract unique table names and URL-encode them
-          const tableNames = [...new Set(tablesData.map((t: any) => t.table_name).filter(Boolean))]
+          interface TableData {
+            table_name?: string
+          }
+          const tableNames = [...new Set(
+            tablesData
+              .map((t: TableData) => t.table_name)
+              .filter((name): name is string => Boolean(name))
+          )]
           return tableNames.map(tableName => ({
             tableName: encodeURIComponent(tableName)
           }))
