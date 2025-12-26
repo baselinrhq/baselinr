@@ -85,7 +85,7 @@ export default function DriftAlertsTable({ alerts, showDetails = false, onRowCli
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link 
-                    href={`/tables/${alert.table_name}`}
+                    href={`/tables/${encodeURIComponent(alert.table_name)}`}
                     className="text-sm font-medium text-accent-400 hover:text-accent-300 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >

@@ -106,7 +106,7 @@ export default function ValidationResults({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
-                    href={`/tables/${result.table_name}`}
+                    href={`/tables/${encodeURIComponent(result.table_name)}`}
                     className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
                     onClick={(e) => e.stopPropagation()}
                   >

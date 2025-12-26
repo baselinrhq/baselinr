@@ -1,13 +1,31 @@
 import { Suspense } from 'react'
 import TableMetricsClient from './TableMetricsClient'
-
-// Allow dynamic params for static export (client-side rendering)
-export const dynamicParams = true
+import fs from 'fs'
+import path from 'path'
 
 // Required for static export with dynamic routes
-// Return a placeholder to satisfy static export requirements
-// Actual pages will be rendered client-side on-demand
+// Generate params for all tables from demo data
 export async function generateStaticParams(): Promise<Array<{ tableName: string }>> {
+  // In demo mode, load table names from demo data
+  if (process.env.NEXT_PUBLIC_DEMO_MODE === 'true') {
+    try {
+      const demoDataPath = path.join(process.cwd(), 'public', 'demo_data', 'tables.json')
+      if (fs.existsSync(demoDataPath)) {
+        const tablesData = JSON.parse(fs.readFileSync(demoDataPath, 'utf-8'))
+        if (Array.isArray(tablesData)) {
+          // Extract unique table names and URL-encode them
+          const tableNames = [...new Set(tablesData.map((t: any) => t.table_name).filter(Boolean))]
+          return tableNames.map(tableName => ({
+            tableName: encodeURIComponent(tableName)
+          }))
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load table names for generateStaticParams:', error)
+    }
+  }
+  
+  // Fallback: return placeholder if demo data not available
   return [{ tableName: '__placeholder__' }]
 }
 
