@@ -3,8 +3,8 @@
  * Handles GET /api/config/history - Get configuration version history
  */
 
-import { jsonResponse, errorResponse } from '../lib/utils';
-import { getRequest } from '../lib/context';
+import { jsonResponse, errorResponse } from '../../lib/utils';
+import { getRequest } from '../../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
   try {
