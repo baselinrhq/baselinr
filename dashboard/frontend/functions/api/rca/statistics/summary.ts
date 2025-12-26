@@ -3,8 +3,8 @@
  * Handles GET /api/rca/statistics/summary - Get RCA statistics
  */
 
-import { jsonResponse, errorResponse } from '../../../lib/utils';
-import { getRequest } from '../../../lib/context';
+import { jsonResponse, errorResponse } from '../../../../lib/utils';
+import { getRequest } from '../../../../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
   try {

@@ -3,8 +3,8 @@
  * Handles GET /api/config/datasets - List all datasets
  */
 
-import { jsonResponse, errorResponse } from '../../lib/utils';
-import { getRequest } from '../../lib/context';
+import { jsonResponse, errorResponse } from '../lib/utils';
+import { getRequest } from '../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
   try {

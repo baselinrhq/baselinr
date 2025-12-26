@@ -3,8 +3,8 @@
  * Handles GET /api/rca - List RCA results
  */
 
-import { parseQueryParams, jsonResponse, errorResponse, parseIntSafe } from '../../lib/utils';
-import { getRequest } from '../../lib/context';
+import { parseQueryParams, jsonResponse, errorResponse, parseIntSafe } from '../lib/utils';
+import { getRequest } from '../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
   try {
