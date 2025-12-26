@@ -63,7 +63,7 @@ export default function FailureSamples({ resultId, isOpen, onClose }: FailureSam
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-400">Total Failures</p>
-                  <p className="text-2xl font-bold text-white mt-1">{samples.total_failures.toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-white mt-1">{samples.total_failures?.toLocaleString() || '0'}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-400">Sample Size</p>

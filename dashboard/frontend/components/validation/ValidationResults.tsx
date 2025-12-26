@@ -125,10 +125,10 @@ export default function ValidationResults({
                   {result.total_rows !== undefined && result.failed_rows !== undefined ? (
                     <span>
                       <span className={clsx('font-medium', result.failed_rows > 0 && 'text-rose-400')}>
-                        {result.failed_rows.toLocaleString()}
+                        {result.failed_rows?.toLocaleString() || '0'}
                       </span>
                       {' / '}
-                      <span className="text-slate-400">{result.total_rows.toLocaleString()}</span>
+                      <span className="text-slate-400">{result.total_rows?.toLocaleString() || '0'}</span>
                     </span>
                   ) : (
                     '-'

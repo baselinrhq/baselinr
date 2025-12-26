@@ -50,7 +50,7 @@ export default function TableOverviewTab({
         <div className="glass-card p-6">
           <p className="text-sm font-medium text-slate-400">Rows</p>
           <p className="text-2xl font-bold text-white mt-2">
-            {overview.row_count.toLocaleString()}
+            {overview.row_count?.toLocaleString() || '—'}
           </p>
         </div>
         <div className="glass-card p-6">

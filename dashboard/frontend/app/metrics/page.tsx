@@ -182,7 +182,7 @@ export default function MetricsPage() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Average Row Count</p>
-              <p className="text-2xl font-bold text-white">{Math.round(metrics.avg_row_count).toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">{metrics.avg_row_count ? Math.round(metrics.avg_row_count).toLocaleString() : '0'}</p>
               <p className="text-xs text-slate-500 mt-1">Across all tables</p>
             </div>
           </div>

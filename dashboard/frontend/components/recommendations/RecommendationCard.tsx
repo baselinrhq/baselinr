@@ -155,7 +155,7 @@ export default function RecommendationCard({
               <div>
                 <div className="text-xs text-gray-600">Row Count</div>
                 <div className="text-sm font-semibold text-gray-900">
-                  {recommendation.row_count.toLocaleString()}
+                  {recommendation.row_count?.toLocaleString() || '—'}
                 </div>
               </div>
             )}
