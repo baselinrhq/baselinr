@@ -1400,7 +1400,7 @@ class DemoDataService {
         column_recommendations: columnRecommendations,
         low_confidence_columns: [],
         query_count: runCount,
-        queries_per_day: runCount > 0 ? (runCount / 30).toFixed(1) : 0,
+        queries_per_day: runCount > 0 ? runCount / 30 : 0,
         row_count: rowCount,
         last_query_days_ago: runCount > 0 ? Math.floor(Math.random() * 7) : null,
         column_count: table.columns ? (Array.isArray(table.columns) ? table.columns.length : 0) : 0,
