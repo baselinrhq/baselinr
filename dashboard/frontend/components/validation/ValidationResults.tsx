@@ -106,7 +106,7 @@ export default function ValidationResults({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link
-                    href={`/tables/${result.table_name}`}
+                    href={`/tables/${encodeURIComponent(result.table_name)}`}
                     className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -125,10 +125,10 @@ export default function ValidationResults({
                   {result.total_rows !== undefined && result.failed_rows !== undefined ? (
                     <span>
                       <span className={clsx('font-medium', result.failed_rows > 0 && 'text-rose-400')}>
-                        {result.failed_rows.toLocaleString()}
+                        {result.failed_rows?.toLocaleString() || '0'}
                       </span>
                       {' / '}
-                      <span className="text-slate-400">{result.total_rows.toLocaleString()}</span>
+                      <span className="text-slate-400">{result.total_rows?.toLocaleString() || '0'}</span>
                     </span>
                   ) : (
                     '-'

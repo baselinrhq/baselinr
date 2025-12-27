@@ -63,7 +63,7 @@ export default function RunsTable({ runs, showPagination = false }: RunsTablePro
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Link 
-                    href={`/tables/${run.dataset_name}`}
+                    href={`/tables/${encodeURIComponent(run.dataset_name)}`}
                     className="text-sm font-medium text-accent-400 hover:text-accent-300 transition-colors"
                   >
                     {run.dataset_name}

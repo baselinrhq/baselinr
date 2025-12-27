@@ -104,7 +104,7 @@ export default function RunComparison({ comparison, onClose }: RunComparisonProp
                 <div className="text-sm text-gray-500 mb-1">Row Count Difference</div>
                 <div className={`text-2xl font-bold ${getChangeColor(comparisonData.row_count_diff)}`}>
                   {comparisonData.row_count_diff > 0 ? '+' : ''}
-                  {comparisonData.row_count_diff.toLocaleString()}
+                  {comparisonData.row_count_diff?.toLocaleString() || '—'}
                 </div>
               </div>
               <div className="border border-gray-200 rounded-lg p-4">

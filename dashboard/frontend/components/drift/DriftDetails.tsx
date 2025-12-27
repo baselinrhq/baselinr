@@ -136,7 +136,7 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                       </div>
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <Link
-                          href={`/tables/${event.table_name}`}
+                          href={`/tables/${encodeURIComponent(event.table_name)}`}
                           className="inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-800"
                         >
                           View table details
@@ -376,7 +376,7 @@ export default function DriftDetails({ eventId, isOpen, onClose }: DriftDetailsP
                                   {impact.affected_tables.map((table) => (
                                     <Link
                                       key={table}
-                                      href={`/tables/${table}`}
+                                      href={`/tables/${encodeURIComponent(table)}`}
                                       className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-800"
                                     >
                                       {table}

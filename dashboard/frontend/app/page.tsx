@@ -133,7 +133,7 @@ export default function DashboardPage() {
         />
         <KPICard
           title="Avg Rows"
-          value={metrics.avg_row_count.toLocaleString()}
+          value={metrics.avg_row_count?.toLocaleString() || '0'}
           icon={<BarChart3 className="w-6 h-6" />}
           trend="up"
           color="cyan"

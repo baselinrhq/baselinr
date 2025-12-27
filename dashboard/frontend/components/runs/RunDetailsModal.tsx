@@ -122,7 +122,7 @@ export default function RunDetailsModal({ run, isOpen, onClose }: RunDetailsModa
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Row Count</div>
-                  <div className="font-medium">{runDetails.row_count.toLocaleString()}</div>
+                  <div className="font-medium">{runDetails.row_count?.toLocaleString() || '—'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-gray-500">Column Count</div>
@@ -147,19 +147,19 @@ export default function RunDetailsModal({ run, isOpen, onClose }: RunDetailsModa
                     {column.null_count !== undefined && (
                       <div>
                         <div className="text-gray-500">Null Count</div>
-                        <div className="font-medium">{column.null_count.toLocaleString()}</div>
+                        <div className="font-medium">{column.null_count?.toLocaleString() || '0'}</div>
                       </div>
                     )}
                     {column.null_percent !== undefined && (
                       <div>
                         <div className="text-gray-500">Null %</div>
-                        <div className="font-medium">{column.null_percent.toFixed(2)}%</div>
+                        <div className="font-medium">{column.null_percent?.toFixed(2) || '0.00'}%</div>
                       </div>
                     )}
                     {column.distinct_count !== undefined && (
                       <div>
                         <div className="text-gray-500">Distinct Count</div>
-                        <div className="font-medium">{column.distinct_count.toLocaleString()}</div>
+                        <div className="font-medium">{column.distinct_count?.toLocaleString() || '0'}</div>
                       </div>
                     )}
                     {column.distinct_percent !== undefined && (

@@ -55,11 +55,14 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
     )
   }
 
+  // Safe access to trending data
+  const trending = Array.isArray(summary.trending) ? summary.trending : []
+
   // Calculate trend
   const calculateTrend = (): 'up' | 'down' | 'stable' => {
-    if (summary.trending.length < 2) return 'stable'
-    const firstHalf = summary.trending.slice(0, Math.floor(summary.trending.length / 2))
-    const secondHalf = summary.trending.slice(Math.floor(summary.trending.length / 2))
+    if (trending.length < 2) return 'stable'
+    const firstHalf = trending.slice(0, Math.floor(trending.length / 2))
+    const secondHalf = trending.slice(Math.floor(trending.length / 2))
     const firstAvg = firstHalf.reduce((sum, d) => sum + d.value, 0) / firstHalf.length
     const secondAvg = secondHalf.reduce((sum, d) => sum + d.value, 0) / secondHalf.length
     if (secondAvg > firstAvg * 1.1) return 'up'
@@ -71,13 +74,13 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
 
   // Prepare pie chart data
   const severityData = [
-    { name: 'Low', value: summary.by_severity.low || 0, color: COLORS.low },
-    { name: 'Medium', value: summary.by_severity.medium || 0, color: COLORS.medium },
-    { name: 'High', value: summary.by_severity.high || 0, color: COLORS.high },
+    { name: 'Low', value: summary.by_severity?.low || 0, color: COLORS.low },
+    { name: 'Medium', value: summary.by_severity?.medium || 0, color: COLORS.medium },
+    { name: 'High', value: summary.by_severity?.high || 0, color: COLORS.high },
   ].filter((d) => d.value > 0)
 
   // Prepare trending chart data
-  const trendingData = summary.trending.map((t) => ({
+  const trendingData = trending.map((t) => ({
     date: new Date(t.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     events: t.value,
   }))
@@ -105,7 +108,7 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-400">High Severity</p>
-                <p className="text-3xl font-bold text-white mt-2">{summary.by_severity.high || 0}</p>
+                <p className="text-3xl font-bold text-white mt-2">{summary.by_severity?.high || 0}</p>
               </div>
               <div className="p-3 rounded-lg bg-rose-500/20 text-rose-400">
                 <AlertTriangle className="w-6 h-6" />
@@ -140,7 +143,7 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-400">Affected Tables</p>
-                <p className="text-3xl font-bold text-white mt-2">{summary.top_affected_tables.length}</p>
+                <p className="text-3xl font-bold text-white mt-2">{Array.isArray(summary.top_affected_tables) ? summary.top_affected_tables.length : 0}</p>
               </div>
               <div className="p-3 rounded-lg bg-amber-500/20 text-amber-400">
                 <AlertTriangle className="w-6 h-6" />
@@ -232,7 +235,7 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
           <h3 className="text-lg font-semibold text-white">Top Affected Tables</h3>
         </CardHeader>
         <CardBody>
-          {summary.top_affected_tables.length > 0 ? (
+          {Array.isArray(summary.top_affected_tables) && summary.top_affected_tables.length > 0 ? (
             <div className="space-y-4">
               {summary.top_affected_tables.map((table, index) => (
                 <div
@@ -272,7 +275,7 @@ export default function DriftDashboard({ warehouse, days = 30 }: DriftDashboardP
           <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
         </CardHeader>
         <CardBody>
-          {summary.recent_activity.length > 0 ? (
+          {Array.isArray(summary.recent_activity) && summary.recent_activity.length > 0 ? (
             <div className="space-y-3">
               {summary.recent_activity.map((alert) => (
                 <div
