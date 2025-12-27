@@ -329,14 +329,109 @@ class DemoDataService {
    * Get validation summary
    */
   async getValidationSummary(filters: FilterOptions): Promise<any> {
-    // Basic implementation - can be enhanced
-    const passed = this.validationResults.filter(v => v.passed === true || v.status === 'pass').length;
-    const failed = this.validationResults.filter(v => v.passed === false || v.status === 'fail').length;
-    
+    let filtered = [...this.validationResults];
+
+    // Apply filters
+    if (filters.warehouse) {
+      filtered = filtered.filter(v => v.warehouse_type === filters.warehouse);
+    }
+
+    if (filters.days) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - filters.days);
+      filtered = filtered.filter(v => {
+        const validatedDate = v.validated_at || v.timestamp;
+        return validatedDate && new Date(validatedDate) >= cutoffDate;
+      });
+    }
+
+    const total = filtered.length;
+    const passed = filtered.filter(v => v.passed === true || v.status === 'pass').length;
+    const failed = filtered.filter(v => v.passed === false || v.status === 'fail').length;
+    const passRate = total > 0 ? (passed / total) * 100 : 0;
+
+    // Count by rule type
+    const byRuleType: Record<string, number> = {};
+    filtered.forEach(v => {
+      const ruleType = v.rule_type || 'unknown';
+      byRuleType[ruleType] = (byRuleType[ruleType] || 0) + 1;
+    });
+
+    // Count by severity
+    const bySeverity: Record<string, number> = { low: 0, medium: 0, high: 0 };
+    filtered.forEach(v => {
+      const severity = (v.severity || 'low').toLowerCase();
+      if (severity === 'low' || severity === 'medium' || severity === 'high') {
+        bySeverity[severity] = (bySeverity[severity] || 0) + 1;
+      }
+    });
+
+    // Count by table
+    const byTable: Record<string, number> = {};
+    filtered.forEach(v => {
+      const table = v.table_name || 'unknown';
+      byTable[table] = (byTable[table] || 0) + 1;
+    });
+
+    // Generate trending data (pass rate over time)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - (filters.days || 30));
+    const trending: Array<{ timestamp: string; value: number }> = [];
+    for (let i = 0; i < (filters.days || 30); i++) {
+      const date = new Date(thirtyDaysAgo);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayValidations = filtered.filter(v => {
+        const validatedDate = v.validated_at || v.timestamp;
+        if (!validatedDate) return false;
+        return new Date(validatedDate).toISOString().split('T')[0] === dateStr;
+      });
+      if (dayValidations.length > 0) {
+        const dayPassed = dayValidations.filter(v => v.passed === true || v.status === 'pass').length;
+        const dayPassRate = (dayPassed / dayValidations.length) * 100;
+        trending.push({ timestamp: date.toISOString(), value: dayPassRate });
+      } else {
+        // Include days with no data as well, using previous day's rate or 100
+        const prevValue = trending.length > 0 ? trending[trending.length - 1].value : 100;
+        trending.push({ timestamp: date.toISOString(), value: prevValue });
+      }
+    }
+
+    // Get recent validation runs (group by run_id)
+    const runsMap = new Map<string, any>();
+    filtered.forEach(v => {
+      const runId = v.run_id || 'unknown';
+      if (!runsMap.has(runId)) {
+        runsMap.set(runId, {
+          run_id: runId,
+          validated_at: v.validated_at || v.timestamp || new Date().toISOString(),
+          total: 0,
+          passed: 0,
+          failed: 0,
+        });
+      }
+      const run = runsMap.get(runId);
+      run.total++;
+      if (v.passed === true || v.status === 'pass') {
+        run.passed++;
+      } else {
+        run.failed++;
+      }
+    });
+    const recentRuns = Array.from(runsMap.values())
+      .sort((a, b) => new Date(b.validated_at).getTime() - new Date(a.validated_at).getTime())
+      .slice(0, 10);
+
     return {
-      total_validations: this.validationResults.length,
-      passed,
-      failed,
+      total_validations: total,
+      passed_count: passed,
+      failed_count: failed,
+      pass_rate: passRate,
+      by_rule_type: byRuleType,
+      by_severity: bySeverity,
+      by_table: byTable,
+      trending,
+      recent_runs: recentRuns,
     };
   }
 
@@ -735,33 +830,108 @@ class DemoDataService {
       filtered = filtered.filter(e => e.warehouse_type === filters.warehouse);
     }
 
-    if (filters.days) {
+    const days = filters.days || 30;
+    if (days) {
       const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - filters.days);
-      filtered = filtered.filter(e => new Date(e.timestamp) >= cutoffDate);
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      filtered = filtered.filter(e => {
+        const eventDate = e.timestamp || e.detected_at;
+        return eventDate && new Date(eventDate) >= cutoffDate;
+      });
     }
 
-    // Count by severity
-    const bySeverity: Record<string, number> = {};
+    // Count by severity (structured as {low, medium, high})
+    const bySeverity = { low: 0, medium: 0, high: 0 };
     filtered.forEach(e => {
-      const severity = e.severity || e.drift_severity || 'unknown';
-      bySeverity[severity] = (bySeverity[severity] || 0) + 1;
+      const severity = ((e.severity || e.drift_severity || 'low') as string).toLowerCase();
+      if (severity === 'low' || severity === 'medium' || severity === 'high') {
+        bySeverity[severity as 'low' | 'medium' | 'high']++;
+      }
     });
 
     // Count by warehouse
-    const byWarehouse: Record<string, number> = {};
+    const warehouseBreakdown: Record<string, number> = {};
     filtered.forEach(e => {
       const wh = e.warehouse_type || 'unknown';
-      byWarehouse[wh] = (byWarehouse[wh] || 0) + 1;
+      warehouseBreakdown[wh] = (warehouseBreakdown[wh] || 0) + 1;
     });
 
+    // Generate trending data (event count over time)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - days);
+    const trending: Array<{ timestamp: string; value: number }> = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(thirtyDaysAgo);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const count = filtered.filter(e => {
+        const eventDate = e.timestamp || e.detected_at;
+        if (!eventDate) return false;
+        return new Date(eventDate).toISOString().split('T')[0] === dateStr;
+      }).length;
+      trending.push({ timestamp: date.toISOString(), value: count });
+    }
+
+    // Top affected tables (with severity breakdown per table)
+    const tableMap = new Map<string, { low: number; medium: number; high: number; total: number }>();
+    filtered.forEach(e => {
+      const tableName = e.table_name || 'unknown';
+      if (!tableMap.has(tableName)) {
+        tableMap.set(tableName, { low: 0, medium: 0, high: 0, total: 0 });
+      }
+      const tableData = tableMap.get(tableName)!;
+      tableData.total++;
+      const severity = ((e.severity || e.drift_severity || 'low') as string).toLowerCase();
+      if (severity === 'low' || severity === 'medium' || severity === 'high') {
+        tableData[severity as 'low' | 'medium' | 'high']++;
+      }
+    });
+
+    const topAffectedTables = Array.from(tableMap.entries())
+      .map(([table_name, counts]) => ({
+        table_name,
+        drift_count: counts.total,
+        severity_breakdown: {
+          low: counts.low,
+          medium: counts.medium,
+          high: counts.high,
+        },
+      }))
+      .sort((a, b) => b.drift_count - a.drift_count)
+      .slice(0, 10);
+
+    // Recent activity (most recent drift events)
+    const recentActivity = filtered
+      .sort((a, b) => {
+        const aTime = new Date(a.timestamp || a.detected_at || 0).getTime();
+        const bTime = new Date(b.timestamp || b.detected_at || 0).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, 10)
+      .map(e => ({
+        event_id: e.event_id || e.alert_id || '',
+        run_id: e.run_id || '',
+        table_name: e.table_name || '',
+        column_name: e.column_name || null,
+        metric_name: e.metric_name || '',
+        baseline_value: e.baseline_value || null,
+        current_value: e.current_value || null,
+        change_percent: e.change_percent || e.change_percentage || null,
+        severity: (e.severity || e.drift_severity || 'low') as 'low' | 'medium' | 'high',
+        timestamp: e.timestamp || e.detected_at || new Date().toISOString(),
+        detected_at: e.detected_at || e.timestamp,
+        warehouse_type: e.warehouse_type || '',
+        warehouse: e.warehouse || e.warehouse_type,
+        schema: e.schema || e.schema_name,
+      }));
+
     return {
-      total: filtered.length,
+      total_events: filtered.length,
       by_severity: bySeverity,
-      by_warehouse: byWarehouse,
-      high_severity_count: bySeverity.high || bySeverity['high'] || 0,
-      medium_severity_count: bySeverity.medium || bySeverity['medium'] || 0,
-      low_severity_count: bySeverity.low || bySeverity['low'] || 0,
+      trending,
+      top_affected_tables: topAffectedTables,
+      warehouse_breakdown: warehouseBreakdown,
+      recent_activity: recentActivity,
     };
   }
 
@@ -1000,6 +1170,291 @@ class DemoDataService {
       period_start: score.period_start,
       period_end: score.period_end,
     }));
+  }
+
+  /**
+   * Generate RCA list items from drift events and validation failures
+   */
+  getRCAListItems(filters: FilterOptions): any[] {
+    const rcaItems: any[] = [];
+    
+    // Generate RCA items from high/medium severity drift events
+    const driftEvents = this.driftEvents.filter(e => {
+      const severity = (e.severity || e.drift_severity || 'low').toLowerCase();
+      return severity === 'high' || severity === 'medium';
+    });
+
+    // Create RCA items from drift events
+    driftEvents.slice(0, 20).forEach((event, index) => {
+      const anomalyId = `rca-${event.event_id || `drift-${index}`}`;
+      const severity = (event.severity || event.drift_severity || 'medium').toLowerCase();
+      const rcaStatus = index % 3 === 0 ? 'analyzed' : index % 3 === 1 ? 'pending' : 'dismissed';
+      
+      const numCauses = rcaStatus === 'analyzed' ? Math.floor(Math.random() * 3) + 2 : 0;
+      const topCause = numCauses > 0 ? {
+        cause_type: ['Data Pipeline', 'Schema Change', 'Data Quality', 'External System'][index % 4],
+        confidence_score: 0.6 + (Math.random() * 0.3),
+        description: 'Detected significant change in data patterns',
+      } : null;
+
+      rcaItems.push({
+        anomaly_id: anomalyId,
+        table_name: event.table_name || '',
+        schema_name: event.schema_name || null,
+        column_name: event.column_name || null,
+        metric_name: event.metric_name || null,
+        analyzed_at: event.timestamp || event.detected_at || new Date().toISOString(),
+        rca_status: rcaStatus,
+        num_causes: numCauses,
+        top_cause: topCause,
+      });
+    });
+
+    // Apply filters
+    let filtered = rcaItems;
+    if (filters.status) {
+      filtered = filtered.filter(item => item.rca_status === filters.status);
+    }
+    if (filters.table) {
+      filtered = filtered.filter(item => item.table_name === filters.table);
+    }
+    if (filters.schema) {
+      filtered = filtered.filter(item => item.schema_name === filters.schema);
+    }
+
+    // Sort by analyzed_at descending
+    filtered.sort((a, b) => new Date(b.analyzed_at).getTime() - new Date(a.analyzed_at).getTime());
+
+    return filtered;
+  }
+
+  /**
+   * Get RCA statistics
+   */
+  getRCAStatistics(): any {
+    const allItems = this.getRCAListItems({});
+    const total = allItems.length;
+    const analyzed = allItems.filter(item => item.rca_status === 'analyzed').length;
+    const pending = allItems.filter(item => item.rca_status === 'pending').length;
+    const dismissed = allItems.filter(item => item.rca_status === 'dismissed').length;
+    
+    const analyzedItems = allItems.filter(item => item.rca_status === 'analyzed');
+    const totalCauses = analyzedItems.reduce((sum, item) => sum + (item.num_causes || 0), 0);
+    const avgCauses = analyzedItems.length > 0 ? totalCauses / analyzedItems.length : 0;
+
+    return {
+      total_analyses: total,
+      analyzed,
+      dismissed,
+      pending,
+      avg_causes_per_anomaly: avgCauses,
+    };
+  }
+
+  /**
+   * Generate recommendations from tables
+   */
+  getRecommendations(options: { schema?: string; include_columns?: boolean }): any {
+    // Get unique tables (may have duplicates across runs)
+    const tableMap = new Map<string, any>();
+    this.tables.forEach(table => {
+      const key = `${table.schema_name || 'public'}.${table.table_name}`;
+      if (!tableMap.has(key)) {
+        tableMap.set(key, table);
+      }
+    });
+
+    let filteredTables = Array.from(tableMap.values());
+    if (options.schema) {
+      filteredTables = filteredTables.filter(t => t.schema_name === options.schema);
+    }
+
+    // Sort by table name for consistency
+    filteredTables.sort((a, b) => {
+      const aName = `${a.schema_name || 'public'}.${a.table_name}`;
+      const bName = `${b.schema_name || 'public'}.${b.table_name}`;
+      return aName.localeCompare(bName);
+    });
+
+    // Generate recommendations for top tables (limit to 15 for demo)
+    const recommendedTables = filteredTables.slice(0, 15).map((table, index) => {
+      const schema = table.schema_name || 'public';
+      const tableName = table.table_name;
+      
+      // Calculate confidence based on row count and other factors
+      const rowCount = table.row_count || 0;
+      const hasData = rowCount > 0;
+      const confidence = hasData 
+        ? Math.min(0.95, 0.6 + (rowCount / 1000000) * 0.3 + Math.random() * 0.1)
+        : 0.4 + Math.random() * 0.2;
+
+      // Generate reasons
+      const reasons: string[] = [];
+      if (rowCount > 100000) {
+        reasons.push(`Large table with ${rowCount.toLocaleString()} rows`);
+      } else if (rowCount > 10000) {
+        reasons.push(`Table with ${rowCount.toLocaleString()} rows`);
+      } else {
+        reasons.push(`Table with ${rowCount.toLocaleString()} rows`);
+      }
+      
+      // Check if table appears in runs frequently
+      const runCount = this.runs.filter(r => r.dataset_name === tableName && r.schema_name === schema).length;
+      if (runCount > 5) {
+        reasons.push(`Profiled ${runCount} times in recent runs`);
+      }
+      
+      // Check for drift events
+      const driftCount = this.driftEvents.filter(e => e.table_name === tableName && e.schema_name === schema).length;
+      if (driftCount > 0) {
+        reasons.push(`Has ${driftCount} drift event${driftCount > 1 ? 's' : ''} detected`);
+      }
+
+      // Generate column recommendations if requested
+      const columnRecommendations: any[] = [];
+      if (options.include_columns && table.columns && Array.isArray(table.columns)) {
+        // Get column quality scores for this table
+        const tableColumns = table.columns.slice(0, 10); // Limit to 10 columns
+        tableColumns.forEach((col: any, colIndex: number) => {
+          const colName = col.column_name || col.name || `column_${colIndex}`;
+          const colType = col.data_type || col.type || 'unknown';
+          
+          // Generate suggested checks based on column type and name
+          const suggestedChecks: any[] = [];
+          const signals: string[] = [];
+          
+          // ID columns
+          if (colName.toLowerCase().endsWith('_id') || colName.toLowerCase() === 'id') {
+            signals.push('Column name matches pattern: *_id');
+            suggestedChecks.push({
+              type: 'uniqueness',
+              confidence: 0.95,
+              config: { threshold: 1.0 },
+            });
+            suggestedChecks.push({
+              type: 'completeness',
+              confidence: 0.90,
+              config: { min_completeness: 1.0 },
+            });
+          }
+          
+          // Timestamp columns
+          if (colType.toLowerCase().includes('timestamp') || 
+              colType.toLowerCase().includes('date') ||
+              colName.toLowerCase().includes('_at') ||
+              colName.toLowerCase().includes('date')) {
+            signals.push('Timestamp/date column detected');
+            suggestedChecks.push({
+              type: 'freshness',
+              confidence: 0.90,
+              config: { max_age_hours: 24 },
+            });
+            suggestedChecks.push({
+              type: 'completeness',
+              confidence: 0.85,
+              config: { min_completeness: 0.95 },
+            });
+          }
+          
+          // Email columns
+          if (colName.toLowerCase().includes('email')) {
+            signals.push('Email pattern match in column name');
+            suggestedChecks.push({
+              type: 'format_email',
+              confidence: 0.92,
+              config: { pattern: 'email' },
+            });
+          }
+          
+          // Default completeness check for all columns
+          if (suggestedChecks.length === 0) {
+            signals.push('Standard column recommendation');
+            suggestedChecks.push({
+              type: 'completeness',
+              confidence: 0.75,
+              config: { min_completeness: 0.90 },
+            });
+          }
+
+          if (suggestedChecks.length > 0) {
+            columnRecommendations.push({
+              column: colName,
+              data_type: colType,
+              confidence: Math.min(0.95, 0.7 + Math.random() * 0.25),
+              signals,
+              suggested_checks: suggestedChecks,
+            });
+          }
+        });
+      }
+
+      return {
+        schema,
+        table: tableName,
+        database: table.database_name || null,
+        confidence: Math.round(confidence * 100) / 100,
+        score: Math.round((confidence * 100) * 100) / 100,
+        reasons: reasons.length > 0 ? reasons : ['Recommended for monitoring'],
+        warnings: rowCount === 0 ? ['Table appears to be empty'] : [],
+        suggested_checks: ['completeness', 'validity', 'freshness'],
+        column_recommendations: columnRecommendations,
+        low_confidence_columns: [],
+        query_count: runCount,
+        queries_per_day: runCount > 0 ? runCount / 30 : 0,
+        row_count: rowCount,
+        last_query_days_ago: runCount > 0 ? Math.floor(Math.random() * 7) : null,
+        column_count: table.columns ? (Array.isArray(table.columns) ? table.columns.length : 0) : 0,
+        lineage_score: driftCount > 0 ? 0.8 : 0.5,
+        lineage_context: driftCount > 0 ? { has_drift_events: true, event_count: driftCount } : null,
+      };
+    });
+
+    // Excluded tables (tables with very low row counts or no data)
+    const excludedTables = filteredTables.slice(15).filter(table => {
+      const rowCount = table.row_count || 0;
+      return rowCount < 100;
+    }).slice(0, 5).map(table => ({
+      schema: table.schema_name || 'public',
+      table: table.table_name,
+      database: table.database_name || null,
+      reasons: ['Low row count or insufficient data'],
+    }));
+
+    // Calculate statistics
+    const totalColumnsAnalyzed = recommendedTables.reduce((sum, t) => sum + (t.column_count || 0), 0);
+    const totalColumnChecksRecommended = recommendedTables.reduce((sum, t) => 
+      sum + (t.column_recommendations?.length || 0), 0
+    , 0);
+
+    return {
+      generated_at: new Date().toISOString(),
+      lookback_days: 30,
+      database_type: 'postgres',
+      recommended_tables: recommendedTables,
+      excluded_tables: excludedTables,
+      total_tables_analyzed: filteredTables.length,
+      total_recommended: recommendedTables.length,
+      total_excluded: excludedTables.length,
+      confidence_distribution: {
+        high: recommendedTables.filter(t => t.confidence >= 0.8).length,
+        medium: recommendedTables.filter(t => t.confidence >= 0.5 && t.confidence < 0.8).length,
+        low: recommendedTables.filter(t => t.confidence < 0.5).length,
+      },
+      total_columns_analyzed: totalColumnsAnalyzed,
+      total_column_checks_recommended: totalColumnChecksRecommended,
+      column_confidence_distribution: {
+        high: recommendedTables.reduce((sum, t) => 
+          sum + (t.column_recommendations?.filter((c: any) => c.confidence >= 0.8).length || 0), 0
+        ),
+        medium: recommendedTables.reduce((sum, t) => 
+          sum + (t.column_recommendations?.filter((c: any) => c.confidence >= 0.5 && c.confidence < 0.8).length || 0), 0
+        ),
+        low: recommendedTables.reduce((sum, t) => 
+          sum + (t.column_recommendations?.filter((c: any) => c.confidence < 0.5).length || 0), 0
+        ),
+      },
+      low_confidence_suggestions: [],
+    };
   }
 }
 

@@ -3,22 +3,19 @@
  * Handles GET /api/rca/statistics/summary - Get RCA statistics
  */
 
-import { jsonResponse, errorResponse } from '../../../lib/utils';
+import { getDemoDataService } from '../../../lib/demo-data-service';
+import { getDemoDataBaseUrl, jsonResponse, errorResponse } from '../../../lib/utils';
 import { getRequest } from '../../../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
   try {
     const request = getRequest(context);
 
-    // For demo mode, return empty statistics since we don't have RCA demo data
-    // In a real implementation, this would calculate from the database
-    const statistics = {
-      total_analyses: 0,
-      analyzed: 0,
-      dismissed: 0,
-      pending: 0,
-      avg_causes_per_anomaly: 0,
-    };
+    const service = getDemoDataService();
+    const baseUrl = getDemoDataBaseUrl(request);
+    await service.loadData(baseUrl);
+
+    const statistics = service.getRCAStatistics();
 
     return jsonResponse(statistics);
   } catch (error) {
