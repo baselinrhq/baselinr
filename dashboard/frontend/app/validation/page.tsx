@@ -59,7 +59,8 @@ export default function ValidationPage() {
   }
 
   const warehouses: string[] = []
-  const tables = Array.from(new Set(resultsData?.results.map((r) => r.table_name).filter(Boolean) || []))
+  const results = Array.isArray(resultsData?.results) ? resultsData.results : []
+  const tables = Array.from(new Set(results.map((r) => r.table_name).filter(Boolean)))
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
