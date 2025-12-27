@@ -3,7 +3,8 @@
  * Handles GET /api/rca - List RCA results
  */
 
-import { parseQueryParams, jsonResponse, errorResponse, parseIntSafe } from '../lib/utils';
+import { getDemoDataService } from '../lib/demo-data-service';
+import { getDemoDataBaseUrl, parseQueryParams, jsonResponse, errorResponse, parseIntSafe } from '../lib/utils';
 import { getRequest } from '../lib/context';
 
 export async function onRequestGet(context: any): Promise<Response> {
@@ -13,9 +14,17 @@ export async function onRequestGet(context: any): Promise<Response> {
     const params = parseQueryParams(url);
     const limit = parseIntSafe(params.limit, 100);
 
-    // For demo mode, return empty array since we don't have RCA demo data
-    // In a real implementation, this would fetch from the database
-    const rcaResults: any[] = [];
+    const service = getDemoDataService();
+    const baseUrl = getDemoDataBaseUrl(request);
+    await service.loadData(baseUrl);
+
+    const filters: any = {};
+    if (params.status) filters.status = params.status;
+    if (params.table) filters.table = params.table;
+    if (params.schema) filters.schema = params.schema;
+    filters.limit = limit;
+
+    const rcaResults = service.getRCAListItems(filters).slice(0, limit);
 
     return jsonResponse(rcaResults);
   } catch (error) {
