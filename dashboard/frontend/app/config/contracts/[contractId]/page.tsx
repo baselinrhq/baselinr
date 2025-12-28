@@ -2,10 +2,10 @@ import { Suspense } from 'react'
 import ContractDetailClient from './ContractDetailClient'
 
 // Required for static export with dynamic routes
-export async function generateStaticParams() {
-  // Return empty array for dynamic generation at runtime
+export async function generateStaticParams(): Promise<Array<{ contractId: string }>> {
+  // Return placeholder for static export
   // In demo mode, this route will be handled client-side
-  return []
+  return [{ contractId: '__placeholder__' }]
 }
 
 export default function ContractDetailPage({
