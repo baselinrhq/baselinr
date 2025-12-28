@@ -128,7 +128,7 @@ def test_client_plan(sample_config):
         plan = client.plan()
         assert plan.total_tables == 2
         assert plan.estimated_metrics == 100
-        mock_builder.assert_called_once_with(sample_config)
+        mock_builder.assert_called_once_with(sample_config, config_file_path=None)
 
 
 def test_client_profile(sample_config):
