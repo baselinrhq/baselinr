@@ -4,34 +4,38 @@ Baselinr supports fine-grained column-level configurations for profiling, drift 
 
 ## Overview
 
-Column-level configurations are unified in a single `columns` field at the dataset level. All column configs (profiling, drift, validation, anomaly) are nested within each column definition:
+Column-level configurations are defined in ODCS contracts. All column configs (profiling, drift, validation, anomaly) are nested within each column definition in the contract:
 
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      columns:
-        - name: email
-          profiling:
-            enabled: true
-            metrics: [count, null_count, distinct_count]
-          drift:
-            enabled: true
-            thresholds:
-              low: 2.0
-              medium: 5.0
-              high: 10.0
-          validation:
-            rules:
-              - type: format
-                pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-                severity: high
-              - type: not_null
-                severity: high
-          anomaly:
-            enabled: true
-            methods: [control_limits, iqr]
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+        quality:
+          - type: format
+            rule: format
+            specification:
+              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            severity: error
+          - type: not_null
+            rule: not_null
+            severity: error
+customProperties:
+  - property: baselinr.anomaly.customers.email
+    value:
+      enabled: true
+      methods: [control_limits, iqr]
+  - property: baselinr.drift.customers.email
+    value:
+      enabled: true
+      thresholds:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
 ```
 
 ## Key Features
@@ -45,56 +49,50 @@ datasets:
 
 ## Configuration Structure
 
-### Unified Column Configuration Schema
+### Column Configuration in ODCS Contracts
 
-All column-level configuration is unified in a single `columns` field at the dataset level:
+All column-level configuration is defined in ODCS contracts within the `dataset[].columns[]` section:
 
 ```yaml
-datasets:
-  datasets:
-    - table: <table_name>
-      schema: <schema_name>
-      columns:
-        - name: <column_name_or_pattern>    # Required
-          pattern_type: wildcard | regex     # Optional (default: wildcard)
-          metrics: [<list_of_metrics>]       # Optional (overrides table-level)
-          profiling:                         # Optional
-            enabled: true | false            # Default: true
-          drift:                             # Optional
-            enabled: true | false            # Default: true
-            strategy: <strategy_name>        # Override drift strategy
-            thresholds:                      # Per-column thresholds
-              low: <float>
-              medium: <float>
-              high: <float>
-            baselines:                       # Override baseline selection
-              strategy: <strategy>
-              windows: {...}
-          validation:                         # Optional (Phase 3.5)
-            rules:                           # Column-specific validation rules
-              - type: format | range | enum | not_null | unique | referential
-                pattern: <regex_pattern>      # For format rules
-                min_value: <float>            # For range rules
-                max_value: <float>            # For range rules
-                allowed_values: [...]        # For enum rules
-                severity: low | medium | high
-                enabled: true | false
-          anomaly:                           # Optional
-            enabled: true | false            # Default: true
-            methods: [<list_of_methods>]     # Override enabled methods
-            thresholds:                      # Per-column thresholds
-              iqr_threshold: <float>
-              mad_threshold: <float>
-              ewma_deviation_threshold: <float>
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+        # Validation rules via quality field
+        quality:
+          - type: format
+            rule: format
+            specification:
+              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            severity: error
+        # Profiling, drift, and anomaly via customProperties
+customProperties:
+  - property: baselinr.anomaly.customers.email
+    value:
+      enabled: true
+      methods: [control_limits, iqr]
+      thresholds:
+        iqr_threshold: 1.5
+        mad_threshold: 2.0
+  - property: baselinr.drift.customers.email
+    value:
+      enabled: true
+      strategy: absolute_threshold
+      thresholds:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
 ```
 
-**Important**: The unified `columns` field replaces the old structure. The following fields are no longer supported:
-- `profiling.columns[]` - Use top-level `columns` field instead
-- `drift.columns[]` - Use top-level `columns` field instead
-- `anomaly.columns[]` - Use top-level `columns` field instead
-- `validation.rules[]` with column specified - Use `columns[].validation.rules` instead
+**Important**: Column-level configurations are defined in ODCS contracts using:
+- `quality` field for validation rules
+- `customProperties` with `baselinr.*` prefixes for profiling, drift, and anomaly settings
 
-Use `baselinr migrate-config` to automatically consolidate column configs.
+See [ODCS Data Contracts Guide](./ODCS_DATA_CONTRACTS.md) for complete documentation.
 
 ## Column Selection
 
@@ -155,69 +153,64 @@ columns:
 
 ### Select Which Columns to Profile
 
-By default, all columns are profiled. When you specify `columns`, only matching columns are profiled (unless `include_defaults` is used).
+By default, all columns are profiled. When you specify columns in an ODCS contract, only matching columns are profiled.
 
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        columns:
-          - name: email
-          - name: age
-          - name: name
-          # Only email, age, and name will be profiled
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+      - column: age
+      - column: name
+      # Only email, age, and name will be profiled
 ```
 
-Or using directory-based structure:
+To profile everything except specific columns, use customProperties:
 
 ```yaml
-# datasets/customers.yml
-table: customers
-schema: public
-profiling:
-  columns:
-    - name: email
-    - name: age
-    - name: name
-```
-
-To profile everything except specific columns:
-
-```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        columns:
-          - name: "*"              # Profile all columns
-          - name: internal_notes   # Except this one
-            profiling:
-              enabled: false
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: internal_notes
+customProperties:
+  - property: baselinr.profiling.customers.internal_notes
+    value:
+      enabled: false
 ```
 
 ### Custom Metrics Per Column
 
-Override table-level metrics for specific columns:
+Override table-level metrics for specific columns using customProperties:
 
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        columns:
-          - name: email
-            # Only compute these metrics for email
-            metrics: [count, null_count, distinct_count]
-          - name: age
-            # Full metrics for age
-            metrics: [count, mean, stddev, min, max, null_ratio]
-          - name: metadata_json
-            # Minimal metrics for large JSON columns
-            metrics: [count, null_count]
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+      - column: age
+      - column: metadata_json
+customProperties:
+  - property: baselinr.profiling.customers.email
+    value:
+      metrics: [count, null_count, distinct_count]
+  - property: baselinr.profiling.customers.age
+    value:
+      metrics: [count, mean, stddev, min, max, null_ratio]
+  - property: baselinr.profiling.customers.metadata_json
+    value:
+      metrics: [count, null_count]
 ```
 
 **Available Metrics**:
@@ -239,136 +232,171 @@ datasets:
 
 ### Per-Column Drift Thresholds
 
-Override global drift thresholds for specific columns:
+Override global drift thresholds for specific columns using ODCS contracts:
 
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        columns:
-          - name: lifetime_value
-            drift:
-              enabled: true
-              thresholds:
-                low: 5.0      # 5% change = low severity
-                medium: 10.0  # 10% change = medium severity
-                high: 20.0    # 20% change = high severity
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: lifetime_value
+customProperties:
+  - property: baselinr.drift.customers.lifetime_value
+    value:
+      enabled: true
+      thresholds:
+        low: 5.0      # 5% change = low severity
+        medium: 10.0  # 10% change = medium severity
+        high: 20.0    # 20% change = high severity
 ```
 
 ### Disable Drift Detection Per Column
 
-Skip drift detection for specific columns:
+Skip drift detection for specific columns using ODCS contracts:
 
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        columns:
-          - name: internal_notes
-            drift:
-              enabled: false  # No drift detection for this column
-          - name: "*_id"
-            drift:
-              enabled: false  # No drift for ID columns
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: internal_notes
+      - column: customer_id
+customProperties:
+  - property: baselinr.drift.customers.internal_notes
+    value:
+      enabled: false  # No drift detection for this column
+  - property: baselinr.drift.customers.customer_id
+    value:
+      enabled: false  # No drift for ID columns
 ```
 
 ### Per-Column Drift Strategy
 
-Override drift strategy for specific columns:
+Override drift strategy for specific columns using ODCS contracts:
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      columns:
-        - name: amount
-          drift:
-            strategy: statistical  # Use statistical tests for this column
-            thresholds: {...}
-        - name: status
-          drift:
-            strategy: absolute_threshold  # Use simple thresholds
-            thresholds:
-              low: 2.0
-              medium: 5.0
-              high: 10.0
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: amount
+      - column: status
+customProperties:
+  - property: baselinr.drift.customers.amount
+    value:
+      strategy: statistical  # Use statistical tests for this column
+      thresholds: {...}
+  - property: baselinr.drift.customers.status
+    value:
+      strategy: absolute_threshold  # Use simple thresholds
+      thresholds:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
 ```
 
 ### Per-Column Baseline Selection
 
-Override baseline selection strategy per column:
+Override baseline selection strategy per column using ODCS contracts:
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      columns:
-        - name: daily_revenue
-          drift:
-            baselines:
-              strategy: prior_period  # Use prior period for seasonality
-              windows:
-                prior_period: 7       # Same day last week
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: daily_revenue
+customProperties:
+  - property: baselinr.drift.customers.daily_revenue
+    value:
+      baselines:
+        strategy: prior_period  # Use prior period for seasonality
+        windows:
+          prior_period: 7       # Same day last week
 ```
 
 ## Anomaly Detection Configuration
 
 ### Per-Column Anomaly Methods
 
-Enable specific anomaly detection methods per column:
+Enable specific anomaly detection methods per column using ODCS contracts:
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      columns:
-        - name: amount
-          anomaly:
-            enabled: true
-            methods: [control_limits, iqr, mad]  # Only these methods
-        - name: order_date
-          anomaly:
-            enabled: true
-            methods: [seasonality, regime_shift]  # Focus on temporal patterns
+# contracts/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: public.orders
+    columns:
+      - column: amount
+      - column: order_date
+customProperties:
+  - property: baselinr.anomaly.orders.amount
+    value:
+      enabled: true
+      methods: [control_limits, iqr, mad]  # Only these methods
+  - property: baselinr.anomaly.orders.order_date
+    value:
+      enabled: true
+      methods: [seasonality, regime_shift]  # Focus on temporal patterns
 ```
 
 ### Per-Column Anomaly Thresholds
 
-Customize anomaly detection sensitivity per column:
+Customize anomaly detection sensitivity per column using ODCS contracts:
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      columns:
-        - name: amount
-          anomaly:
-            enabled: true
-            thresholds:
-              iqr_threshold: 2.0           # More sensitive (default: 1.5)
-              mad_threshold: 3.5           # More sensitive (default: 3.0)
-              ewma_deviation_threshold: 2.5 # More sensitive (default: 2.0)
-        - name: quantity
-          anomaly:
-            enabled: true
-            thresholds:
-              iqr_threshold: 3.0           # Less sensitive
+# contracts/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: public.orders
+    columns:
+      - column: amount
+      - column: quantity
+customProperties:
+  - property: baselinr.anomaly.orders.amount
+    value:
+      enabled: true
+      thresholds:
+        iqr_threshold: 2.0           # More sensitive (default: 1.5)
+        mad_threshold: 3.5           # More sensitive (default: 3.0)
+        ewma_deviation_threshold: 2.5 # More sensitive (default: 2.0)
+  - property: baselinr.anomaly.orders.quantity
+    value:
+      enabled: true
+      thresholds:
+        iqr_threshold: 3.0           # Less sensitive
 ```
 
 ### Disable Anomaly Detection Per Column
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      columns:
-        - name: metadata_json
-          anomaly:
-            enabled: false  # Skip anomaly detection
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: metadata_json
+customProperties:
+  - property: baselinr.anomaly.customers.metadata_json
+    value:
+      enabled: false  # Skip anomaly detection
 ```
 
 ## Dependency Management
@@ -394,17 +422,24 @@ Baselinr automatically handles dependencies:
 ### Example: Invalid Configuration (Will Warn)
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      columns:
-        - name: metadata
-          profiling:
-            enabled: false  # ❌ Profiling disabled
-          drift:
-            enabled: true   # ⚠️ Warning: Drift requires profiling
-          anomaly:
-            enabled: true   # ⚠️ Warning: Anomaly requires profiling
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: metadata
+customProperties:
+  - property: baselinr.profiling.customers.metadata
+    value:
+      enabled: false  # ❌ Profiling disabled
+  - property: baselinr.drift.customers.metadata
+    value:
+      enabled: true   # ⚠️ Warning: Drift requires profiling
+  - property: baselinr.anomaly.customers.metadata
+    value:
+      enabled: true   # ⚠️ Warning: Anomaly requires profiling
 ```
 
 **Result**: Warnings are logged, and drift/anomaly are automatically skipped for this column.
@@ -414,153 +449,170 @@ profiling:
 ### Example 1: Basic Column Selection
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      schema: public
-      columns:
-        - name: email
-          metrics: [count, null_count, distinct_count]
-        - name: age
-          metrics: [count, mean, stddev, min, max]
-        - name: "*_id"
-          metrics: [count, null_count]
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+      - column: age
+      - column: customer_id
+customProperties:
+  - property: baselinr.profiling.customers.email
+    value:
+      metrics: [count, null_count, distinct_count]
+  - property: baselinr.profiling.customers.age
+    value:
+      metrics: [count, mean, stddev, min, max]
+  - property: baselinr.profiling.customers.customer_id
+    value:
+      metrics: [count, null_count]
 ```
 
 ### Example 2: Selective Profiling with Drift Control
 
 ```yaml
-profiling:
-  tables:
-    - table: customers
-      columns:
-        - name: email
-          metrics: [count, null_count, distinct_count]
-          drift:
-            enabled: true
-            thresholds:
-              low: 2.0
-              medium: 5.0
-              high: 10.0
-        - name: lifetime_value
-          metrics: [count, mean, stddev, min, max]
-          drift:
-            enabled: true
-            thresholds:
-              low: 5.0
-              medium: 15.0
-              high: 30.0
-        - name: internal_notes
-          profiling:
-            enabled: false  # Not profiled
-        - name: "*_id"
-          drift:
-            enabled: false  # No drift detection for IDs
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+      - column: lifetime_value
+      - column: internal_notes
+      - column: customer_id
+customProperties:
+  - property: baselinr.profiling.customers.email
+    value:
+      metrics: [count, null_count, distinct_count]
+  - property: baselinr.drift.customers.email
+    value:
+      enabled: true
+      thresholds:
+        low: 2.0
+        medium: 5.0
+        high: 10.0
+  - property: baselinr.profiling.customers.lifetime_value
+    value:
+      metrics: [count, mean, stddev, min, max]
+  - property: baselinr.drift.customers.lifetime_value
+    value:
+      enabled: true
+      thresholds:
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+  - property: baselinr.profiling.customers.internal_notes
+    value:
+      enabled: false  # Not profiled
+  - property: baselinr.drift.customers.customer_id
+    value:
+      enabled: false  # No drift detection for IDs
 ```
 
 ### Example 3: Full Configuration with Anomaly Detection
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      columns:
-        - name: amount
-          metrics: [count, mean, stddev, min, max]
-          drift:
-            enabled: true
-            strategy: absolute_threshold
-            thresholds:
-              low: 5.0
-              medium: 15.0
-              high: 30.0
-          anomaly:
-            enabled: true
-            methods: [control_limits, iqr, mad]
-            thresholds:
-              iqr_threshold: 2.0
-              mad_threshold: 3.5
-        - name: order_date
-          metrics: [count, min, max]
-          anomaly:
-            enabled: true
-            methods: [seasonality, regime_shift]
-        - name: notes
-          profiling:
-            enabled: false  # Skip entirely
+# contracts/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: public.orders
+    columns:
+      - column: amount
+      - column: order_date
+      - column: notes
+customProperties:
+  - property: baselinr.profiling.orders.amount
+    value:
+      metrics: [count, mean, stddev, min, max]
+  - property: baselinr.drift.orders.amount
+    value:
+      enabled: true
+      strategy: absolute_threshold
+      thresholds:
+        low: 5.0
+        medium: 15.0
+        high: 30.0
+  - property: baselinr.anomaly.orders.amount
+    value:
+      enabled: true
+      methods: [control_limits, iqr, mad]
+      thresholds:
+        iqr_threshold: 2.0
+        mad_threshold: 3.5
+  - property: baselinr.profiling.orders.order_date
+    value:
+      metrics: [count, min, max]
+  - property: baselinr.anomaly.orders.order_date
+    value:
+      enabled: true
+      methods: [seasonality, regime_shift]
+  - property: baselinr.profiling.orders.notes
+    value:
+      enabled: false  # Skip entirely
 ```
 
 ### Example 4: Pattern-Based Column Configuration
 
+**Note**: ODCS contracts don't support pattern-based column matching directly. You need to explicitly list columns or use multiple contracts. For pattern-based matching, consider using the global `profiling.tables` configuration with patterns.
+
 ```yaml
+# config.yml
 profiling:
   tables:
     - table: events
-      columns:
-        # Profile all timestamp columns
-        - name: "*_timestamp"
-          metrics: [count, min, max]
-          drift:
-            enabled: true
-        # Profile all ID columns with minimal metrics
-        - name: "*_id"
-          metrics: [count, null_count]
-          drift:
-            enabled: false  # IDs shouldn't drift
-        # Use regex for complex patterns
-        - name: "^(email|phone|address).*"
-          pattern_type: regex
-          metrics: [count, null_count, distinct_count]
+      schema: public
+      # Pattern matching is handled at table level, not column level
 ```
+
+For column-specific configurations, define them explicitly in ODCS contracts.
 
 ## Schema-Level Configuration
 
-Schema-level configurations allow you to apply settings to all tables within a specified schema, reducing configuration duplication and enabling organizational policy management.
+**Note**: Schema-level configurations are now handled via ODCS contracts. You can organize contracts by schema (e.g., `contracts/analytics/*.odcs.yaml`) or include multiple datasets in a single contract to apply common settings.
 
 ### Overview
 
-Schema-level configs support all the same options as table-level configs (partition, sampling, column configs, filters), and they merge with table-level configs following the precedence: **Schema → Table → Column**.
+With ODCS contracts, you can define common settings for multiple tables by:
+1. Creating separate contract files per schema (e.g., `contracts/analytics/orders.odcs.yaml`)
+2. Including multiple datasets in one contract file
+3. Using customProperties to apply schema-wide policies
 
-### Schema Configuration Structure
+### Schema Configuration with ODCS Contracts
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      schema: analytics
-
-datasets:
-  datasets:
-    - schema: analytics
-      database: warehouse  # Optional: database-specific schema config
-      profiling:
-        partition:
-          strategy: latest
-          key: date
-        sampling:
-          enabled: true
-          fraction: 0.1
-        columns:
-          - name: "*_id"
-            drift:
-              enabled: false  # All ID columns in analytics schema skip drift
-          - name: "*_metadata"
-            profiling:
-              enabled: false  # Skip metadata columns
-        # Filter fields also supported
-        min_rows: 100
-        table_types: [table]
-        exclude_patterns: ["*_temp"]
-
-    - table: orders
-      schema: analytics
-      database: warehouse
-      profiling:
-        columns:
-          - name: total_amount  # Override/add table-specific config
-            drift:
-              thresholds:
-                low: 1.0
+# contracts/analytics_schema.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: warehouse.analytics.orders
+    columns:
+      - column: order_id
+      - column: total_amount
+customProperties:
+  - property: baselinr.partition.orders
+    value:
+      strategy: latest
+      key: date
+  - property: baselinr.sampling.orders
+    value:
+      enabled: true
+      fraction: 0.1
+  - property: baselinr.drift.orders.order_id
+    value:
+      enabled: false  # All ID columns skip drift
+  - property: baselinr.drift.orders.total_amount
+    value:
+      enabled: true
+      thresholds:
+        low: 1.0
 ```
 
 ### How Schema Configs Work
@@ -572,35 +624,43 @@ datasets:
 
 ### Example: Schema-Level Column Configs
 
-Apply column configurations to all tables in a schema:
+Apply column configurations to all tables in a schema using ODCS contracts:
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      schema: analytics
-    - table: customers
-      schema: analytics
-
-datasets:
-  datasets:
-    - schema: analytics
-      profiling:
-        columns:
-          - name: "*_id"
-            drift:
-              enabled: false  # All ID columns skip drift detection
-          - name: "*_metadata"
-            profiling:
-              enabled: false  # Skip metadata columns
-  
-    - table: customers
-      schema: analytics
-      profiling:
-        columns:
-          - name: email  # Add table-specific override
-            drift:
-              enabled: true
+# contracts/analytics_schema.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: analytics.orders
+    columns:
+      - column: order_id
+      - column: metadata
+  - name: customers
+    physicalName: analytics.customers
+    columns:
+      - column: customer_id
+      - column: email
+      - column: metadata
+customProperties:
+  # Schema-wide: disable drift for all ID columns
+  - property: baselinr.drift.orders.order_id
+    value:
+      enabled: false
+  - property: baselinr.drift.customers.customer_id
+    value:
+      enabled: false
+  # Schema-wide: skip metadata columns
+  - property: baselinr.profiling.orders.metadata
+    value:
+      enabled: false
+  - property: baselinr.profiling.customers.metadata
+    value:
+      enabled: false
+  # Table-specific override: enable drift for email
+  - property: baselinr.drift.customers.email
+    value:
+      enabled: true
 ```
 
 ### Example: Schema-Level Sampling
@@ -608,22 +668,24 @@ datasets:
 Apply sampling configuration to all tables in a schema:
 
 ```yaml
-profiling:
-  tables:
-    - select_schema: true
-      schema: staging
-
-datasets:
-  datasets:
-    - schema: staging
-      profiling:
-        sampling:
-          enabled: true
-          fraction: 0.1  # All staging tables sample 10%
-  
-  tables:
-    - select_schema: true
-      schema: staging  # Inherits sampling config
+# contracts/staging_schema.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: staging_table1
+    physicalName: staging.table1
+  - name: staging_table2
+    physicalName: staging.table2
+customProperties:
+  # Apply 10% sampling to all staging tables
+  - property: baselinr.sampling.staging_table1
+    value:
+      enabled: true
+      fraction: 0.1
+  - property: baselinr.sampling.staging_table2
+    value:
+      enabled: true
+      fraction: 0.1
 ```
 
 ### Example: Database-Specific Schema Configs
@@ -665,71 +727,81 @@ profiling:
 
 ### Schema Config with select_schema
 
-Schema-level dataset configs work with `select_schema` to apply to all tables:
+With ODCS contracts, you can organize contracts by schema directory structure:
 
 ```yaml
-profiling:
-  tables:
-    - select_schema: true
-      schema: analytics  # All tables in analytics schema
-
-datasets:
-  datasets:
-    - schema: analytics
-      profiling:
-        partition:
-          strategy: latest
-          key: date
-        columns:
-          - name: "*_temp"
-            profiling:
-              enabled: false
+# contracts/analytics/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: analytics.orders
+    columns:
+      - column: order_date
+        partitionStatus: true
+      - column: temp_data
+customProperties:
+  - property: baselinr.partition.orders
+    value:
+      strategy: latest
+      key: order_date
+  - property: baselinr.profiling.orders.temp_data
+    value:
+      enabled: false
 ```
 
 ## Database-Level Configuration
 
-Database-level configurations allow you to apply settings to all schemas/tables within a specified database, providing the broadest scope for organizational policy management.
+**Note**: Database-level configurations are now handled via ODCS contracts. Organize contracts by database (e.g., `contracts/warehouse/*.odcs.yaml`) or use contract-level customProperties to apply database-wide policies.
 
 ### Overview
 
-Database-level configs support all the same options as schema-level configs (partition, sampling, column configs, filters), and they merge with schema and table configs following the precedence: **Database → Schema → Table → Column**.
+With ODCS contracts, you can achieve database-level configuration by:
+1. Organizing contracts in database-specific directories
+2. Using contract-level customProperties for database-wide policies
+3. Including multiple datasets from different schemas in one contract
 
-### Database Configuration Structure
+### Database Configuration with ODCS Contracts
 
 ```yaml
-datasets:
-  datasets:
-    - database: warehouse
-      profiling:
-        partition:
-          strategy: latest
-          key: date
-        sampling:
-          enabled: true
-          fraction: 0.05  # All tables in warehouse database sample 5%
-        columns:
-          - name: "*_id"
-            drift:
-              enabled: false  # All ID columns in warehouse database skip drift
-          - name: "*_temp"
-            profiling:
-              enabled: false  # Skip temp columns in all tables
-        # Filter fields also supported
-        min_rows: 100
-        table_types: [table]
-        exclude_patterns: ["*_temp", "*_test"]
-
-    - schema: analytics
-      database: warehouse  # Inherits database-level configs
-      profiling:
-        columns:
-          - name: "*_metadata"
-            profiling:
-              enabled: false  # Schema-level override
-
-    - table: orders
-      schema: analytics
-      database: warehouse  # Inherits both database and schema configs
+# contracts/warehouse_database.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: warehouse.analytics.orders
+    columns:
+      - column: order_id
+      - column: temp_data
+  - name: customers
+    physicalName: warehouse.analytics.customers
+    columns:
+      - column: customer_id
+      - column: temp_data
+customProperties:
+  # Database-wide: 5% sampling for all tables
+  - property: baselinr.sampling.orders
+    value:
+      enabled: true
+      fraction: 0.05
+  - property: baselinr.sampling.customers
+    value:
+      enabled: true
+      fraction: 0.05
+  # Database-wide: disable drift for all ID columns
+  - property: baselinr.drift.orders.order_id
+    value:
+      enabled: false
+  - property: baselinr.drift.customers.customer_id
+    value:
+      enabled: false
+  # Database-wide: skip temp columns
+  - property: baselinr.profiling.orders.temp_data
+    value:
+      enabled: false
+  - property: baselinr.profiling.customers.temp_data
+    value:
+      enabled: false
 ```
 
 ### How Database Configs Work
@@ -741,36 +813,32 @@ datasets:
 
 ### Example: Database-Level Column Configs
 
-Apply policies at the database level that can be overridden at schema or table level:
+Apply policies at the database level using ODCS contracts:
 
 ```yaml
-datasets:
-  datasets:
-    - database: warehouse
-      profiling:
-        columns:
-          - name: "*_id"
-            drift:
-              enabled: false  # Database-level: disable drift for all ID columns
-  
-    - schema: analytics
-      database: warehouse
-      profiling:
-        columns:
-          - name: "customer_id"
-            drift:
-              enabled: true  # Schema-level: override for customer_id in analytics schema
-  
-    - table: orders
-      schema: analytics
-      database: warehouse
-      profiling:
-        columns:
-          - name: "customer_id"
-          drift:
-            enabled: false  # Table-level: override again for orders table
-            thresholds:
-              low: 1.0  # With custom thresholds
+# contracts/warehouse_database.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: warehouse.analytics.orders
+    columns:
+      - column: customer_id
+  - name: customers
+    physicalName: warehouse.analytics.customers
+    columns:
+      - column: customer_id
+customProperties:
+  # Database-level: disable drift for all ID columns (can be overridden per table)
+  - property: baselinr.drift.orders.customer_id
+    value:
+      enabled: false
+  # Table-level override: enable drift for customers table
+  - property: baselinr.drift.customers.customer_id
+    value:
+      enabled: true
+      thresholds:
+        low: 1.0
 ```
 
 ### Example: Database-Level Sampling
@@ -778,68 +846,56 @@ datasets:
 Apply consistent sampling strategy across all tables in a database:
 
 ```yaml
-profiling:
-  tables:
-    - select_all_schemas: true
-      database: staging_db
-
-datasets:
-  datasets:
-    - database: staging_db
-      profiling:
-        sampling:
-          enabled: true
-          fraction: 0.05  # All tables in staging_db sample 5%
+# contracts/staging_db.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: table1
+    physicalName: staging_db.schema1.table1
+  - name: table2
+    physicalName: staging_db.schema2.table2
+customProperties:
+  # All tables in staging_db sample 5%
+  - property: baselinr.sampling.table1
+    value:
+      enabled: true
+      fraction: 0.05
+  - property: baselinr.sampling.table2
+    value:
+      enabled: true
+      fraction: 0.05
 ```
 
 ### Example: Multi-Level Precedence
 
-Demonstrate how configurations merge across all levels:
+With ODCS contracts, precedence is handled via contract-level and dataset-level customProperties:
 
 ```yaml
-profiling:
-  tables:
-    - table: orders
-      schema: analytics
-      database: warehouse
-
-datasets:
-  datasets:
-    - database: warehouse
-      profiling:
-        partition:
-          strategy: all  # Database-level default
-        columns:
-          - name: "*_id"
-            drift:
-              enabled: false
-  
-    - schema: analytics
-      database: warehouse
-      profiling:
-        partition:
-          strategy: latest  # Schema-level override
-        columns:
-          - name: "customer_id"
-            drift:
-              enabled: true
-  
-    - table: orders
-      schema: analytics
-      database: warehouse
-      profiling:
-        partition:
-          strategy: range  # Table-level override
-          key: created_at
-        columns:
-          - name: "customer_id"
-            drift:
-              enabled: false  # Table-level override
+# contracts/warehouse_analytics_orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: warehouse.analytics.orders
+    columns:
+      - column: created_at
+        partitionStatus: true
+      - column: customer_id
+customProperties:
+  # Table-level: range partition strategy (overrides any database/schema defaults)
+  - property: baselinr.partition.orders
+    value:
+      strategy: range
+      key: created_at
+  # Table-level: disable drift for customer_id (overrides any database/schema defaults)
+  - property: baselinr.drift.orders.customer_id
+    value:
+      enabled: false
 ```
 
 **Result**:
-- `orders` table uses `range` partition strategy (table overrides schema and database)
-- `customer_id` column has drift disabled (table overrides schema, which overrides database)
+- `orders` table uses `range` partition strategy (defined in contract)
+- `customer_id` column has drift disabled (defined in contract)
 
 ### When to Use Database-Level Configs
 
@@ -862,11 +918,9 @@ Use database configs for organization-wide policies, and schema configs for sche
 
 Configurations are merged with the following precedence (highest to lowest):
 
-1. **Column-level config** (most specific)
-2. **Table-level dataset config** (from `datasets.datasets[]` with `table` specified)
-3. **Schema-level dataset config** (from `datasets.datasets[]` with `schema` specified)
-4. **Database-level dataset config** (from `datasets.datasets[]` with `database` specified)
-5. **Global config** (defaults from `drift_detection` and `storage` sections)
+1. **Column-level config** (most specific - from ODCS contract columns)
+2. **Contract-level config** (from ODCS contract customProperties)
+3. **Global config** (defaults from `drift_detection` and `storage` sections)
 
 Example with Database, Schema, and Table Levels:
 

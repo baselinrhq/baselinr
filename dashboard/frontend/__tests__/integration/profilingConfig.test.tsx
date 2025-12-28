@@ -82,7 +82,7 @@ describe('ProfilingPage Integration', () => {
 
     expect(screen.getByText('Profiling Configuration')).toBeInTheDocument()
     expect(screen.getByText('Global Profiling Settings')).toBeInTheDocument()
-    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
+    expect(screen.getByText('Contract-level profiling configurations')).toBeInTheDocument()
   })
 
   it('updates global settings', async () => {
@@ -118,10 +118,9 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with dataset configuration link
-    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
-    expect(screen.getByText('Manage in Datasets')).toBeInTheDocument()
-    // Table-specific configuration has been moved to the datasets page
+    // Verify the page renders with contract configuration link
+    expect(screen.getByText('Contract-level profiling configurations')).toBeInTheDocument()
+    expect(screen.getByText('Manage in Contracts')).toBeInTheDocument()
   })
 
   it('configures partition for table', async () => {
@@ -133,9 +132,8 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with dataset configuration link
-    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
-    // Table-specific configuration including partitions has been moved to the datasets page
+    // Verify the page renders with contract configuration link
+    expect(screen.getByText('Contract-level profiling configurations')).toBeInTheDocument()
   })
 
   it('configures sampling for table', async () => {
@@ -147,9 +145,8 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with dataset configuration link
-    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
-    // Table-specific sampling configuration has been moved to the datasets page
+    // Verify the page renders with contract configuration link
+    expect(screen.getByText('Contract-level profiling configurations')).toBeInTheDocument()
   })
 
   it('configures columns for table', async () => {
@@ -161,9 +158,8 @@ describe('ProfilingPage Integration', () => {
 
     renderPage()
 
-    // Verify the page renders with dataset configuration link
-    expect(screen.getByText('Dataset-specific profiling configurations')).toBeInTheDocument()
-    // Table-specific column configuration has been moved to the datasets page
+    // Verify the page renders with contract configuration link
+    expect(screen.getByText('Contract-level profiling configurations')).toBeInTheDocument()
   })
 
   it('saves configuration', async () => {

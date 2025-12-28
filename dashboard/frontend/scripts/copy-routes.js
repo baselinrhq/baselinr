@@ -59,6 +59,45 @@ try {
       console.log(`  Files: ${files.slice(0, 5).join(', ')}${files.length > 5 ? '...' : ''}`);
     }
   }
+
+  // Copy functions directory to out/functions for Cloudflare Pages
+  const functionsDir = path.join(__dirname, '..', 'functions');
+  const outFunctionsDir = path.join(outDir, 'functions');
+  
+  if (fs.existsSync(functionsDir)) {
+    console.log('Copying functions directory to out/functions...');
+    
+    // Recursive copy function
+    function copyRecursive(src, dest) {
+      const exists = fs.existsSync(src);
+      const stats = exists && fs.statSync(src);
+      const isDirectory = exists && stats.isDirectory();
+      
+      if (isDirectory) {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
+        }
+        fs.readdirSync(src).forEach(childItemName => {
+          copyRecursive(
+            path.join(src, childItemName),
+            path.join(dest, childItemName)
+          );
+        });
+      } else {
+        fs.copyFileSync(src, dest);
+      }
+    }
+    
+    // Remove existing functions directory if it exists
+    if (fs.existsSync(outFunctionsDir)) {
+      fs.rmSync(outFunctionsDir, { recursive: true, force: true });
+    }
+    
+    copyRecursive(functionsDir, outFunctionsDir);
+    console.log('✓ Copied functions directory to out/functions/');
+  } else {
+    console.warn('⚠ Warning: functions/ directory not found. Cloudflare Pages Functions may not work.');
+  }
 } catch (error) {
   console.error('Error generating _routes.json:', error);
   process.exit(1);

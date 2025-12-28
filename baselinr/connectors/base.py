@@ -129,7 +129,11 @@ class BaseConnector(ABC):
                     return func(*args, **kwargs)
                 except Exception as e:
                     # Classify the error and re-raise as transient or permanent
-                    raise classify_database_error(e)
+                    # Don't use 'from e' to avoid DBAPIError reconstruction issues
+                    # The original exception is already stored in
+                    # classified_error.original_exception
+                    classified_error = classify_database_error(e)
+                    raise classified_error
 
             return wrapped_func()
         except ImportError:
@@ -274,24 +278,32 @@ class BaseConnector(ABC):
             except Exception as e:
                 duration = time.time() - start_time
 
+                # Safely extract error type name without accessing exception internals
+                try:
+                    error_type_name = type(e).__name__
+                except Exception:
+                    error_type_name = "Exception"
+
+                error_str = str(e)
+
                 # Record metrics: error
                 try:
                     from ..utils.metrics import get_warehouse_type, is_metrics_enabled, record_error
 
                     if is_metrics_enabled():
                         warehouse = get_warehouse_type(self.config)
-                        record_error(warehouse, type(e).__name__, "connector")
+                        record_error(warehouse, error_type_name, "connector")
                 except Exception:
                     pass  # Metrics optional
 
                 log_event(
                     query_logger,
                     "query_failed",
-                    f"Query failed after {duration:.2f}s: {e}",
+                    f"Query failed after {duration:.2f}s: {error_str}",
                     level="error",
                     metadata={
-                        "error": str(e),
-                        "error_type": type(e).__name__,
+                        "error": error_str,
+                        "error_type": error_type_name,
                         "duration_seconds": duration,
                         "query_preview": query_preview,
                     },

@@ -9,7 +9,7 @@ import logging
 import random
 import time
 from functools import wraps
-from typing import Any, Callable, Tuple, Type
+from typing import Any, Callable, Optional, Tuple, Type
 
 try:
     from prometheus_client import Counter
@@ -48,19 +48,22 @@ class PermanentWarehouseError(Exception):
 class TimeoutError(TransientWarehouseError):
     """Warehouse query timeout error."""
 
-    pass
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message, original_exception)
 
 
 class ConnectionLostError(TransientWarehouseError):
     """Database connection lost error."""
 
-    pass
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message, original_exception)
 
 
 class RateLimitError(TransientWarehouseError):
     """API rate limit exceeded error."""
 
-    pass
+    def __init__(self, message: str, original_exception: Optional[Exception] = None):
+        super().__init__(message, original_exception)
 
 
 # ============================================================
@@ -367,8 +370,28 @@ def classify_database_error(exception: Exception) -> Exception:
         except Exception as e:
             raise classify_database_error(e)
     """
-    error_str = str(exception).lower()
-    exception_type = type(exception).__name__.lower()
+    # Safely extract error string to avoid DBAPIError reconstruction issues
+    # Use args[0] if available, otherwise try str(), otherwise use type name
+    try:
+        if hasattr(exception, "args") and exception.args and len(exception.args) > 0:
+            error_str = str(exception.args[0]).lower()
+            error_message = str(exception.args[0])
+        else:
+            error_str = str(exception).lower()
+            error_message = str(exception)
+    except Exception:
+        try:
+            exception_type_name = type(exception).__name__
+            error_str = f"exception of type {exception_type_name}".lower()
+            error_message = f"Exception of type {exception_type_name}"
+        except Exception:
+            error_str = "unknown error"
+            error_message = "Unknown error"
+
+    try:
+        exception_type = type(exception).__name__.lower()
+    except Exception:
+        exception_type = "exception"
 
     # Common transient error patterns
     transient_patterns = [
@@ -395,13 +418,13 @@ def classify_database_error(exception: Exception) -> Exception:
         if pattern in error_str or pattern in exception_type:
             # Determine specific transient error type
             if "timeout" in error_str or "timeout" in exception_type:
-                return TimeoutError(str(exception))
+                return TimeoutError(error_message)
             elif "rate limit" in error_str or "too many" in error_str:
-                return RateLimitError(str(exception))
+                return RateLimitError(error_message)
             elif any(p in error_str for p in ["connection", "network", "communication"]):
-                return ConnectionLostError(str(exception))
+                return ConnectionLostError(error_message)
             else:
-                return TransientWarehouseError(str(exception))
+                return TransientWarehouseError(error_message)
 
     # Default to permanent error
-    return PermanentWarehouseError(str(exception))
+    return PermanentWarehouseError(error_message)

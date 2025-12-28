@@ -688,7 +688,7 @@ drift_config = DriftDetectionConfig(
 # Create detector
 detector = DriftDetector(storage_config, drift_config)
 
-# Use it
+# Use it (dataset_name parameter refers to table name)
 report = detector.detect_drift("customers")
 ```
 

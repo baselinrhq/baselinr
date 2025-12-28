@@ -43,6 +43,13 @@ profiling:
     - schema: public
       table: products
 
+# ODCS contracts define dataset schemas, quality rules, and SLAs
+# See examples/contracts/ for contract files
+contracts:
+  directory: ./contracts
+  recursive: true
+  validate_on_load: true
+
 # Drift detection configuration
 drift_detection:
   strategy: absolute_threshold

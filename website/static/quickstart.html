@@ -672,13 +672,16 @@ storage:
 profiling:
   tables:
     - table: customers
-      sample_ratio: 1.0
     - table: orders
-      sample_ratio: 1.0
   
   default_sample_ratio: 1.0
   compute_histograms: true
-  histogram_bins: 10</code></pre>
+  histogram_bins: 10
+
+# ODCS contracts define dataset schemas and quality rules
+contracts:
+  directory: ./contracts
+  recursive: true</code></pre>
                     </div>
                     <button class="code-block-copy" onclick="copyCode(this, `environment: development
 
@@ -706,13 +709,16 @@ storage:
 profiling:
   tables:
     - table: customers
-      sample_ratio: 1.0
     - table: orders
-      sample_ratio: 1.0
   
   default_sample_ratio: 1.0
   compute_histograms: true
-  histogram_bins: 10`)">Copy</button>
+  histogram_bins: 10
+
+# ODCS contracts define dataset schemas and quality rules
+contracts:
+  directory: ./contracts
+  recursive: true`)">Copy</button>
                 </div>
                 <p style="font-size: 0.9375rem; color: var(--text-secondary); margin-top: 0.5rem;">
                     See <a href="https://github.com/baselinrhq/baselinr" target="_blank" rel="noopener noreferrer" style="color: var(--primary-blue);">full example configurations</a> for other database types.
@@ -772,6 +778,7 @@ baselinr profile --config config.yml</code></pre>
                             <span class="code-block-language">bash</span>
                         </div>
                         <pre><code># Detect drift (after multiple runs)
+# --dataset flag specifies the table name
 baselinr drift --config config.yml --dataset customers</code></pre>
                     </div>
                     <button class="code-block-copy" onclick="copyCode(this, 'baselinr drift --config config.yml --dataset customers')">Copy</button>

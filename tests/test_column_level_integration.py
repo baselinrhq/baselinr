@@ -163,7 +163,7 @@ class TestTablePatternColumns:
     """Tests for TablePattern with column configurations."""
 
     def test_table_pattern_column_config_roundtrip(self):
-        """Test that TablePattern rejects columns (must be in datasets section)."""
+        """Test that TablePattern rejects columns (must be in ODCS contracts)."""
         columns = [
             ColumnConfig(name="email", metrics=["count", "null_count"]),
             ColumnConfig(

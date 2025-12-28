@@ -53,12 +53,12 @@ import rca_routes
 import chat_routes
 import config_routes
 import connection_routes
+import contracts_routes
 import discovery_routes
 import hook_routes
 import recommendation_routes
 import validation_routes
 import quality_routes
-import dataset_routes
 
 # Check if demo mode is enabled
 DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
@@ -112,12 +112,12 @@ elif hasattr(db_client, 'engine'):
 # Register config and connection routes
 app.include_router(config_routes.router)
 app.include_router(connection_routes.router)
+app.include_router(contracts_routes.router)
 app.include_router(discovery_routes.router)
 app.include_router(hook_routes.router)
 app.include_router(recommendation_routes.router)
 app.include_router(validation_routes.router)
 app.include_router(quality_routes.router)
-app.include_router(dataset_routes.router)
 
 
 # Load config for chat (from environment or default)
@@ -290,7 +290,7 @@ async def get_runs(
     schema: Optional[str] = Query(None, description="Filter by schema"),
     table: Optional[str] = Query(None, description="Filter by table name"),
     status: Optional[str] = Query(None, description="Filter by status (comma-separated for multiple)"),
-    days: Optional[int] = Query(None, description="Number of days to look back (deprecated, use start_date)"),
+    days: Optional[int] = Query(None, description="Number of days to look back"),
     start_date: Optional[str] = Query(None, description="Start date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
     end_date: Optional[str] = Query(None, description="End date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)"),
     min_duration: Optional[float] = Query(None, description="Minimum duration in seconds"),

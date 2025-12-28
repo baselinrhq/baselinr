@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from .config.schema import BaselinrConfig, DatasetsConfig, TablePattern
+from .config.schema import BaselinrConfig, TablePattern
 from .connectors.factory import create_connector
 from .incremental import IncrementalPlan, IncrementalPlanner, TableRunDecision
 from .profiling.table_matcher import TableMatcher
@@ -94,14 +94,16 @@ class ProfilingPlan:
 class PlanBuilder:
     """Builds profiling execution plans from configuration."""
 
-    def __init__(self, config: BaselinrConfig):
+    def __init__(self, config: BaselinrConfig, config_file_path: Optional[str] = None):
         """
         Initialize plan builder.
 
         Args:
             config: Baselinr configuration
+            config_file_path: Optional path to the config file (for resolving relative paths)
         """
         self.config = config
+        self.config_file_path = config_file_path
         self._incremental_planner: Optional[IncrementalPlanner] = None
         self._table_matcher: Optional[TableMatcher] = None
         self._connector: Optional[Any] = None
@@ -124,7 +126,7 @@ class PlanBuilder:
         Args:
             patterns: Optional list of TablePattern objects to expand.
                      If None, uses config.profiling.tables.
-                     If profiling.tables is empty, extracts patterns from datasets section.
+                     If profiling.tables is empty, extracts patterns from ODCS contracts.
 
         Returns:
             List of expanded TablePattern objects with concrete table names
@@ -132,29 +134,85 @@ class PlanBuilder:
         if patterns is None:
             patterns = self.config.profiling.tables
 
-        # If no table patterns specified, try to extract from datasets section
+        # If no table patterns specified, try to extract from ODCS contracts
         if not patterns:
-            if (
-                self.config.datasets
-                and isinstance(self.config.datasets, DatasetsConfig)
-                and self.config.datasets.datasets
-            ):
-                # Extract table patterns from datasets
-                patterns = []
-                for dataset in self.config.datasets.datasets:
-                    if dataset.table:
-                        # Create TablePattern from dataset config
-                        # Use schema alias since TablePattern uses populate_by_name=True
-                        pattern = TablePattern(
-                            table=dataset.table,
-                            schema=dataset.schema_,
-                            database=dataset.database,
-                        )  # type: ignore[call-arg]
-                        patterns.append(pattern)
-                        logger.debug(
-                            f"Extracted table pattern from dataset: {dataset.table} "
-                            f"(schema: {dataset.schema_}, database: {dataset.database})"
-                        )
+            if self.config.contracts:
+
+                from pathlib import Path
+
+                from .contracts import ContractLoader
+
+                # Load contracts - resolve path relative to config file if available,
+                # otherwise relative to current working directory
+                contracts_dir = Path(self.config.contracts.directory)
+                if not contracts_dir.is_absolute():
+                    if self.config_file_path:
+                        # Resolve relative to config file location (same as config loader)
+                        config_path = Path(self.config_file_path)
+                        contracts_dir = config_path.parent / contracts_dir
+                    else:
+                        # Fallback to current working directory
+                        contracts_dir = Path.cwd() / contracts_dir
+
+                loader = ContractLoader(
+                    validate_on_load=self.config.contracts.validate_on_load,
+                    file_patterns=self.config.contracts.file_patterns,
+                )
+                try:
+                    contracts = loader.load_from_directory(
+                        str(contracts_dir),
+                        recursive=self.config.contracts.recursive,
+                        exclude_patterns=self.config.contracts.exclude_patterns,
+                    )
+
+                    # Extract table patterns from contracts
+                    patterns = []
+                    for contract in contracts:
+                        if contract.dataset:
+                            for ds in contract.dataset:
+                                if ds.name or ds.physicalName:
+                                    # Parse physical name if available
+                                    table_name = ds.name or ""
+                                    schema = None
+                                    database = None
+
+                                    if ds.physicalName:
+                                        parts = ds.physicalName.split(".")
+                                        if len(parts) == 3:
+                                            database = parts[0]
+                                            schema = parts[1]
+                                            table_name = parts[2]
+                                        elif len(parts) == 2:
+                                            schema = parts[0]
+                                            table_name = parts[1]
+                                        else:
+                                            table_name = ds.physicalName
+
+                                    # Don't extract database from server config - use source
+                                    # database from main config. Server config in contracts is
+                                    # for documentation, not connection. Only use schema from
+                                    # server config if not already set
+                                    if contract.servers and not schema:
+                                        env = (
+                                            contract.servers.development
+                                            or contract.servers.production
+                                        )
+                                        if env and env.schema_:
+                                            schema = env.schema_
+
+                                    if table_name:
+                                        pattern = TablePattern(
+                                            table=table_name,
+                                            schema=schema,
+                                            database=database,
+                                        )  # type: ignore[call-arg]
+                                        patterns.append(pattern)
+                                        logger.debug(
+                                            f"Extracted table pattern from contract: {table_name} "
+                                            f"(schema: {schema}, database: {database})"
+                                        )
+                except Exception as e:
+                    logger.warning(f"Failed to load contracts for table extraction: {e}")
 
         if not patterns:
             return []
@@ -217,35 +275,49 @@ class PlanBuilder:
         # Get table patterns from config
         # Tables can come from:
         # 1. profiling.tables (table selection patterns)
-        # 2. Datasets section (extract table patterns from dataset configs)
+        # 2. ODCS contracts (extract table patterns from contracts)
         table_patterns = self.config.profiling.tables
 
-        # If no table patterns specified, try to extract from datasets section
+        # If no table patterns specified, try to extract from ODCS contracts
         if not table_patterns:
-            if (
-                self.config.datasets
-                and isinstance(self.config.datasets, DatasetsConfig)
-                and self.config.datasets.datasets
-            ):
-                # Extract table patterns from datasets
-                table_patterns = []
-                for dataset in self.config.datasets.datasets:
-                    if dataset.table:
-                        # Create TablePattern from dataset config
-                        # Use schema alias since TablePattern uses populate_by_name=True
-                        pattern = TablePattern(
-                            table=dataset.table,
-                            schema=dataset.schema_,
-                            database=dataset.database,
-                        )  # type: ignore[call-arg]
-                        table_patterns.append(pattern)
-                        logger.debug(
-                            f"Extracted table pattern from dataset: {dataset.table} "
-                            f"(schema: {dataset.schema_}, database: {dataset.database})"
-                        )
+            if self.config.contracts:
+                try:
+                    from ..contracts import ContractLoader
+                    from ..contracts.adapter import ODCSAdapter
+
+                    # Load contracts
+                    loader = ContractLoader(
+                        validate_on_load=self.config.contracts.validate_on_load,
+                        file_patterns=self.config.contracts.file_patterns,
+                    )
+                    contracts = loader.load_from_directory(
+                        self.config.contracts.directory,
+                        recursive=self.config.contracts.recursive,
+                        exclude_patterns=self.config.contracts.exclude_patterns,
+                    )
+
+                    # Extract table patterns from contracts
+                    adapter = ODCSAdapter()
+                    table_patterns = []
+                    for contract in contracts:
+                        targets = adapter.to_profiling_targets(contract)
+                        for target in targets:
+                            if target.table:
+                                pattern = TablePattern(
+                                    table=target.table,
+                                    schema=target.schema,
+                                    database=target.database,
+                                )  # type: ignore[call-arg]
+                                table_patterns.append(pattern)
+                                logger.debug(
+                                    f"Extracted table pattern from contract: {target.table} "
+                                    f"(schema: {target.schema}, database: {target.database})"
+                                )
+                except Exception as e:
+                    logger.warning(f"Failed to extract table patterns from contracts: {e}")
 
         # Expand patterns into concrete tables
-        # Use extracted patterns if we got them from datasets, otherwise use config patterns
+        # Use extracted patterns if we got them from contracts, otherwise use config patterns
         expanded_patterns = self.expand_table_patterns(
             patterns=table_patterns if table_patterns else None
         )
@@ -257,7 +329,7 @@ class PlanBuilder:
             raise ValueError(
                 "No tables configured for profiling. "
                 "Add tables to the 'profiling.tables' section, enable 'profiling.table_discovery', "
-                "or configure tables in the 'datasets' section in your config."
+                "or configure ODCS contracts in the 'contracts' section in your config."
             )
 
         # Create plan
@@ -797,7 +869,7 @@ class PlanBuilder:
             "max_distinct_values": self.config.profiling.max_distinct_values,
         }
 
-        # Get merged profiling config from datasets section
+        # Get merged profiling config from contracts
         from .config.merger import ConfigMerger
 
         merger = ConfigMerger(self.config)

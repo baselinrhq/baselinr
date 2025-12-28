@@ -188,21 +188,21 @@ export default function DriftPage() {
         </div>
       </div>
 
-      {/* Banner linking to datasets */}
+      {/* Banner linking to contracts */}
       <div className="glass-card border-amber-500/30 bg-amber-500/10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div>
             <p className="text-sm font-medium text-amber-300">
-              Dataset-specific drift configurations
+              Contract-level drift configurations
             </p>
             <p className="text-xs text-amber-400/80 mt-1">
-              Configure drift detection strategy and thresholds per dataset
+              Configure drift detection strategy and thresholds per contract
             </p>
           </div>
         </div>
-        <Link href="/config/datasets">
+        <Link href="/config/contracts">
           <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
-            Manage in Datasets
+            Manage in Contracts
           </Button>
         </Link>
       </div>

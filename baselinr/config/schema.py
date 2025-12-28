@@ -7,7 +7,7 @@ warehouse connections, profiling targets, and output settings.
 
 import os
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -201,8 +201,7 @@ class ColumnConfig(BaseModel):
     Supports both explicit column names and patterns (wildcards/regex).
     When patterns are used, multiple columns may match a single configuration.
 
-    All column-level configuration should be unified in a single `columns` field
-    at the dataset level, with profiling, drift, validation, and anomaly configs nested.
+    Column-level configurations are defined in ODCS contracts.
     """
 
     name: str = Field(..., description="Column name or pattern (supports wildcards: *, ?)")
@@ -400,13 +399,13 @@ class TablePattern(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def reject_old_profiling_fields(cls, data: Any) -> Any:
-        """Reject old profiling fields that should be in datasets section."""
+        """Reject old profiling fields that should be in ODCS contracts."""
         if isinstance(data, dict):
             if "partition" in data or "sampling" in data or "columns" in data:
                 raise ValueError(
                     "TablePattern no longer supports 'partition', 'sampling', or 'columns' fields. "
-                    "These must be defined in the 'datasets' section. "
-                    "Use 'baselinr migrate-config' to migrate your configuration."
+                    "These must be defined in ODCS contracts. "
+                    "Use ODCS contracts instead your configuration."
                 )
         return data
 
@@ -522,13 +521,13 @@ class ProfilingConfig(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def reject_old_schema_database_fields(cls, data: Any) -> Any:
-        """Reject old schemas/databases fields that should be in datasets section."""
+        """Reject old schemas/databases fields that should be in ODCS contracts."""
         if isinstance(data, dict):
             if "schemas" in data or "databases" in data:
                 raise ValueError(
                     "ProfilingConfig no longer supports 'schemas' or 'databases' fields. "
-                    "These must be defined in the 'datasets' section. "
-                    "Use 'baselinr migrate-config' to migrate your configuration."
+                    "These must be defined in ODCS contracts. "
+                    "Use ODCS contracts instead your configuration."
                 )
         return data
 
@@ -639,7 +638,7 @@ class DriftDetectionConfig(BaseModel):
     """Drift detection configuration.
 
     This is the global/default drift detection configuration.
-    Dataset-specific drift overrides must be defined in the `datasets` section.
+    Dataset-specific drift overrides must be defined in ODCS contracts.
     """
 
     strategy: str = Field("absolute_threshold")
@@ -1277,8 +1276,8 @@ class ValidationConfig(BaseModel):
         default_factory=list,
         description=(
             "List of top-level validation rules. "
-            "DEPRECATED: Validation rules must be defined in the datasets section. "
-            "This field is ignored. Use 'baselinr migrate-config' to migrate rules to datasets."
+            "Validation rules must be defined in ODCS contracts. "
+            "This field is ignored. Use ODCS contracts instead."
         ),
     )
 
@@ -1360,206 +1359,42 @@ class QualityScoringConfig(BaseModel):
     history_retention_days: int = Field(90, gt=0, description="Days to retain score history")
 
 
-class DatasetProfilingConfig(BaseModel):
-    """Dataset-level profiling configuration overrides."""
+class ContractsConfig(BaseModel):
+    """Configuration for ODCS data contracts location.
 
-    partition: Optional[PartitionConfig] = Field(
-        None, description="Partition-aware profiling configuration"
-    )
-    sampling: Optional[SamplingConfig] = Field(
-        None, description="Sampling configuration for profiling"
-    )
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description=(
-            "IGNORED: Column-level configurations must be in the top-level `columns` field. "
-            "This field is ignored. Use 'baselinr migrate-config' to migrate."
-        ),
-    )
-    metrics: Optional[List[str]] = Field(
-        None, description="List of metrics to compute (overrides table-level metrics)"
-    )
+    ODCS (Open Data Contract Standard) contracts define dataset schemas,
+    quality rules, SLAs, and stakeholders in a standardized format.
 
-
-class DatasetDriftConfig(BaseModel):
-    """Dataset-level drift detection configuration overrides."""
-
-    strategy: Optional[str] = Field(
-        None,
-        description="Override drift strategy (absolute_threshold, standard_deviation, statistical)",
-    )
-    absolute_threshold: Optional[Dict[str, float]] = Field(
-        None, description="Override absolute threshold parameters"
-    )
-    standard_deviation: Optional[Dict[str, float]] = Field(
-        None, description="Override standard deviation parameters"
-    )
-    statistical: Optional[Dict[str, Any]] = Field(
-        None, description="Override statistical test parameters"
-    )
-    baselines: Optional[Dict[str, Any]] = Field(
-        None, description="Override baseline selection strategy and windows"
-    )
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description=(
-            "IGNORED: Column-level drift configurations must be in the top-level `columns` field. "
-            "This field is ignored. Use 'baselinr migrate-config' to migrate."
-        ),
-    )
-
-    @field_validator("strategy")
-    @classmethod
-    def validate_strategy(cls, v: Optional[str]) -> Optional[str]:
-        """Validate drift strategy."""
-        if v is not None:
-            valid_strategies = ["absolute_threshold", "standard_deviation", "statistical"]
-            if v not in valid_strategies:
-                raise ValueError(f"Strategy must be one of {valid_strategies}")
-        return v
-
-
-class DatasetValidationConfig(BaseModel):
-    """Dataset-level validation configuration overrides."""
-
-    rules: Optional[List[ValidationRuleConfig]] = Field(
-        None,
-        description=(
-            "Table-level validation rules (rules without a column specified). "
-            "Column-specific validation rules should be in "
-            "the top-level `columns[].validation.rules` field."
-        ),
-    )
-
-
-class DatasetAnomalyConfig(BaseModel):
-    """Dataset-level anomaly detection configuration overrides.
-
-    Column-level anomaly detection configurations must be in the top-level `columns` field.
-    Global anomaly settings (feature flags, default methods, thresholds) remain in the
-    `storage` section.
+    Example:
+        contracts:
+          directory: ./contracts
+          recursive: true
+          validate_on_load: true
     """
 
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description=(
-            "IGNORED: Column-level anomaly configurations must be in "
-            "the top-level `columns` field. This field is ignored. "
-            "Use 'baselinr migrate-config' to migrate."
-        ),
+    directory: str = Field(
+        "./contracts",
+        description="Path to ODCS contracts directory (relative to config file or absolute)",
     )
-
-
-class DatasetConfig(BaseModel):
-    """Dataset-level configuration that consolidates overrides for all features.
-
-    This allows specifying table/schema/database-specific overrides for
-    profiling, drift detection, validation, and anomaly detection in one place,
-    reducing duplication compared to specifying overrides in each feature section.
-
-    Column-level configuration should be unified in the `columns` field at the top level,
-    with profiling, drift, validation, and anomaly configs nested within each column.
-    """
-
-    database: Optional[str] = Field(
-        None, description="Database name (optional, at least one of database/schema/table required)"
-    )
-    schema_: Optional[str] = Field(None, alias="schema", description="Schema name")
-    table: Optional[str] = Field(None, description="Table name")
-
-    # Unified column-level configuration (Phase 3.5)
-    # All column configs (profiling, drift, validation, anomaly) should be here
-    columns: Optional[List[ColumnConfig]] = Field(
-        None,
-        description=(
-            "Unified column-level configurations. "
-            "Each column can have profiling, drift, validation, and anomaly configs nested. "
-            "This replaces the old structure where columns were in profiling.columns, "
-            "anomaly.columns, and validation.rules separately."
-        ),
-    )
-
-    # Feature-specific overrides (non-column level)
-    profiling: Optional[DatasetProfilingConfig] = Field(
-        None, description="Profiling configuration overrides (partition, sampling, metrics)"
-    )
-    drift: Optional[DatasetDriftConfig] = Field(
-        None,
-        description="Drift detection configuration overrides (strategy, thresholds, baselines)",
-    )
-    validation: Optional[DatasetValidationConfig] = Field(
-        None, description="Validation configuration overrides (table-level rules only)"
-    )
-    anomaly: Optional[DatasetAnomalyConfig] = Field(
-        None,
-        description=(
-            "Anomaly detection configuration overrides "
-            "(no columns field - use top-level columns)"
-        ),
-    )
-
-    # New fields for file-based configs
-    source_file: Optional[str] = Field(
-        None,
-        description="Source file path (set automatically by loader, not user-specified)",
-    )
-    import_from_dbt: Optional[Any] = Field(
-        None,
-        description="dbt package import configuration (for Phase 4)",
-    )
-
-    model_config = {"populate_by_name": True}
-
-    @model_validator(mode="after")
-    def validate_dataset_identifier(self):
-        """Ensure at least one of database, schema, or table is specified.
-
-        Exception: Allow all None values for global dataset configs (used for global rules).
-        """
-        # Allow all None for global configs (used for global validation rules, etc.)
-        if not (self.database or self.schema_ or self.table):
-            # Check if this is a meaningful global config (has some configuration)
-            if not (
-                self.profiling or self.drift or self.validation or self.anomaly or self.columns
-            ):
-                raise ValueError(
-                    "DatasetConfig must specify at least one of: database, schema, or table, "
-                    "or provide configuration (profiling, drift, validation, anomaly, columns)"
-                )
-        return self
-
-
-class DatasetsConfig(BaseModel):
-    """Configuration for dataset-level overrides."""
-
-    datasets: List[DatasetConfig] = Field(
-        default_factory=list,
-        description="List of dataset-specific configuration overrides",
-    )
-
-
-class DatasetsDirectoryConfig(BaseModel):
-    """Configuration for directory-based dataset configuration files."""
-
-    datasets_dir: str = Field(
-        "./datasets",
-        description="Path to datasets directory (relative to config file or absolute)",
-    )
-    auto_discover: bool = Field(
-        True,
-        description="Automatically discover YAML files in directory",
-    )
-    file_pattern: str = Field(
-        "*.yml",
-        description="File pattern to match (supports glob patterns)",
+    file_patterns: List[str] = Field(
+        default_factory=lambda: ["*.odcs.yaml", "*.odcs.yml"],
+        description="File patterns to match for ODCS contracts",
     )
     recursive: bool = Field(
         True,
-        description="Recursively search subdirectories",
+        description="Recursively search subdirectories for contracts",
+    )
+    validate_on_load: bool = Field(
+        True,
+        description="Validate contracts against ODCS schema when loading",
     )
     exclude_patterns: Optional[List[str]] = Field(
         None,
-        description="Patterns to exclude from discovery (e.g., ['*.backup.yml'])",
+        description="Patterns to exclude from discovery (e.g., ['**/templates/**'])",
+    )
+    strict_validation: bool = Field(
+        False,
+        description="Treat validation warnings as errors",
     )
 
 
@@ -1609,54 +1444,15 @@ class BaselinrConfig(BaseModel):
     quality_scoring: Optional["QualityScoringConfig"] = Field(
         None, description="Quality scoring configuration"
     )
-    datasets: Optional[Union[DatasetsConfig, DatasetsDirectoryConfig]] = Field(
+
+    # ODCS Contracts configuration
+    contracts: Optional[ContractsConfig] = Field(
         None,
         description=(
-            "Dataset-level configuration. Can be inline (DatasetsConfig) or "
-            "directory-based (DatasetsDirectoryConfig)."
+            "ODCS data contracts configuration. Specifies the directory containing "
+            "ODCS v3.1.0 contracts that define dataset schemas, quality rules, and SLAs."
         ),
     )
-
-    @field_validator("datasets", mode="before")
-    @classmethod
-    def validate_datasets(cls, v: Any) -> Any:
-        """Normalize datasets field to accept list, DatasetsConfig, or DatasetsDirectoryConfig."""
-        if v is None:
-            return None
-
-        # If it's already a DatasetsDirectoryConfig, return as-is
-        if isinstance(v, DatasetsDirectoryConfig):
-            return v
-        if isinstance(v, dict) and "datasets_dir" in v:
-            return DatasetsDirectoryConfig(**v)
-
-        # Helper to coerce any item into a DatasetConfig
-        def to_dataset_config(item: Any) -> DatasetConfig:
-            if isinstance(item, DatasetConfig):
-                return item
-            if isinstance(item, dict):
-                return DatasetConfig(**item)
-            return DatasetConfig(**dict(item))
-
-        # If it's already a DatasetsConfig instance, return as-is
-        if isinstance(v, DatasetsConfig):
-            return v
-        # If it's a list, wrap it in DatasetsConfig
-        if isinstance(v, list):
-            normalized = [to_dataset_config(item) for item in v]
-            return DatasetsConfig(datasets=normalized)
-        # If it's a dict with 'datasets' key, create DatasetsConfig
-        if isinstance(v, dict) and "datasets" in v:
-            datasets_value = v.get("datasets", [])
-            if isinstance(datasets_value, list):
-                normalized = [to_dataset_config(item) for item in datasets_value]
-                return DatasetsConfig(datasets=normalized)
-            return DatasetsConfig(**v)
-        # If it's a dict without 'datasets' key, assume it's a single dataset config
-        # This shouldn't happen but handle gracefully
-        if isinstance(v, dict):
-            return DatasetsConfig(datasets=[to_dataset_config(v)])
-        return v
 
     @field_validator("environment")
     @classmethod

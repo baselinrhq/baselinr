@@ -34,10 +34,7 @@ profiling:
     # Critical business tables
     - schema: analytics
       table: revenue_daily
-      partition:
-        key: date
-        strategy: recent_n
-        recent_n: 30
+      # Note: Partition configs should be in ODCS contracts
     
     - schema: core
       table: customers

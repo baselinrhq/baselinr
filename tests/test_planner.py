@@ -119,7 +119,7 @@ class TestPlanBuilder:
         """Test building plan with no tables configured."""
         mock_config.profiling.tables = []
         mock_config.profiling.table_discovery = False  # Disable table discovery for this test
-        mock_config.datasets = None  # Ensure no datasets
+        mock_config.contracts = None  # Ensure no contracts
         builder = PlanBuilder(mock_config)
 
         with pytest.raises(ValueError) as exc_info:
@@ -140,30 +140,44 @@ class TestPlanBuilder:
         assert "count" in table_plan.metrics
         assert "mean" in table_plan.metrics
 
-    def test_build_table_plan_with_partition(self, mock_config):
-        """Test building plan with partition configuration from datasets section."""
-        from baselinr.config.schema import (
-            DatasetConfig,
-            DatasetProfilingConfig,
-            DatasetsConfig,
-            PartitionConfig,
-        )
+    def test_build_table_plan_with_partition(self, mock_config, tmp_path):
+        """Test building plan with partition configuration from contracts."""
+        import yaml
+        from baselinr.config.schema import ContractsConfig
+        
+        # Create contract with partition config
+        contracts_dir = tmp_path / "contracts"
+        contracts_dir.mkdir()
+        contract = {
+            "kind": "DataContract",
+            "apiVersion": "v3.1.0",
+            "id": "test_table_contract",
+            "dataset": [{
+                "name": "test_table",
+                "physicalName": "public.test_table",
+                "columns": [{
+                    "column": "date",
+                    "partitionStatus": True,
+                }]
+            }],
+            "customProperties": [{
+                "property": "baselinr.partition.test_table",
+                "value": {
+                    "strategy": "latest",
+                }
+            }]
+        }
+        contract_file = contracts_dir / "test_table.odcs.yaml"
+        with open(contract_file, "w") as f:
+            yaml.dump(contract, f)
+        
+        mock_config.contracts = ContractsConfig(directory=str(contracts_dir))
 
-        # Create pattern (no partition - partition comes from datasets)
+        # Create pattern (no partition - partition comes from contracts)
         pattern = TablePattern(
             table="test_table",
             schema_="public",
         )
-
-        # Add dataset config with partition
-        dataset = DatasetConfig(
-            table="test_table",
-            schema_="public",
-            profiling=DatasetProfilingConfig(
-                partition=PartitionConfig(key="date", strategy="latest")
-            ),
-        )
-        mock_config.datasets = DatasetsConfig(datasets=[dataset])
 
         builder = PlanBuilder(mock_config)
         table_plan = builder._build_table_plan(pattern, None)

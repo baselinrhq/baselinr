@@ -32,7 +32,7 @@ export async function onRequestGet(context: any): Promise<Response> {
       offset: parseIntSafe(params.offset, 0),
     };
 
-    // Handle deprecated 'days' parameter
+    // Handle 'days' parameter (fallback to start_date if not provided)
     if (params.days && !filters.startDate) {
       const days = parseIntSafe(params.days, 30);
       filters.startDate = new Date();

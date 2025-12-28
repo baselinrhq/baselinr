@@ -1,23 +1,20 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/Card'
 import { FormField } from '@/components/ui/FormField'
 import { Select, SelectOption } from '@/components/ui/Select'
 import { Checkbox } from '@/components/ui/Checkbox'
 import { Badge } from '@/components/ui/Badge'
-import { Tabs } from '@/components/ui/Tabs'
-import { TablePattern, ColumnConfig as ColumnConfigType } from '@/types/config'
-import { PartitionConfig } from './PartitionConfig'
-import { SamplingConfig } from './SamplingConfig'
-import { ColumnConfig } from './ColumnConfig'
+import { Button } from '@/components/ui/Button'
+import { TablePattern } from '@/types/config'
+import { ArrowRight, FileText } from 'lucide-react'
 
 export interface TableProfilingConfigProps {
   tables: TablePattern[]
   onChange: (tables: TablePattern[]) => void
-  errors?: Record<string, string>
   isLoading?: boolean
-  onGetColumns?: (schema: string, table: string) => Promise<string[]>
 }
 
 const ALL_METRICS = [
@@ -54,12 +51,9 @@ function getTableSummary(pattern: TablePattern): string {
 export function TableProfilingConfig({
   tables,
   onChange,
-  errors = {},
   isLoading = false,
-  onGetColumns,
 }: TableProfilingConfigProps) {
   const [selectedTableIndex, setSelectedTableIndex] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<string>('metrics')
 
   const tableOptions: SelectOption[] = useMemo(() => {
     return tables.map((table, index) => ({
@@ -72,7 +66,6 @@ export function TableProfilingConfig({
 
   const handleTableSelect = (value: string) => {
     setSelectedTableIndex(value ? parseInt(value, 10) : null)
-    setActiveTab('metrics')
   }
 
   const handleTableChange = (updates: Partial<TablePattern>) => {
@@ -83,15 +76,12 @@ export function TableProfilingConfig({
     onChange(newTables)
   }
 
-  type TablePatternWithOverrides = TablePattern & {
+  type TablePatternWithMetrics = TablePattern & {
     metrics?: string[]
-    partition?: unknown
-    sampling?: unknown
-    columns?: ColumnConfigType[]
   }
 
   const handleMetricToggle = (metric: string, checked: boolean) => {
-    const table = selectedTable as TablePatternWithOverrides
+    const table = selectedTable as TablePatternWithMetrics
     const currentMetrics = table?.metrics || []
     if (checked) {
       if (!currentMetrics.includes(metric)) {
@@ -102,26 +92,9 @@ export function TableProfilingConfig({
     }
   }
 
-  const handlePartitionChange = (partition: unknown) => {
-    handleTableChange({ partition } as Partial<TablePattern>)
-  }
-
-  const handleSamplingChange = (sampling: unknown) => {
-    handleTableChange({ sampling } as Partial<TablePattern>)
-  }
-
-  const handleColumnsChange = (columns: unknown) => {
-    handleTableChange({ columns } as Partial<TablePattern>)
-  }
-
   const hasOverrides = (table: TablePattern) => {
-    const tableWithOverrides = table as TablePatternWithOverrides
-    return !!(
-      tableWithOverrides.metrics ||
-      tableWithOverrides.partition ||
-      tableWithOverrides.sampling ||
-      (tableWithOverrides.columns && Array.isArray(tableWithOverrides.columns) && tableWithOverrides.columns.length > 0)
-    )
+    const tableWithMetrics = table as TablePatternWithMetrics
+    return !!(tableWithMetrics.metrics && tableWithMetrics.metrics.length > 0)
   }
 
   return (
@@ -129,11 +102,31 @@ export function TableProfilingConfig({
       <div className="space-y-6">
         <div>
           <h3 className="text-lg font-semibold text-white mb-4">
-            Per-Table Overrides
+            Per-Table Metrics Overrides
           </h3>
           <p className="text-sm text-slate-400 mb-6">
-            Configure table-specific profiling settings. These override the global settings.
+            Configure table-specific metrics. Partition, sampling, and column-level settings must be configured in ODCS contracts.
           </p>
+        </div>
+
+        {/* Banner linking to contracts */}
+        <div className="glass-card border-cyan-500/30 bg-cyan-500/10 p-4 flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <FileText className="w-5 h-5 text-cyan-400" />
+            <div>
+              <p className="text-sm font-medium text-cyan-300">
+                Configure Partition, Sampling & Columns in ODCS Contracts
+              </p>
+              <p className="text-xs text-cyan-400/80 mt-1">
+                Table-level partition, sampling, and column configurations are now managed via ODCS contracts
+              </p>
+            </div>
+          </div>
+          <Link href="/config/contracts">
+            <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
+              Manage Contracts
+            </Button>
+          </Link>
         </div>
 
         {tables.length === 0 ? (
@@ -172,82 +165,35 @@ export function TableProfilingConfig({
                   </div>
                 </div>
 
-                <Tabs
-                  tabs={[
-                    { id: 'metrics', label: 'Metrics' },
-                    { id: 'partition', label: 'Partition' },
-                    { id: 'sampling', label: 'Sampling' },
-                    { id: 'columns', label: 'Columns' },
-                  ]}
-                  activeTab={activeTab}
-                  onChange={setActiveTab}
-                />
-
-                {activeTab === 'metrics' && (
-                  <div className="space-y-4 pt-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm text-slate-400">
-                        Override global metrics for this table. Leave empty to inherit from global settings.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {ALL_METRICS.map((metric) => (
-                        <Checkbox
-                          key={metric}
-                          label={metric.replace(/_/g, ' ')}
-                          checked={((selectedTable as TablePatternWithOverrides).metrics?.includes(metric)) || false}
-                          onChange={(e) => handleMetricToggle(metric, e.target.checked)}
-                          disabled={isLoading}
-                        />
-                      ))}
-                    </div>
-                    {((selectedTable as TablePatternWithOverrides).metrics?.length ?? 0) === 0 && (
-                      <p className="text-sm text-slate-500 italic">
-                        No metrics selected - will inherit from global settings
-                      </p>
-                    )}
+                <div className="space-y-4 pt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-slate-400">
+                      Override global metrics for this table. Leave empty to inherit from global settings.
+                    </p>
                   </div>
-                )}
-
-                {activeTab === 'partition' && (
-                  <div className="pt-4">
-                    <PartitionConfig
-                      partition={(selectedTable as TablePatternWithOverrides).partition}
-                      onChange={handlePartitionChange}
-                      errors={errors}
-                      isLoading={isLoading}
-                    />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {ALL_METRICS.map((metric) => (
+                      <Checkbox
+                        key={metric}
+                        label={metric.replace(/_/g, ' ')}
+                        checked={((selectedTable as TablePatternWithMetrics).metrics?.includes(metric)) || false}
+                        onChange={(e) => handleMetricToggle(metric, e.target.checked)}
+                        disabled={isLoading}
+                      />
+                    ))}
                   </div>
-                )}
-
-                {activeTab === 'sampling' && (
-                  <div className="pt-4">
-                    <SamplingConfig
-                      sampling={(selectedTable as TablePatternWithOverrides).sampling}
-                      onChange={handleSamplingChange}
-                      errors={errors}
-                      isLoading={isLoading}
-                    />
-                  </div>
-                )}
-
-                {activeTab === 'columns' && (
-                  <div className="pt-4">
-                    <ColumnConfig
-                      columns={(selectedTable as TablePatternWithOverrides).columns || []}
-                      onChange={handleColumnsChange}
-                      errors={errors}
-                      isLoading={isLoading}
-                      onGetColumns={onGetColumns}
-                    />
-                  </div>
-                )}
+                  {((selectedTable as TablePatternWithMetrics).metrics?.length ?? 0) === 0 && (
+                    <p className="text-sm text-slate-500 italic">
+                      No metrics selected - will inherit from global settings
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
             {selectedTableIndex === null && tables.length > 0 && (
               <div className="py-6 text-center text-sm text-slate-400">
-                Select a table above to configure overrides
+                Select a table above to configure metrics overrides
               </div>
             )}
           </>

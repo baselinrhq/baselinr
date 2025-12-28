@@ -63,10 +63,8 @@ class WorkerPool:
         self.logger = get_logger(__name__)
 
         self.logger.info(
-            "WorkerPool initialized",
-            max_workers=max_workers,
-            queue_size=queue_size,
-            warehouse_type=warehouse_type,
+            f"WorkerPool initialized (max_workers={max_workers}, "
+            f"queue_size={queue_size}, warehouse_type={warehouse_type})"
         )
 
     def submit(self, task: Callable, *args, **kwargs) -> Future:
@@ -460,6 +458,16 @@ def profile_table_task(
     except Exception as e:
         duration = time.time() - start_time
 
+        # Safely extract error type name without accessing exception internals
+        # that might trigger DBAPIError reconstruction
+        try:
+            error_type_name = type(e).__name__
+        except Exception:
+            # Fallback if accessing type fails (e.g., DBAPIError with __cause__)
+            error_type_name = "Exception"
+
+        error_str = str(e)
+
         # Log error but don't raise
         try:
             from .logging import log_event
@@ -467,17 +475,17 @@ def profile_table_task(
             log_event(
                 logger,
                 "table_profiling_failed",
-                f"Failed to profile {table_name}: {e}",
+                f"Failed to profile {table_name}: {error_str}",
                 level="error",
                 metadata={
                     "table": table_name,
-                    "error": str(e),
-                    "error_type": type(e).__name__,
+                    "error": error_str,
+                    "error_type": error_type_name,
                     "duration_seconds": duration,
                 },
             )
         except ImportError:
-            logger.error(f"Failed to profile {table_name}: {e}")
+            logger.error(f"Failed to profile {table_name}: {error_str}")
 
         # Emit failure event
         if event_bus:
@@ -489,8 +497,8 @@ def profile_table_task(
                     timestamp=datetime.now(),
                     metadata={
                         "table": table_name,
-                        "error": str(e),
-                        "error_type": type(e).__name__,
+                        "error": error_str,
+                        "error_type": error_type_name,
                         "duration_seconds": duration,
                         "worker_execution": True,
                     },

@@ -54,13 +54,7 @@ profiling:
     # Example 5: Profile models matching multiple criteria (intersection)
     - dbt_selector: tag:critical,config.materialized:table
       dbt_project_path: ./dbt_package
-      # You can still use partition and sampling configs
-      partition:
-        key: date
-        strategy: latest
-      sampling:
-        enabled: true
-        fraction: 0.1
+      # Note: Partition and sampling configs should be in ODCS contracts
     
     # Example 6: Mix dbt patterns with regular patterns
     - pattern: "legacy_*"

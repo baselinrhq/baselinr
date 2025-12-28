@@ -93,7 +93,7 @@ const navigationGroups: NavGroup[] = [
       { name: 'Connections', href: '/config/connections', icon: Database },
       { name: 'Storage', href: '/config/storage', icon: HardDrive },
       { name: 'Quality Scoring', href: '/config/quality', icon: Gauge },
-      { name: 'Datasets & Tables', href: '/config/datasets', icon: FolderTree },
+      { name: 'Data Contracts', href: '/config/contracts', icon: FolderTree },
       { name: 'Profiling', href: '/config/profiling', icon: Layers },
       { name: 'Validation Rules', href: '/config/validation', icon: Shield },
       { name: 'Drift Settings', href: '/config/drift', icon: TrendingUp },

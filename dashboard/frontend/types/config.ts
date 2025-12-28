@@ -105,18 +105,12 @@ export interface TablePattern {
   required_columns?: string[] | null
   modified_since_days?: number | null
   override_priority?: number | null
-  partition?: PartitionConfig | null
-  sampling?: SamplingConfig | null
-  columns?: ColumnConfig[] | null
 }
 
 // Schema-level configuration
 export interface SchemaConfig {
   database?: string | null
   schema?: string | null
-  partition?: PartitionConfig | null
-  sampling?: SamplingConfig | null
-  columns?: ColumnConfig[] | null
   table_types?: string[] | null
   min_rows?: number | null
   max_rows?: number | null
@@ -128,9 +122,6 @@ export interface SchemaConfig {
 // Database-level configuration
 export interface DatabaseConfig {
   database: string
-  partition?: PartitionConfig | null
-  sampling?: SamplingConfig | null
-  columns?: ColumnConfig[] | null
   table_types?: string[] | null
   min_rows?: number | null
   max_rows?: number | null
@@ -581,130 +572,9 @@ export interface ConfigStatusResponse {
   configured_sections: number
 }
 
-// Dataset Configuration Types
-
-export interface DatasetProfilingConfig {
-  partition?: PartitionConfig | null
-  sampling?: SamplingConfig | null
-  metrics?: string[] | null
-}
-
-export interface DatasetDriftConfig {
-  strategy?: 'absolute_threshold' | 'standard_deviation' | 'statistical' | null
-  thresholds?: Record<string, number> | null
-  baselines?: Record<string, any> | null
-}
-
-export interface DatasetValidationConfig {
-  rules?: ValidationRuleConfig[] | null
-}
-
-export interface DatasetAnomalyConfig {
-  // Column-level anomaly configs are in columns field
-}
-
-export interface DatasetConfig {
-  database?: string | null
-  schema?: string | null
-  table?: string | null
-  columns?: ColumnConfig[] | null
-  profiling?: DatasetProfilingConfig | null
-  drift?: DatasetDriftConfig | null
-  validation?: DatasetValidationConfig | null
-  anomaly?: DatasetAnomalyConfig | null
-  source_file?: string | null
-}
-
-export interface DatasetIdentifier {
-  database?: string | null
-  schema?: string | null
-  table?: string | null
-}
-
-export interface DatasetFileInfo {
-  path: string
-  absolute_path: string
-  exists: boolean
-  modified: boolean
-  error?: string | null
-}
-
-export interface DatasetListItem {
-  dataset_id: string
-  database?: string | null
-  schema?: string | null
-  table?: string | null
-  source_file?: string | null
-  has_profiling: boolean
-  has_drift: boolean
-  has_validation: boolean
-  has_anomaly: boolean
-  has_columns: boolean
-}
-
-export interface DatasetListResponse {
-  datasets: DatasetListItem[]
-  total: number
-}
-
-export interface DatasetConfigResponse {
-  dataset_id: string
-  config: DatasetConfig
-  source_file?: string | null
-}
-
-export interface CreateDatasetRequest {
-  config: DatasetConfig
-  save_to_file: boolean
-  file_path?: string | null
-}
-
-export interface UpdateDatasetRequest {
-  config: DatasetConfig
-  save_to_file?: boolean | null
-}
-
-export interface ConfigPrecedenceInfo {
-  key: string
-  value: any
-  source: string
-  priority: number
-}
-
-export interface DatasetPreviewResponse {
-  merged_config: DatasetConfig
-  precedence: Record<string, string>
-}
-
-export interface DatasetPrecedenceResponse {
-  precedence: ConfigPrecedenceInfo[]
-}
-
-export interface DatasetValidationResponse {
-  valid: boolean
-  errors: string[]
-  warnings: string[]
-}
-
-export interface DatasetFileListResponse {
-  files: DatasetFileInfo[]
-  directory: string
-}
-
-export interface DatasetFileContentResponse {
-  path: string
-  content: string
-  exists: boolean
-}
-
-export interface CreateDatasetFileRequest {
-  path: string
-  content: string
-}
-
-export interface UpdateDatasetFileRequest {
-  content: string
-}
+// Dataset Configuration Types - REMOVED
+// All dataset configuration is now handled via ODCS contracts
+// See types/odcs.ts for contract types
 
 export interface MigrationPreviewRequest {
   config?: BaselinrConfig | null

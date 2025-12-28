@@ -1,0 +1,268 @@
+# Customers Dataset Contract
+# ODCS v3.1.0 - Open Data Contract Standard
+#
+# This contract defines the schema, quality rules, and SLAs for the customers table.
+
+kind: DataContract
+apiVersion: v3.1.0
+id: customers-contract
+version: 1.0.0
+status: active
+
+# =============================================================================
+# Contract Information
+# =============================================================================
+info:
+  title: Customers Dataset
+  description: |
+    Core customer data including contact information and account details.
+    This is a critical dataset used by multiple downstream analytics processes.
+  owner: data-team@company.com
+  domain: sales
+  dataProduct: customer-360
+  contact:
+    name: Data Platform Team
+    email: data-platform@company.com
+  links:
+    - url: https://wiki.company.com/data/customers
+      type: documentation
+      title: Customer Data Documentation
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+servers:
+  production:
+    type: postgres
+    host: prod-db.company.com
+    port: 5432
+    database: production
+    schema: public
+  development:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: development
+    schema: public
+
+# =============================================================================
+# Dataset Definition
+# =============================================================================
+dataset:
+  - name: customers
+    physicalName: public.customers
+    type: table
+    description: Customer master data table containing all customer information
+    dataGranularity: One row per customer
+    tags:
+      - core
+      - pii-containing
+    
+    columns:
+      - name: customer_id
+        businessName: Customer ID
+        logicalType: integer
+        description: Unique identifier for each customer
+        isPrimaryKey: true
+        isNullable: false
+        criticalDataElementStatus: true
+        
+      - name: email
+        businessName: Email Address
+        logicalType: string
+        description: Primary email address for customer communications
+        isNullable: false
+        isUnique: true
+        classification: pii
+        quality:
+          - type: validity
+            rule: format
+            severity: error
+            description: Email must be valid format
+            
+      - name: first_name
+        businessName: First Name
+        logicalType: string
+        description: Customer's first name
+        isNullable: false
+        classification: pii
+        
+      - name: last_name
+        businessName: Last Name
+        logicalType: string
+        description: Customer's last name
+        isNullable: false
+        classification: pii
+        
+      - name: phone
+        businessName: Phone Number
+        logicalType: string
+        description: Primary phone number
+        isNullable: true
+        classification: pii
+        
+      - name: created_at
+        businessName: Creation Date
+        logicalType: timestamp
+        description: When the customer account was created
+        isNullable: false
+        
+      - name: updated_at
+        businessName: Last Updated
+        logicalType: timestamp
+        description: Last modification timestamp
+        isNullable: true
+        
+      - name: status
+        businessName: Account Status
+        logicalType: string
+        description: Current status of the customer account
+        isNullable: false
+        sampleValues:
+          - active
+          - inactive
+          - suspended
+        quality:
+          - type: validity
+            rule: enum
+            severity: error
+            description: Status must be one of the allowed values
+            
+      - name: tier
+        businessName: Customer Tier
+        logicalType: string
+        description: Customer loyalty tier
+        isNullable: true
+        sampleValues:
+          - bronze
+          - silver
+          - gold
+          - platinum
+
+# =============================================================================
+# Quality Rules (Contract Level)
+# =============================================================================
+quality:
+  - type: validity
+    dimension: completeness
+    severity: error
+    specification:
+      column: customer_id
+      rule: not_null
+    description: Customer ID must not be null
+    businessImpact: Missing customer IDs will break downstream joins
+    
+  - type: validity
+    dimension: uniqueness
+    severity: error
+    specification:
+      column: customer_id
+      rule: unique
+    description: Customer ID must be unique
+    
+  - type: validity
+    dimension: completeness
+    severity: error
+    specification:
+      column: email
+      rule: not_null
+    description: Email must not be null
+    
+  - type: validity
+    dimension: uniqueness
+    severity: error
+    specification:
+      column: email
+      rule: unique
+    description: Email must be unique across customers
+    
+  - type: validity
+    dimension: validity
+    severity: error
+    specification:
+      column: email
+      rule: format
+      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    description: Email must match valid email format
+    
+  - type: validity
+    dimension: validity
+    severity: error
+    specification:
+      column: status
+      rule: enum
+      values:
+        - active
+        - inactive
+        - suspended
+    description: Status must be one of the allowed values
+
+# =============================================================================
+# Service Level Agreements
+# =============================================================================
+servicelevels:
+  - property: freshness
+    value: 24
+    unit: hours
+    description: Data should be updated at least daily
+    driver: analytics
+    
+  - property: availability
+    value: 99.9
+    unit: percent
+    description: Data should be available 99.9% of the time
+    
+  - property: retention
+    value: 7
+    unit: years
+    description: Customer data must be retained for 7 years
+
+# =============================================================================
+# Stakeholders
+# =============================================================================
+stakeholders:
+  - username: john.doe
+    name: John Doe
+    role: Data Owner
+    email: john.doe@company.com
+    
+  - username: jane.smith
+    name: Jane Smith
+    role: Data Steward
+    email: jane.smith@company.com
+    
+  - username: analytics-team
+    name: Analytics Team
+    role: Consumer
+    email: analytics@company.com
+
+# =============================================================================
+# Access Roles
+# =============================================================================
+roles:
+  - role: reader
+    access: read
+    description: Can read customer data
+    firstLevelApprovers: data-platform@company.com
+    
+  - role: writer
+    access: write
+    description: Can modify customer data
+    firstLevelApprovers: data-platform@company.com
+    secondLevelApprovers: security@company.com
+    
+  - role: admin
+    access: admin
+    description: Full access to customer data
+    firstLevelApprovers: data-platform@company.com
+    secondLevelApprovers: ciso@company.com
+
+# =============================================================================
+# Tags
+# =============================================================================
+tags:
+  - customer-data
+  - pii
+  - gdpr-applicable
+  - core-entity
+

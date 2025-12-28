@@ -347,9 +347,22 @@ class ProfileEngine:
                     record_profile_failed(warehouse, fq_table, duration)
 
                 # Log and emit failure
-                error_msg = str(e) if e else "Unknown error"
-                error_type = type(e).__name__ if e else "UnknownError"
-                error_repr = repr(e) if e else "Unknown error"
+                # Safely extract error information without accessing exception internals
+                # that might trigger DBAPIError reconstruction
+                try:
+                    error_msg = str(e) if e else "Unknown error"
+                except Exception:
+                    error_msg = "Unknown error (could not stringify exception)"
+
+                try:
+                    error_type = type(e).__name__ if e else "UnknownError"
+                except Exception:
+                    error_type = "Exception"
+
+                try:
+                    error_repr = repr(e) if e else "Unknown error"
+                except Exception:
+                    error_repr = "Unknown error (could not repr exception)"
 
                 log_and_emit(
                     self.logger,
@@ -474,7 +487,7 @@ class ProfileEngine:
             # Get table metadata using database-specific connector
             table = connector.get_table(table_name, schema=pattern.schema_)
 
-            # Resolve profiling config from datasets section
+            # Resolve profiling config from contracts
             merger = ConfigMerger(self.config)
             profiling_config = merger.merge_profiling_config(
                 table_pattern=pattern,

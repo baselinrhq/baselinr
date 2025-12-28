@@ -673,10 +673,9 @@ jobs:
               --config $BASELINR_CONFIG_PATH \
               --format json || echo "Score command without table failed as expected"
 
-      - name: Test datasets configuration functionality
+      - name: Run contracts CLI commands
         run: |
-          # Test that config with datasets section loads successfully
-          # The plan command will validate the config structure including datasets
+          # Test contracts list command (should work even with no contracts)
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
             -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
@@ -684,11 +683,11 @@ jobs:
             -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
             -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            baselinr plan --config $BASELINR_CONFIG_PATH || echo "Plan with datasets config failed (expected if config invalid)"
+            baselinr contracts list \
+              --config $BASELINR_CONFIG_PATH \
+              --format table || echo "Contracts list failed (expected if contracts directory doesn't exist or no contracts)"
 
-          # Test that profiling applies dataset overrides
-          # The customers table should use dataset config (partition, sampling, columns)
-          # This verifies that ConfigMerger is working and applying dataset-level overrides
+          # Test contracts list with JSON format
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
             -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
@@ -696,11 +695,11 @@ jobs:
             -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
             -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            baselinr profile --config $BASELINR_CONFIG_PATH --table customers || echo "Profile with dataset overrides failed (expected if table doesn't exist)"
+            baselinr contracts list \
+              --config $BASELINR_CONFIG_PATH \
+              --format json || echo "Contracts list JSON failed (expected if contracts directory doesn't exist or no contracts)"
 
-          # Test that drift detection uses dataset drift configs
-          # The customers table should use statistical strategy from dataset config (instead of global absolute_threshold)
-          # This verifies that dataset-level drift overrides are applied
+          # Test contracts validate command
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
             -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
@@ -708,11 +707,11 @@ jobs:
             -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
             -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            baselinr drift --config $BASELINR_CONFIG_PATH --dataset customers || echo "Drift with dataset config failed (expected if no drift data)"
+            baselinr contracts validate \
+              --config $BASELINR_CONFIG_PATH \
+              --format table || echo "Contracts validate failed (expected if contracts directory doesn't exist or no contracts)"
 
-          # Test that validation uses dataset validation rules
-          # The customers table should have dataset-specific validation rules applied
-          # This verifies that dataset-level validation rules are merged with global rules
+          # Test contracts validate with strict mode
           docker run --rm \
             --network $DOCKER_NETWORK_NAME \
             -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
@@ -720,7 +719,86 @@ jobs:
             -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
             -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
             $DOCKER_IMAGE_NAME \
-            baselinr validate --config $BASELINR_CONFIG_PATH --table customers || echo "Validation with dataset rules failed (expected if validation disabled or no rules)"
+            baselinr contracts validate \
+              --config $BASELINR_CONFIG_PATH \
+              --strict \
+              --format table || echo "Contracts validate strict failed (expected if contracts directory doesn't exist or no contracts)"
+
+          # Test contracts show command (should work even if contract not found)
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts show \
+              --config $BASELINR_CONFIG_PATH \
+              --contract customers-contract \
+              --format table || echo "Contracts show failed (expected if contract not found)"
+
+          # Test contracts show with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts show \
+              --config $BASELINR_CONFIG_PATH \
+              --contract customers-contract \
+              --format json || echo "Contracts show JSON failed (expected if contract not found)"
+
+          # Test contracts show with YAML format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts show \
+              --config $BASELINR_CONFIG_PATH \
+              --contract customers-contract \
+              --format yaml || echo "Contracts show YAML failed (expected if contract not found)"
+
+          # Test contracts rules command
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts rules \
+              --config $BASELINR_CONFIG_PATH \
+              --format table || echo "Contracts rules failed (expected if contracts directory doesn't exist or no contracts)"
+
+          # Test contracts rules with JSON format
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts rules \
+              --config $BASELINR_CONFIG_PATH \
+              --format json || echo "Contracts rules JSON failed (expected if contracts directory doesn't exist or no contracts)"
+
+          # Test contracts rules with contract filter
+          docker run --rm \
+            --network $DOCKER_NETWORK_NAME \
+            -e BASELINR_SOURCE__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_SOURCE__PORT=5432 \
+            -e BASELINR_STORAGE__CONNECTION__HOST=$BASELINR_DB_HOST \
+            -e BASELINR_STORAGE__CONNECTION__PORT=5432 \
+            $DOCKER_IMAGE_NAME \
+            baselinr contracts rules \
+              --config $BASELINR_CONFIG_PATH \
+              --contract customers-contract \
+              --format table || echo "Contracts rules with filter failed (expected if contract not found)"
 
       - name: Run chat CLI commands (error handling tests)
         run: |
