@@ -14,6 +14,13 @@ from .config.loader import ConfigLoader
 from .config.schema import BaselinrConfig, TablePattern
 
 if TYPE_CHECKING:
+    from .contracts import (
+        DatasetMetadata,
+        ODCSAdapter,
+        ODCSContract,
+        ProfilingTarget,
+        ValidationRule,
+    )
     from .drift.detector import DriftReport
     from .planner import ProfilingPlan
     from .profiling.core import ProfilingResult
@@ -61,6 +68,7 @@ class BaselinrClient:
             raise ValueError("Provide either config_path or config")
 
         # Cache config similar to BaselinrResource in Dagster integration
+        self._config_path = config_path
         if config_path:
             self._config = ConfigLoader.load_from_file(config_path)
         else:
@@ -76,6 +84,10 @@ class BaselinrClient:
         self._event_bus = None
         self._migration_manager: Optional["MigrationManager"] = None
 
+        # Contracts cache
+        self._contracts: Optional[List["ODCSContract"]] = None
+        self._adapter: Optional["ODCSAdapter"] = None
+
     @property
     def config(self) -> BaselinrConfig:
         """
@@ -85,6 +97,235 @@ class BaselinrClient:
             BaselinrConfig instance
         """
         return self._config
+
+    @property
+    def contracts(self) -> List["ODCSContract"]:
+        """
+        Get loaded ODCS contracts.
+
+        Contracts are loaded from the directory specified in config.contracts.
+
+        Returns:
+            List of ODCSContract objects
+
+        Example:
+            >>> contracts = client.contracts
+            >>> print(f"Loaded {len(contracts)} contracts")
+        """
+        if self._contracts is None:
+            self._contracts = self._load_contracts()
+        return self._contracts
+
+    def _load_contracts(self) -> List["ODCSContract"]:
+        """Load contracts from configured directory."""
+        from .contracts import ContractLoader
+
+        if not self._config.contracts:
+            return []
+
+        # Try to get from cache first
+        if self._config_path:
+            cached = ConfigLoader.get_cached_contracts(self._config_path)
+            if cached:
+                return cached
+
+        # Load from directory
+        contracts_dir = self._config.contracts.directory
+        if self._config_path:
+            from pathlib import Path
+
+            base_path = Path(self._config_path).parent
+            contracts_dir = str(base_path / contracts_dir)
+
+        loader = ContractLoader(
+            validate_on_load=self._config.contracts.validate_on_load,
+            file_patterns=self._config.contracts.file_patterns,
+        )
+
+        try:
+            return loader.load_from_directory(
+                contracts_dir,
+                recursive=self._config.contracts.recursive,
+                exclude_patterns=self._config.contracts.exclude_patterns,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to load contracts: {e}")
+            return []
+
+    def get_contract(self, name: str) -> Optional["ODCSContract"]:
+        """
+        Get a specific contract by dataset name or contract ID.
+
+        Args:
+            name: Dataset name or contract ID
+
+        Returns:
+            ODCSContract if found, None otherwise
+
+        Example:
+            >>> contract = client.get_contract("customers")
+            >>> if contract:
+            ...     print(f"Contract: {contract.info.title}")
+        """
+        for contract in self.contracts:
+            # Match by contract ID
+            if contract.id == name:
+                return contract
+            # Match by dataset name
+            if contract.dataset:
+                for ds in contract.dataset:
+                    if ds.name == name or ds.physicalName == name:
+                        return contract
+        return None
+
+    def get_contract_datasets(self) -> List[str]:
+        """
+        Get list of all dataset names from loaded contracts.
+
+        Returns:
+            List of dataset names
+
+        Example:
+            >>> datasets = client.get_contract_datasets()
+            >>> print(f"Found {len(datasets)} datasets in contracts")
+        """
+        datasets: List[str] = []
+        for contract in self.contracts:
+            datasets.extend(contract.get_dataset_names())
+        return datasets
+
+    def get_profiling_targets_from_contracts(self) -> List["ProfilingTarget"]:
+        """
+        Convert loaded contracts to profiling targets.
+
+        Returns:
+            List of ProfilingTarget objects ready for profiling
+
+        Example:
+            >>> targets = client.get_profiling_targets_from_contracts()
+            >>> for target in targets:
+            ...     print(f"Target: {target.get_full_name()}")
+        """
+        from .contracts import ODCSAdapter
+
+        if self._adapter is None:
+            self._adapter = ODCSAdapter()
+
+        targets: List["ProfilingTarget"] = []
+        for contract in self.contracts:
+            targets.extend(self._adapter.to_profiling_targets(contract))
+        return targets
+
+    def get_validation_rules_from_contracts(self) -> List["ValidationRule"]:
+        """
+        Convert loaded contracts to validation rules.
+
+        Returns:
+            List of ValidationRule objects
+
+        Example:
+            >>> rules = client.get_validation_rules_from_contracts()
+            >>> print(f"Found {len(rules)} validation rules")
+        """
+        from .contracts import ODCSAdapter
+
+        if self._adapter is None:
+            self._adapter = ODCSAdapter()
+
+        rules: List["ValidationRule"] = []
+        for contract in self.contracts:
+            rules.extend(self._adapter.to_validation_rules(contract))
+        return rules
+
+    def get_dataset_metadata_from_contracts(self) -> List["DatasetMetadata"]:
+        """
+        Extract dataset metadata from loaded contracts.
+
+        Returns:
+            List of DatasetMetadata objects
+
+        Example:
+            >>> metadata = client.get_dataset_metadata_from_contracts()
+            >>> for ds in metadata:
+            ...     print(f"{ds.name}: {len(ds.columns)} columns")
+        """
+        from .contracts import ODCSAdapter
+
+        if self._adapter is None:
+            self._adapter = ODCSAdapter()
+
+        metadata: List["DatasetMetadata"] = []
+        for contract in self.contracts:
+            metadata.extend(self._adapter.to_dataset_metadata(contract))
+        return metadata
+
+    def validate_contracts(self, strict: bool = False) -> Dict[str, Any]:
+        """
+        Validate all loaded contracts.
+
+        Args:
+            strict: If True, treat warnings as errors
+
+        Returns:
+            Dictionary with validation results
+
+        Example:
+            >>> result = client.validate_contracts()
+            >>> if result['valid']:
+            ...     print("All contracts are valid")
+        """
+        from .contracts import ODCSValidator
+
+        validator = ODCSValidator(strict=strict)
+        results: Dict[str, Any] = {
+            "valid": True,
+            "contracts_checked": 0,
+            "errors": [],
+            "warnings": [],
+        }
+
+        for contract in self.contracts:
+            results["contracts_checked"] += 1
+            result = validator.validate_full(contract)
+
+            if not result.valid:
+                results["valid"] = False
+
+            contract_name = contract.id or (
+                contract.dataset[0].name if contract.dataset else "unnamed"
+            )
+
+            for error in result.errors:
+                results["errors"].append(
+                    {
+                        "contract": contract_name,
+                        "message": str(error),
+                    }
+                )
+
+            for warning in result.warnings:
+                results["warnings"].append(
+                    {
+                        "contract": contract_name,
+                        "message": str(warning),
+                    }
+                )
+
+        return results
+
+    def reload_contracts(self) -> int:
+        """
+        Reload contracts from the configured directory.
+
+        Returns:
+            Number of contracts loaded
+
+        Example:
+            >>> count = client.reload_contracts()
+            >>> print(f"Reloaded {count} contracts")
+        """
+        self._contracts = None
+        return len(self.contracts)
 
     def _ensure_query_client(self) -> "MetadataQueryClient":
         """Lazy initialize query client for query methods."""

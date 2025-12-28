@@ -2930,41 +2930,6 @@ def migrate_command(args):
         return 1
 
 
-def migrate_config_command(args):
-    """Migrate inline dataset configs to file-based structure."""
-    from pathlib import Path
-
-    from .config.migrate import ConfigMigrator
-
-    try:
-        # Load config
-        config = ConfigLoader.load_from_file(args.config)
-        config_path = Path(args.config)
-
-        # Create migrator
-        migrator = ConfigMigrator(config, config_path)
-
-        # Perform migration
-        result = migrator.migrate_to_directory(
-            output_dir=args.output_dir, create_backup=not args.no_backup
-        )
-
-        if result["migrated"]:
-            print(f"✓ Migrated {len(result['files_created'])} dataset configs")
-            print(f"  Created files: {', '.join(result['files_created'])}")
-            if result.get("backup_path"):
-                print(f"  Backup created: {result['backup_path']}")
-            return 0
-        else:
-            print(result["message"])
-            return 0
-
-    except Exception as e:
-        logger.error(f"Config migration failed: {e}", exc_info=True)
-        print(f"\n[ERROR] {e}")
-        return 1
-
-
 def recommend_command(args):
     """Execute recommend command to generate smart table and column recommendations."""
     import json
@@ -3730,6 +3695,243 @@ def rca_command(args):
         return 1
 
 
+def contracts_command(args):
+    """Execute contracts command."""
+    from .cli_output import safe_print
+    from .client import BaselinrClient
+
+    try:
+        # Initialize client (loads config and contracts)
+        client = BaselinrClient(config_path=args.config)
+
+        if args.contracts_command == "list":
+            contracts = client.contracts
+
+            if args.format == "json":
+                output = []
+                for contract in contracts:
+                    output.append(
+                        {
+                            "id": contract.id,
+                            "status": contract.status,
+                            "title": contract.info.title if contract.info else None,
+                            "owner": contract.info.owner if contract.info else None,
+                            "domain": contract.info.domain if contract.info else None,
+                            "datasets": contract.get_dataset_names(),
+                            "quality_rules": len(contract.get_all_quality_rules()),
+                            "service_levels": len(contract.servicelevels or []),
+                        }
+                    )
+                print(json.dumps(output, indent=2))
+            else:
+                safe_print(f"\n📋 ODCS Contracts ({len(contracts)} loaded)\n")
+
+                if not contracts:
+                    safe_print("No contracts found. Check your contracts directory in config.")
+                    return 0
+
+                for contract in contracts:
+                    contract_id = contract.id or "unnamed"
+                    title = contract.info.title if contract.info else "Untitled"
+                    status = contract.status or "unknown"
+
+                    safe_print(f"📄 {contract_id}")
+                    safe_print(f"   Title: {title}")
+                    safe_print(f"   Status: {status}")
+
+                    if contract.info:
+                        if contract.info.owner:
+                            safe_print(f"   Owner: {contract.info.owner}")
+                        if contract.info.domain:
+                            safe_print(f"   Domain: {contract.info.domain}")
+
+                    datasets = contract.get_dataset_names()
+                    if datasets:
+                        safe_print(f"   Datasets: {', '.join(datasets)}")
+
+                    rules_count = len(contract.get_all_quality_rules())
+                    sla_count = len(contract.servicelevels or [])
+                    safe_print(f"   Quality Rules: {rules_count}")
+                    safe_print(f"   Service Levels: {sla_count}")
+
+                    if args.verbose and contract.dataset:
+                        for ds in contract.dataset:
+                            cols = len(ds.columns) if ds.columns else 0
+                            safe_print(f"     └─ {ds.name}: {cols} columns")
+
+                    safe_print("")
+
+                safe_print(f"Total: {len(contracts)} contract(s)")
+
+            return 0
+
+        elif args.contracts_command == "validate":
+            result = client.validate_contracts(strict=args.strict)
+
+            if args.format == "json":
+                print(json.dumps(result, indent=2))
+            else:
+                safe_print("\n🔍 Contract Validation Results\n")
+                safe_print(f"Contracts checked: {result['contracts_checked']}")
+                safe_print(f"Valid: {'✅ Yes' if result['valid'] else '❌ No'}")
+
+                if result["errors"]:
+                    safe_print(f"\n❌ Errors ({len(result['errors'])}):")
+                    for error in result["errors"]:
+                        safe_print(f"   [{error['contract']}] {error['message']}")
+
+                if result["warnings"]:
+                    safe_print(f"\n⚠️  Warnings ({len(result['warnings'])}):")
+                    for warning in result["warnings"]:
+                        safe_print(f"   [{warning['contract']}] {warning['message']}")
+
+                if result["valid"]:
+                    safe_print("\n✅ All contracts are valid!")
+
+            return 0 if result["valid"] else 1
+
+        elif args.contracts_command == "show":
+            contract = client.get_contract(args.contract)
+
+            if not contract:
+                safe_print(f"❌ Contract not found: {args.contract}")
+                return 1
+
+            if args.format == "json":
+                # Convert to dict and output as JSON
+                output = contract.model_dump(exclude_none=True)
+                print(json.dumps(output, indent=2, default=str))
+            elif args.format == "yaml":
+                import yaml
+
+                output = contract.model_dump(exclude_none=True)
+                print(yaml.dump(output, default_flow_style=False, sort_keys=False))
+            else:
+                # Table format
+                safe_print(f"\n📄 Contract: {contract.id or 'unnamed'}")
+                safe_print(f"   API Version: {contract.apiVersion}")
+                safe_print(f"   Status: {contract.status or 'unknown'}")
+
+                if contract.info:
+                    safe_print("\n📝 Info:")
+                    if contract.info.title:
+                        safe_print(f"   Title: {contract.info.title}")
+                    if contract.info.description:
+                        safe_print(f"   Description: {contract.info.description}")
+                    if contract.info.owner:
+                        safe_print(f"   Owner: {contract.info.owner}")
+                    if contract.info.domain:
+                        safe_print(f"   Domain: {contract.info.domain}")
+
+                if contract.dataset:
+                    safe_print(f"\n📊 Datasets ({len(contract.dataset)}):")
+                    for ds in contract.dataset:
+                        safe_print(f"   • {ds.name} ({ds.type or 'table'})")
+                        if ds.physicalName:
+                            safe_print(f"     Physical: {ds.physicalName}")
+                        if ds.description:
+                            safe_print(f"     {ds.description[:60]}...")
+                        if ds.columns:
+                            safe_print(f"     Columns: {len(ds.columns)}")
+                            for col in ds.columns[:5]:
+                                pk = " [PK]" if col.isPrimaryKey else ""
+                                nullable = " (nullable)" if col.isNullable else " (required)"
+                                col_type = col.logicalType or "unknown"
+                                safe_print(f"       - {col.name}: {col_type}{pk}{nullable}")
+                            if len(ds.columns) > 5:
+                                safe_print(f"       ... and {len(ds.columns) - 5} more")
+
+                rules = contract.get_all_quality_rules()
+                if rules:
+                    safe_print(f"\n✅ Quality Rules ({len(rules)}):")
+                    for rule in rules[:5]:
+                        rule_type = rule.rule or rule.type or "check"
+                        col = rule.column or (
+                            rule.specification.column if rule.specification else None
+                        )
+                        col_str = f" on {col}" if col else ""
+                        safe_print(f"   • {rule_type}{col_str} ({rule.severity or 'error'})")
+                    if len(rules) > 5:
+                        safe_print(f"   ... and {len(rules) - 5} more")
+
+                if contract.servicelevels:
+                    safe_print(f"\n⏱️  Service Levels ({len(contract.servicelevels)}):")
+                    for sla in contract.servicelevels:
+                        unit = f" {sla.unit}" if sla.unit else ""
+                        safe_print(f"   • {sla.property}: {sla.value}{unit}")
+
+                if contract.stakeholders:
+                    safe_print(f"\n👥 Stakeholders ({len(contract.stakeholders)}):")
+                    for sh in contract.stakeholders[:3]:
+                        name = sh.name or sh.username or sh.email or "unknown"
+                        role = f" ({sh.role})" if sh.role else ""
+                        safe_print(f"   • {name}{role}")
+                    if len(contract.stakeholders) > 3:
+                        safe_print(f"   ... and {len(contract.stakeholders) - 3} more")
+
+            return 0
+
+        elif args.contracts_command == "rules":
+            rules = client.get_validation_rules_from_contracts()
+
+            # Filter by contract if specified
+            if args.contract:
+                rules = [r for r in rules if r.contract_id == args.contract]
+
+            if args.format == "json":
+                output = []
+                for rule in rules:
+                    output.append(
+                        {
+                            "type": rule.type,
+                            "table": rule.table,
+                            "column": rule.column,
+                            "severity": rule.severity,
+                            "dimension": rule.dimension,
+                            "description": rule.description,
+                            "contract_id": rule.contract_id,
+                        }
+                    )
+                print(json.dumps(output, indent=2))
+            else:
+                safe_print(f"\n✅ Validation Rules from Contracts ({len(rules)} total)\n")
+
+                if not rules:
+                    safe_print("No validation rules found in contracts.")
+                    return 0
+
+                # Group by table
+                rules_by_table = {}
+                for rule in rules:
+                    table = rule.table or "unknown"
+                    if table not in rules_by_table:
+                        rules_by_table[table] = []
+                    rules_by_table[table].append(rule)
+
+                for table, table_rules in rules_by_table.items():
+                    safe_print(f"📋 {table} ({len(table_rules)} rules)")
+                    for rule in table_rules:
+                        col_str = f".{rule.column}" if rule.column else ""
+                        desc = f" - {rule.description[:40]}..." if rule.description else ""
+                        safe_print(f"   • [{rule.severity}] {rule.type}{col_str}{desc}")
+                    safe_print("")
+
+            return 0
+
+        else:
+            safe_print(f"❌ Unknown contracts command: {args.contracts_command}")
+            return 1
+
+    except Exception as e:
+        logger.error(f"Contracts command failed: {e}", exc_info=True)
+        safe_print(f"\n❌ Error: {e}")
+        if hasattr(args, "debug") and args.debug:
+            import traceback
+
+            traceback.print_exc()
+        return 1
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Baselinr - Data profiling and drift detection")
@@ -3884,25 +4086,6 @@ def main():
     # migrate validate
     validate_parser = migrate_subparsers.add_parser("validate", help="Validate schema integrity")
     validate_parser.add_argument("--config", "-c", required=True, help="Path to configuration file")
-
-    # Migrate config command (for dataset config migration)
-    migrate_config_parser = subparsers.add_parser(
-        "migrate-config",
-        help="Migrate inline dataset configs to file-based structure",
-    )
-    migrate_config_parser.add_argument(
-        "--config", "-c", required=True, help="Path to configuration file"
-    )
-    migrate_config_parser.add_argument(
-        "--output-dir",
-        default="datasets",
-        help="Output directory for dataset files (default: datasets)",
-    )
-    migrate_config_parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Don't create backup of original config",
-    )
 
     # Query command
     query_parser = subparsers.add_parser("query", help="Query profiling metadata")
@@ -4353,6 +4536,83 @@ def main():
         help="Enable verbose output",
     )
 
+    # Contracts command
+    contracts_parser = subparsers.add_parser(
+        "contracts",
+        help="Manage ODCS data contracts",
+        description=(
+            "Work with ODCS (Open Data Contract Standard) data contracts. "
+            "Contracts define dataset schemas, quality rules, SLAs, and ownership."
+        ),
+    )
+    contracts_subparsers = contracts_parser.add_subparsers(
+        dest="contracts_command", help="Contracts operation"
+    )
+
+    # contracts list
+    contracts_list_parser = contracts_subparsers.add_parser("list", help="List loaded contracts")
+    contracts_list_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file"
+    )
+    contracts_list_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format (default: table)",
+    )
+    contracts_list_parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show verbose details"
+    )
+
+    # contracts validate
+    contracts_validate_parser = contracts_subparsers.add_parser(
+        "validate", help="Validate ODCS contracts"
+    )
+    contracts_validate_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file"
+    )
+    contracts_validate_parser.add_argument(
+        "--strict", action="store_true", help="Treat warnings as errors"
+    )
+    contracts_validate_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format (default: table)",
+    )
+
+    # contracts show
+    contracts_show_parser = contracts_subparsers.add_parser(
+        "show", help="Show details of a specific contract"
+    )
+    contracts_show_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file"
+    )
+    contracts_show_parser.add_argument(
+        "--contract", required=True, help="Contract ID or dataset name"
+    )
+    contracts_show_parser.add_argument(
+        "--format",
+        choices=["table", "json", "yaml"],
+        default="table",
+        help="Output format (default: table)",
+    )
+
+    # contracts rules
+    contracts_rules_parser = contracts_subparsers.add_parser(
+        "rules", help="List validation rules from contracts"
+    )
+    contracts_rules_parser.add_argument(
+        "--config", "-c", required=True, help="Path to configuration file"
+    )
+    contracts_rules_parser.add_argument("--contract", help="Filter by contract ID or dataset name")
+    contracts_rules_parser.add_argument(
+        "--format",
+        choices=["table", "json"],
+        default="table",
+        help="Output format (default: table)",
+    )
+
     # Parse arguments
     args = parser.parse_args()
 
@@ -4383,8 +4643,6 @@ def main():
             migrate_parser.print_help()
             return 1
         return migrate_command(args)
-    elif args.command == "migrate-config":
-        return migrate_config_command(args)
     elif args.command == "query":
         if not args.query_command:
             query_parser.print_help()
@@ -4411,6 +4669,11 @@ def main():
         return rca_command(args)
     elif args.command == "chat":
         return chat_command(args)
+    elif args.command == "contracts":
+        if not args.contracts_command:
+            contracts_parser.print_help()
+            return 1
+        return contracts_command(args)
     else:
         parser.print_help()
         return 1
@@ -4420,9 +4683,8 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: BaselinrConfig):
     """Convert plan decisions into table patterns for execution.
 
     Note: Partition and sampling overrides for incremental runs are now handled
-    via dataset configs in the datasets section. The incremental planner
-    decisions are used to determine which tables to run, but partition/sampling
-    configs come from the datasets section.
+    via ODCS contracts. The incremental planner decisions are used to determine
+    which tables to run, but partition/sampling configs come from contracts.
     """
     selected = []
     for decision in plan.decisions:
@@ -4431,12 +4693,12 @@ def _select_tables_from_plan(plan: IncrementalPlan, config: BaselinrConfig):
         pattern = decision.table
         table_pattern = pattern.model_copy(deep=True)
 
-        # Note: Partition and sampling configs are now in datasets section.
-        # For partial runs, the partition config should be defined in the dataset
-        # with strategy "specific_values" and the values set there.
-        # For sampling, the dataset config should have sampling enabled.
+        # Note: Partition and sampling configs are now in ODCS contracts.
+        # For partial runs, the partition config should be defined in the contract
+        # customProperties with strategy "specific_values" and the values set there.
+        # For sampling, the contract should have sampling config in customProperties.
         # The incremental planner decisions are used to determine which tables
-        # to run, but the actual partition/sampling configs come from datasets.
+        # to run, but the actual partition/sampling configs come from contracts.
 
         if decision.action == "partial" and decision.changed_partitions:
             # Check if partition config exists in datasets

@@ -1,0 +1,198 @@
+# Baselinr Configuration with ODCS Contracts
+# 
+# This is a streamlined configuration that uses ODCS (Open Data Contract Standard)
+# contracts for dataset schema, quality rules, and SLAs.
+#
+# Tool-specific settings are in this file, while dataset definitions are in
+# separate ODCS contract files in the ./contracts directory.
+
+environment: development
+
+# =============================================================================
+# Source Database Connection
+# =============================================================================
+source:
+  type: postgres
+  host: localhost
+  port: 5433
+  database: baselinr
+  username: baselinr
+  password: baselinr
+  schema: public
+
+# =============================================================================
+# Storage Configuration (where Baselinr stores profiling results)
+# =============================================================================
+storage:
+  connection:
+    type: postgres
+    host: localhost
+    port: 5433
+    database: baselinr
+    username: baselinr
+    password: baselinr
+  results_table: baselinr_results
+  runs_table: baselinr_runs
+  create_tables: true
+  enable_anomaly_detection: true
+
+# =============================================================================
+# ODCS Contracts Configuration (NEW)
+# =============================================================================
+# Dataset schemas, quality rules, and SLAs are defined in ODCS contracts
+contracts:
+  directory: ./contracts          # Path to ODCS contracts directory (relative to config file)
+  file_patterns:
+    - "*.odcs.yaml"
+    - "*.odcs.yml"
+  recursive: true                 # Search subdirectories
+  validate_on_load: true          # Validate contracts when loading
+  strict_validation: false        # Treat warnings as errors
+
+# =============================================================================
+# Profiling Defaults
+# =============================================================================
+profiling:
+  metrics:
+    - count
+    - null_count
+    - null_percent
+    - distinct_count
+    - distinct_percent
+    - min
+    - max
+    - mean
+    - stddev
+    - histogram
+  compute_histograms: true
+  histogram_bins: 10
+  table_discovery: true
+  enable_enrichment: true
+  enable_schema_tracking: true
+  extract_lineage: true
+
+# =============================================================================
+# Drift Detection Defaults
+# =============================================================================
+drift_detection:
+  strategy: absolute_threshold
+  absolute_threshold:
+    low_threshold: 5.0
+    medium_threshold: 15.0
+    high_threshold: 30.0
+  baselines:
+    strategy: auto
+    windows:
+      min_runs: 3
+      prior_period: 7
+      moving_average: 7
+  enable_type_specific_thresholds: true
+
+# =============================================================================
+# Hooks and Alerts
+# =============================================================================
+hooks:
+  enabled: true
+  hooks:
+    - type: logging
+      enabled: true
+      log_level: INFO
+      alert_on_drift: true
+      alert_on_schema_change: true
+    - type: sql
+      enabled: true
+      connection:
+        type: postgres
+        host: localhost
+        port: 5433
+        database: baselinr
+        username: baselinr
+        password: baselinr
+      table_name: baselinr_events
+      alert_on_drift: true
+      alert_on_schema_change: true
+
+# =============================================================================
+# Monitoring
+# =============================================================================
+monitoring:
+  enable_metrics: true
+  port: 9753
+
+# =============================================================================
+# Execution
+# =============================================================================
+execution:
+  max_workers: 4
+  batch_size: 10
+
+# =============================================================================
+# Retry Configuration
+# =============================================================================
+retry:
+  enabled: true
+  retries: 3
+  backoff_strategy: exponential
+  min_backoff: 0.5
+  max_backoff: 8.0
+
+# =============================================================================
+# Lineage
+# =============================================================================
+lineage:
+  enabled: true
+  extract_column_lineage: true
+  providers:
+    - dbt
+    - sql_parser
+
+# =============================================================================
+# LLM (AI-powered explanations)
+# =============================================================================
+llm:
+  enabled: true
+  provider: openai
+  api_key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
+  temperature: 0.3
+  max_tokens: 1500
+  fallback_to_template: true
+  chat:
+    enabled: true
+    max_iterations: 5
+    max_history_messages: 20
+
+# =============================================================================
+# Root Cause Analysis
+# =============================================================================
+rca:
+  enabled: true
+  lookback_window_hours: 24
+  max_depth: 5
+  auto_analyze: true
+
+# =============================================================================
+# Data Validation (executes rules from ODCS contracts)
+# =============================================================================
+validation:
+  enabled: true
+  providers:
+    - type: builtin
+
+# =============================================================================
+# Quality Scoring
+# =============================================================================
+quality_scoring:
+  enabled: true
+  weights:
+    completeness: 25.0
+    validity: 25.0
+    consistency: 20.0
+    freshness: 15.0
+    uniqueness: 10.0
+    accuracy: 5.0
+  thresholds:
+    healthy: 80.0
+    warning: 60.0
+    critical: 0.0
+

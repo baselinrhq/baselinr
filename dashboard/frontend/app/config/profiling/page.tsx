@@ -160,7 +160,7 @@ export default function ProfilingPage() {
             Profiling Configuration
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Configure profiling settings including metrics, sampling, partitions, and column-level overrides
+            Configure global profiling settings. Table-specific partition, sampling, and column settings are configured in ODCS contracts.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -187,21 +187,21 @@ export default function ProfilingPage() {
         </div>
       </div>
 
-      {/* Banner linking to datasets */}
+      {/* Banner linking to contracts */}
       <div className="glass-card border-cyan-500/30 bg-cyan-500/10 p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div>
             <p className="text-sm font-medium text-cyan-300">
-              Dataset-specific profiling configurations
+              Contract-level profiling configurations
             </p>
             <p className="text-xs text-cyan-400/80 mt-1">
-              Configure partition, sampling, and column-level settings per dataset
+              Configure partition, sampling, and column-level settings per contract
             </p>
           </div>
         </div>
-        <Link href="/config/datasets">
+        <Link href="/config/contracts">
           <Button variant="outline" icon={<ArrowRight className="w-4 h-4" />}>
-            Manage in Datasets
+            Manage in Contracts
           </Button>
         </Link>
       </div>

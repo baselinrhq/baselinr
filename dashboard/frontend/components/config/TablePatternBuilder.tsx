@@ -284,9 +284,8 @@ export function TablePatternBuilder({
     if (pattern.override_priority !== null && pattern.override_priority !== undefined) {
       cleanedPattern.override_priority = pattern.override_priority
     }
-    if (pattern.partition) cleanedPattern.partition = pattern.partition
-    if (pattern.sampling) cleanedPattern.sampling = pattern.sampling
-    if (pattern.columns && pattern.columns.length > 0) cleanedPattern.columns = pattern.columns
+    // Note: partition, sampling, and columns are no longer supported in table patterns
+    // These must be configured in ODCS contracts instead
     
     onSave(cleanedPattern)
   }

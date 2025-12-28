@@ -106,7 +106,7 @@ class TestTablePatternWithColumns:
     """Tests for TablePattern with column configurations."""
 
     def test_table_pattern_rejects_columns(self):
-        """Test that TablePattern rejects column configurations (must be in datasets section)."""
+        """Test that TablePattern rejects column configurations (must be in ODCS contracts)."""
         columns = [
             ColumnConfig(name="email", metrics=["count", "null_count"]),
             ColumnConfig(name="age", metrics=["count", "mean", "stddev"]),
@@ -116,14 +116,14 @@ class TestTablePatternWithColumns:
             TablePattern(table="customers", schema="public", columns=columns)
 
     def test_table_pattern_without_columns(self):
-        """Test TablePattern without columns (columns must be in datasets section)."""
+        """Test TablePattern without columns (columns must be in ODCS contracts)."""
         pattern = TablePattern(table="customers", schema="public")
 
         assert pattern.table == "customers"
         # TablePattern no longer has columns field
 
     def test_table_pattern_rejects_column_patterns(self):
-        """Test that TablePattern rejects column patterns (must be in datasets section)."""
+        """Test that TablePattern rejects column patterns (must be in ODCS contracts)."""
         columns = [
             ColumnConfig(name="*_id", metrics=["count", "null_count"]),
             ColumnConfig(name="email*", pattern_type="wildcard"),

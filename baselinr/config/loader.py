@@ -2,33 +2,42 @@
 Configuration loader for Baselinr.
 
 Loads and validates configuration from YAML/JSON files with
-support for environment variable overrides.
+support for environment variable overrides and ODCS contracts.
 """
 
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import yaml  # type: ignore[import-untyped]
 
-from .dataset_loader import DatasetFileLoader
-from .schema import BaselinrConfig, DatasetsConfig, DatasetsDirectoryConfig
+from .schema import BaselinrConfig, ContractsConfig
+
+if TYPE_CHECKING:
+    from baselinr.contracts import ODCSContract
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigLoader:
-    """Loads and validates Baselinr configuration files."""
+    """Loads and validates Baselinr configuration files and ODCS contracts."""
+
+    # Cache for loaded contracts
+    _contracts_cache: Dict[str, List["ODCSContract"]] = {}
 
     @staticmethod
-    def load_from_file(filepath: str) -> BaselinrConfig:
+    def load_from_file(
+        filepath: str,
+        load_contracts: bool = True,
+    ) -> BaselinrConfig:
         """
         Load configuration from a YAML or JSON file.
 
         Args:
             filepath: Path to configuration file
+            load_contracts: Whether to also load ODCS contracts (default: True)
 
         Returns:
             Validated BaselinrConfig instance
@@ -43,7 +52,7 @@ class ConfigLoader:
             raise FileNotFoundError(f"Configuration file not found: {filepath}")
 
         # Load based on file extension
-        with open(path, "r") as f:
+        with open(path, "r", encoding="utf-8") as f:
             if path.suffix in [".yaml", ".yml"]:
                 config_dict = yaml.safe_load(f)
             elif path.suffix == ".json":
@@ -64,15 +73,74 @@ class ConfigLoader:
             logger.error(f"Configuration validation failed: {e}")
             raise ValueError(f"Invalid configuration: {e}")
 
-        # If datasets is a directory config, load from directory
-        if isinstance(config.datasets, DatasetsDirectoryConfig):
-            loader = DatasetFileLoader(config_file_path=path)
-            dataset_configs = loader.load_from_directory(config.datasets)
-
-            # Replace directory config with loaded datasets
-            config.datasets = DatasetsConfig(datasets=dataset_configs)
+        # Load ODCS contracts if configured
+        if load_contracts and config.contracts:
+            contracts = ConfigLoader.load_contracts(
+                config.contracts,
+                base_path=path.parent,
+            )
+            # Store in cache for later retrieval
+            ConfigLoader._contracts_cache[str(path.absolute())] = contracts
+            logger.info(f"Loaded {len(contracts)} ODCS contract(s)")
 
         return config
+
+    @staticmethod
+    def load_contracts(
+        contracts_config: ContractsConfig,
+        base_path: Optional[Path] = None,
+    ) -> List["ODCSContract"]:
+        """
+        Load ODCS contracts from the configured directory.
+
+        Args:
+            contracts_config: Contracts configuration
+            base_path: Base path for relative directory resolution
+
+        Returns:
+            List of loaded ODCSContract objects
+        """
+        from baselinr.contracts import ContractLoader, ContractLoadError
+
+        # Resolve contracts directory
+        contracts_dir = Path(contracts_config.directory)
+        if not contracts_dir.is_absolute() and base_path:
+            contracts_dir = base_path / contracts_dir
+
+        if not contracts_dir.exists():
+            logger.warning(f"Contracts directory not found: {contracts_dir}")
+            return []
+
+        # Create loader with configuration
+        loader = ContractLoader(
+            validate_on_load=contracts_config.validate_on_load,
+            file_patterns=contracts_config.file_patterns,
+        )
+
+        try:
+            contracts = loader.load_from_directory(
+                str(contracts_dir),
+                recursive=contracts_config.recursive,
+                exclude_patterns=contracts_config.exclude_patterns,
+            )
+            return contracts
+        except ContractLoadError as e:
+            logger.error(f"Failed to load contracts: {e}")
+            return []
+
+    @staticmethod
+    def get_cached_contracts(config_path: str) -> List["ODCSContract"]:
+        """
+        Get cached contracts for a configuration file.
+
+        Args:
+            config_path: Path to the configuration file
+
+        Returns:
+            List of cached ODCSContract objects, or empty list if not cached
+        """
+        path = Path(config_path).absolute()
+        return ConfigLoader._contracts_cache.get(str(path), [])
 
     @staticmethod
     def _apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:

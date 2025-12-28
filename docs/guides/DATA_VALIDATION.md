@@ -6,10 +6,10 @@ Baselinr provides a comprehensive data validation system that allows you to defi
 
 **Where to configure**
 - Global defaults: `validation` in `config.yml` (enablement, providers, global settings)
-- Dataset rules: files in `datasets/` (`{table}.yml`, `{schema}_schema.yml`, `{database}_database.yml`)
-- Column overrides: inside table files under `columns`
+- Validation rules: ODCS contracts in `contracts/` directory (see [ODCS Data Contracts](ODCS_DATA_CONTRACTS.md))
+- Column overrides: inside ODCS contract `dataset[].columns[]` sections
 
-Precedence: table > schema > database > global.
+Precedence: Contract-level rules > Global defaults.
 
 Data validation in Baselinr is built on a provider-based architecture, similar to the lineage system. The built-in provider offers common validators for format, range, enum, null checks, uniqueness, and referential integrity. Future providers (Great Expectations, Soda, etc.) can be integrated as optional dependencies.
 
@@ -24,31 +24,36 @@ Data validation in Baselinr is built on a provider-based architecture, similar t
 
 ### Basic Configuration
 
-Enable validation in your `config.yml`. Define validation rules in dataset files:
+Enable validation in your `config.yml`. Define validation rules in ODCS contracts:
 
 ```yaml
 validation:
   enabled: true
   providers:
     - type: builtin
+```
 
-# datasets/customers.yml
-database: warehouse
-schema: public
-table: customers
-
-validation:
-  rules:
-    - column: email
-      type: format
-      pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-      severity: high
+```yaml
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+        quality:
+          - type: format
+            rule: format
+            specification:
+              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            severity: error
 ```
 
 **Important**: 
-- Validation rules **must** be defined in the `datasets` section. The old `validation.rules[]` field is no longer supported.
+- Validation rules **must** be defined in ODCS contracts. The old `validation.rules[]` field is no longer supported.
 - The `validation.providers[]` section is for provider configuration (e.g., Great Expectations suite config), not dataset rules
-- Use `baselinr migrate-config` to migrate existing `validation.rules[]` to the datasets section
+- Define quality rules in ODCS contracts using the `quality` field at contract, dataset, or column level
 
 ### Rule Types
 
@@ -146,32 +151,45 @@ All rules support these common options:
 ### Complete Example
 
 ```yaml
+# config.yml
 validation:
   enabled: true
   providers:
     - type: builtin
+```
 
-datasets:
-  datasets:
-    # Format validation for customers table
-    - table: customers
-      schema: public
-      validation:
-        rules:
-          - column: email
-            type: format
-            pattern: "email"
-            severity: high
-    
-    # Range validation for orders table
-    - table: orders
-      schema: public
-      validation:
-        rules:
-          - column: total_amount
-            type: range
-            min: 0
-            max: 1000000
+```yaml
+# contracts/customers.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: customers
+    physicalName: public.customers
+    columns:
+      - column: email
+        quality:
+          - type: format
+            rule: format
+            specification:
+              pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+            severity: error
+```
+
+```yaml
+# contracts/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: orders
+    physicalName: public.orders
+    columns:
+      - column: total_amount
+        quality:
+          - type: range
+            rule: range
+            specification:
+              min: 0
+              max: 1000000
             severity: medium
         
         # Enum validation

@@ -36,11 +36,6 @@ profiling:
     
     - table: orders
       schema: my_dataset
-      # BigQuery supports partitioning
-      partition:
-        key: order_date
-        strategy: latest
-        metadata_fallback: true
 
   max_distinct_values: 1000
   compute_histograms: true
@@ -56,6 +51,13 @@ profiling:
     - mean
     - stddev
     - histogram
+
+# ODCS contracts define partition and sampling configurations
+# See examples/contracts/ for contract files with partition and sampling settings
+contracts:
+  directory: ./contracts
+  recursive: true
+  validate_on_load: true
 
 # Drift detection configuration
 drift_detection:

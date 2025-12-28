@@ -302,12 +302,14 @@ The specified table or schema doesn't exist.
    WHERE table_schema = 'public' AND table_name = 'customers';
    ```
 
-2. Check schema name:
+2. Check schema name in your ODCS contracts:
    ```yaml
-   profiling:
-     tables:
-       - table: customers
-         schema: public  # Make sure schema name is correct
+   # contracts/customers.odcs.yaml
+   kind: DataContract
+   apiVersion: v3.1.0
+   dataset:
+     - name: customers
+       physicalName: public.customers  # Make sure schema name is correct
    ```
 
 3. List available tables:
@@ -331,25 +333,38 @@ Profiling is slow for large tables.
 
 **Solutions:**
 
-1. Enable sampling:
+1. Enable sampling via ODCS contracts:
    ```yaml
-   profiling:
-     tables:
-       - table: large_table
-         sampling:
-           enabled: true
-           method: random
-           fraction: 0.01  # Sample 1%
-           max_rows: 1000000  # Cap at 1M rows
+   # contracts/large_table.odcs.yaml
+   kind: DataContract
+   apiVersion: v3.1.0
+   dataset:
+     - name: large_table
+       physicalName: public.large_table
+   customProperties:
+     - property: baselinr.sampling
+       value:
+         enabled: true
+         method: random
+         fraction: 0.01  # Sample 1%
+         max_rows: 1000000  # Cap at 1M rows
    ```
 
-2. Use partition-aware profiling:
+2. Use partition-aware profiling via ODCS contracts:
    ```yaml
-   profiling:
-     tables:
-       - table: partitioned_table
-         partition:
-           strategy: latest  # Profile only latest partition
+   # contracts/partitioned_table.odcs.yaml
+   kind: DataContract
+   apiVersion: v3.1.0
+   dataset:
+     - name: partitioned_table
+       physicalName: public.partitioned_table
+       columns:
+         - column: date
+           partitionStatus: true
+   customProperties:
+     - property: baselinr.partition.partitioned_table
+       value:
+         strategy: latest  # Profile only latest partition
    ```
 
 3. Enable parallelism:
@@ -429,7 +444,7 @@ No baseline run is available for comparison.
    # Wait a bit or make changes to data
    baselinr profile --config config.yml
    
-   # Now detect drift
+   # Now detect drift (--dataset flag specifies table name)
    baselinr drift --config config.yml --dataset customers
    ```
 

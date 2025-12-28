@@ -35,6 +35,13 @@ profiling:
     - table: orders
       schema: my_schema
 
+# ODCS contracts define dataset schemas, quality rules, and SLAs
+# See examples/contracts/ for contract files
+contracts:
+  directory: ./contracts
+  recursive: true
+  validate_on_load: true
+
   max_distinct_values: 1000
   compute_histograms: true
   histogram_bins: 10

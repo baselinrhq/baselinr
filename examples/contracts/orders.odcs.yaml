@@ -1,0 +1,277 @@
+# Orders Dataset Contract
+# ODCS v3.1.0 - Open Data Contract Standard
+#
+# This contract defines the schema, quality rules, and SLAs for the orders table.
+
+kind: DataContract
+apiVersion: v3.1.0
+id: orders-contract
+version: 1.0.0
+status: active
+
+# =============================================================================
+# Contract Information
+# =============================================================================
+info:
+  title: Orders Dataset
+  description: |
+    Transaction data for all customer orders.
+    High-volume dataset updated in near real-time.
+  owner: commerce-team@company.com
+  domain: commerce
+  dataProduct: order-management
+  contact:
+    name: Commerce Engineering
+    email: commerce-eng@company.com
+  links:
+    - url: https://wiki.company.com/data/orders
+      type: documentation
+      title: Orders Data Documentation
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+servers:
+  production:
+    type: postgres
+    host: prod-db.company.com
+    port: 5432
+    database: production
+    schema: public
+  development:
+    type: postgres
+    host: localhost
+    port: 5432
+    database: development
+    schema: public
+
+# =============================================================================
+# Dataset Definition
+# =============================================================================
+dataset:
+  - name: orders
+    physicalName: public.orders
+    type: table
+    description: Order transactions with customer and product references
+    dataGranularity: One row per order
+    tags:
+      - transactional
+      - high-volume
+    
+    columns:
+      - name: order_id
+        businessName: Order ID
+        logicalType: integer
+        description: Unique identifier for each order
+        isPrimaryKey: true
+        isNullable: false
+        criticalDataElementStatus: true
+        
+      - name: customer_id
+        businessName: Customer ID
+        logicalType: integer
+        description: Reference to the customer who placed the order
+        isNullable: false
+        criticalDataElementStatus: true
+        transformSourceTables:
+          - public.customers
+        transformDescription: Foreign key to customers table
+        
+      - name: order_date
+        businessName: Order Date
+        logicalType: timestamp
+        description: When the order was placed
+        isNullable: false
+        partitionStatus: true
+        partitionKeyPosition: 1
+        
+      - name: status
+        businessName: Order Status
+        logicalType: string
+        description: Current status of the order
+        isNullable: false
+        sampleValues:
+          - pending
+          - processing
+          - shipped
+          - delivered
+          - cancelled
+        quality:
+          - type: validity
+            rule: enum
+            severity: error
+            
+      - name: total_amount
+        businessName: Total Amount
+        logicalType: decimal
+        physicalType: DECIMAL(12,2)
+        description: Total order value in USD
+        isNullable: false
+        criticalDataElementStatus: true
+        quality:
+          - type: validity
+            rule: range
+            severity: warning
+            description: Total amount should be within reasonable bounds
+            
+      - name: shipping_address
+        businessName: Shipping Address
+        logicalType: string
+        description: Delivery address for the order
+        isNullable: true
+        classification: pii
+        
+      - name: created_at
+        businessName: Record Creation
+        logicalType: timestamp
+        description: When the record was created
+        isNullable: false
+        
+      - name: updated_at
+        businessName: Last Updated
+        logicalType: timestamp
+        description: Last modification timestamp
+        isNullable: true
+
+# =============================================================================
+# Quality Rules (Contract Level)
+# =============================================================================
+quality:
+  - type: validity
+    dimension: completeness
+    severity: error
+    specification:
+      column: order_id
+      rule: not_null
+    description: Order ID must not be null
+    
+  - type: validity
+    dimension: uniqueness
+    severity: error
+    specification:
+      column: order_id
+      rule: unique
+    description: Order ID must be unique
+    
+  - type: validity
+    dimension: completeness
+    severity: error
+    specification:
+      column: customer_id
+      rule: not_null
+    description: Customer ID must not be null
+    
+  - type: validity
+    dimension: consistency
+    severity: error
+    specification:
+      column: customer_id
+      rule: referential
+      referenceTable: customers
+      referenceColumn: customer_id
+    description: Customer ID must reference a valid customer
+    businessImpact: Orphan orders will break customer analytics
+    
+  - type: validity
+    dimension: validity
+    severity: error
+    specification:
+      column: status
+      rule: enum
+      values:
+        - pending
+        - processing
+        - shipped
+        - delivered
+        - cancelled
+    description: Status must be one of the allowed values
+    
+  - type: validity
+    dimension: validity
+    severity: warning
+    specification:
+      column: total_amount
+      rule: range
+      minValue: 0
+      maxValue: 1000000
+    description: Total amount should be positive and within reasonable bounds
+    
+  - type: validity
+    dimension: completeness
+    severity: error
+    specification:
+      column: order_date
+      rule: not_null
+    description: Order date must not be null
+
+# =============================================================================
+# Service Level Agreements
+# =============================================================================
+servicelevels:
+  - property: freshness
+    value: 1
+    unit: hours
+    description: Order data should be updated within 1 hour of transaction
+    driver: operations
+    
+  - property: latency
+    value: 5
+    unit: minutes
+    description: New orders should appear in the table within 5 minutes
+    
+  - property: availability
+    value: 99.99
+    unit: percent
+    description: Critical for business operations
+    
+  - property: retention
+    value: 10
+    unit: years
+    description: Orders must be retained for regulatory compliance
+
+# =============================================================================
+# Stakeholders
+# =============================================================================
+stakeholders:
+  - username: commerce-team
+    name: Commerce Team
+    role: Data Owner
+    email: commerce-team@company.com
+    
+  - username: finance-team
+    name: Finance Team
+    role: Consumer
+    email: finance@company.com
+    
+  - username: analytics-team
+    name: Analytics Team
+    role: Consumer
+    email: analytics@company.com
+
+# =============================================================================
+# Access Roles
+# =============================================================================
+roles:
+  - role: reader
+    access: read
+    description: Can read order data
+    
+  - role: writer
+    access: write
+    description: Can create and update orders
+    firstLevelApprovers: commerce-team@company.com
+    
+  - role: admin
+    access: admin
+    description: Full access to order data
+    firstLevelApprovers: commerce-team@company.com
+
+# =============================================================================
+# Tags
+# =============================================================================
+tags:
+  - transactional
+  - high-volume
+  - financial
+  - pii-containing
+

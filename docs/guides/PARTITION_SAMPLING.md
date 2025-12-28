@@ -11,6 +11,8 @@ Instead of the simple `sample_ratio` field, Baselinr now provides:
 
 ## 📋 Configuration Schema
 
+**Important**: Partition and sampling configurations must be defined in ODCS contracts, not in table configs. The `profiling.tables` section only defines which tables to profile.
+
 ### Basic Table (No Partitioning or Sampling)
 
 ```yaml
@@ -26,34 +28,46 @@ This profiles the entire table - the default behavior.
 
 ### Partition-Aware Profiling
 
-Profile only specific partitions of your data:
+Profile only specific partitions of your data by configuring partition settings in ODCS contracts:
+
+**In your ODCS contract (`contracts/events.odcs.yaml`):**
 
 ```yaml
-profiling:
-  tables:
-    - table: events
-      schema: analytics
-      partition:
-        key: event_date              # Partition column name
-        strategy: latest             # Options: latest | recent_n | sample | all
-        metadata_fallback: true      # Auto-infer partition key if not specified
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: events
+    physicalName: analytics.events
+    columns:
+      - name: event_date
+        partitionStatus: partition  # Mark partition column
+customProperties:
+  - property: baselinr.partition.events
+    value:
+      strategy: latest              # Options: latest | recent_n | sample | all
+      key: event_date              # Partition column name
+      metadata_fallback: true      # Auto-infer partition key if not specified
 ```
 
 **Partition Strategies:**
 
 - **`latest`** - Profile only the most recent partition
   ```yaml
-  partition:
-    key: event_date
-    strategy: latest
+  customProperties:
+    - property: baselinr.partition.events
+      value:
+        strategy: latest
+        key: event_date
   ```
 
 - **`recent_n`** - Profile the N most recent partitions
   ```yaml
-  partition:
-    key: event_date
-    strategy: recent_n
-    recent_n: 7  # Last 7 days
+  customProperties:
+    - property: baselinr.partition.events
+      value:
+        strategy: recent_n
+        key: event_date
+        recent_n: 7  # Last 7 days
   ```
 
 - **`sample`** - Sample from partition values (planned, not yet implemented)
@@ -64,18 +78,23 @@ profiling:
 
 ### Sampling
 
-Apply sampling to reduce data volume:
+Apply sampling to reduce data volume by configuring sampling in ODCS contracts:
+
+**In your ODCS contract (`contracts/large_table.odcs.yaml`):**
 
 ```yaml
-profiling:
-  tables:
-    - table: large_table
-      schema: public
-      sampling:
-        enabled: true
-        method: random               # Options: random | stratified | topk
-        fraction: 0.05               # 5% sample
-        max_rows: 1000000            # Cap at 1M rows
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: large_table
+    physicalName: public.large_table
+customProperties:
+  - property: baselinr.sampling.large_table
+    value:
+      enabled: true
+      method: random               # Options: random | stratified | topk
+      fraction: 0.05               # 5% sample
+      max_rows: 1000000            # Cap at 1M rows
 ```
 
 **Sampling Methods:**
@@ -95,21 +114,30 @@ profiling:
 
 ### Combined Partition + Sampling
 
-For ultimate efficiency on large tables:
+For ultimate efficiency on large tables, combine both in your ODCS contract:
+
+**In your ODCS contract (`contracts/clickstream.odcs.yaml`):**
 
 ```yaml
-profiling:
-  tables:
-    - table: clickstream
-      schema: analytics
-      partition:
-        key: date
-        strategy: latest
-      sampling:
-        enabled: true
-        method: stratified
-        fraction: 0.01              # 1% sample
-        max_rows: 500000
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: clickstream
+    physicalName: analytics.clickstream
+    columns:
+      - name: date
+        partitionStatus: partition
+customProperties:
+  - property: baselinr.partition.clickstream
+    value:
+      strategy: latest
+      key: date
+  - property: baselinr.sampling.clickstream
+    value:
+      enabled: true
+      method: stratified
+      fraction: 0.01              # 1% sample
+      max_rows: 500000
 ```
 
 This example:
@@ -126,9 +154,11 @@ This example:
 If you enable `metadata_fallback`, Baselinr will try to infer the partition key:
 
 ```yaml
-partition:
-  strategy: latest
-  metadata_fallback: true  # Will look for columns named: date, event_date, etc.
+customProperties:
+  - property: baselinr.partition.events
+    value:
+      strategy: latest
+      metadata_fallback: true  # Will look for columns named: date, event_date, etc.
 ```
 
 Common patterns it looks for:
@@ -168,26 +198,39 @@ ORDER BY RANDOM() LIMIT 500000;
 
 ### Example 1: Daily Partitioned Table
 
-Profile only today's data:
+Profile only today's data using ODCS contract:
 
+**ODCS Contract (`contracts/daily_events.odcs.yaml`):**
 ```yaml
-tables:
-  - table: daily_events
-    schema: analytics
-    partition:
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: daily_events
+    physicalName: analytics.daily_events
+    columns:
+      - name: ds
+        partitionStatus: partition
+customProperties:
+  - property: baselinr.partition.daily_events
+    value:
       key: ds  # Common partition column name
       strategy: latest
 ```
 
 ### Example 2: Large Historical Table
 
-Sample for efficiency:
+Sample for efficiency using ODCS contract:
 
+**ODCS Contract (`contracts/historical_transactions.odcs.yaml`):**
 ```yaml
-tables:
-  - table: historical_transactions
-    schema: finance
-    sampling:
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: historical_transactions
+    physicalName: finance.historical_transactions
+customProperties:
+  - property: baselinr.sampling.historical_transactions
+    value:
       enabled: true
       method: random
       fraction: 0.001  # 0.1% sample
@@ -196,15 +239,24 @@ tables:
 
 ### Example 3: Recent Week's Data with Sampling
 
+**ODCS Contract (`contracts/user_events.odcs.yaml`):**
 ```yaml
-tables:
-  - table: user_events
-    schema: analytics
-    partition:
+kind: DataContract
+apiVersion: v3.1.0
+dataset:
+  - name: user_events
+    physicalName: analytics.user_events
+    columns:
+      - name: event_date
+        partitionStatus: partition
+customProperties:
+  - property: baselinr.partition.user_events
+    value:
       key: event_date
       strategy: recent_n
       recent_n: 7
-    sampling:
+  - property: baselinr.sampling.user_events
+    value:
       enabled: true
       method: stratified
       fraction: 0.1
@@ -310,7 +362,6 @@ profiling:
   tables:
     - table: events
       schema: public
-      sample_ratio: 0.1
   default_sample_ratio: 1.0
 ```
 

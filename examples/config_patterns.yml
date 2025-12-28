@@ -136,8 +136,7 @@ profiling:
       schema: analytics
       override_priority: 100
       # This specific table overrides the pattern match
-      sampling:
-        enabled: false  # Full profiling for critical table
+      # Note: Sampling/partition configs should be in ODCS contracts
     
     # Example 7: Explicit table (always highest priority)
     - table: important_table

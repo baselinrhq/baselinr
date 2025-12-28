@@ -62,34 +62,38 @@ storage:
 
 ### Column-Level Configuration
 
-For fine-grained control, configure anomaly detection per column in the `datasets` section:
+For fine-grained control, configure anomaly detection per column in ODCS contracts:
 
 ```yaml
-datasets:
-  datasets:
-    - table: orders
-      schema: public
-      profiling:
-        columns:
-          - name: amount
-            anomaly:
-              enabled: true
-              methods: [control_limits, iqr, mad]
-              thresholds:
-                iqr_threshold: 2.0
-                mad_threshold: 3.5
-          - name: order_date
-            anomaly:
-              enabled: true
-              methods: [seasonality, regime_shift]
-          - name: metadata
-            anomaly:
-              enabled: false  # Skip anomaly detection
+# contracts/orders.odcs.yaml
+kind: DataContract
+apiVersion: v3.1.0
+id: orders_contract
+dataset:
+  - name: orders
+    physicalName: public.orders
+    columns:
+      - column: amount
+customProperties:
+  - property: baselinr.anomaly.orders.amount
+    value:
+      enabled: true
+      methods: [control_limits, iqr, mad]
+      thresholds:
+        iqr_threshold: 2.0
+        mad_threshold: 3.5
+  - property: baselinr.anomaly.orders.order_date
+    value:
+      enabled: true
+      methods: [seasonality, regime_shift]
+  - property: baselinr.anomaly.orders.metadata
+    value:
+      enabled: false  # Skip anomaly detection
 ```
 
 **Important**: 
-- Column-level anomaly detection configurations must be defined in the `datasets` section
-- Column-level anomaly detection requires that the column was profiled. If `profiling.enabled: false` for a column, anomaly detection is automatically skipped for that column.
+- Column-level anomaly detection configurations should be defined in ODCS contracts using customProperties
+- Column-level anomaly detection requires that the column was profiled. If profiling is disabled for a column, anomaly detection is automatically skipped for that column.
 
 **See Also**: [Column-Level Configuration Guide](COLUMN_LEVEL_CONFIGS.md) for complete documentation on column-level configurations for profiling, drift, and anomaly detection.
 

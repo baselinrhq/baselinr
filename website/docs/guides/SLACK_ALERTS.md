@@ -418,7 +418,7 @@ baselinr profile --config config_slack_alerts.yml
 # Wait a moment, then run again
 baselinr profile --config config_slack_alerts.yml
 
-# 3. Run drift detection
+# 3. Run drift detection (--dataset flag specifies table name)
 baselinr detect-drift --config config_slack_alerts.yml --dataset orders
 ```
 

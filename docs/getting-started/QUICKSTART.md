@@ -114,7 +114,6 @@ storage:
 profiling:
   tables:
     - table: your_table_name
-      sample_ratio: 1.0
 ```
 
 ### Step 3: Run Profiling
@@ -181,7 +180,6 @@ storage:
 profiling:
   tables:
     - table: users
-      sample_ratio: 1.0
 ```
 
 ### Step 3: Run Profiling

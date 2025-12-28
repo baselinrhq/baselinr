@@ -227,10 +227,10 @@ profiling:
     - histogram
 ```
 
-**Note:** Dataset-level profiling configuration (partition, sampling, columns) must be defined in the `datasets` section, not in `profiling.tables`. See [Dataset Configuration](#dataset-configuration) for details.
+**Note:** Dataset-level profiling configuration (partition, sampling, columns) should be defined in ODCS contracts, not in `profiling.tables`. See [ODCS Data Contracts](../guides/ODCS_DATA_CONTRACTS.md) for details.
 
 **Fields:**
-- `tables` (List[TablePattern]): List of tables to profile (default: `[]`). TablePattern only contains table selection fields (table, schema, pattern, etc.). Profiling configuration must be in the `datasets` section.
+- `tables` (List[TablePattern]): List of tables to profile (default: `[]`). TablePattern only contains table selection fields (table, schema, pattern, etc.). Profiling configuration should be in ODCS contracts.
 - `table_discovery` (bool): Enable automatic table discovery (default: `true` when patterns used)
 - `discovery_options` (DiscoveryOptionsConfig): Options for table discovery (see below)
 - `max_distinct_values` (int): Maximum distinct values to compute (default: `1000`)
@@ -300,7 +300,7 @@ Configuration for a single table or table selection pattern.
 
 **Note:** 
 - Either `table`, `pattern`, `select_schema`, or `select_all_schemas` must be specified.
-- **TablePattern only contains table selection fields.** Profiling configuration (partition, sampling, columns) must be defined in the `datasets` section. See [Dataset Configuration](#dataset-configuration) for details.
+- **TablePattern only contains table selection fields.** Profiling configuration (partition, sampling, columns) should be defined in ODCS contracts. See [ODCS Data Contracts](../guides/ODCS_DATA_CONTRACTS.md) for details.
 
 #### PartitionConfig
 
@@ -629,82 +629,60 @@ schema_change:
 - `similarity_threshold` (float): Similarity threshold for rename detection (default: `0.7`)
 - `suppression` (List[SchemaChangeSuppressionRule]): Suppression rules
 
-## Dataset Configuration
+## Data Contracts Configuration
 
-### `datasets`
+### `contracts`
 
-Dataset-level configuration that consolidates overrides for profiling, drift detection, validation, and anomaly detection. Can be specified inline or as a directory-based structure.
+ODCS (Open Data Contract Standard) data contracts configuration. Contracts define dataset schemas, quality rules, SLAs, and stakeholders in a standardized format.
 
-**Type:** `DatasetsConfig` or `DatasetsDirectoryConfig`
+**Type:** `ContractsConfig`
 
 **Required:** No
 
-**Example (Inline):**
+**Example:**
 ```yaml
-datasets:
-  datasets:
-    - table: customers
-      schema: public
-      profiling:
-        partition:
-          key: created_at
-          strategy: latest
-      drift:
-        strategy: statistical
-```
-
-**Example (Directory-Based):**
-```yaml
-datasets:
-  datasets_dir: ./datasets
-  auto_discover: true
+contracts:
+  directory: ./contracts
+  file_patterns: ["*.odcs.yaml", "*.odcs.yml"]
   recursive: true
-  file_pattern: "*.yml"
+  validate_on_load: true
   exclude_patterns:
-    - "*.backup.yml"
+    - "**/templates/**"
+  strict_validation: false
 ```
-
-#### Directory-Based Configuration
-
-When using directory-based configuration, dataset configs are stored in separate YAML files organized in a directory structure similar to dbt projects.
 
 **Directory Structure:**
 ```
 config.yml (main config)
-datasets/
-  ├── customers.yml
-  ├── orders.yml
+contracts/
+  ├── customers.odcs.yaml
+  ├── orders.odcs.yaml
   ├── analytics/
-  │   ├── _schema.yml (schema-level config)
-  │   ├── events.yml
-  │   └── metrics.yml
-  └── _database.yml (database-level config)
+  │   ├── reports.odcs.yaml
+  │   └── metrics.odcs.yaml
+  └── templates/
+      └── template.odcs.yaml
 ```
 
-**File Naming Conventions:**
-- `{table_name}.yml` - Table-specific config
-- `{schema_name}_schema.yml` - Schema-level config
-- `{database_name}_database.yml` - Database-level config
+**File Naming:**
+- `{name}.odcs.yaml` or `{name}.odcs.yml` - ODCS contract files following v3.1.0 specification
 
 **Configuration Options:**
-- `datasets_dir` (str): Path to datasets directory (relative to config file or absolute, default: `./datasets`)
-- `auto_discover` (bool): Automatically discover YAML files (default: `true`)
-- `file_pattern` (str): File pattern to match (default: `*.yml`)
+- `directory` (str): Path to contracts directory (relative to config file or absolute, default: `./contracts`)
+- `file_patterns` (List[str]): File patterns to match (default: `["*.odcs.yaml", "*.odcs.yml"]`)
 - `recursive` (bool): Recursively search subdirectories (default: `true`)
-- `exclude_patterns` (List[str]): Patterns to exclude from discovery (e.g., `['*.backup.yml']`)
-
-**Precedence Rules:**
-Configurations are merged with the following precedence (highest to lowest):
-1. Table-level config (most specific)
-2. Schema-level config
-3. Database-level config
-4. Global config defaults
+- `validate_on_load` (bool): Validate contracts against ODCS schema when loading (default: `true`)
+- `exclude_patterns` (Optional[List[str]]): Patterns to exclude from discovery
+- `strict_validation` (bool): Treat validation warnings as errors (default: `false`)
 
 **Benefits:**
+- Standardized format (ODCS v3.1.0)
+- Industry-standard data contracts
+- Better interoperability with other tools
+- Comprehensive dataset definitions (schema, quality, SLAs, stakeholders)
 - Single source of truth for each dataset
-- Modular organization by dataset, schema, or database
-- Easier version control and team collaboration
-- Scalable for large numbers of datasets
+
+See [ODCS Data Contracts Guide](../guides/ODCS_DATA_CONTRACTS.md) for complete documentation.
 
 ## Full Configuration Example
 
