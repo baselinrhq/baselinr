@@ -147,7 +147,7 @@ if DAGSTER_AVAILABLE:
             default_metadata: Metadata merged into each asset Output.
         """
         config = ConfigLoader.load_from_file(config_path)
-        plan_builder = PlanBuilder(config)
+        plan_builder = PlanBuilder(config, config_file_path=config_path)
         # Expand patterns to get concrete table patterns (handles select_schema, patterns, etc.)
         expanded_patterns = plan_builder.expand_table_patterns()
 

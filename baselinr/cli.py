@@ -238,7 +238,7 @@ def profile_command(args):
                 metadata={"hook_count": event_bus.hook_count},
             )
 
-        plan_builder = PlanBuilder(config)
+        plan_builder = PlanBuilder(config, config_file_path=args.config)
 
         # Expand patterns before building incremental plan
         expanded_patterns = plan_builder.expand_table_patterns()
@@ -720,7 +720,7 @@ def plan_command(args):
 
         # Build plan
         logger.info("Building profiling execution plan...")
-        builder = PlanBuilder(config)
+        builder = PlanBuilder(config, config_file_path=args.config)
         plan = builder.build_plan()
 
         # Validate plan

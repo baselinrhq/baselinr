@@ -370,7 +370,7 @@ class BaselinrClient:
         """
         from .planner import PlanBuilder
 
-        builder = PlanBuilder(self._config)
+        builder = PlanBuilder(self._config, config_file_path=self._config_path)
 
         if table_patterns:
             # Expand custom patterns first
@@ -381,7 +381,7 @@ class BaselinrClient:
 
             temp_config = deepcopy(self._config)
             temp_config.profiling.tables = expanded_patterns
-            temp_builder = PlanBuilder(temp_config)
+            temp_builder = PlanBuilder(temp_config, config_file_path=self._config_path)
             plan = temp_builder.build_plan()
         else:
             plan = builder.build_plan()
@@ -418,7 +418,7 @@ class BaselinrClient:
 
         # Expand patterns if provided
         if table_patterns:
-            builder = PlanBuilder(self._config)
+            builder = PlanBuilder(self._config, config_file_path=self._config_path)
             expanded_patterns = builder.expand_table_patterns(table_patterns)
             if not expanded_patterns:
                 logger.warning("No tables found matching provided patterns")

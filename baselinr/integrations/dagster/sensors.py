@@ -104,7 +104,7 @@ if DAGSTER_AVAILABLE:
         @sensor(name=name, job_name=job_name, minimum_interval_seconds=minimum_interval_seconds)
         def _plan_sensor(context: SensorEvaluationContext):
             config = ConfigLoader.load_from_file(config_path)
-            plan = PlanBuilder(config).build_plan()
+            plan = PlanBuilder(config, config_file_path=config_path).build_plan()
             snapshot = _plan_snapshot(plan)
             previous = _deserialize_cursor(context.cursor)
             changed_tables = _detect_changed_tables(previous, snapshot)

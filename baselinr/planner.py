@@ -94,14 +94,16 @@ class ProfilingPlan:
 class PlanBuilder:
     """Builds profiling execution plans from configuration."""
 
-    def __init__(self, config: BaselinrConfig):
+    def __init__(self, config: BaselinrConfig, config_file_path: Optional[str] = None):
         """
         Initialize plan builder.
 
         Args:
             config: Baselinr configuration
+            config_file_path: Optional path to the config file (for resolving relative paths)
         """
         self.config = config
+        self.config_file_path = config_file_path
         self._incremental_planner: Optional[IncrementalPlanner] = None
         self._table_matcher: Optional[TableMatcher] = None
         self._connector: Optional[Any] = None
@@ -140,11 +142,17 @@ class PlanBuilder:
 
                 from .contracts import ContractLoader
 
-                # Load contracts - resolve path relative to current working directory
+                # Load contracts - resolve path relative to config file if available,
+                # otherwise relative to current working directory
                 contracts_dir = Path(self.config.contracts.directory)
                 if not contracts_dir.is_absolute():
-                    # Resolve relative to current working directory
-                    contracts_dir = Path.cwd() / contracts_dir
+                    if self.config_file_path:
+                        # Resolve relative to config file location (same as config loader)
+                        config_path = Path(self.config_file_path)
+                        contracts_dir = config_path.parent / contracts_dir
+                    else:
+                        # Fallback to current working directory
+                        contracts_dir = Path.cwd() / contracts_dir
 
                 loader = ContractLoader(
                     validate_on_load=self.config.contracts.validate_on_load,
