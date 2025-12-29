@@ -271,7 +271,7 @@ visualization:
       healthy: '#4CAF50'
       warning: '#FFC107'
 llm:
-  enabled: true
+  enabled: false
   provider: openai
   api_key: ${OPENAI_API_KEY}
   model: gpt-4o-mini

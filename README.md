@@ -27,7 +27,7 @@ Baselinr profiles your data, learns what "normal" looks like, detects drift and 
 
 Want full manual control instead? That works too. Define everything yourself with YAML configs. Your choice.
 
-**100% open-source, zero feature gates.** Unlike many data quality tools that gate column-level lineage, anomaly detection, or core validation features behind paid tiers, everything in Baselinr is available in the open-source version. No premium tiers, no paywalls—just data quality monitoring that works.
+**100% free and open-source, zero feature gates.** Unlike many data quality tools that gate column-level lineage, anomaly detection, or core validation features behind paid tiers, everything in Baselinr is completely free. No premium tiers, no paywalls, no credit card required—just data quality monitoring that works.
 
 ---
 
@@ -35,14 +35,8 @@ Want full manual control instead? That works too. Define everything yourself wit
 
 > **[Try the Live Demo →](https://demo.baselinr.io)** — No installation required
 
-<!-- TODO: Replace with actual GIF showing:
-1. Running `baselinr profile` and seeing results
-2. Drift detection catching an issue
-3. Quality Studio dashboard overview
--->
-
-![Quality Studio Demo](https://via.placeholder.com/800x450.png?text=GIF+Placeholder:+Quality+Studio+Demo)
-*Quality Studio: Configure monitoring, view drift alerts, and analyze data quality—all through a web UI*
+![Baselinr CLI Demo](docs/images/baselinr-cli-demo.gif)
+*CLI in action: profiling tables, detecting drift, and checking system status*
 
 ### CLI in Action
 
@@ -156,11 +150,11 @@ That's it. You now have data profiling with historical tracking and drift detect
 
 ---
 
-## Fully Open-Source, No Feature Gates
+## Free and Open-Source, No Feature Gates
 
-**Everything is included.** Column-level lineage, anomaly detection, statistical drift tests, root cause analysis, Quality Studio UI—all available in the open-source version.
+**Everything is included, completely free.** Column-level lineage, anomaly detection, statistical drift tests, root cause analysis, Quality Studio UI—all available at no cost.
 
-Many data quality tools gate their best features behind paid tiers: column-level lineage becomes a premium add-on, anomaly detection requires an enterprise license, core validation features are locked away. Baselinr gives you the full feature set from day one. No surprises, no upgrade prompts.
+Many data quality tools gate their best features behind paid tiers: column-level lineage becomes a premium add-on, anomaly detection requires an enterprise license, core validation features are locked away. Baselinr gives you the full feature set from day one, free forever. No surprises, no upgrade prompts, no credit card required.
 
 ---
 
@@ -191,7 +185,7 @@ Dagster • Airflow • dbt
 
 Baselinr is in early alpha. The core profiling, drift detection, and UI are functional and tested, but we're still iterating on the API and adding features.
 
-**Open-source commitment:** All features we build will remain open-source. No premium tiers, no feature gates—just better data quality monitoring for everyone.
+**Free and open-source commitment:** All features we build will remain free and open-source. No premium tiers, no feature gates, no paywalls—just better data quality monitoring for everyone.
 
 **What works well today:**
 - Data profiling with 20+ metrics
