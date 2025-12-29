@@ -9,7 +9,7 @@
 
 ---
 
-## 💡 The Problem
+## The Problem
 
 Setting up data quality monitoring is painful. You have to:
 - Manually decide which tables matter
@@ -19,7 +19,7 @@ Setting up data quality monitoring is painful. You have to:
 
 Most teams either skip it entirely or spend weeks configuring tools that still miss issues.
 
-## ✨ The Solution
+## The Solution
 
 Baselinr profiles your data, learns what "normal" looks like, detects drift and anomalies, runs validation checks, and uses AI to trace issues back to their root cause.
 
@@ -31,9 +31,9 @@ Want full manual control instead? That works too. Define everything yourself wit
 
 ---
 
-## 🎬 See It In Action
+## See It In Action
 
-> **🎮 [Try the Live Demo →](https://demo.baselinr.io)** — No installation required
+> **[Try the Live Demo →](https://demo.baselinr.io)** — No installation required
 
 <!-- TODO: Replace with actual GIF showing:
 1. Running `baselinr profile` and seeing results
@@ -67,16 +67,16 @@ Drift Report: customers
 
 Column            Metric          Change    Severity
 ─────────────────────────────────────────────────────────
-email             null_ratio      +12.3%    ⚠️  MEDIUM
-signup_date       distinct_count  +45.2%    🔴 HIGH
-status            mean            -2.1%     ✅ LOW
+email             null_ratio      +12.3%    MEDIUM
+signup_date       distinct_count  +45.2%    HIGH
+status            mean            -2.1%     LOW
 
 2 columns with significant drift detected
 ```
 
 ---
 
-## 🚀 Quick Start (5 minutes)
+## Quick Start (5 minutes)
 
 ### 1. Install
 
@@ -156,7 +156,7 @@ That's it. You now have data profiling with historical tracking and drift detect
 
 ---
 
-## 🆓 Fully Open-Source, No Feature Gates
+## Fully Open-Source, No Feature Gates
 
 **Everything is included.** Column-level lineage, anomaly detection, statistical drift tests, root cause analysis, Quality Studio UI—all available in the open-source version.
 
@@ -164,7 +164,7 @@ Many data quality tools gate their best features behind paid tiers: column-level
 
 ---
 
-## 📊 What You Get
+## What You Get
 
 | Capability | Description |
 |------------|-------------|
@@ -185,33 +185,33 @@ Dagster • Airflow • dbt
 
 ---
 
-## 🛠️ Development Status
+## Development Status
 
-> **⚠️ Alpha Release** — Actively developed, APIs may change
+> **Alpha Release** — Actively developed, APIs may change
 
 Baselinr is in early alpha. The core profiling, drift detection, and UI are functional and tested, but we're still iterating on the API and adding features.
 
 **Open-source commitment:** All features we build will remain open-source. No premium tiers, no feature gates—just better data quality monitoring for everyone.
 
 **What works well today:**
-- ✅ Data profiling with 20+ metrics
-- ✅ Drift detection with multiple strategies
-- ✅ Quality Studio web UI
-- ✅ PostgreSQL, Snowflake, BigQuery, MySQL, SQLite, Redshift
-- ✅ Dagster and Airflow integrations
-- ✅ CLI and Python SDK
+- Data profiling with 20+ metrics
+- Drift detection with multiple strategies
+- Quality Studio web UI
+- PostgreSQL, Snowflake, BigQuery, MySQL, SQLite, Redshift
+- Dagster and Airflow integrations
+- CLI and Python SDK
 
 **What we're working on:**
-- 🚧 Improved smart table/column recommendations
-- 🚧 More statistical tests for drift detection  
-- 🚧 Slack/email alerting (webhook support exists)
-- 🚧 Documentation improvements
+- Improved smart table/column recommendations
+- More statistical tests for drift detection  
+- Slack/email alerting (webhook support exists)
+- Documentation improvements
 
 We'd love your feedback! [Open an issue](https://github.com/baselinrhq/baselinr/issues) or try the [live demo](https://demo.baselinr.io).
 
 ---
 
-## 📖 Documentation
+## Documentation
 
 - **[Getting Started Guide](docs/getting-started/)** — Installation and first steps
 - **[User Guides](docs/guides/)** — Drift detection, validation, integrations
@@ -220,7 +220,7 @@ We'd love your feedback! [Open an issue](https://github.com/baselinrhq/baselinr/
 
 ---
 
-## 🔧 Example Configurations
+## Example Configurations
 
 <details>
 <summary><strong>Smart Table Selection (auto-discover what to monitor)</strong></summary>
@@ -369,7 +369,7 @@ print(f"Found {len(drift.column_drifts)} drifting columns")
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -383,14 +383,14 @@ pytest
 
 ---
 
-## 📝 License
+## License
 
 Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 ---
 
 <p align="center">
-  <strong>Baselinr</strong> — Data quality monitoring that sets itself up 🧩
+  <strong>Baselinr</strong> — Data quality monitoring that sets itself up
   <br>
   <a href="https://baselinr.io">Website</a> •
   <a href="https://demo.baselinr.io">Live Demo</a> •
