@@ -1,4 +1,4 @@
-# 🧩 Baselinr
+# <img src="docs/images/logo.png" alt="Baselinr" width="32" height="32"> Baselinr
 
 [![PyPI version](https://badge.fury.io/py/baselinr.svg)](https://badge.fury.io/py/baselinr)
 [![CI](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml/badge.svg)](https://github.com/baselinrhq/baselinr/actions/workflows/cli-e2e.yml)
